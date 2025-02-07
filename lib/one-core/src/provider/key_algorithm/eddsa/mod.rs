@@ -7,14 +7,16 @@ use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
-    KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
+    KeyAgreementHandle, KeyHandle, KeyHandleError, PrivateKeyAgreementHandle,
+    PublicKeyAgreementHandle, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_utils::{eddsa_public_key_as_jwk, eddsa_public_key_as_multibase};
 
 pub struct Eddsa;
 
@@ -54,14 +56,23 @@ impl KeyAlgorithm for Eddsa {
     fn generate_key(&self) -> Result<GeneratedKey, KeyAlgorithmError> {
         let key_pair = EDDSASigner::generate_key_pair();
 
+        let private_handle = Arc::new(EddsaPrivateKeyHandle::new(
+            key_pair.private.clone(),
+            key_pair.public.clone(),
+        ));
+        let public_handle = Arc::new(EddsaPublicKeyHandle::new(key_pair.public.clone(), None));
+
         Ok(GeneratedKey {
-            key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
-                private: Arc::new(EddsaPrivateKeyHandle::new(
-                    key_pair.private.clone(),
-                    key_pair.public.clone(),
-                )),
-                public: Arc::new(EddsaPublicKeyHandle::new(key_pair.public.clone(), None)),
-            }),
+            key: KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::WithPrivateKey {
+                    private: private_handle.clone(),
+                    public: public_handle.clone(),
+                },
+                key_agreement: KeyAgreementHandle::WithPrivateKey {
+                    private: private_handle,
+                    public: public_handle,
+                },
+            },
             public: key_pair.public,
             private: Zeroizing::new(key_pair.private.to_vec()),
         })
@@ -74,16 +85,27 @@ impl KeyAlgorithm for Eddsa {
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
-            Ok(KeyHandle::SignatureOnly(
-                SignatureKeyHandle::WithPrivateKey {
-                    private: Arc::new(EddsaPrivateKeyHandle::new(private_key, public_key.to_vec())),
-                    public: Arc::new(EddsaPublicKeyHandle::new(public_key.to_vec(), r#use)),
+            let private_handle =
+                Arc::new(EddsaPrivateKeyHandle::new(private_key, public_key.to_vec()));
+            let public_handle = Arc::new(EddsaPublicKeyHandle::new(public_key.to_vec(), r#use));
+
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::WithPrivateKey {
+                    private: private_handle.clone(),
+                    public: public_handle.clone(),
                 },
-            ))
+                key_agreement: KeyAgreementHandle::WithPrivateKey {
+                    private: private_handle,
+                    public: public_handle,
+                },
+            })
         } else {
-            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-                Arc::new(EddsaPublicKeyHandle::new(public_key.to_vec(), r#use)),
-            )))
+            let public_handle = Arc::new(EddsaPublicKeyHandle::new(public_key.to_vec(), r#use));
+
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(public_handle.clone()),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(public_handle),
+            })
         }
     }
 
@@ -137,6 +159,14 @@ impl EddsaPublicKeyHandle {
     fn new(public_key: Vec<u8>, r#use: Option<String>) -> Self {
         Self { public_key, r#use }
     }
+
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        eddsa_public_key_as_jwk(&self.public_key, self.r#use.clone())
+    }
+
+    fn as_multibase(&self) -> Result<String, KeyHandleError> {
+        eddsa_public_key_as_multibase(&self.public_key)
+    }
 }
 
 struct EddsaPrivateKeyHandle {
@@ -155,22 +185,11 @@ impl EddsaPrivateKeyHandle {
 
 impl SignaturePublicKeyHandle for EddsaPublicKeyHandle {
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-            r#use: self.r#use.clone(),
-            kid: None,
-            crv: "Ed25519".to_string(),
-            x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-            y: None,
-        }))
+        self.as_jwk()
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
-        let codec = &[0xed, 0x1];
-        let key = EDDSASigner::check_public_key(&self.public_key)
-            .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
-        let data = [codec, key.as_slice()].concat();
-        Ok(format!("z{}", bs58::encode(data).into_string()))
+        self.as_multibase()
     }
 
     fn as_raw(&self) -> Vec<u8> {
@@ -208,5 +227,25 @@ impl SignaturePrivateKeyHandle for EddsaPrivateKeyHandle {
         .to_string();
 
         Ok(Zeroizing::new(jwk))
+    }
+}
+
+#[async_trait]
+impl PrivateKeyAgreementHandle for EddsaPrivateKeyHandle {
+    async fn shared_secret(
+        &self,
+        _remote_pub_key: &[u8],
+    ) -> Result<Zeroizing<Vec<u8>>, SignerError> {
+        todo!()
+    }
+}
+
+impl PublicKeyAgreementHandle for EddsaPublicKeyHandle {
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        self.as_jwk()
+    }
+
+    fn as_multibase(&self) -> Result<String, KeyHandleError> {
+        self.as_multibase()
     }
 }

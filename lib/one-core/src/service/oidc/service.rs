@@ -60,6 +60,7 @@ use crate::provider::exchange_protocol::openid4vc::service::{
     create_open_id_for_vp_client_metadata, create_service_discovery_response,
     get_credential_schema_base_url, parse_access_token, parse_refresh_token,
 };
+use crate::provider::key_storage::error::KeyStorageError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -898,7 +899,10 @@ impl OIDCService {
                     .get_key_storage(&key.storage_type)
                     .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
 
-                let key = key_storage.secret_key_as_jwk(&key.to_owned())?;
+                let key = key_storage
+                    .key_handle(&key)
+                    .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?
+                    .private_key_as_jwk()?;
 
                 let payload = decrypt_jwe_payload(&jwe, key).map_err(|err| {
                     ServiceError::Other(format!("Failed decrypting JWE payload: {err}"))

@@ -228,8 +228,8 @@ impl KeyAgreementHandle {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait PublicKeyAgreementHandle: Send + Sync {
-    fn as_jwk(&self) -> PublicKeyJwk;
-    fn as_multibase(&self) -> String;
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError>;
+    fn as_multibase(&self) -> Result<String, KeyHandleError>;
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

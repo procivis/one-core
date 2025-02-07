@@ -1,9 +1,9 @@
 use async_trait;
 use one_crypto::SignerError;
 use shared_types::KeyId;
-use zeroize::Zeroizing;
 
 use crate::model::key::Key;
+use crate::provider::key_algorithm::key::KeyHandle;
 
 pub mod azure_vault;
 pub mod error;
@@ -18,25 +18,18 @@ pub mod secure_element;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait KeyStorage: Send + Sync {
-    /// Generates a key pair and returns the key reference. Does not expose the private key.
-    async fn generate(
-        &self,
-        key_id: Option<KeyId>,
-        key_type: &str,
-    ) -> Result<model::StorageGeneratedKey, error::KeyStorageError>;
-
-    /// Sign with a private key via the key reference.
-    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError>;
-
-    /// Converts a private key to JWK (thus exposing it).
-    ///
-    /// **Use carefully.**
-    ///
-    /// May not be implemented for some storage providers (e.g. Azure Key Vault).
-    fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, error::KeyStorageError>;
-
     /// See the [API docs][ksc] for a complete list of credential format capabilities.
     ///
     /// [ksc]: https://docs.procivis.ch/api/resources/keys#key-storage-capabilities
     fn get_capabilities(&self) -> model::KeyStorageCapabilities;
+
+    /// Generates a key pair and returns the key reference. Does not expose the private key.
+    async fn generate(
+        &self,
+        key_id: KeyId,
+        key_algorithm: &str,
+    ) -> Result<model::StorageGeneratedKey, error::KeyStorageError>;
+
+    /// Access to key operations
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError>;
 }

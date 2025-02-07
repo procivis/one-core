@@ -12,7 +12,7 @@ use mapper::{
     public_key_from_components,
 };
 use one_crypto::signer::es256::ES256Signer;
-use one_crypto::{CryptoProvider, SignerError};
+use one_crypto::{CryptoProvider, Signer, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
@@ -21,18 +21,23 @@ use url::Url;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use crate::model::key::Key;
+use crate::model::key::{Key, PublicKeyJwk};
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
+    SignaturePublicKeyHandle,
+};
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_utils::{es256_public_key_as_jwk, es256_public_key_as_multibase};
 
 mod dto;
 mod mapper;
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub ad_tenant_id: Uuid,
@@ -48,17 +53,25 @@ struct AzureAccessToken {
 }
 
 pub struct AzureVaultKeyProvider {
-    access_token: Arc<Mutex<Option<AzureAccessToken>>>,
     client: Arc<dyn HttpClient>,
     crypto: Arc<dyn CryptoProvider>,
+    fetcher: Arc<AzureTokenFetcher>,
     params: Params,
 }
 
 #[async_trait]
 impl KeyStorage for AzureVaultKeyProvider {
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
+        KeyStorageCapabilities {
+            features: vec![Features::Exportable],
+            algorithms: vec!["ES256".to_string()],
+            security: vec![KeySecurity::RemoteSecureElement],
+        }
+    }
+
     async fn generate(
         &self,
-        key_id: Option<KeyId>,
+        key_id: KeyId,
         key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
@@ -71,9 +84,7 @@ impl KeyStorage for AzureVaultKeyProvider {
             });
         }
 
-        let key_id = key_id.ok_or(KeyStorageError::Failed("Missing key id".to_string()))?;
-
-        let access_token = self.get_access_token().await?;
+        let access_token = self.fetcher.get_access_token().await?;
 
         let mut url = self.params.vault_url.clone();
         url.set_path(&format!("keys/{}/create", key_id));
@@ -108,48 +119,20 @@ impl KeyStorage for AzureVaultKeyProvider {
         })
     }
 
-    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let key_reference = String::from_utf8(key.key_reference.to_owned())
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-        let url = Url::parse(&format!("{key_reference}/sign?api-version=7.4"))
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-        let sign_request = create_sign_request(message, self.crypto.clone())?;
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
+        let handle = AzureVaultKeyHandle::new(
+            key.clone(),
+            self.client.clone(),
+            self.crypto.clone(),
+            self.fetcher.clone(),
+        );
 
-        let access_token = self
-            .get_access_token()
-            .await
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-
-        let parsed: AzureHsmSignResponse = self
-            .client
-            .post(url.as_str())
-            .bearer_auth(&access_token)
-            .json(&sign_request)
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
-            .json()
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-
-        let decoded = Base64UrlSafeNoPadding::decode_to_vec(parsed.value, None)
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-
-        Ok(decoded)
-    }
-
-    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
-        unimplemented!()
-    }
-
-    fn get_capabilities(&self) -> KeyStorageCapabilities {
-        KeyStorageCapabilities {
-            features: vec![Features::Exportable],
-            algorithms: vec!["ES256".to_string()],
-            security: vec![KeySecurity::RemoteSecureElement],
-        }
+        Ok(KeyHandle::SignatureOnly(
+            SignatureKeyHandle::WithPrivateKey {
+                private: Arc::new(handle.clone()),
+                public: Arc::new(handle),
+            },
+        ))
     }
 }
 
@@ -160,13 +143,25 @@ impl AzureVaultKeyProvider {
         client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
-            access_token: Arc::new(Mutex::new(None)),
-            client,
+            client: client.clone(),
             crypto,
+            fetcher: Arc::new(AzureTokenFetcher {
+                access_token: Arc::new(Mutex::new(None)),
+                client,
+                params: params.clone(),
+            }),
             params,
         }
     }
+}
 
+struct AzureTokenFetcher {
+    access_token: Arc<Mutex<Option<AzureAccessToken>>>,
+    client: Arc<dyn HttpClient>,
+    params: Params,
+}
+
+impl AzureTokenFetcher {
     async fn acquire_new_token(&self) -> Result<AzureHsmGetTokenResponse, KeyStorageError> {
         let request = create_get_token_request(
             &self.params.client_id.to_string(),
@@ -226,7 +221,7 @@ impl AzureVaultKeyProvider {
         }
     }
 
-    async fn is_token_valid(&self) -> bool {
+    pub async fn is_token_valid(&self) -> bool {
         let azure_access_token = self.access_token.lock().await;
 
         match azure_access_token.as_ref() {
@@ -241,3 +236,87 @@ impl AzureVaultKeyProvider {
 
 #[cfg(test)]
 mod test;
+
+#[derive(Clone)]
+struct AzureVaultKeyHandle {
+    key: Key,
+    client: Arc<dyn HttpClient>,
+    crypto: Arc<dyn CryptoProvider>,
+    fetcher: Arc<AzureTokenFetcher>,
+}
+
+impl AzureVaultKeyHandle {
+    fn new(
+        key: Key,
+        client: Arc<dyn HttpClient>,
+        crypto: Arc<dyn CryptoProvider>,
+        fetcher: Arc<AzureTokenFetcher>,
+    ) -> Self {
+        Self {
+            key,
+            client,
+            crypto,
+            fetcher,
+        }
+    }
+}
+
+impl SignaturePublicKeyHandle for AzureVaultKeyHandle {
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        es256_public_key_as_jwk(&self.key.public_key, None)
+    }
+
+    fn as_multibase(&self) -> Result<String, KeyHandleError> {
+        es256_public_key_as_multibase(&self.key.public_key)
+    }
+
+    fn as_raw(&self) -> Vec<u8> {
+        self.key.public_key.clone()
+    }
+
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
+        ES256Signer {}.verify(message, signature, &self.key.public_key)
+    }
+}
+
+#[async_trait]
+impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        let key_reference = String::from_utf8(self.key.key_reference.to_owned())
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+        let url = Url::parse(&format!("{key_reference}/sign?api-version=7.4"))
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+        let sign_request = create_sign_request(message, self.crypto.clone())?;
+
+        let access_token = self
+            .fetcher
+            .get_access_token()
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+        let parsed: AzureHsmSignResponse = self
+            .client
+            .post(url.as_str())
+            .bearer_auth(&access_token)
+            .json(&sign_request)
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
+            .send()
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
+            .json()
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+        let decoded = Base64UrlSafeNoPadding::decode_to_vec(parsed.value, None)
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+        Ok(decoded)
+    }
+
+    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+        Err(KeyHandleError::EncodingPrivateJwk(
+            "unsupported storage type".to_string(),
+        ))
+    }
+}

@@ -1,4 +1,5 @@
 use super::*;
+use crate::model::key::PublicKeyJwkEllipticData;
 
 #[test]
 fn test_jwk_to_bytes() {

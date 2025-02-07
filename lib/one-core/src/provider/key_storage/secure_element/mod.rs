@@ -1,16 +1,22 @@
 use std::sync::Arc;
 
-use one_crypto::SignerError;
+use one_crypto::signer::es256::ES256Signer;
+use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use crate::model::key::Key;
+use crate::model::key::{Key, PublicKeyJwk};
+use crate::provider::key_algorithm::key::{
+    KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
+    SignaturePublicKeyHandle,
+};
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_utils::{es256_public_key_as_jwk, es256_public_key_as_multibase};
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -33,9 +39,17 @@ pub struct Params {
 
 #[async_trait::async_trait]
 impl KeyStorage for SecureElementKeyProvider {
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string()],
+            security: vec![KeySecurity::Hardware],
+            features: vec![],
+        }
+    }
+
     async fn generate(
         &self,
-        key_id: Option<KeyId>,
+        key_id: KeyId,
         key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if key_type != "ES256" {
@@ -44,31 +58,22 @@ impl KeyStorage for SecureElementKeyProvider {
             });
         }
 
-        let key_id = key_id.ok_or(KeyStorageError::Failed("Missing key id".to_string()))?;
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
         self.native_storage.generate_key(key_alias).await
     }
 
-    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let message = message.to_vec();
-        let key_reference = key.key_reference.clone();
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
+        let handle = SecureElementKeyHandle {
+            key: key.clone(),
+            native_storage: self.native_storage.clone(),
+        };
 
-        self.native_storage
-            .sign(&key_reference, &message)
-            .await
-            .map_err(|error| SignerError::CouldNotSign(error.to_string()))
-    }
-
-    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
-        unimplemented!()
-    }
-
-    fn get_capabilities(&self) -> KeyStorageCapabilities {
-        KeyStorageCapabilities {
-            algorithms: vec!["ES256".to_string()],
-            security: vec![KeySecurity::Hardware],
-            features: vec![],
-        }
+        Ok(KeyHandle::SignatureOnly(
+            SignatureKeyHandle::WithPrivateKey {
+                private: Arc::new(handle.clone()),
+                public: Arc::new(handle),
+            },
+        ))
     }
 }
 
@@ -78,6 +83,46 @@ impl SecureElementKeyProvider {
             native_storage,
             params,
         }
+    }
+}
+
+#[derive(Clone)]
+struct SecureElementKeyHandle {
+    key: Key,
+    native_storage: Arc<dyn NativeKeyStorage>,
+}
+
+impl SignaturePublicKeyHandle for SecureElementKeyHandle {
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        es256_public_key_as_jwk(&self.key.public_key, None)
+    }
+
+    fn as_multibase(&self) -> Result<String, KeyHandleError> {
+        es256_public_key_as_multibase(&self.key.public_key)
+    }
+
+    fn as_raw(&self) -> Vec<u8> {
+        self.key.public_key.clone()
+    }
+
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
+        ES256Signer {}.verify(message, signature, &self.key.public_key)
+    }
+}
+
+#[async_trait::async_trait]
+impl SignaturePrivateKeyHandle for SecureElementKeyHandle {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        self.native_storage
+            .sign(&self.key.key_reference, message)
+            .await
+            .map_err(|error| SignerError::CouldNotSign(error.to_string()))
+    }
+
+    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+        Err(KeyHandleError::EncodingPrivateJwk(
+            "unsupported for remote secure element storage".to_string(),
+        ))
     }
 }
 

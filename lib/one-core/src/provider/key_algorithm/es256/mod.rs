@@ -1,19 +1,22 @@
 use std::sync::Arc;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use async_trait::async_trait;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
-    KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
+    KeyAgreementHandle, KeyHandle, KeyHandleError, PrivateKeyAgreementHandle,
+    PublicKeyAgreementHandle, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_utils::{es256_public_key_as_jwk, es256_public_key_as_multibase};
 
 pub struct Es256;
 
@@ -53,11 +56,20 @@ impl KeyAlgorithm for Es256 {
     fn generate_key(&self) -> Result<GeneratedKey, KeyAlgorithmError> {
         let (private, public) = ES256Signer::generate_key_pair();
 
+        let private_handle = Arc::new(Es256PrivateKeyHandle::new(private.clone(), public.clone()));
+        let public_handle = Arc::new(Es256PublicKeyHandle::new(public.clone(), None));
+
         Ok(GeneratedKey {
-            key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
-                private: Arc::new(Es256PrivateKeyHandle::new(private.clone(), public.clone())),
-                public: Arc::new(Es256PublicKeyHandle::new(public.clone(), None)),
-            }),
+            key: KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::WithPrivateKey {
+                    private: private_handle.clone(),
+                    public: public_handle.clone(),
+                },
+                key_agreement: KeyAgreementHandle::WithPrivateKey {
+                    private: private_handle,
+                    public: public_handle,
+                },
+            },
             public,
             private,
         })
@@ -70,16 +82,27 @@ impl KeyAlgorithm for Es256 {
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
-            Ok(KeyHandle::SignatureOnly(
-                SignatureKeyHandle::WithPrivateKey {
-                    private: Arc::new(Es256PrivateKeyHandle::new(private_key, public_key.to_vec())),
-                    public: Arc::new(Es256PublicKeyHandle::new(public_key.to_vec(), r#use)),
+            let private_handle =
+                Arc::new(Es256PrivateKeyHandle::new(private_key, public_key.to_vec()));
+            let public_handle = Arc::new(Es256PublicKeyHandle::new(public_key.to_vec(), r#use));
+
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::WithPrivateKey {
+                    private: private_handle.clone(),
+                    public: public_handle.clone(),
                 },
-            ))
+                key_agreement: KeyAgreementHandle::WithPrivateKey {
+                    private: private_handle,
+                    public: public_handle,
+                },
+            })
         } else {
-            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-                Arc::new(Es256PublicKeyHandle::new(public_key.to_vec(), r#use)),
-            )))
+            let public_handle = Arc::new(Es256PublicKeyHandle::new(public_key.to_vec(), r#use));
+
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(public_handle.clone()),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(public_handle),
+            })
         }
     }
 
@@ -155,27 +178,11 @@ impl Es256PrivateKeyHandle {
 
 impl SignaturePublicKeyHandle for Es256PublicKeyHandle {
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        let (x, y) = ES256Signer::get_public_key_coordinates(&self.public_key)
-            .map_err(KeyHandleError::Signer)?;
-        Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            r#use: self.r#use.clone(),
-            kid: None,
-            crv: "P-256".to_string(),
-            x: Base64UrlSafeNoPadding::encode_to_string(x)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-            y: Some(
-                Base64UrlSafeNoPadding::encode_to_string(y)
-                    .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-            ),
-        }))
+        es256_public_key_as_jwk(&self.public_key, self.r#use.clone())
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
-        let codec = &[0x80, 0x24];
-        let key = ES256Signer::parse_public_key(&self.public_key, true)
-            .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
-        let data = [codec, key.as_slice()].concat();
-        Ok(format!("z{}", bs58::encode(data).into_string()))
+        es256_public_key_as_multibase(&self.public_key)
     }
 
     fn as_raw(&self) -> Vec<u8> {
@@ -196,5 +203,25 @@ impl SignaturePrivateKeyHandle for Es256PrivateKeyHandle {
     fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
         ES256Signer::private_key_as_jwk(&self.private_key)
             .map_err(|e| KeyHandleError::EncodingPrivateJwk(e.to_string()))
+    }
+}
+
+impl PublicKeyAgreementHandle for Es256PublicKeyHandle {
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        es256_public_key_as_jwk(&self.public_key, self.r#use.clone())
+    }
+
+    fn as_multibase(&self) -> Result<String, KeyHandleError> {
+        es256_public_key_as_multibase(&self.public_key)
+    }
+}
+
+#[async_trait]
+impl PrivateKeyAgreementHandle for Es256PrivateKeyHandle {
+    async fn shared_secret(
+        &self,
+        _remote_pub_key: &[u8],
+    ) -> Result<Zeroizing<Vec<u8>>, SignerError> {
+        todo!()
     }
 }

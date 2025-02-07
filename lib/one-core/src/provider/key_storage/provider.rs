@@ -5,10 +5,11 @@ use std::sync::Arc;
 
 use one_crypto::SignerError;
 
-use super::error::KeyStorageProviderError;
+use super::error::{KeyStorageError, KeyStorageProviderError};
 use super::KeyStorage;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -21,13 +22,17 @@ pub trait KeyProvider: Send + Sync {
         jwk_key_id: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Result<AuthenticationFn, KeyStorageProviderError> {
-        let storage = self.get_key_storage(&key.storage_type).ok_or(
-            KeyStorageProviderError::InvalidKeyStorage(key.storage_type.clone()),
-        )?;
+        let key_handle = self
+            .get_key_storage(&key.storage_type)
+            .ok_or(KeyStorageProviderError::InvalidKeyStorage(
+                key.storage_type.clone(),
+            ))?
+            .key_handle(key)
+            .map_err(KeyStorageError::SignerError)?;
 
         Ok(Box::new(SignatureProviderImpl {
             key: key.to_owned(),
-            storage,
+            key_handle,
             jwk_key_id,
             key_algorithm_provider,
         }))
@@ -51,8 +56,8 @@ impl KeyProvider for KeyProviderImpl {
 }
 
 pub(crate) struct SignatureProviderImpl {
-    pub storage: Arc<dyn KeyStorage>,
     pub key: Key,
+    pub key_handle: KeyHandle,
     pub jwk_key_id: Option<String>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
@@ -60,7 +65,7 @@ pub(crate) struct SignatureProviderImpl {
 #[async_trait::async_trait]
 impl SignatureProvider for SignatureProviderImpl {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        self.storage.sign(&self.key, message).await
+        self.key_handle.sign(message).await
     }
 
     fn get_key_id(&self) -> Option<String> {

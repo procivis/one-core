@@ -9,6 +9,9 @@ use crate::provider::key_algorithm::error::KeyAlgorithmError;
 pub enum KeyStorageProviderError {
     #[error("Invalid key storage `{0}`")]
     InvalidKeyStorage(String),
+
+    #[error("Key storage error: `{0}`")]
+    KeyStorageError(#[from] KeyStorageError),
 }
 
 #[derive(Debug, Error)]

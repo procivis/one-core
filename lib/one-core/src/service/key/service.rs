@@ -72,7 +72,7 @@ impl KeyService {
             ))?;
 
         let key_id = Uuid::new_v4().into();
-        let key = provider.generate(Some(key_id), &request.key_type).await?;
+        let key = provider.generate(key_id, &request.key_type).await?;
 
         let key_entity = from_create_request(key_id, request, organisation, key);
 
@@ -250,10 +250,18 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
         std::thread::spawn(move || {
             let _guard = handle.enter();
             let handle = tokio::spawn(async move {
-                key_storage.sign(&key, &msg).await.map_err(|error| {
-                    tracing::error!(%error, "Failed to sign CSR");
-                    rcgen::Error::RemoteKeyError
-                })
+                key_storage
+                    .key_handle(&key)
+                    .map_err(|error| {
+                        tracing::error!(%error, "Failed to sign CSR - key handle failure");
+                        rcgen::Error::RemoteKeyError
+                    })?
+                    .sign(&msg)
+                    .await
+                    .map_err(|error| {
+                        tracing::error!(%error, "Failed to sign CSR");
+                        rcgen::Error::RemoteKeyError
+                    })
             });
             futures::executor::block_on(handle).map_err(|_| {
                 tracing::error!("Failed to join CSR task");

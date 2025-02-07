@@ -6,6 +6,7 @@ pub mod exchange_protocol;
 pub mod http_client;
 pub mod key_algorithm;
 pub mod key_storage;
+mod key_utils;
 pub mod mqtt_client;
 pub mod remote_entity_storage;
 pub mod revocation;

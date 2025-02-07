@@ -126,11 +126,11 @@ async fn test_azure_vault_generate() {
         Arc::new(ReqwestClient::default()),
     );
     vault
-        .generate(Some(Uuid::new_v4().into()), "ES256")
+        .generate(Uuid::new_v4().into(), "ES256")
         .await
         .unwrap();
     vault
-        .generate(Some(Uuid::new_v4().into()), "ES256")
+        .generate(Uuid::new_v4().into(), "ES256")
         .await
         .unwrap();
 }
@@ -148,11 +148,11 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
         Arc::new(ReqwestClient::default()),
     );
     vault
-        .generate(Some(Uuid::new_v4().into()), "ES256")
+        .generate(Uuid::new_v4().into(), "ES256")
         .await
         .unwrap();
     vault
-        .generate(Some(Uuid::new_v4().into()), "ES256")
+        .generate(Uuid::new_v4().into(), "ES256")
         .await
         .unwrap();
 }
@@ -164,7 +164,7 @@ async fn test_azure_vault_generate_failed_unsupported_key_type() {
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     );
-    let result = vault.generate(Some(Uuid::new_v4().into()), "UNKNOWN").await;
+    let result = vault.generate(Uuid::new_v4().into(), "UNKNOWN").await;
     assert!(matches!(
         result,
         Err(KeyStorageError::UnsupportedKeyType { .. })
@@ -190,23 +190,20 @@ async fn test_azure_vault_sign() {
         get_crypto(vec![("sha-256".to_string(), Arc::new(hasher_mock))]),
         Arc::new(ReqwestClient::default()),
     );
-    let result = vault
-        .sign(
-            &Key {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                public_key: vec![],
-                name: "".to_string(),
-                key_reference: key_reference.as_bytes().to_vec(),
-                storage_type: "".to_string(),
-                key_type: "".to_string(),
-                organisation: None,
-            },
-            "message_to_sign".as_bytes(),
-        )
-        .await
+    let key_handle = vault
+        .key_handle(&Key {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            public_key: vec![],
+            name: "".to_string(),
+            key_reference: key_reference.as_bytes().to_vec(),
+            storage_type: "".to_string(),
+            key_type: "".to_string(),
+            organisation: None,
+        })
         .unwrap();
+    let result = key_handle.sign("message_to_sign".as_bytes()).await.unwrap();
 
     assert_eq!("signed_message".as_bytes(), result);
 }

@@ -29,10 +29,7 @@ async fn test_generate_success() {
 
     let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
 
-    let result = provider
-        .generate(Some(key_id.into()), "EDDSA")
-        .await
-        .unwrap();
+    let result = provider.generate(key_id.into(), "EDDSA").await.unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, b"key_reference");
 }
@@ -41,9 +38,7 @@ async fn test_generate_success() {
 async fn test_generate_invalid_key_type() {
     let provider = RemoteSecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()));
 
-    let result = provider
-        .generate(Some(Uuid::new_v4().into()), "invalid")
-        .await;
+    let result = provider.generate(Uuid::new_v4().into(), "invalid").await;
     assert!(matches!(
         result,
         Err(KeyStorageError::UnsupportedKeyType { .. })
@@ -61,22 +56,20 @@ async fn test_sign_success() {
 
     let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
 
-    let result = provider
-        .sign(
-            &Key {
-                id: Uuid::new_v4().into(),
-                key_reference: b"key_reference".to_vec(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                public_key: b"public_key".to_vec(),
-                name: "".to_string(),
-                storage_type: "REMOTE_SECURE_ELEMENT".to_string(),
-                key_type: "EDDSA".to_string(),
-                organisation: None,
-            },
-            "message".as_bytes(),
-        )
-        .await
+    let key_handle = provider
+        .key_handle(&Key {
+            id: Uuid::new_v4().into(),
+            key_reference: b"key_reference".to_vec(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            public_key: b"public_key".to_vec(),
+            name: "".to_string(),
+            storage_type: "REMOTE_SECURE_ELEMENT".to_string(),
+            key_type: "EDDSA".to_string(),
+            organisation: None,
+        })
         .unwrap();
+
+    let result = key_handle.sign("message".as_bytes()).await.unwrap();
     assert_eq!(result, b"signature");
 }

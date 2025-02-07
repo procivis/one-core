@@ -10,6 +10,7 @@ use shared_types::KeyId;
 use zeroize::Zeroizing;
 
 use crate::model::key::Key;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
@@ -44,9 +45,22 @@ impl InternalKeyProvider {
 
 #[async_trait::async_trait]
 impl KeyStorage for InternalKeyProvider {
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
+        KeyStorageCapabilities {
+            algorithms: vec![
+                "ES256".to_string(),
+                "EDDSA".to_string(),
+                "DILITHIUM".to_string(),
+                "BBS_PLUS".to_string(),
+            ],
+            security: vec![KeySecurity::Software],
+            features: vec![Features::Exportable],
+        }
+    }
+
     async fn generate(
         &self,
-        _key_id: Option<KeyId>,
+        _key_id: KeyId,
         key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let key_pair = self
@@ -65,7 +79,7 @@ impl KeyStorage for InternalKeyProvider {
         })
     }
 
-    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
         let algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_name(&key.key_type)
@@ -78,42 +92,7 @@ impl KeyStorage for InternalKeyProvider {
 
         algorithm
             .reconstruct_key(&key.public_key, Some(private_key), None)
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?
-            .sign(message)
-            .await
-    }
-
-    fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
-        let private_key = decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
-            .map(Zeroizing::new)
-            .map_err(|err| {
-                KeyStorageError::Failed(anyhow::anyhow!("Decryption failed: {err}").to_string())
-            })?;
-
-        let key_type = &key.key_type;
-        let algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_name(key_type)
-            .ok_or_else(|| KeyStorageError::NotSupported(key_type.to_owned()))?;
-
-        algorithm
-            .reconstruct_key(&key.public_key, Some(private_key), None)
-            .map_err(KeyStorageError::KeyAlgorithmError)?
-            .private_key_as_jwk()
-            .map_err(|e| KeyStorageError::Failed(e.to_string()))
-    }
-
-    fn get_capabilities(&self) -> KeyStorageCapabilities {
-        KeyStorageCapabilities {
-            algorithms: vec![
-                "ES256".to_string(),
-                "EDDSA".to_string(),
-                "DILITHIUM".to_string(),
-                "BBS_PLUS".to_string(),
-            ],
-            security: vec![KeySecurity::Software],
-            features: vec![Features::Exportable],
-        }
+            .map_err(|_| SignerError::CouldNotExtractKeyPair)
     }
 }
 
