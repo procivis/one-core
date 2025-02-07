@@ -108,7 +108,7 @@ before_script:
   tags:
     - rust
   script:
-    - cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+    - cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
     - cargo llvm-cov report --cobertura --output-path cobertura.xml
     - cargo llvm-cov report
   coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
