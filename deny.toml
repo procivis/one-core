@@ -98,6 +98,10 @@ workspace-default-features = "allow"
 # https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html
 [sources]
 allow-registry   = ["https://github.com/rust-lang/crates.io-index"]
-private          = ["https://gitlab.procivis.ch"]
+allow-git        = ["https://github.com/procivis/pairing_crypto",
+                    "https://github.com/procivis/dilithium",
+                    "https://github.com/procivis/json-ld",
+                    "https://github.com/procivis/blstrs",
+                   ]
 unknown-git      = "deny"
 unknown-registry = "deny"

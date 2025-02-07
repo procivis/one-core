@@ -219,10 +219,10 @@ pub struct ProofInput<'a> {
     pub claims: &'a Vec<ClaimInsertInfo<'a>>,
 }
 
-pub async fn insert_proof_schema_with_claims_to_database<'a>(
+pub async fn insert_proof_schema_with_claims_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    proof_inputs: Vec<&ProofInput<'a>>,
+    proof_inputs: Vec<&ProofInput<'_>>,
     organisation_id: OrganisationId,
     name: &str,
 ) -> Result<ProofSchemaId, DbErr> {

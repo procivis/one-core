@@ -84,10 +84,10 @@ pub(super) async fn validate_presentation(
     validate_issuance_time(&presentation.issued_at, formatter.get_leeway())?;
     validate_expiration_time(&presentation.expires_at, formatter.get_leeway())?;
 
-    if !presentation
+    if presentation
         .nonce
         .as_ref()
-        .is_some_and(|presentation_nonce| presentation_nonce == nonce)
+        .is_none_or(|presentation_nonce| presentation_nonce != nonce)
     {
         return Err(OpenID4VCError::ValidationError(
             "Nonce not matched".to_string(),

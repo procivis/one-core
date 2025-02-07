@@ -124,9 +124,9 @@ impl<'de> Deserialize<'de> for DeviceEngagement {
         let version = get_cbor_map_value(&map, 0)
             .ok_or(de::Error::custom("Missing DeviceEngagement version"))?;
 
-        if !version
+        if version
             .as_text()
-            .is_some_and(|s| s == DEVICE_ENGAGEMENT_VERSION)
+            .is_none_or(|s| s != DEVICE_ENGAGEMENT_VERSION)
         {
             return Err(de::Error::custom("Invalid DeviceEngagement version"));
         }
@@ -177,9 +177,9 @@ where
     let version = array
         .first()
         .ok_or(de::Error::custom("Missing Security version"))?;
-    if !version
+    if version
         .as_integer()
-        .is_some_and(|v| v == SECURITY_VERSION.into())
+        .is_none_or(|v| v != SECURITY_VERSION.into())
     {
         return Err(de::Error::custom("Invalid Security version"));
     }
@@ -226,9 +226,9 @@ where
     let r#type = array
         .first()
         .ok_or(de::Error::custom("Missing DeviceRetrievalMethod type"))?;
-    if !r#type
+    if r#type
         .as_integer()
-        .is_some_and(|v| v == RETRIEVAL_METHOD_TYPE_BLE.into())
+        .is_none_or(|v| v != RETRIEVAL_METHOD_TYPE_BLE.into())
     {
         return Err(de::Error::custom("Invalid DeviceRetrievalMethod type"));
     }
@@ -236,9 +236,9 @@ where
     let version = array
         .get(1)
         .ok_or(de::Error::custom("Missing DeviceRetrievalMethod version"))?;
-    if !version
+    if version
         .as_integer()
-        .is_some_and(|v| v == RETRIEVAL_METHOD_VERSION.into())
+        .is_none_or(|v| v != RETRIEVAL_METHOD_VERSION.into())
     {
         return Err(de::Error::custom("Invalid DeviceRetrievalMethod version"));
     }

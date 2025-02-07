@@ -18,9 +18,9 @@ impl StatusList2021JWTFormatter {
         let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, Some(verification)).await?;
 
         let payload = jwt.payload;
-        if !payload
+        if payload
             .issuer
-            .is_some_and(|issuer| issuer == issuer_did.as_str())
+            .is_none_or(|issuer| issuer != issuer_did.as_str())
         {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid issuer".to_string(),

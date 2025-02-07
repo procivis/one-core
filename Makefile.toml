@@ -17,7 +17,7 @@ args    = ["build", "-p", "core-server"]
 command = "cargo"
 
 [tasks.clippy]
-args    = ["clippy", "--all-targets", "--", "-D", "clippy::print_stderr", "-D", "clippy::dbg_macro"]
+args    = ["clippy", "--all-targets", "--", "-A", "clippy::empty_line_after_doc_comments", "-D", "clippy::print_stderr", "-D", "clippy::dbg_macro"]
 command = "cargo"
 
 [tasks.format]
