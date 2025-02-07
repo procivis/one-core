@@ -135,11 +135,10 @@ pub(crate) async fn start_client(
                 let _ = proof_repository
                     .update_proof(
                         &proof.id,
-                        update_proof_request(
-                            ProofStateEnum::Error,
-                            None,
-                            Some(Some(OffsetDateTime::now_utc())),
-                        ),
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Error),
+                            ..Default::default()
+                        },
                     )
                     .await;
                 // TODO: log error?
@@ -158,11 +157,10 @@ pub(crate) async fn start_client(
             let _ = proof_repository_clone
                 .update_proof(
                     &proof_id,
-                    update_proof_request(
-                        ProofStateEnum::Error,
-                        None,
-                        Some(Some(OffsetDateTime::now_utc())),
-                    ),
+                    UpdateProofRequest {
+                        state: Some(ProofStateEnum::Error),
+                        ..Default::default()
+                    },
                 )
                 .await;
         },
@@ -250,11 +248,11 @@ async fn process_proof(
     proof_repository
         .update_proof(
             &proof.id,
-            update_proof_request(
-                ProofStateEnum::Requested,
-                Some(Some(OffsetDateTime::now_utc())),
-                None,
-            ),
+            UpdateProofRequest {
+                state: Some(ProofStateEnum::Requested),
+                requested_date: Some(Some(OffsetDateTime::now_utc())),
+                ..Default::default()
+            },
         )
         .await?;
 
@@ -321,7 +319,10 @@ async fn process_proof(
     proof_repository
         .update_proof(
             &proof.id,
-            update_proof_request(new_state, None, Some(Some(OffsetDateTime::now_utc()))),
+            UpdateProofRequest {
+                state: Some(new_state),
+                ..Default::default()
+            },
         )
         .await?;
 
@@ -400,19 +401,6 @@ async fn fill_proof_claims_and_credentials(
     // todo: history log accepted
 
     Ok(())
-}
-
-fn update_proof_request(
-    new_state: ProofStateEnum,
-    requested_date: Option<Option<OffsetDateTime>>,
-    completed_date: Option<Option<OffsetDateTime>>,
-) -> UpdateProofRequest {
-    UpdateProofRequest {
-        state: Some(new_state),
-        requested_date,
-        completed_date,
-        ..Default::default()
-    }
 }
 
 async fn connect_to_server(

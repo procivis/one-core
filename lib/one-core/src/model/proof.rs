@@ -89,5 +89,4 @@ pub struct UpdateProofRequest {
     pub redirect_uri: Option<Option<String>>,
     pub transport: Option<String>,
     pub requested_date: Option<Option<OffsetDateTime>>,
-    pub completed_date: Option<Option<OffsetDateTime>>,
 }

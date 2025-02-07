@@ -179,11 +179,6 @@ impl ProofRepository for ProofProvider {
             Some(datetime) => Set(datetime),
         };
 
-        let completed_date = match proof.completed_date {
-            None => Unchanged(Default::default()),
-            Some(datetime) => Set(datetime),
-        };
-
         let now = OffsetDateTime::now_utc();
         let mut update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
@@ -194,14 +189,15 @@ impl ProofRepository for ProofProvider {
             redirect_uri,
             transport,
             requested_date,
-            completed_date,
             ..Default::default()
         };
 
         if let Some(state) = proof.state {
             match &state {
                 ProofStateEnum::Pending => update_model.requested_date = Set(Some(now)),
-                ProofStateEnum::Accepted => update_model.completed_date = Set(Some(now)),
+                ProofStateEnum::Accepted | ProofStateEnum::Rejected | ProofStateEnum::Error => {
+                    update_model.completed_date = Set(Some(now))
+                }
                 _ => {}
             };
             update_model.state = Set(state.into());
