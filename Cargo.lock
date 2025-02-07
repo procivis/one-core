@@ -3822,7 +3822,6 @@ version = "0.1.0"
 dependencies = [
  "one-core",
  "one-crypto",
- "reqwest 0.12.9",
  "shared-types",
  "strum",
  "thiserror 2.0.0",

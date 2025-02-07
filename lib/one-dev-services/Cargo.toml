@@ -12,7 +12,6 @@ doctest = false
 [dependencies]
 one-core     = { version = "0.1.0", path = "../one-core" }
 one-crypto   = { version = "0.1.0", path = "../one-crypto" }
-reqwest      = { workspace = true }
 shared-types = { version = "0.1.0", path = "../shared-types" }
 strum        = { workspace = true }
 thiserror    = { workspace = true }
@@ -21,3 +20,6 @@ zeroize      = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["strum"]
+
+[lints]
+workspace = true

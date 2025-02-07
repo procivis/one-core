@@ -60,8 +60,10 @@ wiremock           = { version = "0.6" }
 zeroize            = { version = "1.8" }
 
 [workspace.lints.clippy]
-dbg_macro       = "warn"
-redundant_clone = "warn"
+empty_line_after_doc_comments = "allow" # workaround for https://github.com/baoyachi/shadow-rs/pull/205
+redundant_clone               = "warn"
+dbg_macro                     = "deny"
+print_stderr                  = "deny"
 
 [patch.crates-io]
 json-ld = { git = "https://github.com/procivis/json-ld", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }

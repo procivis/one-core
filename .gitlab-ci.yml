@@ -187,7 +187,7 @@ linter:clippy:
   stage: test
   needs: []
   script:
-    - cargo clippy --all-targets --message-format=json -- -A clippy::empty_line_after_doc_comments -D warnings > clippy.json
+    - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
     - cargo clippy --package sql-data-provider --message-format=json -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used >> clippy.json
   artifacts:
     expire_in: 1 day
