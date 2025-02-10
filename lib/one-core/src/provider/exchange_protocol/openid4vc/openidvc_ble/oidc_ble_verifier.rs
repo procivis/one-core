@@ -18,6 +18,7 @@ use super::{
 };
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
@@ -41,6 +42,7 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::error::ErrorCode::BR_0000;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 use crate::util::interactions::{add_new_interaction, update_proof_interaction};
 
@@ -147,7 +149,7 @@ impl OpenID4VCBLEVerifier {
                             UpdateProofRequest {
                                 transport: Some(TransportType::Ble.to_string()),
                                 ..Default::default()
-                            },
+                            },None
                         )
                         .await
                         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
@@ -197,7 +199,7 @@ impl OpenID4VCBLEVerifier {
                                 proof_repository
                                     .update_proof(&proof.id, UpdateProofRequest {
                             state: Some(ProofStateEnum::Requested), ..Default::default()
-                        })
+                        }, None)
                                     .await
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
@@ -272,12 +274,17 @@ impl OpenID4VCBLEVerifier {
                     .await;
 
                     if let Err(err) = result {
-                        tracing::info!("BLE task failure: {err}, stopping BLE server");
+                        let message = format!("BLE task failure: {err}, stopping BLE server");
+                        tracing::info!(message);
                         let _ = peripheral.stop_server().await;
+                        let error_metadata = HistoryErrorMetadata {
+                            error_code: BR_0000,
+                            message,
+                        };
                         let _ = proof_repository
                             .update_proof(&proof.id, UpdateProofRequest {
                                 state: Some(ProofStateEnum::Error), ..Default::default()
-                            })
+                            }, Some(error_metadata))
                             .await;
                     };
 

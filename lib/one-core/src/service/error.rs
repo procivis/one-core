@@ -1,4 +1,5 @@
 use one_crypto::CryptoProviderError;
+use serde::{Deserialize, Serialize};
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
@@ -550,7 +551,7 @@ impl MissingProviderError {
     }
 }
 
-#[derive(Debug, Clone, Copy, Display, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Display, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
     #[strum(to_string = "Unmapped error code")]
@@ -1297,6 +1298,23 @@ impl ErrorCodeMixin for DidMdlValidationError {
             Self::SubjectPublicKeyNotMatching
             | Self::KeyTypeNotSupported(_)
             | Self::SubjectPublicKeyInvalidDer(_) => ErrorCode::BR_0156,
+        }
+    }
+}
+
+impl ErrorCodeMixin for DataLayerError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Db(_) => ErrorCode::BR_0054,
+            Self::AlreadyExists
+            | Self::IncorrectParameters
+            | Self::RecordNotUpdated
+            | Self::MappingError
+            | Self::IncompleteClaimsList { .. }
+            | Self::IncompleteClaimsSchemaList { .. }
+            | Self::MissingProofState { .. }
+            | Self::MissingRequiredRelation { .. }
+            | Self::MissingClaimsSchemaForClaim(_, _) => ErrorCode::BR_0000,
         }
     }
 }

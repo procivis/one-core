@@ -9,10 +9,18 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
+use crate::service::error::ErrorCode;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HistoryMetadata {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
+    ErrorMetadata(HistoryErrorMetadata),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryErrorMetadata {
+    pub error_code: ErrorCode,
+    pub message: String,
 }
 
 impl From<UnexportableEntitiesResponseDTO> for HistoryMetadata {

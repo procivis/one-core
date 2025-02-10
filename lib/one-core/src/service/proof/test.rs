@@ -2871,8 +2871,10 @@ async fn test_share_proof_created_success() {
         .expect_update_proof()
         .once()
         .in_sequence(&mut seq)
-        .withf(move |id, update| id == &proof_id && update.state == Some(ProofStateEnum::Pending))
-        .returning(|_, _| Ok(()));
+        .withf(move |id, update, _| {
+            id == &proof_id && update.state == Some(ProofStateEnum::Pending)
+        })
+        .returning(|_, _, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -2885,10 +2887,10 @@ async fn test_share_proof_created_success() {
         .expect_update_proof()
         .once()
         .in_sequence(&mut seq)
-        .withf(move |id, update| {
+        .withf(move |id, update, _| {
             id == &proof_id && update.interaction == Some(Some(interaction_id))
         })
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -2986,10 +2988,10 @@ async fn test_share_proof_pending_success() {
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(move |id, update| {
+        .withf(move |id, update, _| {
             id == &proof_id && update.interaction == Some(Some(interaction_id))
         })
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -3096,11 +3098,11 @@ async fn test_retract_proof_ok_for_allowed_state(
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(|_, update_proof| {
+        .withf(|_, update_proof, _| {
             update_proof.interaction == Some(None)
                 && *update_proof.state.as_ref().unwrap() == ProofStateEnum::Created
         })
-        .returning(move |_, _| Ok(()));
+        .returning(move |_, _, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();
 
@@ -3423,11 +3425,11 @@ async fn test_retract_proof_with_bluetooth_ok() {
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(|_, update_proof| {
+        .withf(|_, update_proof, _| {
             update_proof.interaction == Some(None)
                 && *update_proof.state.as_ref().unwrap() == ProofStateEnum::Created
         })
-        .returning(move |_, _| Ok(()));
+        .returning(move |_, _, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -3512,11 +3514,11 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(|_, update_proof| {
+        .withf(|_, update_proof, _| {
             update_proof.interaction == Some(None)
                 && *update_proof.state.as_ref().unwrap() == ProofStateEnum::Error
         })
-        .returning(move |_, _| Ok(()));
+        .returning(move |_, _, _| Ok(()));
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_delete_interaction()

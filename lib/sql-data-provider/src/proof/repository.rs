@@ -3,6 +3,7 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimId};
+use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
     GetProofList, GetProofQuery, Proof, ProofClaim, ProofRelations, ProofStateEnum,
@@ -148,6 +149,7 @@ impl ProofRepository for ProofProvider {
         &self,
         proof_id: &ProofId,
         proof: UpdateProofRequest,
+        _error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
         let holder_did_id = match proof.holder_did_id {
             None => Unchanged(Default::default()),

@@ -33,7 +33,9 @@ use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
+use crate::model::history::{
+    HistoryAction, HistoryErrorMetadata, HistoryFilterValue, HistoryListQuery,
+};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -60,6 +62,7 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
 };
 use crate::provider::exchange_protocol::openid4vc::model::{OpenID4VCParams, ShareResponse};
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
+use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -450,6 +453,7 @@ impl ProofService {
                             state: Some(ProofStateEnum::Pending),
                             ..Default::default()
                         },
+                        None,
                     )
                     .await?;
             }
@@ -560,11 +564,15 @@ impl ProofService {
         // we keep the interaction data if the transport hasn't been established
         let can_remove_interaction = !proof.transport.is_empty();
 
-        let new_state = if proof.schema.is_none() {
+        let (new_state, error_metadata) = if proof.schema.is_none() {
             // A holder cannot reuse retracted proofs hence we go into the error state here.
-            ProofStateEnum::Error
+            let error_metadata = HistoryErrorMetadata {
+                error_code: BR_0000,
+                message: "Proof retracted".to_string(),
+            };
+            (ProofStateEnum::Error, Some(error_metadata))
         } else {
-            ProofStateEnum::Created
+            (ProofStateEnum::Created, None)
         };
         self.proof_repository
             .update_proof(
@@ -575,6 +583,7 @@ impl ProofService {
                     interaction: can_remove_interaction.then_some(None),
                     ..Default::default()
                 },
+                error_metadata,
             )
             .await?;
 

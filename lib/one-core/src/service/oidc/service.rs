@@ -33,6 +33,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::DidRelations;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -61,6 +62,7 @@ use crate::provider::exchange_protocol::openid4vc::service::{
     get_credential_schema_base_url, parse_access_token, parse_refresh_token,
 };
 use crate::provider::key_storage::error::KeyStorageError;
+use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -648,8 +650,13 @@ impl OIDCService {
         let request_data = match request_data_fn() {
             Ok(request_data) => request_data,
             Err(error) => {
-                tracing::error!(%error, "Failed parsing interaction data");
-                let _ = self.mark_proof_as_failed(&proof.id).await;
+                let message = format!("Failed parsing interaction data: {error}");
+                tracing::info!(message);
+                let error_metadata = HistoryErrorMetadata {
+                    error_code: BR_0000,
+                    message,
+                };
+                let _ = self.mark_proof_as_failed(&proof.id, error_metadata).await;
                 return;
             }
         };
@@ -803,14 +810,20 @@ impl OIDCService {
                             state: Some(ProofStateEnum::Accepted),
                             ..Default::default()
                         },
+                        None,
                     )
                     .await?;
 
                 Ok(response)
             }
             Err(err) => {
-                tracing::info!("Proof validation failed: {err}");
-                self.mark_proof_as_failed(&proof.id).await?;
+                let message = format!("Proof validation failed: {err}");
+                tracing::info!(message);
+                let error_metadata = HistoryErrorMetadata {
+                    error_code: BR_0000,
+                    message,
+                };
+                self.mark_proof_as_failed(&proof.id, error_metadata).await?;
                 Err(err.into())
             }
         }
@@ -855,7 +868,11 @@ impl OIDCService {
         crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, interaction_data.presentation_definition).map_err(Into::into)
     }
 
-    async fn mark_proof_as_failed(&self, id: &ProofId) -> Result<(), ServiceError> {
+    async fn mark_proof_as_failed(
+        &self,
+        id: &ProofId,
+        error_metadata: HistoryErrorMetadata,
+    ) -> Result<(), ServiceError> {
         self.proof_repository
             .update_proof(
                 id,
@@ -863,6 +880,7 @@ impl OIDCService {
                     state: Some(ProofStateEnum::Error),
                     ..Default::default()
                 },
+                Some(error_metadata),
             )
             .await
             .map_err(ServiceError::from)

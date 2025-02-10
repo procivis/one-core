@@ -1463,12 +1463,12 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     proof_repository
         .expect_update_proof()
-        .withf(move |_proof_id, _| {
+        .withf(move |_proof_id, _, _| {
             assert_eq!(_proof_id, &proof_id);
             true
         })
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _| Ok(()));
 
     let mut formatter = MockCredentialFormatter::new();
 

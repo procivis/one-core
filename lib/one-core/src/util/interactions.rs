@@ -66,7 +66,9 @@ pub async fn update_proof_interaction(
         ..Default::default()
     };
 
-    proof_repository.update_proof(&proof_id, update).await?;
+    proof_repository
+        .update_proof(&proof_id, update, None)
+        .await?;
     Ok(())
 }
 

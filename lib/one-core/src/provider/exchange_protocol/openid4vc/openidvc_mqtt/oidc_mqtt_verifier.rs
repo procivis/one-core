@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{Context, Error};
 use futures::future::{BoxFuture, Shared};
 use one_crypto::utilities;
 use time::{Duration, OffsetDateTime};
@@ -9,6 +9,7 @@ use tokio_util::sync::CancellationToken;
 use super::set_proof_state;
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
@@ -25,6 +26,7 @@ use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncrypti
 use crate::provider::mqtt_client::MqttTopic;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::error::ErrorCode::BR_0000;
 
 pub(super) struct Topics {
     pub(super) identify: Box<dyn MqttTopic>,
@@ -48,7 +50,7 @@ pub(super) async fn mqtt_verifier_flow(
     cancellation_token: CancellationToken,
     callback: Option<Shared<BoxFuture<'static, ()>>>,
 ) -> anyhow::Result<()> {
-    let result = async {
+    let result: Result<_, Error> = async {
         let identify_bytes = tokio::select! {
             resp = topics.identify.recv() => {
                 resp?
@@ -73,6 +75,7 @@ pub(super) async fn mqtt_verifier_flow(
                     transport: Some(TransportType::Mqtt.to_string()),
                     ..Default::default()
                 },
+                None,
             )
             .await?;
 
@@ -106,7 +109,7 @@ pub(super) async fn mqtt_verifier_flow(
 
         let bytes = shared_key.encrypt(&signed)?;
         topics.presentation_definition.send(bytes).await?;
-        set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository).await?;
+        set_proof_state(&proof, ProofStateEnum::Requested,None,  &*proof_repository).await?;
 
         tracing::debug!("presentation_definition is sent");
 
@@ -175,8 +178,13 @@ pub(super) async fn mqtt_verifier_flow(
                 }
             },
             _ = reject => {
-                tracing::debug!("got reject message");
-                set_proof_state(&proof, ProofStateEnum::Rejected, &*proof_repository).await?;
+                let message = "got reject message".to_string();
+                tracing::debug!(message);
+                let error_metadata = HistoryErrorMetadata {
+                error_code: BR_0000,
+                message
+            };
+                set_proof_state(&proof, ProofStateEnum::Rejected,Some(error_metadata), &*proof_repository, ).await?;
             }
         }
 
@@ -184,8 +192,18 @@ pub(super) async fn mqtt_verifier_flow(
     }
     .await;
 
-    if result.is_err() {
-        set_proof_state(&proof, ProofStateEnum::Error, &*proof_repository).await?;
+    if let Err(ref err) = result {
+        let error_metadata = HistoryErrorMetadata {
+            error_code: BR_0000,
+            message: err.to_string(),
+        };
+        set_proof_state(
+            &proof,
+            ProofStateEnum::Error,
+            Some(error_metadata),
+            &*proof_repository,
+        )
+        .await?;
     }
 
     result

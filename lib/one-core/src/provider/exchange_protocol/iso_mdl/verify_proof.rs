@@ -442,6 +442,7 @@ pub async fn accept_proof(
                 state: Some(ProofStateEnum::Accepted),
                 ..Default::default()
             },
+            None,
         )
         .await
         .map_err(ServiceError::from)?;

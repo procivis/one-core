@@ -8,12 +8,14 @@ use crate::config::validator::transport::get_first_available_transport_type;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::provider::ExchangeProtocol;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
+use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 impl ProofService {
@@ -61,10 +63,15 @@ impl ProofService {
                             state: Some(ProofStateEnum::Accepted),
                             ..Default::default()
                         },
+                        None,
                     )
                     .await?;
             }
-            Err(_) => {
+            Err(err) => {
+                let error_metadata = HistoryErrorMetadata {
+                    error_code: BR_0000,
+                    message: err.to_string(),
+                };
                 self.proof_repository
                     .update_proof(
                         &proof.id,
@@ -72,6 +79,7 @@ impl ProofService {
                             state: Some(ProofStateEnum::Error),
                             ..Default::default()
                         },
+                        Some(error_metadata),
                     )
                     .await?;
             }

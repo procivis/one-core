@@ -83,13 +83,13 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 
     proof_repository
         .expect_update_proof()
-        .withf(move |actual_proof_id, actual_proof_state| {
+        .withf(move |actual_proof_id, actual_proof_state, _| {
             assert_eq!(actual_proof_id, &proof_id);
             assert_eq!(actual_proof_state.state, Some(ProofStateEnum::Rejected));
             true
         })
         .once()
-        .return_once(move |_, _| Ok(()));
+        .return_once(move |_, _, _| Ok(()));
 
     let mut exchange_protocol_mock = MockExchangeProtocol::default();
     exchange_protocol_mock
@@ -227,7 +227,7 @@ async fn test_submit_proof_succeeds() {
     proof_repository
         .expect_update_proof()
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _| Ok(()));
 
     let credential_id = Uuid::new_v4().into();
     let mut credential_repository = MockCredentialRepository::new();
@@ -525,7 +525,7 @@ async fn test_submit_proof_repeating_claims() {
     proof_repository
         .expect_update_proof()
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository

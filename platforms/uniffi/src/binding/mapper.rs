@@ -43,7 +43,9 @@ use crate::binding::credential_schema::{
     ImportCredentialSchemaClaimSchemaBindingDTO,
 };
 use crate::binding::did::{DidRequestBindingDTO, DidRequestKeysBindingDTO};
-use crate::binding::history::{HistoryListItemBindingDTO, HistoryMetadataBinding};
+use crate::binding::history::{
+    HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryMetadataBinding,
+};
 use crate::binding::interaction::HandleInvitationResponseBindingEnum;
 use crate::binding::key::KeyRequestBindingDTO;
 use crate::binding::proof::{
@@ -60,6 +62,7 @@ use crate::binding::trust_entity::{
     ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
 };
 use crate::error::ErrorResponseBindingDTO;
+use crate::error_code::ErrorCode;
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 
 impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
@@ -263,6 +266,12 @@ impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
         match value {
             HistoryMetadataResponse::UnexportableEntities(value) => Self::UnexportableEntities {
                 value: value.into(),
+            },
+            HistoryMetadataResponse::ErrorMetadata(value) => Self::ErrorMetadata {
+                value: HistoryErrorMetadataBindingDTO {
+                    error_code: ErrorCode::from(value.error_code).to_string(),
+                    message: value.message,
+                },
             },
         }
     }

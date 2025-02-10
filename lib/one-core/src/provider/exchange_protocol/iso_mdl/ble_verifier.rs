@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{Context, Error};
+use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -14,6 +15,7 @@ use super::common::{
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
@@ -30,6 +32,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 
@@ -131,21 +134,18 @@ pub(crate) async fn start_client(
             )
             .await
             {
-                tracing::info!("mDL verifier failure: {error:#?}");
-                let _ = proof_repository
-                    .update_proof(
-                        &proof.id,
-                        UpdateProofRequest {
-                            state: Some(ProofStateEnum::Error),
-                            ..Default::default()
-                        },
-                    )
-                    .await;
-                // TODO: log error?
+                let message = format!("mDL verifier failure: {error:#?}");
+                tracing::info!(message);
+                let error_metadata = HistoryErrorMetadata {
+                    error_code: BR_0000,
+                    message,
+                };
+                let _ = set_proof_to_error(&proof_repository, proof.id, error_metadata).await;
             }
         },
         move |central, _| async move {
-            tracing::info!("Cancelling mDL verifier flow");
+            let message = "Cancelling mDL verifier flow".to_string();
+            tracing::info!(message);
             if let Ok(true) = central.is_scanning().await {
                 let _ = central.stop_scan().await;
             }
@@ -153,16 +153,11 @@ pub(crate) async fn start_client(
             if let Ok(device_info) = receiver.await {
                 send_end_and_disconnect(&device_info, &peripheral_server_uuid, &*central).await;
             }
-
-            let _ = proof_repository_clone
-                .update_proof(
-                    &proof_id,
-                    UpdateProofRequest {
-                        state: Some(ProofStateEnum::Error),
-                        ..Default::default()
-                    },
-                )
-                .await;
+            let error_metadata = HistoryErrorMetadata {
+                error_code: BR_0000,
+                message,
+            };
+            let _ = set_proof_to_error(&proof_repository_clone, proof_id, error_metadata).await;
         },
         OnConflict::ReplaceIfSameFlow,
         false,
@@ -253,6 +248,7 @@ async fn process_proof(
                 requested_date: Some(Some(OffsetDateTime::now_utc())),
                 ..Default::default()
             },
+            None,
         )
         .await?;
 
@@ -281,19 +277,39 @@ async fn process_proof(
         .decrypt(&session_data.data.context("data is missing")?.0)?;
     let device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
 
-    let mut new_state = match (
-        device_response
-            .documents
-            .as_ref()
-            .is_some_and(|documents| !documents.is_empty()),
-        device_response
-            .document_errors
-            .as_ref()
-            .is_some_and(|errors| !errors.is_empty()),
-    ) {
-        (true, false) => ProofStateEnum::Accepted,
-        (false, true) => ProofStateEnum::Rejected,
-        (_, _) => ProofStateEnum::Error,
+    let empty_documents = device_response
+        .documents
+        .as_ref()
+        .is_some_and(|documents| documents.is_empty());
+    let has_errors = device_response
+        .document_errors
+        .as_ref()
+        .is_some_and(|errors| !errors.is_empty());
+
+    if !empty_documents && has_errors {
+        let error_metadata = HistoryErrorMetadata {
+            error_code: BR_0000,
+            message: format!(
+                "Response received with documents and document errors: {:?}",
+                device_response
+            ),
+        };
+        set_proof_to_error(&proof_repository, proof.id, error_metadata).await?;
+        return Ok(());
+    }
+
+    if empty_documents && !has_errors {
+        let error_metadata = HistoryErrorMetadata {
+            error_code: BR_0000,
+            message: "Response documents is empty but no errors are provided".to_string(),
+        };
+        set_proof_to_error(&proof_repository, proof.id, error_metadata).await?;
+        return Ok(());
+    }
+
+    let new_state = match empty_documents {
+        false => ProofStateEnum::Accepted,
+        true => ProofStateEnum::Rejected,
     };
     tracing::info!("mDL verification state: {new_state}");
 
@@ -311,8 +327,14 @@ async fn process_proof(
         )
         .await
         {
-            tracing::info!("mDL proof parsing failure: {error:#?}");
-            new_state = ProofStateEnum::Error;
+            let message = format!("mDL proof parsing failure: {error:#?}");
+            tracing::info!(message);
+            let error_metadata = HistoryErrorMetadata {
+                error_code: BR_0000,
+                message,
+            };
+            set_proof_to_error(&proof_repository, proof.id, error_metadata).await?;
+            return Ok(());
         }
     }
 
@@ -323,10 +345,28 @@ async fn process_proof(
                 state: Some(new_state),
                 ..Default::default()
             },
+            None,
         )
         .await?;
+    Ok(())
+}
 
-    Ok::<_, anyhow::Error>(())
+async fn set_proof_to_error(
+    proof_repository: &Arc<dyn ProofRepository>,
+    proof_id: ProofId,
+    error_metadata: HistoryErrorMetadata,
+) -> Result<(), Error> {
+    proof_repository
+        .update_proof(
+            &proof_id,
+            UpdateProofRequest {
+                state: Some(ProofStateEnum::Error),
+                ..Default::default()
+            },
+            Some(error_metadata),
+        )
+        .await?;
+    Ok(())
 }
 
 async fn send_end(

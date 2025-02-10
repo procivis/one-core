@@ -1,5 +1,7 @@
 use autometrics::autometrics;
-use one_core::model::history::{GetHistoryList, History, HistoryListQuery};
+use one_core::model::history::{
+    GetHistoryList, History, HistoryAction, HistoryListQuery, HistoryMetadata,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder};
@@ -15,6 +17,15 @@ use crate::mapper::to_data_layer_error;
 #[async_trait::async_trait]
 impl HistoryRepository for HistoryProvider {
     async fn create_history(&self, request: History) -> Result<HistoryId, DataLayerError> {
+        if request.action == HistoryAction::Errored
+            && !matches!(request.metadata, Some(HistoryMetadata::ErrorMetadata(_)))
+        {
+            tracing::warn!(
+                "History entry {:?} has action \"Errored\" but no error metadata",
+                request
+            )
+        }
+
         let history = history::ActiveModel::try_from(request)?
             .insert(&self.db)
             .await

@@ -26,6 +26,7 @@ use super::model::{
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::model::did::{Did, KeyRole};
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -715,6 +716,7 @@ fn extract_host_and_port(url: &Url) -> Result<(String, u16), ExchangeProtocolErr
 async fn set_proof_state(
     proof: &Proof,
     state: ProofStateEnum,
+    error_metadata: Option<HistoryErrorMetadata>,
     proof_repository: &dyn ProofRepository,
 ) -> Result<(), ExchangeProtocolError> {
     if let Err(error) = proof_repository
@@ -724,6 +726,7 @@ async fn set_proof_state(
                 state: Some(state.clone()),
                 ..Default::default()
             },
+            error_metadata,
         )
         .await
     {

@@ -26,7 +26,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::history::{HistoryAction, HistoryEntityType, HistoryErrorMetadata};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -41,7 +41,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
+    ValidationError,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::history_event;
@@ -192,19 +193,22 @@ impl SSIHolderService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
-        let state = if (self
+        let (state, error_metadata) = if let Err(err) = self
             .protocol_provider
             .get_protocol(&proof.exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.exchange.clone(),
             ))?
             .holder_reject_proof(&proof)
-            .await)
-            .is_ok()
+            .await
         {
-            ProofStateEnum::Rejected
+            let error_metadata = Some(HistoryErrorMetadata {
+                error_code: err.error_code(),
+                message: err.to_string(),
+            });
+            (ProofStateEnum::Error, error_metadata)
         } else {
-            ProofStateEnum::Error
+            (ProofStateEnum::Rejected, None)
         };
         self.proof_repository
             .update_proof(
@@ -213,6 +217,7 @@ impl SSIHolderService {
                     state: Some(state),
                     ..Default::default()
                 },
+                error_metadata,
             )
             .await?;
 
@@ -490,10 +495,14 @@ impl SSIHolderService {
             })
             .await;
 
-        let state = if submit_result.is_ok() {
-            ProofStateEnum::Accepted
+        let (state, error_metadata) = if let Err(ref err) = submit_result {
+            let error_metadata = Some(HistoryErrorMetadata {
+                error_code: err.error_code(),
+                message: err.to_string(),
+            });
+            (ProofStateEnum::Error, error_metadata)
         } else {
-            ProofStateEnum::Error
+            (ProofStateEnum::Accepted, None)
         };
         self.proof_repository
             .update_proof(
@@ -503,6 +512,7 @@ impl SSIHolderService {
                     state: Some(state),
                     ..Default::default()
                 },
+                error_metadata,
             )
             .await?;
 
@@ -773,7 +783,7 @@ impl SSIHolderService {
         if let Some(update_proof) = update_response.update_proof {
             if let Some(proof_id) = proof_id {
                 self.proof_repository
-                    .update_proof(&proof_id, update_proof)
+                    .update_proof(&proof_id, update_proof, None)
                     .await?;
             }
         }

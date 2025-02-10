@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::error::ErrorCode;
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
@@ -60,6 +61,7 @@ pub struct HistoryResponseDetailRestDTO {
 #[try_from(T = one_core::service::history::dto::HistoryMetadataResponse, Error = MapperError)]
 pub enum HistoryMetadataRestEnum {
     UnexportableEntities(UnexportableEntitiesResponseRestDTO),
+    ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, TryFrom)]
@@ -77,6 +79,13 @@ pub struct UnexportableEntitiesResponseRestDTO {
     pub total_keys: u64,
     #[try_from(infallible)]
     pub total_dids: u64,
+}
+
+#[derive(Serialize, ToSchema, From)]
+#[from("one_core::service::history::dto::HistoryErrorMetadataDTO")]
+pub struct HistoryErrorMetadataRestDTO {
+    pub error_code: ErrorCode,
+    pub message: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

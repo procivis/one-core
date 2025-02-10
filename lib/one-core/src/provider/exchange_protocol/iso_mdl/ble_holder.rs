@@ -14,6 +14,7 @@ use super::common::{
 };
 use super::device_engagement::DeviceEngagement;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
@@ -27,7 +28,8 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::ServiceError;
+use crate::service::error::ErrorCode::BR_0000;
+use crate::service::error::{ErrorCodeMixin, ServiceError};
 use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -193,6 +195,7 @@ pub(crate) async fn receive_mdl_request(
                                 state: Some(ProofStateEnum::Requested),
                                 ..Default::default()
                             },
+                            None,
                         )
                         .await
                         .context("failed to update proof state")
@@ -202,15 +205,23 @@ pub(crate) async fn receive_mdl_request(
                 }
                 .await;
 
-                if result.is_err() {
-                    set_proof_error(&*proof_repository, &proof_id).await;
+                if let Err(ref err) = result {
+                    let error_metadata = HistoryErrorMetadata {
+                        error_code: err.error_code(),
+                        message: err.to_string(),
+                    };
+                    set_proof_error(&*proof_repository, &proof_id, error_metadata).await;
                     abort(&*peripheral, Some(&info), interaction_data.service_uuid).await;
                 }
 
                 result
             },
             move |_, peripheral| async move {
-                set_proof_error(&*proof_repository_clone, &proof_id).await;
+                let error_metadata = HistoryErrorMetadata {
+                    error_code: BR_0000,
+                    message: "Propose proof was cancelled".to_string(),
+                };
+                set_proof_error(&*proof_repository_clone, &proof_id, error_metadata).await;
                 abort(
                     &*peripheral,
                     rx.await.ok().as_ref(),
@@ -408,7 +419,11 @@ pub(crate) async fn abort(
     let _ = peripheral.stop_server().await;
 }
 
-pub async fn set_proof_error(proof_repository: &dyn ProofRepository, proof_id: &ProofId) {
+pub async fn set_proof_error(
+    proof_repository: &dyn ProofRepository,
+    proof_id: &ProofId,
+    error_metadata: HistoryErrorMetadata,
+) {
     let _ = proof_repository
         .update_proof(
             proof_id,
@@ -416,6 +431,7 @@ pub async fn set_proof_error(proof_repository: &dyn ProofRepository, proof_id: &
                 state: Some(ProofStateEnum::Error),
                 ..Default::default()
             },
+            Some(error_metadata),
         )
         .await;
 }

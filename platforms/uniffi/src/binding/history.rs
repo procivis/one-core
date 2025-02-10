@@ -6,6 +6,7 @@ use one_core::model::list_query::ListPagination;
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_dto_mapper::{convert_inner, From, Into};
+use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -167,6 +168,15 @@ pub enum HistoryMetadataBinding {
     UnexportableEntities {
         value: UnexportableEntitiesBindingDTO,
     },
+    ErrorMetadata {
+        value: HistoryErrorMetadataBindingDTO,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+pub struct HistoryErrorMetadataBindingDTO {
+    pub error_code: String,
+    pub message: String,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

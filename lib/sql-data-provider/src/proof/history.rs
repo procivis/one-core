@@ -3,7 +3,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use one_core::model::claim::Claim;
 use one_core::model::did::DidRelations;
-use one_core::model::history::{History, HistoryAction, HistoryEntityType};
+use one_core::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+};
 use one_core::model::interaction::{InteractionId, InteractionRelations};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{
@@ -73,6 +75,7 @@ impl ProofHistoryDecorator {
         &self,
         proof_id: &ProofId,
         action: HistoryAction,
+        error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
         let organisation = self.get_organisation_for_proof(proof_id).await?;
 
@@ -84,7 +87,7 @@ impl ProofHistoryDecorator {
                 action,
                 entity_id: Some((*proof_id).into()),
                 entity_type: HistoryEntityType::Proof,
-                metadata: None,
+                metadata: error_info.map(HistoryMetadata::ErrorMetadata),
                 organisation: Some(organisation),
             })
             .await;
@@ -101,7 +104,8 @@ impl ProofRepository for ProofHistoryDecorator {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
         let history_action = HistoryAction::from(request.state.clone());
         let proof_id = self.inner.create_proof(request).await?;
-        self.write_history_entry(&proof_id, history_action).await?;
+        self.write_history_entry(&proof_id, history_action, None)
+            .await?;
         Ok(proof_id)
     }
 
@@ -140,7 +144,7 @@ impl ProofRepository for ProofHistoryDecorator {
 
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
         self.inner.delete_proof_claims(proof_id).await?;
-        self.write_history_entry(proof_id, HistoryAction::ClaimsRemoved)
+        self.write_history_entry(proof_id, HistoryAction::ClaimsRemoved, None)
             .await?;
         Ok(())
     }
@@ -149,11 +153,13 @@ impl ProofRepository for ProofHistoryDecorator {
         &self,
         proof_id: &ProofId,
         proof: UpdateProofRequest,
+        error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
         if let Some(ref state) = proof.state {
-            self.write_history_entry(proof_id, HistoryAction::from(state.clone()))
+            let action = HistoryAction::from(state.clone());
+            self.write_history_entry(proof_id, action, error_info)
                 .await?;
         }
-        self.inner.update_proof(proof_id, proof).await
+        self.inner.update_proof(proof_id, proof, None).await
     }
 }

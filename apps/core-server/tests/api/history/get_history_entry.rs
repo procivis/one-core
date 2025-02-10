@@ -1,5 +1,6 @@
-use one_core::model::history::HistoryMetadata;
+use one_core::model::history::{HistoryErrorMetadata, HistoryMetadata};
 use one_core::service::backup::dto::UnexportableEntitiesResponseDTO;
+use one_core::service::error::ErrorCode;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -66,6 +67,37 @@ async fn test_get_history_entry_with_unexportable_metadata() {
         resp["metadata"]["UnexportableEntities"]["total_credentials"],
         3
     );
+}
+
+#[tokio::test]
+async fn test_get_history_entry_with_error_metadata() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let history = context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                metadata: Some(HistoryMetadata::ErrorMetadata(HistoryErrorMetadata {
+                    error_code: ErrorCode::BR_0000,
+                    message: "Test error".to_string(),
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.histories.get(history.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&history.id);
+    assert_eq!(resp["metadata"]["ErrorMetadata"]["error_code"], "BR_0000");
+    assert_eq!(resp["metadata"]["ErrorMetadata"]["message"], "Test error");
 }
 
 #[tokio::test]

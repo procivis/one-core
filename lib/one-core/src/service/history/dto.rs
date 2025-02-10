@@ -4,13 +4,24 @@ use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::history::{HistoryAction, HistoryEntityType, HistoryMetadata};
+use crate::model::history::{
+    HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+};
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
+use crate::service::error::ErrorCode;
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 #[from(HistoryMetadata)]
 pub enum HistoryMetadataResponse {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
+    ErrorMetadata(HistoryErrorMetadataDTO),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, From)]
+#[from(HistoryErrorMetadata)]
+pub struct HistoryErrorMetadataDTO {
+    pub error_code: ErrorCode,
+    pub message: String,
 }
 
 pub struct HistoryResponseDTO {

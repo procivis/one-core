@@ -1,8 +1,6 @@
 use shared_types::{ClaimId, ClaimSchemaId, ProofId};
 use thiserror::Error;
 
-use crate::service::error::ErrorCode;
-
 #[derive(Debug, Error)]
 pub enum DataLayerError {
     #[error("Already exists")]
@@ -34,23 +32,6 @@ pub enum DataLayerError {
 
     #[error("Missing proof state for proof: {proof}")]
     MissingProofState { proof: ProofId },
-}
-
-impl DataLayerError {
-    pub fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::Db(_) => ErrorCode::BR_0054,
-            Self::AlreadyExists
-            | Self::IncorrectParameters
-            | Self::RecordNotUpdated
-            | Self::MappingError
-            | Self::IncompleteClaimsList { .. }
-            | Self::IncompleteClaimsSchemaList { .. }
-            | Self::MissingProofState { .. }
-            | Self::MissingRequiredRelation { .. }
-            | Self::MissingClaimsSchemaForClaim(_, _) => ErrorCode::BR_0000,
-        }
-    }
 }
 
 impl From<uuid::Error> for DataLayerError {

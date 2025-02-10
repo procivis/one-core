@@ -18,6 +18,7 @@ use super::{
 };
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::model::did::Did;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
@@ -39,6 +40,7 @@ use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeP
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::error::ErrorCodeMixin;
 use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 
 pub struct OpenID4VCBLEHolder {
@@ -251,6 +253,10 @@ impl OpenID4VCBLEHolder {
                             state: Some(ProofStateEnum::Error),
                             ..Default::default()
                         },
+                        Some(HistoryErrorMetadata {
+                            error_code: err.error_code(),
+                            message: err.to_string(),
+                        }),
                     )
                     .await;
                 Err(err)

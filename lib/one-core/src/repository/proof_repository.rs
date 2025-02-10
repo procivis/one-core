@@ -2,6 +2,7 @@ use shared_types::ProofId;
 
 use super::error::DataLayerError;
 use crate::model::claim::Claim;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{GetProofList, GetProofQuery, Proof, ProofRelations, UpdateProofRequest};
 
@@ -39,5 +40,6 @@ pub trait ProofRepository: Send + Sync {
         &self,
         proof_id: &ProofId,
         proof: UpdateProofRequest,
+        error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError>;
 }
