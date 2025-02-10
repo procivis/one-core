@@ -33,10 +33,19 @@ pub(crate) async fn create_trust_entity(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .trust_entity_service
-        .create_trust_entity(request.into())
+        .create_trust_entity(request)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "creating trust entity")
 }
@@ -64,10 +73,19 @@ pub(crate) async fn update_trust_entity(
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
+    let request_body = match request_body.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return EmptyOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .trust_entity_service
-        .update_trust_entity_by_trust_entity(id, request_body.into())
+        .update_trust_entity_by_trust_entity(id, request_body)
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "updating trust entity")
@@ -139,10 +157,19 @@ pub(crate) async fn create_remote_trust_entity(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .trust_entity_service
-        .create_remote_trust_entity_for_did(request.into())
+        .create_remote_trust_entity_for_did(request)
         .await;
 
     CreatedOrErrorResponse::from_result(result, state, "creating remote trust entity")
@@ -171,10 +198,19 @@ pub(crate) async fn update_remote_trust_entity(
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
+    let request_body = match request_body.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return EmptyOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .trust_entity_service
-        .update_remote_trust_entity_for_did(did_id, request_body.into())
+        .update_remote_trust_entity_for_did(did_id, request_body)
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "updating remote trust entity")

@@ -160,10 +160,19 @@ pub(crate) async fn import_proof_schema(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .proof_schema_service
-        .import_proof_schema(request.into())
+        .import_proof_schema(request)
         .await
         .map(|resp| EntityResponseRestDTO { id: resp.id.into() });
 

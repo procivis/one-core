@@ -1,15 +1,16 @@
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::service::error::ServiceError;
 use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
     TrustEntitiesResponseItemDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::dto::common::{ExactColumn, ListQueryParamsRest, TrustListLogo};
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::{
     GetTrustAnchorDetailResponseRestDTO, GetTrustAnchorResponseRestDTO,
@@ -22,7 +23,7 @@ pub struct CreateTrustEntityRequestRestDTO {
     /// Specify the entity name.
     pub(super) name: String,
     /// base64 encoded image. Maximum size = 50kb.
-    pub(super) logo: Option<TrustListLogo>,
+    pub(super) logo: Option<String>,
     /// Specify the entity's domain name.
     pub(super) website: Option<String>,
     /// Specify a Terms of Service URL.
@@ -140,30 +141,37 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
     pub did: DidListItemResponseRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(CreateRemoteTrustEntityRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateRemoteTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     #[serde(default)]
     #[schema(nullable = false)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub trust_anchor_id: Option<TrustAnchorId>,
     /// Specify local DID.
+    #[try_into(infallible)]
     pub did_id: DidId,
     /// Specify the entity name.
+    #[try_into(infallible)]
     pub name: String,
     /// base64 encoded image. Maximum size = 50kb.
     #[schema(nullable = false)]
-    #[into(with_fn = convert_inner)]
-    pub logo: Option<TrustListLogo>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub logo: Option<String>,
     /// Specify the entity's domain name.
     #[schema(nullable = false)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub website: Option<String>,
     /// Specify a Terms of Service URL.
     #[schema(nullable = false)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub terms_url: Option<String>,
     /// Specify the Privacy Policy URL.
     #[schema(nullable = false)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub privacy_url: Option<String>,
+    #[try_into(infallible)]
     pub role: TrustEntityRoleRest,
 }

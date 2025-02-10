@@ -1,3 +1,4 @@
+use one_core::service::error::ServiceError;
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
@@ -5,7 +6,7 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
     ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -66,40 +67,49 @@ pub struct ClaimProofSchemaRequestRestDTO {
     pub required: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(ImportProofSchemaRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T=ImportProofSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaRequestRestDTO {
+    #[try_into(infallible)]
     pub organisation_id: Uuid,
     pub schema: ImportProofSchemaRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(ImportProofSchemaDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T=ImportProofSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaRestDTO {
+    #[try_into(infallible)]
     pub id: ProofSchemaId,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    #[try_into(infallible)]
     pub created_date: OffsetDateTime,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
+    #[try_into(infallible)]
     pub name: String,
+    #[try_into(infallible)]
     pub imported_source_url: String,
+    #[try_into(infallible)]
     pub organisation_id: OrganisationId,
+    #[try_into(infallible)]
     pub expire_duration: u32,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(ImportProofSchemaInputSchemaDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T=ImportProofSchemaInputSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaInputSchemaRestDTO {
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaRestDTO,
+    #[try_into(with_fn = convert_inner, infallible)]
     pub validity_constraint: Option<i64>,
 }
 
@@ -120,28 +130,37 @@ pub struct ImportProofSchemaClaimSchemaRestDTO {
     pub array: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(ImportProofSchemaCredentialSchemaDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T=ImportProofSchemaCredentialSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaCredentialSchemaRestDTO {
+    #[try_into(infallible)]
     pub id: Uuid,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    #[try_into(infallible)]
     pub created_date: OffsetDateTime,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
+    #[try_into(infallible)]
     pub name: String,
+    #[try_into(infallible)]
     pub format: String,
+    #[try_into(infallible)]
     pub revocation_method: String,
+    #[try_into(infallible)]
     pub imported_source_url: String,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    #[try_into(infallible)]
     pub schema_id: String,
+    #[try_into(infallible)]
     pub schema_type: CredentialSchemaType,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 

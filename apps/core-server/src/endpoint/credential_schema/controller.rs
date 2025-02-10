@@ -117,10 +117,19 @@ pub(crate) async fn import_credential_schema(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .credential_schema_service
-        .import_credential_schema(request.into())
+        .import_credential_schema(request)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "importing credential schema")
 }
@@ -153,10 +162,19 @@ pub(crate) async fn post_credential_schema(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .credential_schema_service
-        .create_credential_schema(request.into())
+        .create_credential_schema(request)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "creating credential schema")
 }

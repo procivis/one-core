@@ -1,3 +1,4 @@
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -25,7 +26,7 @@ pub(super) fn trust_entity_from_request(
         created_date: now,
         last_modified: now,
         name: request.name,
-        logo: request.logo,
+        logo: convert_inner(request.logo),
         website: request.website,
         terms_url: request.terms_url,
         privacy_url: request.privacy_url,
@@ -49,7 +50,7 @@ pub(super) fn trust_entity_from_did_request(
         created_date: now,
         last_modified: now,
         name: request.name,
-        logo: request.logo,
+        logo: convert_inner(request.logo),
         website: request.website,
         terms_url: request.terms_url,
         privacy_url: request.privacy_url,
@@ -166,7 +167,7 @@ pub(super) fn update_request_from_dto(
 
     Ok(UpdateTrustEntityRequest {
         state: new_state,
-        logo: request.logo,
+        logo: convert_inner_of_inner(request.logo),
         privacy_url: request.privacy_url,
         website: request.website,
         name: request.name,

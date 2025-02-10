@@ -3,7 +3,8 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaDetailResponseDTO, CredentialSchemaListIncludeEntityTypeEnum,
     CredentialSchemaListItemResponseDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_core::service::error::ServiceError;
+use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
@@ -212,48 +213,55 @@ pub enum WalletStorageTypeRestEnum {
     RemoteSecureElement,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, Into)]
-#[into(CreateCredentialSchemaRequestDTO)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto)]
+#[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
+    #[try_into(infallible)]
     pub name: String,
     /// Choose a credential format for credentials issued using this
     /// credential schema. Check the `format` object of the configuration
     /// for supported options and reference the configuration instance.
     #[schema(example = "SD_JWT_VC")]
+    #[try_into(infallible)]
     pub format: String,
     /// Choose a revocation method for credentials issued using this
     /// credential schema. Check the `revocation` object of the configuration
     /// for supported options and reference the configuration instance.
     #[schema(example = "TOKENSTATUSLIST")]
+    #[try_into(infallible)]
     pub revocation_method: String,
     /// Specify the organization.
+    #[try_into(infallible)]
     pub organisation_id: Uuid,
     /// Defines the set of claims to be asserted when using this credential
     /// schema.
-    #[into(with_fn = convert_inner)]
     #[validate(length(min = 1))]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
     /// Indication of what type of key storage the wallet should use.
     /// Note that credentials with different `walletStorageType` cannot be
     /// combined into the same proof schema.
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     /// Determines the general appearance of the credential in the holder's
     /// wallet and the options supported in `layoutProperties`.
     #[serde(default)]
     #[schema(default = CredentialSchemaLayoutType::default)]
+    #[try_into(infallible)]
     pub layout_type: CredentialSchemaLayoutType,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     /// For credential formats requiring a schema ID, such as ISO mdoc, IETF
     /// SD-JWT VC or VC Barcodes, pass it here.
     /// For other formats, pass no value here.
     #[schema(example = "org.iso.18013.5.1.mDL")]
+    #[try_into(infallible)]
     pub schema_id: Option<String>,
     /// If `true` and the chosen revocation method allows for suspension,
     /// credentials issued with this schema can be suspended.
+    #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
 }
 
@@ -289,59 +297,67 @@ pub struct CredentialClaimSchemaRequestRestDTO {
 }
 
 /// Design the appearance of the credential in the holder's wallet.
-#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO)]
-#[from(one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO)]
+#[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO, Error=ServiceError)]
+#[from(one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO)]
 pub struct CredentialSchemaLayoutPropertiesRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesRestDTO>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesRestDTO>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(infallible)]
     pub primary_attribute: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(infallible)]
     pub secondary_attribute: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(infallible)]
     pub picture_attribute: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub code: Option<CredentialSchemaCodePropertiesRestDTO>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO)]
-#[from(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO)]
+#[try_into(T = one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO, Error = ServiceError)]
+#[from(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesResponseDTO)]
 pub struct CredentialSchemaBackgroundPropertiesRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(infallible)]
     pub color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(with_fn = try_convert_inner)]
     pub image: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO)]
-#[from(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO)]
+#[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO, Error = ServiceError)]
+#[from(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesResponseDTO)]
 pub struct CredentialSchemaLogoPropertiesRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(infallible)]
     pub font_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(infallible)]
     pub background_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[try_into(with_fn = try_convert_inner)]
     pub image: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesRequestDTO)]
-#[from(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesRequestDTO)]
+#[into(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesDTO)]
+#[from(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesDTO)]
 pub struct CredentialSchemaCodePropertiesRestDTO {
     pub attribute: String,
     pub r#type: CredentialSchemaCodeTypeRestEnum,
@@ -363,40 +379,52 @@ pub struct CredentialSchemaShareResponseRestDTO {
     pub url: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
-#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO)]
+#[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
+#[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaRequestRestDTO {
+    #[try_into(infallible)]
     pub organisation_id: OrganisationId,
     pub schema: ImportCredentialSchemaRequestSchemaRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
-#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO)]
+#[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
+#[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaRequestSchemaRestDTO {
+    #[try_into(infallible)]
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[try_into(infallible)]
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
+    #[try_into(infallible)]
     pub name: String,
+    #[try_into(infallible)]
     pub format: String,
+    #[try_into(infallible)]
     pub revocation_method: String,
+    #[try_into(infallible)]
     pub organisation_id: Uuid,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    #[try_into(infallible)]
     pub schema_id: String,
+    #[try_into(infallible)]
     pub imported_source_url: String,
+    #[try_into(infallible)]
     pub schema_type: CredentialSchemaType,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesRestDTO>,
+    #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
 }
 
@@ -421,23 +449,26 @@ pub struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
+#[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO)]
+#[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO, Error=ServiceError)]
 pub struct ImportCredentialSchemaLayoutPropertiesRestDTO {
     #[serde(default)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesRestDTO>,
     #[serde(default)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesRestDTO>,
     #[serde(default)]
+    #[try_into(infallible)]
     pub primary_attribute: Option<String>,
     #[serde(default)]
+    #[try_into(infallible)]
     pub secondary_attribute: Option<String>,
     #[serde(default)]
+    #[try_into(infallible)]
     pub picture_attribute: Option<String>,
     #[serde(default)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub code: Option<CredentialSchemaCodePropertiesRestDTO>,
 }

@@ -23,5 +23,6 @@ pub mod trust_anchor;
 pub mod trust_entity;
 pub mod vc_api;
 
+mod common_dto;
 #[cfg(test)]
 pub mod test_utilities;

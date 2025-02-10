@@ -13,7 +13,7 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
     CredentialSchemaListItemResponseDTO,
 };
 use crate::service::did::dto::DidListItemResponseDTO;
@@ -91,7 +91,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_type: Option<LayoutType>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
 }
 

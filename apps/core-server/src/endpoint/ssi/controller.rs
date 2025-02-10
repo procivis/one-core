@@ -865,10 +865,19 @@ pub(crate) async fn ssi_patch_trust_entity(
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return EmptyOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .trust_entity_service
-        .update_trust_entity_by_did(did_value, request.into(), bearer.token())
+        .update_trust_entity_by_did(did_value, request, bearer.token())
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "getting trust entity")
@@ -894,10 +903,19 @@ pub(crate) async fn ssi_post_trust_entity(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_service_error(
+                err,
+                state.config.hide_error_response_cause,
+            )
+        }
+    };
     let result = state
         .core
         .trust_entity_service
-        .publisher_create_trust_entity_for_did(request.into(), bearer.token())
+        .publisher_create_trust_entity_for_did(request, bearer.token())
         .await;
 
     CreatedOrErrorResponse::from_result(result, state, "getting trust entity")

@@ -14,7 +14,7 @@ use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedTypeView,
     CredentialSchemaClaimsNestedView,
 };
-use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO;
+use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
 use crate::service::error::ServiceError;
 use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
@@ -124,7 +124,7 @@ pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
         claims,
         layout_properties: schema
             .layout_properties
-            .map(CredentialSchemaLayoutPropertiesRequestDTO::from),
+            .map(CredentialSchemaLayoutPropertiesResponseDTO::from),
         schema: None,
         schema_uri: None,
     })

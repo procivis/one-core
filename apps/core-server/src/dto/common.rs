@@ -144,41 +144,11 @@ impl<'de, const MAX: u32> Deserialize<'de> for PageSize<MAX> {
     }
 }
 
-pub(crate) const TRUST_LIST_LOGO_SIZE_LIMIT: usize = 50_000;
-pub(crate) type TrustListLogo = BoundedString<TRUST_LIST_LOGO_SIZE_LIMIT>;
-
-#[derive(Clone, Debug, Serialize, ToSchema)]
-pub struct BoundedString<const MAX: usize>(String);
-
-impl<'de, const MAX: usize> Deserialize<'de> for BoundedString<MAX> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let data = String::deserialize(deserializer)?;
-
-        if data.len() > MAX {
-            return Err(serde::de::Error::custom(format!(
-                "expected maximum length of {MAX} got {}",
-                data.len()
-            )));
-        }
-
-        Ok(BoundedString(data))
-    }
-}
-
-impl From<TrustListLogo> for String {
-    fn from(value: TrustListLogo) -> Self {
-        value.0
-    }
-}
-
 #[cfg(test)]
 mod test {
     use serde_json::json;
 
-    use super::{BoundedString, ListQueryParamsRest};
+    use super::ListQueryParamsRest;
 
     #[test]
     fn test_page_size_deserialization_is_limited_to_1000() {
@@ -199,21 +169,6 @@ mod test {
 
         assert_eq!(
             "expected maximum pageSize of 1000 got 1001",
-            result.err().unwrap().to_string()
-        )
-    }
-
-    #[test]
-    fn test_bounded_string_is_limited() {
-        let data: BoundedString<10> = serde_json::from_value(json!("0123456789")).unwrap();
-
-        assert_eq!("0123456789", data.0);
-
-        let result: serde_json::Result<BoundedString<10>> =
-            serde_json::from_value(json!("a".repeat(11)));
-
-        assert_eq!(
-            "expected maximum length of 10 got 11",
             result.err().unwrap().to_string()
         )
     }

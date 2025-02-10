@@ -3831,9 +3831,9 @@ dependencies = [
 
 [[package]]
 name = "one-dto-mapper"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11fe9edce31fef36c6f4a569a3f48e0ebe9908fac4f2b74cc26c61ac4d2c5fa4"
+checksum = "82dd840dcfdd2d0f8018d01c1acb75c83519179b75ed51ad572678d1680eec4a"
 dependencies = [
  "fmap",
  "one-dto-mapper-derive",
@@ -3841,9 +3841,9 @@ dependencies = [
 
 [[package]]
 name = "one-dto-mapper-derive"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e152f2284637e3bb1ae50923aae5bcdeab1b96c0dbd51f4a41ee97f724b500c9"
+checksum = "ce7736aace45c451e91f7c07c3500b83ea42996eb1cd3a8ab897a23133710d69"
 dependencies = [
  "darling",
  "proc-macro2",

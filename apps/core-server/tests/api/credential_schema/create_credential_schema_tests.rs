@@ -412,3 +412,27 @@ async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0191", resp.error_code().await);
 }
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_invalid_logo() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(CreateSchemaParams {
+            name: "some credential schema".into(),
+            organisation_id: organisation.id.into(),
+            format: "JWT".into(),
+            claim_name: "firstName".into(),
+            logo: Some("some invalid logo".into()),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0193");
+}

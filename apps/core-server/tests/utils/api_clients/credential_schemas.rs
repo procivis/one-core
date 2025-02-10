@@ -20,6 +20,7 @@ pub struct CreateSchemaParams {
     pub revocation_method: Option<String>,
     pub suspension_allowed: Option<bool>,
     pub wallet_storage_type: Option<String>,
+    pub logo: Option<String>,
 }
 
 impl CredentialSchemasApi {
@@ -52,7 +53,6 @@ impl CredentialSchemasApi {
             "backgroundColor": "bg-color",
             "backgroundImage": "bg-image",
             "labelColor": "label-color",
-            "labelImage": "label-image",
             "primaryAttribute": format!("firstObject/{claim_name}", claim_name = params.claim_name),
           },
           "schemaId": params.schema_id,
@@ -62,6 +62,9 @@ impl CredentialSchemasApi {
         }
         if let Some(wallet_storage_type) = params.wallet_storage_type {
             body["walletStorageType"] = json!(wallet_storage_type);
+        }
+        if let Some(logo) = params.logo {
+            body["layoutProperties"]["logo"] = json!({"image": logo});
         }
 
         self.client.post("/api/credential-schema/v1", body).await

@@ -13,7 +13,12 @@ use crate::model::credential_schema::{
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
+use crate::service::common_dto::{BoundedB64Image, KB, MB};
 use crate::service::credential::dto::CredentialSchemaType;
+
+pub type CredentialSchemaLogo = BoundedB64Image<{ 500 * KB }>;
+#[allow(clippy::identity_op)]
+pub type CredentialBackgroundImage = BoundedB64Image<{ 1 * MB }>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
 #[from(CredentialSchema)]
@@ -35,7 +40,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     #[from(with_fn = convert_inner)]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
 }
 
@@ -57,7 +62,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub imported_source_url: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
 }
 
@@ -126,17 +131,14 @@ pub struct CredentialClaimSchemaRequestDTO {
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Into, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[into(model::credential_schema::LayoutProperties)]
-#[from(model::credential_schema::LayoutProperties)]
 pub struct CredentialSchemaLayoutPropertiesRequestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
     #[into(with_fn = convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesRequestDTO>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
     #[into(with_fn = convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesRequestDTO>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -146,25 +148,68 @@ pub struct CredentialSchemaLayoutPropertiesRequestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub picture_attribute: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
     #[into(with_fn = convert_inner)]
-    pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
+    pub code: Option<CredentialSchemaCodePropertiesDTO>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[into(model::credential_schema::LayoutProperties)]
+#[from(model::credential_schema::LayoutProperties)]
+pub struct CredentialSchemaLayoutPropertiesResponseDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub background: Option<CredentialSchemaBackgroundPropertiesResponseDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<CredentialSchemaLogoPropertiesResponseDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secondary_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub picture_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub code: Option<CredentialSchemaCodePropertiesDTO>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[into(model::credential_schema::BackgroundProperties)]
-#[from(model::credential_schema::BackgroundProperties)]
 pub struct CredentialSchemaBackgroundPropertiesRequestDTO {
+    pub color: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub image: Option<CredentialBackgroundImage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, From, Into, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[from(model::credential_schema::BackgroundProperties)]
+#[into(model::credential_schema::BackgroundProperties)]
+pub struct CredentialSchemaBackgroundPropertiesResponseDTO {
     pub color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Into, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[into(model::credential_schema::LogoProperties)]
-#[from(model::credential_schema::LogoProperties)]
 pub struct CredentialSchemaLogoPropertiesRequestDTO {
+    pub font_color: Option<String>,
+    pub background_color: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub image: Option<CredentialSchemaLogo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[from(model::credential_schema::LogoProperties)]
+#[into(model::credential_schema::LogoProperties)]
+pub struct CredentialSchemaLogoPropertiesResponseDTO {
     pub font_color: Option<String>,
     pub background_color: Option<String>,
     pub image: Option<String>,
@@ -174,7 +219,7 @@ pub struct CredentialSchemaLogoPropertiesRequestDTO {
 #[serde(rename_all = "camelCase")]
 #[into(model::credential_schema::CodeProperties)]
 #[from(model::credential_schema::CodeProperties)]
-pub struct CredentialSchemaCodePropertiesRequestDTO {
+pub struct CredentialSchemaCodePropertiesDTO {
     pub attribute: String,
     pub r#type: CredentialSchemaCodeTypeEnum,
 }
@@ -255,5 +300,5 @@ pub struct ImportCredentialSchemaLayoutPropertiesDTO {
     pub picture_attribute: Option<String>,
     #[serde(default)]
     #[into(with_fn = convert_inner)]
-    pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
+    pub code: Option<CredentialSchemaCodePropertiesDTO>,
 }

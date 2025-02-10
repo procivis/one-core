@@ -6,21 +6,21 @@ use one_core::model::list_filter::{ListFilterCondition, ListFilterValue, StringM
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
-    CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
-    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaShareResponseDTO,
+    CredentialSchemaBackgroundPropertiesResponseDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLayoutPropertiesResponseDTO,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaLogoPropertiesResponseDTO, CredentialSchemaShareResponseDTO,
     GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
     ImportCredentialSchemaRequestSchemaDTO,
 };
-use one_core::service::error::ServiceError;
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use shared_types::CredentialSchemaId;
 
 use super::common::SortDirection;
 use super::OneCoreBinding;
-use crate::error::BindingError;
+use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -212,7 +212,7 @@ pub struct CredentialSchemaShareResponseBindingDTO {
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = ImportCredentialSchemaRequestDTO, Error = ServiceError)]
+#[try_into(T = ImportCredentialSchemaRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportCredentialSchemaRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
@@ -261,44 +261,52 @@ pub enum LayoutTypeBindingEnum {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Record)]
-#[from(CredentialSchemaLayoutPropertiesRequestDTO)]
-#[into(CredentialSchemaLayoutPropertiesRequestDTO)]
+#[derive(Clone, Debug, From, TryInto, uniffi::Record)]
+#[from(CredentialSchemaLayoutPropertiesResponseDTO)]
+#[try_into(T=CredentialSchemaLayoutPropertiesRequestDTO, Error=ErrorResponseBindingDTO)]
 pub struct CredentialSchemaLayoutPropertiesBindingDTO {
     #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesBindingDTO>,
     #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesBindingDTO>,
+    #[try_into(infallible)]
     pub primary_attribute: Option<String>,
+    #[try_into(infallible)]
     pub secondary_attribute: Option<String>,
+    #[try_into(infallible)]
     pub picture_attribute: Option<String>,
     #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Record)]
-#[from(CredentialSchemaBackgroundPropertiesRequestDTO)]
-#[into(CredentialSchemaBackgroundPropertiesRequestDTO)]
+#[derive(Clone, Debug, From, TryInto, uniffi::Record)]
+#[from(CredentialSchemaBackgroundPropertiesResponseDTO)]
+#[try_into(T=CredentialSchemaBackgroundPropertiesRequestDTO,  Error=ErrorResponseBindingDTO)]
 pub struct CredentialSchemaBackgroundPropertiesBindingDTO {
+    #[try_into(infallible)]
     pub color: Option<String>,
+    #[try_into(with_fn = try_convert_inner)]
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Record)]
-#[from(CredentialSchemaLogoPropertiesRequestDTO)]
-#[into(CredentialSchemaLogoPropertiesRequestDTO)]
+#[derive(Clone, Debug, From, TryInto, uniffi::Record)]
+#[from(CredentialSchemaLogoPropertiesResponseDTO)]
+#[try_into(T=CredentialSchemaLogoPropertiesRequestDTO, Error=ErrorResponseBindingDTO)]
 pub struct CredentialSchemaLogoPropertiesBindingDTO {
+    #[try_into(infallible)]
     pub font_color: Option<String>,
+    #[try_into(infallible)]
     pub background_color: Option<String>,
+    #[try_into(with_fn = try_convert_inner)]
     pub image: Option<String>,
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Record)]
-#[from(CredentialSchemaCodePropertiesRequestDTO)]
-#[into(CredentialSchemaCodePropertiesRequestDTO)]
+#[from(CredentialSchemaCodePropertiesDTO)]
+#[into(CredentialSchemaCodePropertiesDTO)]
 pub struct CredentialSchemaCodePropertiesBindingDTO {
     pub attribute: String,
     pub r#type: CredentialSchemaCodeTypeBindingDTO,
@@ -320,7 +328,7 @@ pub enum CredentialSchemaListIncludeEntityType {
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = ImportCredentialSchemaRequestSchemaDTO, Error = ServiceError)]
+#[try_into(T = ImportCredentialSchemaRequestSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub id: String,
@@ -348,7 +356,7 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub schema_type: CredentialSchemaTypeBindingEnum,
     #[try_into(infallible, with_fn = convert_inner)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
-    #[try_into(infallible, with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub allow_suspension: Option<bool>,
@@ -366,17 +374,20 @@ pub struct ImportCredentialSchemaClaimSchemaBindingDTO {
     pub claims: Option<Vec<ImportCredentialSchemaClaimSchemaBindingDTO>>,
 }
 
-#[derive(Clone, Debug, Into, uniffi::Record)]
-#[into(ImportCredentialSchemaLayoutPropertiesDTO)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T=ImportCredentialSchemaLayoutPropertiesDTO, Error=ErrorResponseBindingDTO)]
 pub struct ImportCredentialSchemaLayoutPropertiesBindingDTO {
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesBindingDTO>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesBindingDTO>,
+    #[try_into(infallible)]
     pub primary_attribute: Option<String>,
+    #[try_into(infallible)]
     pub secondary_attribute: Option<String>,
+    #[try_into(infallible)]
     pub picture_attribute: Option<String>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
 }
 

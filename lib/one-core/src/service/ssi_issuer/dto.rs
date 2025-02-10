@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::service::credential::dto::DetailCredentialClaimResponseDTO;
 use crate::service::credential_schema::dto::{
-    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesResponseDTO,
 };
 use crate::service::did::dto::DidListItemResponseDTO;
 
@@ -83,7 +83,7 @@ pub struct SdJwtVcTypeMetadataResponseDTO {
     pub schema_uri: Option<Url>,
     // Non-standard property
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

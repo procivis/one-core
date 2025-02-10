@@ -1,5 +1,6 @@
 use core_server::endpoint::ssi::dto::PatchTrustEntityActionRestDTO;
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
+use ct_codecs::{Base64, Encoder};
 use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -172,4 +173,30 @@ async fn test_create_trust_entity_fails_did_already_used() {
 
     // THEN
     assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_fail_create_remote_trust_entity_logo_too_big() {
+    // GIVEN
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create_remote(
+            "name",
+            TrustEntityRoleRest::Both,
+            None,
+            &did,
+            Some(format!(
+                "data:image/png;base64,{}",
+                Base64::encode_to_string([0; 60_000]).unwrap()
+            )),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0193")
 }

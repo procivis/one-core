@@ -31,7 +31,7 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
     CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaQueryDTO,
     ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
@@ -2187,7 +2187,7 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
         background: None,
         logo: None,
         picture_attribute: Some("claim2/claim21/claim213".to_owned()),
-        code: Some(CredentialSchemaCodePropertiesRequestDTO {
+        code: Some(CredentialSchemaCodePropertiesDTO {
             attribute: "claim2/claim21/claim212".to_owned(),
             r#type: CredentialSchemaCodeTypeEnum::Barcode,
         }),
@@ -2250,7 +2250,12 @@ fn test_background_attributes_combination_failed_both() {
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
         background: Some(CredentialSchemaBackgroundPropertiesRequestDTO {
             color: Some("Color".to_owned()),
-            image: Some("Image".to_owned()),
+            image: Some(
+                "data:image/png;base64,AAAAAAAAAAAAAA=="
+                    .to_string()
+                    .try_into()
+                    .unwrap(),
+            ),
         }),
         logo: None,
         picture_attribute: None,
@@ -2300,7 +2305,12 @@ fn test_background_attributes_combination_ok_image() {
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
         background: Some(CredentialSchemaBackgroundPropertiesRequestDTO {
             color: None,
-            image: Some("Image".to_owned()),
+            image: Some(
+                "data:image/png;base64,AAAAAAAAAAAAAA=="
+                    .to_string()
+                    .try_into()
+                    .unwrap(),
+            ),
         }),
         logo: None,
         picture_attribute: None,
@@ -2378,7 +2388,12 @@ fn test_logo_attributes_combination_ok_image() {
         logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
             font_color: None,
             background_color: None,
-            image: Some("Image".to_owned()),
+            image: Some(
+                "data:image/png;base64,AAAAAAAAAAAAAA=="
+                    .to_string()
+                    .try_into()
+                    .unwrap(),
+            ),
         }),
         picture_attribute: None,
         code: None,
@@ -2404,7 +2419,12 @@ fn test_logo_attributes_combination_mix1_fail() {
         logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
             font_color: None,
             background_color: Some("Color".to_owned()),
-            image: Some("Image".to_owned()),
+            image: Some(
+                "data:image/png;base64,AAAAAAAAAAAAAA=="
+                    .to_string()
+                    .try_into()
+                    .unwrap(),
+            ),
         }),
         picture_attribute: None,
         code: None,
@@ -2430,7 +2450,12 @@ fn test_logo_attributes_combination_mix2_fail() {
         logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
             font_color: Some("Color".to_owned()),
             background_color: None,
-            image: Some("Image".to_owned()),
+            image: Some(
+                "data:image/png;base64,AAAAAAAAAAAAAA=="
+                    .to_string()
+                    .try_into()
+                    .unwrap(),
+            ),
         }),
         picture_attribute: None,
         code: None,

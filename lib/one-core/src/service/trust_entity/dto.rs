@@ -6,13 +6,16 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use crate::service::common_dto::{BoundedB64Image, KB};
 use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
+
+pub type TrustListLogo = BoundedB64Image<{ 50 * KB }>;
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustEntityRequestDTO {
     pub name: String,
-    pub logo: Option<String>,
+    pub logo: Option<TrustListLogo>,
     pub website: Option<String>,
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
@@ -29,7 +32,7 @@ pub struct CreateTrustEntityFromDidPublisherRequestDTO {
     pub did: DidValue,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logo: Option<String>,
+    pub logo: Option<TrustListLogo>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terms_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -50,7 +53,7 @@ pub struct CreateRemoteTrustEntityRequestDTO {
     pub did_id: DidId,
     pub trust_anchor_id: Option<TrustAnchorId>,
     pub name: String,
-    pub logo: Option<String>,
+    pub logo: Option<TrustListLogo>,
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
     pub website: Option<String>,
@@ -132,7 +135,7 @@ pub struct UpdateTrustEntityFromDidRequestDTO {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    pub logo: Option<Option<String>>,
+    pub logo: Option<Option<TrustListLogo>>,
     #[serde(
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"

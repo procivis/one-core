@@ -1,5 +1,7 @@
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::service::error::ServiceError;
 use one_core::service::trust_entity::dto::{CreateTrustEntityRequestDTO, TrustEntityFilterValue};
+use one_dto_mapper::try_convert_inner;
 
 use super::dto::{CreateTrustEntityRequestRestDTO, TrustEntityFilterQueryParamsRestDto};
 
@@ -43,17 +45,19 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
     }
 }
 
-impl From<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
-    fn from(value: CreateTrustEntityRequestRestDTO) -> Self {
-        Self {
+impl TryFrom<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: CreateTrustEntityRequestRestDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
             name: value.name,
-            logo: value.logo.map(From::from),
+            logo: try_convert_inner(value.logo)?,
             website: value.website,
             terms_url: value.terms_url,
             privacy_url: value.privacy_url,
             role: value.role.into(),
             trust_anchor_id: value.trust_anchor_id,
             did_id: value.did_id,
-        }
+        })
     }
 }

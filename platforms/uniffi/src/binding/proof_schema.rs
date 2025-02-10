@@ -214,7 +214,7 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub schema_type: CredentialSchemaTypeBindingEnum,
     #[try_into(with_fn = convert_inner, infallible)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
-    #[try_into(with_fn = convert_inner, infallible)]
+    #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
 }
 

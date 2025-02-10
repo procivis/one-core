@@ -22,6 +22,7 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     PresentationSubmissionMappingDTO,
 };
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
+use one_core::service::error::ServiceError;
 use one_core::service::key::dto::{
     PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
     PublicKeyJwkRsaDataDTO,
@@ -40,7 +41,10 @@ use one_core::service::trust_entity::dto::{
     CreateTrustEntityFromDidPublisherRequestDTO, UpdateTrustEntityActionFromDidRequestDTO,
     UpdateTrustEntityFromDidRequestDTO,
 };
-use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_dto_mapper::{
+    convert_inner, convert_inner_of_inner, try_convert_inner, try_convert_inner_of_inner, From,
+    Into, TryInto,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::json::JsonString;
@@ -52,7 +56,6 @@ use url::Url;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::dto::common::TrustListLogo;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
@@ -817,17 +820,18 @@ pub struct SdJwtVcClaimDisplayRestDTO {
     pub label: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
-#[into(UpdateTrustEntityFromDidRequestDTO)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryInto)]
+#[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
-    #[into(with_fn = "convert_inner")]
+    #[try_into(with_fn = convert_inner, infallible)]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub action: Option<PatchTrustEntityActionRestDTO>,
     /// Specify the entity name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub name: Option<String>,
     /// base64 encoded image. Maximum size = 50kb.
     #[serde(
@@ -835,14 +839,15 @@ pub struct PatchTrustEntityRequestRestDTO {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    #[into(with_fn = convert_inner_of_inner)]
-    pub logo: Option<Option<TrustListLogo>>,
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub logo: Option<Option<String>>,
     /// Specify the entity's domain name.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub website: Option<Option<String>>,
     /// Specify a Terms of Service URL.
     #[serde(
@@ -850,6 +855,7 @@ pub struct PatchTrustEntityRequestRestDTO {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub terms_url: Option<Option<String>>,
     /// Specify the Privacy Policy URL.
     #[serde(
@@ -857,9 +863,10 @@ pub struct PatchTrustEntityRequestRestDTO {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub privacy_url: Option<Option<String>>,
     /// Whether the entity is a trusted issuer, verifier, or both.
-    #[into(with_fn = "convert_inner")]
+    #[try_into(with_fn = convert_inner, infallible)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
@@ -875,25 +882,32 @@ pub enum PatchTrustEntityActionRestDTO {
     Remove,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(CreateTrustEntityFromDidPublisherRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = CreateTrustEntityFromDidPublisherRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct SSIPostTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub trust_anchor_id: Option<TrustAnchorId>,
     /// Specify DID value.
+    #[try_into(infallible)]
     pub did: DidValue,
     /// Specify the entity name.
+    #[try_into(infallible)]
     pub name: String,
     /// base64 encoded image. Maximum size = 50kb.
-    #[into(with_fn = convert_inner)]
-    pub logo: Option<TrustListLogo>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub logo: Option<String>,
     /// Specify the entity's domain name.
+    #[try_into(with_fn = convert_inner, infallible)]
     pub website: Option<String>,
     /// Specify a Terms of Service url.
+    #[try_into(with_fn = convert_inner, infallible)]
     pub terms_url: Option<String>,
     /// Specify the Privacy Policy url.
+    #[try_into(with_fn = convert_inner, infallible)]
     pub privacy_url: Option<String>,
+    #[try_into(infallible)]
     pub role: TrustEntityRoleRest,
 }

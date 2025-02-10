@@ -40,7 +40,13 @@ async fn test_create_remote_trust_entity() {
     let resp = context
         .api
         .trust_entities
-        .create_remote("name", TrustEntityRoleRest::Both, Some(anchor), &did)
+        .create_remote(
+            "name",
+            TrustEntityRoleRest::Both,
+            Some(anchor),
+            &did,
+            Some("data:image/png;base64,AAAAAAAAAAAAAA==".to_string()),
+        )
         .await;
 
     // THEN
@@ -48,4 +54,27 @@ async fn test_create_remote_trust_entity() {
 
     let body = resp.json_value().await;
     body["id"].assert_eq(&trust_entity_id);
+}
+
+#[tokio::test]
+async fn test_fail_create_remote_trust_entity_invalid_logo() {
+    // GIVEN
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create_remote(
+            "name",
+            TrustEntityRoleRest::Both,
+            None,
+            &did,
+            Some("invalid logo".to_string()),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0193")
 }

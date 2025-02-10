@@ -499,6 +499,9 @@ pub enum ValidationError {
 
     #[error("Empty array value not allowed")]
     EmptyArrayValueNotAllowed,
+
+    #[error("Invalid image data: `{0}`")]
+    InvalidImage(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -996,6 +999,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Redirect uri disabled or scheme not allowed")]
     BR_0192,
 
+    #[strum(to_string = "Invalid image data")]
+    BR_0193,
+
     #[strum(to_string = "Empty object not allowed")]
     BR_0194,
 
@@ -1218,6 +1224,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
             Self::EmptyObjectNotAllowed => ErrorCode::BR_0194,
             Self::EmptyArrayValueNotAllowed => ErrorCode::BR_0195,
+            Self::InvalidImage(_) => ErrorCode::BR_0193,
         }
     }
 }

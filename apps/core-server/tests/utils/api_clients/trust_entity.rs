@@ -94,13 +94,18 @@ impl TrustEntitiesApi {
         role: TrustEntityRoleRest,
         trust_anchor: Option<TrustAnchor>,
         did: &Did,
+        logo: Option<String>,
     ) -> Response {
-        let body = json!({
+        let mut body = json!({
           "name": name,
           "role": role,
           "trustAnchorId": trust_anchor.map(|anchor| anchor.id),
           "didId": did.id,
         });
+
+        if let Some(logo) = logo {
+            body["logo"] = json!(logo);
+        }
 
         self.client.post("/api/trust-entity/remote/v1", body).await
     }

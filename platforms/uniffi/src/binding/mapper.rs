@@ -27,7 +27,9 @@ use one_core::service::proof_schema::dto::{
 };
 use one_core::service::ssi_holder::dto::HandleInvitationResultDTO;
 use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
-use one_core::service::trust_entity::dto::{ListTrustEntitiesQueryDTO, TrustEntityFilterValue};
+use one_core::service::trust_entity::dto::{
+    ListTrustEntitiesQueryDTO, TrustEntityFilterValue, TrustListLogo,
+};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
@@ -620,6 +622,19 @@ impl From<OptionalString> for Option<String> {
         match value {
             OptionalString::None => None,
             OptionalString::Some { value } => Some(value),
+        }
+    }
+}
+
+impl TryFrom<OptionalString> for Option<TrustListLogo> {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: OptionalString) -> Result<Self, Self::Error> {
+        match value {
+            OptionalString::None => Ok(None),
+            OptionalString::Some { value } => {
+                Some(value.try_into()).transpose().map_err(Into::into)
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ use one_core::service::trust_entity::dto::{
     GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into, TryInto};
+use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
 use super::common::SortDirection;
 use super::did::DidListItemBindingDTO;
@@ -177,7 +177,7 @@ pub struct TrustEntitiesListBindingDTO {
 pub struct CreateTrustEntityRequestBindingDTO {
     #[try_into(infallible)]
     pub name: String,
-    #[try_into(infallible)]
+    #[try_into(with_fn=try_convert_inner)]
     pub logo: Option<String>,
     #[try_into(infallible)]
     pub website: Option<String>,
@@ -202,7 +202,7 @@ pub struct CreateRemoteTrustEntityRequestBindingDTO {
     pub trust_anchor_id: Option<String>,
     #[try_into(infallible)]
     pub name: String,
-    #[try_into(infallible)]
+    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<String>,
     #[try_into(infallible)]
     pub terms_url: Option<String>,
@@ -273,7 +273,7 @@ pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
     pub action: Option<TrustEntityUpdateActionBindingEnum>,
     #[try_into(infallible)]
     pub name: Option<String>,
-    #[try_into(with_fn = convert_inner, infallible)]
+    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<OptionalString>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub website: Option<OptionalString>,
