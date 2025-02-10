@@ -1,12 +1,12 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::service::error::ServiceError;
 use shared_types::HistoryId;
 
-use super::dto::GetHistoryQuery;
+use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
 use crate::dto::common::GetHistoryListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
-use crate::endpoint::history::dto::HistoryResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -45,7 +45,7 @@ pub(crate) async fn get_history_list(
     params(
         ("id" = HistoryId, Path, description = "History id")
     ),
-    responses(OkOrErrorResponse<HistoryResponseRestDTO>),
+    responses(OkOrErrorResponse<HistoryResponseDetailRestDTO>),
     tag = "history_management",
     security(
         ("bearer" = [])
@@ -56,7 +56,22 @@ pub(crate) async fn get_history_list(
 pub(crate) async fn get_history_entry(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HistoryId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<HistoryResponseRestDTO> {
+) -> OkOrErrorResponse<HistoryResponseDetailRestDTO> {
     let result = state.core.history_service.get_history_entry(id).await;
-    OkOrErrorResponse::from_result(result, state, "getting history entry")
+    match result {
+        Ok(value) => match HistoryResponseDetailRestDTO::try_from(value) {
+            Ok(value) => OkOrErrorResponse::ok(value),
+            Err(error) => {
+                tracing::error!("Error while mapping response: {:?}", error);
+                OkOrErrorResponse::from_service_error(
+                    ServiceError::MappingError(error.to_string()),
+                    state.config.hide_error_response_cause,
+                )
+            }
+        },
+        Err(error) => {
+            tracing::error!("Error while getting history entry: {:?}", error);
+            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+        }
+    }
 }

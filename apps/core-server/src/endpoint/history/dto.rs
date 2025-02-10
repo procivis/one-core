@@ -1,5 +1,5 @@
 use one_core::service::history::dto::HistoryResponseDTO;
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,
@@ -8,19 +8,16 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use super::mapper::convert_history_metadata;
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
+use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
 pub type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
-
-#[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
-pub enum HistoryMetadataRest {
-    // dummy entry just to make ToSchema compile
-    Nothing,
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(HistoryResponseDTO)]
@@ -35,8 +32,51 @@ pub struct HistoryResponseRestDTO {
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: OrganisationId,
-    #[from(with_fn = convert_history_metadata)]
-    pub metadata: Option<HistoryMetadataRest>,
+}
+
+#[derive(Serialize, ToSchema, TryFrom)]
+#[try_from(T = HistoryResponseDTO, Error = MapperError)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryResponseDetailRestDTO {
+    #[try_from(infallible)]
+    pub id: HistoryId,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[try_from(infallible)]
+    pub created_date: OffsetDateTime,
+    #[try_from(infallible)]
+    pub action: HistoryAction,
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub entity_id: Option<Uuid>,
+    #[try_from(infallible)]
+    pub entity_type: HistoryEntityType,
+    #[try_from(infallible)]
+    pub organisation_id: OrganisationId,
+    #[try_from(with_fn = try_convert_inner)]
+    pub metadata: Option<HistoryMetadataRestEnum>,
+}
+
+#[derive(Serialize, ToSchema, TryFrom)]
+#[try_from(T = one_core::service::history::dto::HistoryMetadataResponse, Error = MapperError)]
+pub enum HistoryMetadataRestEnum {
+    UnexportableEntities(UnexportableEntitiesResponseRestDTO),
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema, TryFrom)]
+#[try_from(T = one_core::service::backup::dto::UnexportableEntitiesResponseDTO, Error = MapperError)]
+pub struct UnexportableEntitiesResponseRestDTO {
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub credentials: Vec<GetCredentialResponseRestDTO>,
+    #[try_from(with_fn = try_convert_inner)]
+    pub keys: Vec<KeyListItemResponseRestDTO>,
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub dids: Vec<DidListItemResponseRestDTO>,
+    #[try_from(infallible)]
+    pub total_credentials: u64,
+    #[try_from(infallible)]
+    pub total_keys: u64,
+    #[try_from(infallible)]
+    pub total_dids: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

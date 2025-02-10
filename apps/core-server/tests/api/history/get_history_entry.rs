@@ -42,9 +42,9 @@ async fn test_get_history_entry_with_unexportable_metadata() {
                         credentials: vec![],
                         keys: vec![],
                         dids: vec![],
-                        total_credentials: 1,
+                        total_credentials: 3,
                         total_keys: 1,
-                        total_dids: 1,
+                        total_dids: 2,
                     },
                 )),
                 ..Default::default()
@@ -60,7 +60,12 @@ async fn test_get_history_entry_with_unexportable_metadata() {
 
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&history.id);
-    assert!(resp["metadata"].is_null());
+    assert_eq!(resp["metadata"]["UnexportableEntities"]["total_keys"], 1);
+    assert_eq!(resp["metadata"]["UnexportableEntities"]["total_dids"], 2);
+    assert_eq!(
+        resp["metadata"]["UnexportableEntities"]["total_credentials"],
+        3
+    );
 }
 
 #[tokio::test]
