@@ -4,6 +4,8 @@ use utoipa::openapi::{Contact, ExternalDocs, Server, Tag};
 use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
+use crate::build_info::{build, APP_VERSION};
+
 pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
     #[derive(OpenApi)]
@@ -57,7 +59,14 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             The Procivis One Core API enables the full lifecycle of credentials.
             Download the [specification](../APIspec/core.yaml).
         "});
-    docs.info.version = "1.0.0".into();
+    docs.info.version = APP_VERSION
+        .and_then(|v| v.strip_suffix("-procivis"))
+        .unwrap_or(&format!(
+            "UNTAGGED: {}, {}",
+            build::SHORT_COMMIT,
+            build::COMMIT_DATE_3339
+        ))
+        .to_string();
     docs.info.contact = Some(
         Contact::builder()
             .name(Some("Procivis One Docs"))
