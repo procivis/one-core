@@ -38,4 +38,5 @@ pub struct ServerConfig {
     pub hide_error_response_cause: bool,
     pub allow_insecure_http_transport: bool,
     pub insecure_vc_api_endpoints_enabled: bool,
+    pub enable_metrics: bool,
 }

@@ -57,7 +57,7 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
 }
 
 fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
-    let openapi_documentation = gen_openapi_documentation();
+    let mut openapi_documentation = gen_openapi_documentation();
 
     let protected = Router::new()
         .route("/api/cache/v1", delete(cache::controller::prune_cache))
@@ -340,10 +340,16 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
         );
 
+    let metrics_endpoints = if config.enable_metrics {
+        Router::new().route("/metrics", get(misc::get_metrics))
+    } else {
+        openapi_documentation.paths.paths.shift_remove("/metrics");
+        Router::new()
+    };
+
     let technical_endpoints = Router::new()
         .route("/build-info", get(misc::get_build_info))
         .route("/health", get(misc::health_check))
-        .route("/metrics", get(misc::get_metrics))
         .route(
             "/api-docs/openapi.yaml",
             get(misc::get_openapi_yaml(openapi_documentation.clone())),
@@ -406,6 +412,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .layer(middleware::from_fn(crate::middleware::sentry_layer))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation))
         .layer(middleware::from_fn(crate::middleware::metrics_counter))
+        .merge(metrics_endpoints)
         .merge(technical_endpoints)
         .layer(CatchPanicLayer::custom(handle_panic))
         .layer(Extension(config))

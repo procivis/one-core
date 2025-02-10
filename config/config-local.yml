@@ -9,6 +9,7 @@ app:
   hideErrorResponseCause: false
   allowInsecureHttpTransport: true
   insecureVcApiEndpointsEnabled: true
+  enableMetrics: true
 exchange:
   OPENID4VC:
     params:

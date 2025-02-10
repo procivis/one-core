@@ -10,6 +10,7 @@ app:
   hideErrorResponseCause: false
   allowInsecureHttpTransport: false
   insecureVcApiEndpointsEnabled: false
+  enableMetrics: true
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"

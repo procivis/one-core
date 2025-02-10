@@ -120,24 +120,27 @@ pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
 }
 
 pub async fn metrics_counter(
+    Extension(config): Extension<Arc<ServerConfig>>,
     path: MatchedPath,
     request: Request<Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
     let method = request.method().to_owned();
-
     let start_time = Instant::now();
+
     let resp = next.run(request).await;
-    let duration = start_time.elapsed();
 
-    let duration = duration.as_micros() as f64 / 1_000_000f64;
+    if config.enable_metrics {
+        let duration = start_time.elapsed();
+        let duration = duration.as_micros() as f64 / 1_000_000f64;
 
-    crate::metrics::track_response_status_code(
-        method.as_str(),
-        path.as_str(),
-        resp.status().as_str(),
-        duration,
-    );
+        crate::metrics::track_response_status_code(
+            method.as_str(),
+            path.as_str(),
+            resp.status().as_str(),
+            duration,
+        );
+    }
 
     Ok(resp)
 }
