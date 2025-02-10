@@ -2,10 +2,11 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
-use shadow_rs::SdResult;
+use shadow_rs::{SdResult, ShadowBuilder};
 
 fn main() -> SdResult<()> {
-    shadow_rs::new_hook(hook)
+    ShadowBuilder::builder().hook(hook).build()?;
+    Ok(())
 }
 
 fn get_app_version_string() -> String {
