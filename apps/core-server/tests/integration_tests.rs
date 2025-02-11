@@ -12,6 +12,9 @@ mod cache;
 #[path = "api/config/mod.rs"]
 mod config;
 
+#[path = "api/other/mod.rs"]
+mod other;
+
 #[path = "api/credential_schema/mod.rs"]
 mod api_credential_schema_tests;
 

@@ -38,5 +38,10 @@ pub struct ServerConfig {
     pub hide_error_response_cause: bool,
     pub allow_insecure_http_transport: bool,
     pub insecure_vc_api_endpoints_enabled: bool,
+    /// whether endpoint metrics are available
     pub enable_metrics: bool,
+    /// whether build-info and health endpoints are available
+    pub enable_server_info: bool,
+    /// whether swagger and openapi endpoints are available
+    pub enable_open_api: bool,
 }

@@ -11,6 +11,8 @@ app:
   allowInsecureHttpTransport: false
   insecureVcApiEndpointsEnabled: false
   enableMetrics: true
+  enableServerInfo: true
+  enableOpenApi: true
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"

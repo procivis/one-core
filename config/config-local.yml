@@ -10,6 +10,8 @@ app:
   allowInsecureHttpTransport: true
   insecureVcApiEndpointsEnabled: true
   enableMetrics: true
+  enableServerInfo: true
+  enableOpenApi: true
 exchange:
   OPENID4VC:
     params:

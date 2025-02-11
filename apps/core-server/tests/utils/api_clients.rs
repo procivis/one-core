@@ -14,6 +14,7 @@ use self::histories::HistoriesApi;
 use self::interactions::InteractionsApi;
 use self::keys::KeysApi;
 use self::organisations::OrganisationsApi;
+use self::other::OtherApi;
 use self::proof_schemas::ProofSchemasApi;
 use self::proofs::ProofsApi;
 use self::ssi::SSIApi;
@@ -34,6 +35,7 @@ pub mod interactions;
 pub mod jsonld;
 pub mod keys;
 pub mod organisations;
+pub mod other;
 pub mod proof_schemas;
 pub mod proofs;
 pub mod ssi;
@@ -171,6 +173,7 @@ pub struct Client {
     pub trust_anchors: TrustAnchorsApi,
     pub trust_entities: TrustEntitiesApi,
     pub jsonld: JsonLdApi,
+    pub other: OtherApi,
 }
 
 impl Client {
@@ -194,7 +197,8 @@ impl Client {
             cache: CacheApi::new(client.clone()),
             trust_anchors: TrustAnchorsApi::new(client.clone()),
             trust_entities: TrustEntitiesApi::new(client.clone()),
-            jsonld: JsonLdApi::new(client),
+            jsonld: JsonLdApi::new(client.clone()),
+            other: OtherApi::new(client),
         }
     }
 }

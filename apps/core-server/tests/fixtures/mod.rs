@@ -110,7 +110,7 @@ pub fn create_config(
         hide_error_response_cause: true,
         allow_insecure_http_transport: true,
         insecure_vc_api_endpoints_enabled: true,
-        enable_metrics: true,
+        ..app_config.app
     };
 
     app_config

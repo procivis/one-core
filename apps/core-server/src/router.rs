@@ -57,8 +57,6 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
 }
 
 fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
-    let mut openapi_documentation = gen_openapi_documentation();
-
     let protected = Router::new()
         .route("/api/cache/v1", delete(cache::controller::prune_cache))
         .route("/api/config/v1", get(config::controller::get_config))
@@ -340,20 +338,47 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
         );
 
+    let mut openapi_documentation = if config.enable_open_api {
+        Some(gen_openapi_documentation())
+    } else {
+        None
+    };
+
+    let mut openapi_paths = openapi_documentation.as_mut().map(|d| &mut d.paths.paths);
+
     let metrics_endpoints = if config.enable_metrics {
         Router::new().route("/metrics", get(misc::get_metrics))
     } else {
-        openapi_documentation.paths.paths.shift_remove("/metrics");
+        if let Some(paths) = openapi_paths.as_mut() {
+            paths.shift_remove("/metrics");
+        };
         Router::new()
     };
 
-    let technical_endpoints = Router::new()
-        .route("/build-info", get(misc::get_build_info))
-        .route("/health", get(misc::health_check))
-        .route(
-            "/api-docs/openapi.yaml",
-            get(misc::get_openapi_yaml(openapi_documentation.clone())),
-        );
+    let server_info_endpoints = if config.enable_server_info {
+        Router::new()
+            .route("/build-info", get(misc::get_build_info))
+            .route("/health", get(misc::health_check))
+    } else {
+        if let Some(paths) = openapi_paths.as_mut() {
+            paths.shift_remove("/build-info");
+            paths.shift_remove("/health");
+        };
+        Router::new()
+    };
+
+    let openapi_endpoints = if let Some(openapi_documentation) = openapi_documentation {
+        Router::new()
+            .route(
+                "/api-docs/openapi.yaml",
+                get(misc::get_openapi_yaml(&openapi_documentation)),
+            )
+            .merge(
+                SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation),
+            )
+    } else {
+        Router::new()
+    };
 
     let router = {
         if config.insecure_vc_api_endpoints_enabled {
@@ -410,10 +435,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 }),
         )
         .layer(middleware::from_fn(crate::middleware::sentry_layer))
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation))
         .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .merge(metrics_endpoints)
-        .merge(technical_endpoints)
+        .merge(server_info_endpoints)
+        .merge(openapi_endpoints)
         .layer(CatchPanicLayer::custom(handle_panic))
         .layer(Extension(config))
         .layer(middleware::from_fn(
