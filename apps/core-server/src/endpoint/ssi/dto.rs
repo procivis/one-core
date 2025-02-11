@@ -825,9 +825,11 @@ pub struct PatchTrustEntityRequestRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub action: Option<PatchTrustEntityActionRestDTO>,
+    /// Specify the entity name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub name: Option<String>,
+    /// base64 encoded image. Maximum size = 50kb.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -835,24 +837,28 @@ pub struct PatchTrustEntityRequestRestDTO {
     )]
     #[into(with_fn = convert_inner_of_inner)]
     pub logo: Option<Option<TrustListLogo>>,
+    /// Specify the entity's domain name.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
     pub website: Option<Option<String>>,
+    /// Specify a Terms of Service URL.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
     pub terms_url: Option<Option<String>>,
+    /// Specify the Privacy Policy URL.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
     pub privacy_url: Option<Option<String>>,
+    /// Whether the entity is a trusted issuer, verifier, or both.
     #[into(with_fn = "convert_inner")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
@@ -880,7 +886,7 @@ pub struct SSIPostTrustEntityRequestRestDTO {
     pub did: DidValue,
     /// Specify the entity name.
     pub name: String,
-    /// base64 encoded image.
+    /// base64 encoded image. Maximum size = 50kb.
     #[into(with_fn = convert_inner)]
     pub logo: Option<TrustListLogo>,
     /// Specify the entity's domain name.

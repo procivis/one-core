@@ -21,14 +21,15 @@ use crate::serialize::front_time;
 pub struct CreateTrustEntityRequestRestDTO {
     /// Specify the entity name.
     pub(super) name: String,
-    /// base64 encoded image.
+    /// base64 encoded image. Maximum size = 50kb.
     pub(super) logo: Option<TrustListLogo>,
     /// Specify the entity's domain name.
     pub(super) website: Option<String>,
-    /// Specify a Terms of Service url.
+    /// Specify a Terms of Service URL.
     pub(super) terms_url: Option<String>,
-    /// Specify the Privacy Policy url.
+    /// Specify the Privacy Policy URL.
     pub(super) privacy_url: Option<String>,
+    /// Whether the entity is a trusted issuer, verifier, or both.
     pub(super) role: TrustEntityRoleRest,
     /// Specify trust anchor ID.
     pub(super) trust_anchor_id: TrustAnchorId,
@@ -151,7 +152,7 @@ pub struct CreateRemoteTrustEntityRequestRestDTO {
     pub did_id: DidId,
     /// Specify the entity name.
     pub name: String,
-    /// image URL
+    /// base64 encoded image. Maximum size = 50kb.
     #[schema(nullable = false)]
     #[into(with_fn = convert_inner)]
     pub logo: Option<TrustListLogo>,
