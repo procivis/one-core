@@ -219,6 +219,7 @@ rustup target add aarch64-apple-ios-sim aarch64-apple-ios x86_64-apple-ios
 '''
 
 [tasks.build_ios_code]
+env = { "IPHONEOS_DEPLOYMENT_TARGET" = "13.0" }
 extend = "mobile-build"
 script.main = '''
 cargo build --package one-core-uniffi --lib --release --target x86_64-apple-ios
