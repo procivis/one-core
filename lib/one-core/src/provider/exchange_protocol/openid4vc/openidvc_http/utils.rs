@@ -87,7 +87,9 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     handle
         .signature()
-        .unwrap()
+        .ok_or(ExchangeProtocolError::Failed(
+            "Signature key missing".to_string(),
+        ))?
         .public()
         .verify(
             request_token.unverified_jwt.as_bytes(),
@@ -160,7 +162,9 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     alg.parse_jwk(&public_key_cnf)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         .signature()
-        .unwrap()
+        .ok_or(ExchangeProtocolError::Failed(
+            "Signature key missing".to_string(),
+        ))?
         .public()
         .verify(
             request_token.unverified_jwt.as_bytes(),
