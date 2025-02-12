@@ -341,12 +341,17 @@ impl OpenID4VCHTTP {
                 state,
             };
 
-            let response = mdoc::build_jwe(payload, client_metadata, &mdoc_generated_nonce, nonce)
-                .map_err(|err| {
-                    ExchangeProtocolError::Failed(format!(
-                        "Failed to build mdoc response jwe: {err}"
-                    ))
-                })?;
+            let response = mdoc::build_jwe(
+                payload,
+                client_metadata,
+                &mdoc_generated_nonce,
+                nonce,
+                &*self.key_algorithm_provider,
+            )
+            .await
+            .map_err(|err| {
+                ExchangeProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
+            })?;
 
             params.insert("response", response);
         } else {

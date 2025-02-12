@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use one_crypto::encryption::EncryptionError;
+use one_crypto::jwe::RemoteJwk;
 use one_crypto::signer::bbs::parse_bbs_input;
 use one_crypto::SignerError;
 use thiserror::Error;
@@ -18,7 +20,7 @@ pub enum KeyHandle {
     MultiMessageSignature(MultiMessageSignatureKeyHandle),
 }
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Error)]
 pub enum KeyHandleError {
     #[error("Missing private key")]
     MissingPrivateKey,
@@ -31,6 +33,9 @@ pub enum KeyHandleError {
 
     #[error("Encoding private JWK: `{0}`")]
     EncodingPrivateJwk(String),
+
+    #[error("Encryption error: `{0}`")]
+    Encryption(EncryptionError),
 
     #[error("Signer error: `{0}`")]
     Signer(SignerError),
@@ -67,9 +72,9 @@ impl KeyHandle {
     /// helper functions
     pub fn public_key_as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
         match &self {
-            KeyHandle::SignatureOnly(value) => value.public().as_jwk(),
-            KeyHandle::SignatureAndKeyAgreement { signature, .. } => signature.public().as_jwk(),
-            KeyHandle::MultiMessageSignature(multi_message_signature) => {
+            Self::SignatureOnly(value) => value.public().as_jwk(),
+            Self::SignatureAndKeyAgreement { signature, .. } => signature.public().as_jwk(),
+            Self::MultiMessageSignature(multi_message_signature) => {
                 multi_message_signature.public().as_jwk()
             }
         }
@@ -77,11 +82,9 @@ impl KeyHandle {
 
     pub fn public_key_as_multibase(&self) -> Result<String, KeyHandleError> {
         match &self {
-            KeyHandle::SignatureOnly(value) => value.public().as_multibase(),
-            KeyHandle::SignatureAndKeyAgreement { signature, .. } => {
-                signature.public().as_multibase()
-            }
-            KeyHandle::MultiMessageSignature(multi_message_signature) => {
+            Self::SignatureOnly(value) => value.public().as_multibase(),
+            Self::SignatureAndKeyAgreement { signature, .. } => signature.public().as_multibase(),
+            Self::MultiMessageSignature(multi_message_signature) => {
                 multi_message_signature.public().as_multibase()
             }
         }
@@ -228,22 +231,25 @@ impl KeyAgreementHandle {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait PublicKeyAgreementHandle: Send + Sync {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError>;
+    fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError>;
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
+    fn as_raw(&self) -> Vec<u8>;
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait PrivateKeyAgreementHandle: Send + Sync {
     /// Diffie-Hellman key exchange
-    async fn shared_secret(&self, remote_pub_key: &[u8])
-        -> Result<Zeroizing<Vec<u8>>, SignerError>;
+    async fn shared_secret(
+        &self,
+        remote_jwk: &RemoteJwk,
+    ) -> Result<Zeroizing<Vec<u8>>, KeyHandleError>;
 
     /// Temporary solution for josekit support
     /// TODO: prevent exposing private key
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyAlgorithmError> {
-        Err(KeyAlgorithmError::NotSupported(
-            std::any::type_name::<Self>().to_string(),
+    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+        Err(KeyHandleError::EncodingPrivateJwk(
+            KeyAlgorithmError::NotSupported(std::any::type_name::<Self>().to_string()).to_string(),
         ))
     }
 }

@@ -1,6 +1,9 @@
-use ed25519_compact::PublicKey;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use ed25519_compact::{x25519, PublicKey};
 use zeroize::Zeroizing;
 
+use crate::encryption::EncryptionError;
+use crate::jwe::{decode_b64, RemoteJwk};
 use crate::{Signer, SignerError};
 
 pub struct EDDSASigner {}
@@ -59,6 +62,77 @@ impl EDDSASigner {
         let key = ed25519_compact::x25519::SecretKey::from_ed25519(&key)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
         Ok(key.to_vec().into())
+    }
+
+    pub fn shared_secret_x25519(
+        private_key_ed25519: &[u8],
+        recipient_jwk: &RemoteJwk,
+    ) -> Result<Zeroizing<Vec<u8>>, EncryptionError> {
+        let secret_key = ed25519_compact::SecretKey::from_slice(private_key_ed25519)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+        let secret_x25519 = x25519::SecretKey::from_ed25519(&secret_key)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+
+        let peer_pub_key = Self::get_public_key_from_jwk(recipient_jwk)?;
+
+        let shared_secret = *peer_pub_key.dh(&secret_x25519).map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e))
+        })?;
+        Ok(Zeroizing::new(shared_secret.to_vec()))
+    }
+
+    pub fn ed25519_to_x25519_jwk(public_key_ed25519: &[u8]) -> Result<RemoteJwk, EncryptionError> {
+        let public_key = ed25519_compact::PublicKey::from_slice(public_key_ed25519)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+        let public_x25519 = x25519::PublicKey::from_ed25519(&public_key)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+
+        Ok(RemoteJwk {
+            kty: "OKP".to_string(),
+            crv: "X25519".to_string(),
+            x: Base64UrlSafeNoPadding::encode_to_string(public_x25519.to_vec()).map_err(|e| {
+                EncryptionError::Crypto(format!("Failed to serialize public key bytes: {}", e))
+            })?,
+            y: None,
+        })
+    }
+
+    fn get_public_key_from_jwk(
+        remote_jwk: &RemoteJwk,
+    ) -> Result<x25519::PublicKey, EncryptionError> {
+        match remote_jwk.crv.as_str() {
+            "Ed25519" => {
+                let ed25519_pub_key = Self::ed25519_pub_key_from_jwk(remote_jwk)?;
+                x25519::PublicKey::from_ed25519(&ed25519_pub_key).map_err(|e| {
+                    EncryptionError::Crypto(format!(
+                        "failed to convert ed25519 public key to x25519: {}",
+                        e
+                    ))
+                })
+            }
+            "X25519" => Self::x25519_pub_key_from_jwk(remote_jwk),
+            _ => Err(EncryptionError::Crypto("Invalid JWK crv".to_string())),
+        }
+    }
+
+    fn x25519_pub_key_from_jwk(
+        remote_jwk: &RemoteJwk,
+    ) -> Result<x25519::PublicKey, EncryptionError> {
+        let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
+        let pub_key = x25519::PublicKey::from_slice(&x).map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e))
+        })?;
+        Ok(pub_key)
+    }
+
+    fn ed25519_pub_key_from_jwk(
+        remote_jwk: &RemoteJwk,
+    ) -> Result<ed25519_compact::PublicKey, EncryptionError> {
+        let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
+        let pub_key = ed25519_compact::PublicKey::from_slice(&x).map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e))
+        })?;
+        Ok(pub_key)
     }
 }
 

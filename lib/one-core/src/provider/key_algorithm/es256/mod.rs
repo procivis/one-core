@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_crypto::jwe::RemoteJwk;
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
@@ -131,9 +132,12 @@ impl KeyAlgorithm for Es256 {
             .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
 
             let public_key = ES256Signer::parse_public_key_coordinates(&x, &y, true)?;
-            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-                Arc::new(Es256PublicKeyHandle::new(public_key, data.r#use.clone())),
-            )))
+            let handle = Arc::new(Es256PublicKeyHandle::new(public_key, data.r#use.clone()));
+
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+            })
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }
@@ -145,9 +149,11 @@ impl KeyAlgorithm for Es256 {
 
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
         let public_key = ES256Signer::parse_public_key_from_der(public_key_der, true)?;
-        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-            Arc::new(Es256PublicKeyHandle::new(public_key, None)),
-        )))
+        let handle = Arc::new(Es256PublicKeyHandle::new(public_key, None));
+        Ok(KeyHandle::SignatureAndKeyAgreement {
+            signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+            key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+        })
     }
 }
 
@@ -207,12 +213,16 @@ impl SignaturePrivateKeyHandle for Es256PrivateKeyHandle {
 }
 
 impl PublicKeyAgreementHandle for Es256PublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        es256_public_key_as_jwk(&self.public_key, self.r#use.clone())
+    fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError> {
+        ES256Signer::bytes_as_jwk(&self.public_key).map_err(KeyHandleError::Encryption)
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
         es256_public_key_as_multibase(&self.public_key)
+    }
+
+    fn as_raw(&self) -> Vec<u8> {
+        self.public_key.clone()
     }
 }
 
@@ -220,8 +230,9 @@ impl PublicKeyAgreementHandle for Es256PublicKeyHandle {
 impl PrivateKeyAgreementHandle for Es256PrivateKeyHandle {
     async fn shared_secret(
         &self,
-        _remote_pub_key: &[u8],
-    ) -> Result<Zeroizing<Vec<u8>>, SignerError> {
-        todo!()
+        remote_jwk: &RemoteJwk,
+    ) -> Result<Zeroizing<Vec<u8>>, KeyHandleError> {
+        ES256Signer::shared_secret_p256(&self.private_key, remote_jwk)
+            .map_err(KeyHandleError::Encryption)
     }
 }

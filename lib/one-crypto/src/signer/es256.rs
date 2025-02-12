@@ -1,12 +1,16 @@
+use p256::ecdh::diffie_hellman;
 use p256::ecdsa::signature::{Signer as _, Verifier as _};
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use p256::elliptic_curve::generic_array::GenericArray;
-use p256::elliptic_curve::sec1::ToEncodedPoint;
+use p256::elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
+use p256::elliptic_curve::SecretKey;
 use p256::pkcs8::DecodePublicKey;
-use p256::EncodedPoint;
+use p256::{AffinePoint, EncodedPoint, NistP256, PublicKey};
 use rand::thread_rng;
 use zeroize::Zeroizing;
 
+use crate::encryption::EncryptionError;
+use crate::jwe::{decode_b64, RemoteJwk};
 use crate::{Signer, SignerError};
 
 pub struct ES256Signer {}
@@ -95,6 +99,48 @@ impl ES256Signer {
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         Ok(secret_key.to_jwk_string())
+    }
+
+    pub fn shared_secret_p256(
+        private_key: &[u8],
+        recipient_jwk: &RemoteJwk,
+    ) -> Result<Zeroizing<Vec<u8>>, EncryptionError> {
+        let x = decode_b64(recipient_jwk.x.as_str(), "x coordinate")?;
+        let y_encoded = recipient_jwk
+            .y
+            .clone()
+            .ok_or(EncryptionError::Crypto("Missing y coordinate".to_string()))?;
+        let y = decode_b64(y_encoded.as_str(), "y coordinate")?;
+        let peer_affine_point =
+            AffinePoint::from_encoded_point(&EncodedPoint::from_affine_coordinates(
+                GenericArray::from_slice(&x),
+                GenericArray::from_slice(&y),
+                false,
+            ))
+            .into_option()
+            .ok_or(EncryptionError::Crypto(
+                "Invalid JWK coordinates".to_string(),
+            ))?;
+
+        let secret_key: SecretKey<NistP256> = SecretKey::from_slice(private_key)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+
+        let shared_secret: [u8; 32] =
+            diffie_hellman(secret_key.to_nonzero_scalar(), peer_affine_point)
+                .raw_secret_bytes()
+                .as_slice()
+                .try_into()
+                .map_err(|e| {
+                    EncryptionError::Crypto(format!("failed to convert to array: {}", e))
+                })?;
+        Ok(Zeroizing::new(shared_secret.to_vec()))
+    }
+
+    pub fn bytes_as_jwk(public_key: &[u8]) -> Result<RemoteJwk, EncryptionError> {
+        let verifying_key = ES256Signer::from_bytes(public_key)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+        let public_key = PublicKey::from(verifying_key);
+        public_key.to_jwk().try_into()
     }
 }
 

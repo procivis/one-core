@@ -7,12 +7,13 @@ use crate::provider::key_algorithm::key::KeyHandleError;
 
 pub fn eddsa_public_key_as_jwk(
     public_key: &[u8],
+    curve: &str,
     r#use: Option<String>,
 ) -> Result<PublicKeyJwk, KeyHandleError> {
     Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
         r#use,
         kid: None,
-        crv: "Ed25519".to_string(),
+        crv: curve.to_string(),
         x: Base64UrlSafeNoPadding::encode_to_string(public_key)
             .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
         y: None,

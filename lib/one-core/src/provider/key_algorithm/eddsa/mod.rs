@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_crypto::jwe::RemoteJwk;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
@@ -74,7 +75,7 @@ impl KeyAlgorithm for Eddsa {
                 },
             },
             public: key_pair.public,
-            private: Zeroizing::new(key_pair.private.to_vec()),
+            private: key_pair.private,
         })
     }
 
@@ -125,10 +126,11 @@ impl KeyAlgorithm for Eddsa {
         if let PublicKeyJwk::Okp(data) = key {
             let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
-
-            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-                Arc::new(EddsaPublicKeyHandle::new(x, data.r#use.clone())),
-            )))
+            let handle = Arc::new(EddsaPublicKeyHandle::new(x, data.r#use.clone()));
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+            })
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }
@@ -137,16 +139,20 @@ impl KeyAlgorithm for Eddsa {
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
         let x = Base64UrlSafeNoPadding::decode_to_vec(multibase, None)
             .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
-        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-            Arc::new(EddsaPublicKeyHandle::new(x, None)),
-        )))
+        let handle = Arc::new(EddsaPublicKeyHandle::new(x, None));
+        Ok(KeyHandle::SignatureAndKeyAgreement {
+            signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+            key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+        })
     }
 
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
         let key = EDDSASigner::public_key_from_der(public_key_der)?;
-        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-            Arc::new(EddsaPublicKeyHandle::new(key, None)),
-        )))
+        let handle = Arc::new(EddsaPublicKeyHandle::new(key, None));
+        Ok(KeyHandle::SignatureAndKeyAgreement {
+            signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+            key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+        })
     }
 }
 
@@ -161,11 +167,15 @@ impl EddsaPublicKeyHandle {
     }
 
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        eddsa_public_key_as_jwk(&self.public_key, self.r#use.clone())
+        eddsa_public_key_as_jwk(&self.public_key, "Ed25519", self.r#use.clone())
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
         eddsa_public_key_as_multibase(&self.public_key)
+    }
+
+    fn as_raw(&self) -> Vec<u8> {
+        self.public_key.clone()
     }
 }
 
@@ -193,7 +203,7 @@ impl SignaturePublicKeyHandle for EddsaPublicKeyHandle {
     }
 
     fn as_raw(&self) -> Vec<u8> {
-        self.public_key.clone()
+        self.as_raw()
     }
 
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
@@ -234,18 +244,23 @@ impl SignaturePrivateKeyHandle for EddsaPrivateKeyHandle {
 impl PrivateKeyAgreementHandle for EddsaPrivateKeyHandle {
     async fn shared_secret(
         &self,
-        _remote_pub_key: &[u8],
-    ) -> Result<Zeroizing<Vec<u8>>, SignerError> {
-        todo!()
+        remote_jwk: &RemoteJwk,
+    ) -> Result<Zeroizing<Vec<u8>>, KeyHandleError> {
+        EDDSASigner::shared_secret_x25519(&self.private_key, remote_jwk)
+            .map_err(KeyHandleError::Encryption)
     }
 }
 
 impl PublicKeyAgreementHandle for EddsaPublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        self.as_jwk()
+    fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError> {
+        EDDSASigner::ed25519_to_x25519_jwk(&self.public_key).map_err(KeyHandleError::Encryption)
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
         self.as_multibase()
+    }
+
+    fn as_raw(&self) -> Vec<u8> {
+        self.as_raw()
     }
 }

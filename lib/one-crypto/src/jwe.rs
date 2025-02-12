@@ -5,9 +5,8 @@ use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use ed25519_compact::x25519;
 use p256::ecdh::diffie_hellman;
-use p256::elliptic_curve::sec1::FromEncodedPoint;
-use p256::elliptic_curve::{JwkEcKey, SecretKey};
-use p256::{AffinePoint, EncodedPoint, NistP256};
+use p256::elliptic_curve::JwkEcKey;
+use p256::NistP256;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
@@ -95,31 +94,9 @@ struct PrivateJwk {
 pub fn build_jwe(
     payload: &[u8],
     header: Header,
-    recipient_jwk: RemoteJwk,
+    shared_secret: Zeroizing<Vec<u8>>,
+    remote_jwk: RemoteJwk,
 ) -> Result<String, EncryptionError> {
-    let (shared_secret, epk) = match (recipient_jwk.kty.as_str(), recipient_jwk.crv.as_str()) {
-        ("EC", "P-256") => generate_key_and_shared_secret_p256(&recipient_jwk)?,
-        ("OKP", "X25519") => {
-            let pub_key = x25519_pub_key_from_jwk(&recipient_jwk)?;
-            generate_key_and_shared_secret_x25519(pub_key)?
-        }
-        ("OKP", "Ed25519") => {
-            let ed25519_pub_key = ed25519_pub_key_from_jwk(&recipient_jwk)?;
-            let pub_key = x25519::PublicKey::from_ed25519(&ed25519_pub_key).map_err(|e| {
-                EncryptionError::Crypto(format!(
-                    "failed to convert ed25519 public key to x25519: {}",
-                    e
-                ))
-            })?;
-            generate_key_and_shared_secret_x25519(pub_key)?
-        }
-        (kty, crv) => {
-            return Err(EncryptionError::Crypto(format!(
-                "Unsupported JWK kty \"{kty}\" and crv \"{crv}\" combination"
-            )))
-        }
-    };
-
     let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyuinfo)
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {}", e)))?;
     let apv_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyvinfo)
@@ -130,7 +107,7 @@ pub fn build_jwe(
         "alg": "ECDH-ES",
         "apu": apu_b64,
         "apv": apv_b64,
-        "epk": epk,
+        "epk": remote_jwk,
     });
     let protected_header_bytes = serde_json::to_vec(&protected_header).map_err(|e| {
         EncryptionError::Crypto(format!("failed to serialize protected JWE header: {}", e))
@@ -141,7 +118,7 @@ pub fn build_jwe(
         })?;
 
     let encryption_key = derive_encryption_key_aes256gcm(
-        &*shared_secret,
+        &shared_secret,
         header.agreement_partyuinfo.as_bytes(),
         header.agreement_partyvinfo.as_bytes(),
     )?;
@@ -193,73 +170,6 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
         agreement_partyvinfo,
         key_id: header.key_id,
     })
-}
-
-fn generate_key_and_shared_secret_p256(
-    remote_jwk: &RemoteJwk,
-) -> Result<(Zeroizing<[u8; 32]>, RemoteJwk), EncryptionError> {
-    let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
-    let y_encoded = remote_jwk
-        .y
-        .clone()
-        .ok_or(EncryptionError::Crypto("Missing y coordinate".to_string()))?;
-    let y = decode_b64(y_encoded.as_str(), "y coordinate")?;
-    let peer_affine_point =
-        AffinePoint::from_encoded_point(&EncodedPoint::from_affine_coordinates(
-            GenericArray::from_slice(&x),
-            GenericArray::from_slice(&y),
-            false,
-        ))
-        .into_option()
-        .ok_or(EncryptionError::Crypto(
-            "Invalid JWK coordinates".to_string(),
-        ))?;
-
-    let secret_key: SecretKey<NistP256> = SecretKey::random(&mut ChaCha20Rng::from_entropy());
-    let shared_secret: [u8; 32] = diffie_hellman(secret_key.to_nonzero_scalar(), peer_affine_point)
-        .raw_secret_bytes()
-        .as_slice()
-        .try_into()
-        .map_err(|e| EncryptionError::Crypto(format!("failed to convert to array: {}", e)))?;
-    Ok((
-        Zeroizing::new(shared_secret),
-        secret_key.public_key().to_jwk().try_into()?,
-    ))
-}
-
-fn generate_key_and_shared_secret_x25519(
-    peer_pub_key: x25519::PublicKey,
-) -> Result<(Zeroizing<[u8; 32]>, RemoteJwk), EncryptionError> {
-    let key_pair = x25519::KeyPair::generate();
-    let shared_secret = *peer_pub_key
-        .dh(&key_pair.sk)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e)))?;
-
-    let jwk = RemoteJwk {
-        kty: "OKP".to_string(),
-        crv: "X25519".to_string(),
-        x: Base64UrlSafeNoPadding::encode_to_string(key_pair.pk.to_vec()).map_err(|e| {
-            EncryptionError::Crypto(format!("Failed to serialize public key bytes: {}", e))
-        })?,
-        y: None,
-    };
-    Ok((Zeroizing::new(shared_secret), jwk))
-}
-
-fn x25519_pub_key_from_jwk(remote_jwk: &RemoteJwk) -> Result<x25519::PublicKey, EncryptionError> {
-    let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
-    let pub_key = x25519::PublicKey::from_slice(&x)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e)))?;
-    Ok(pub_key)
-}
-
-fn ed25519_pub_key_from_jwk(
-    remote_jwk: &RemoteJwk,
-) -> Result<ed25519_compact::PublicKey, EncryptionError> {
-    let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
-    let pub_key = ed25519_compact::PublicKey::from_slice(&x)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e)))?;
-    Ok(pub_key)
 }
 
 pub fn decrypt_jwe_payload(
@@ -447,7 +357,7 @@ impl FromStr for EncryptedJWE {
     }
 }
 
-fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, EncryptionError> {
+pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, EncryptionError> {
     Base64UrlSafeNoPadding::decode_to_vec(base64_input, None)
         .map_err(|e| EncryptionError::Crypto(format!("Failed to decode {}: {}", name, e)))
 }
@@ -514,14 +424,27 @@ mod test {
                     .to_string(),
             agreement_partyvinfo: "bueFnxmWT1EJEmPB5zq4m6aqkhEjIN8j".to_string(),
         };
-        let recipient_jwk = RemoteJwk {
+
+        // shared_secret and remote_jwk were generated from this recipient_jwk
+        // let recipient_jwk = RemoteJwk {
+        //     kty: "EC".to_string(),
+        //     crv: "P-256".to_string(),
+        //     x: "KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo".to_string(),
+        //     y: Some("d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU".to_string()),
+        // };
+
+        let shared_secret: Zeroizing<Vec<u8>> = Zeroizing::new(vec![
+            185, 127, 8, 220, 210, 43, 60, 110, 151, 231, 212, 11, 160, 247, 208, 50, 2, 70, 29,
+            59, 74, 15, 220, 210, 56, 58, 108, 68, 29, 73, 222, 66,
+        ]);
+        let remote_jwk = RemoteJwk {
             kty: "EC".to_string(),
             crv: "P-256".to_string(),
-            x: "KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo".to_string(),
-            y: Some("d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU".to_string()),
+            x: "Fo4TzyDJOu5SGMnJx0en6u1EmRkUWCwvhS3BOA8UOqo".to_string(),
+            y: Some("J9BMexfC9wE_3-E5Z-EbDFUKEIMwBOBReKT9bEx2KdU".to_string()),
         };
 
-        let jwe = build_jwe(payload, header.clone(), recipient_jwk).unwrap();
+        let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk).unwrap();
         let extracted_header = extract_jwe_header(&jwe).unwrap();
         assert_eq!(header, extracted_header);
 
@@ -539,14 +462,27 @@ mod test {
                 .to_string(),
             agreement_partyvinfo: "e4xmMaGk6O2UX25eq7Opc46LU7PdzUXp".to_string(),
         };
-        let recipient_jwk = RemoteJwk {
+
+        // shared_secret and remote_jwk were generated from this recipient_jwk
+        // let recipient_jwk = RemoteJwk {
+        //     kty: "OKP".to_string(),
+        //     crv: "Ed25519".to_string(),
+        //     x: "0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM".to_string(),
+        //     y: None,
+        // };
+
+        let shared_secret: Zeroizing<Vec<u8>> = Zeroizing::new(vec![
+            15, 180, 14, 191, 235, 127, 224, 178, 119, 167, 9, 251, 183, 199, 13, 60, 54, 14, 104,
+            238, 55, 240, 60, 67, 165, 233, 126, 97, 200, 236, 182, 114,
+        ]);
+        let remote_jwk = RemoteJwk {
             kty: "OKP".to_string(),
-            crv: "Ed25519".to_string(),
-            x: "0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM".to_string(),
+            crv: "X25519".to_string(),
+            x: "RIAzhfGXIA-OtO-0fWhNKykMRNn8n14US7otIAN_eSM".to_string(),
             y: None,
         };
 
-        let jwe = build_jwe(payload, header.clone(), recipient_jwk).unwrap();
+        let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk).unwrap();
         let extracted_header = extract_jwe_header(&jwe).unwrap();
         assert_eq!(header, extracted_header);
 

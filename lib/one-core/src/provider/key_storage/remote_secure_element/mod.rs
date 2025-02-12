@@ -75,7 +75,7 @@ struct RemoteSecureElementKeyHandle {
 
 impl SignaturePublicKeyHandle for RemoteSecureElementKeyHandle {
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        eddsa_public_key_as_jwk(&self.key.public_key, None)
+        eddsa_public_key_as_jwk(&self.key.public_key, "Ed25519", None)
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
