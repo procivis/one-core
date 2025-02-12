@@ -60,7 +60,6 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             Download the [specification](../APIspec/core.yaml).
         "});
     docs.info.version = APP_VERSION
-        .and_then(|v| v.strip_suffix("-procivis"))
         .unwrap_or(&format!(
             "UNTAGGED: {}, {}",
             build::SHORT_COMMIT,
