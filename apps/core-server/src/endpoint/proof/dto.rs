@@ -61,25 +61,29 @@ pub struct CreateProofRequestRestDTO {
     /// the resource specified here, if redirects are enabled in the system
     /// configuration. The URI must use a scheme (for example `https`, `myapp`)
     /// that is allowed by the system configuration.
+    #[schema(nullable = false)]
     pub redirect_uri: Option<String>,
     /// If multiple keys are specified for the authentication method of the
     /// DID, use this value to specify which key should be used as the
     /// authentication method for this proof request. If a key isn't
     /// specified here, the first key listed during DID creation will be
     /// used.
+    #[schema(nullable = false)]
     pub verifier_key: Option<KeyId>,
     /// Only for use when verifying VC Barcodes.
     #[into(with_fn = convert_inner)]
+    #[schema(nullable = false)]
     pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
     /// Not for use via the API; for ISO mDL verification over BLE using the
     /// SDK.
     #[into(with_fn = convert_inner)]
+    #[schema(nullable = false)]
     pub iso_mdl_engagement: Option<String>,
     /// Specify the transport protocol to use for credential exchange. Check
     /// the `transport` object of the configuration for supported options and
     /// reference the configuration instance.
     #[into(with_fn = convert_inner)]
-    #[schema(example = "HTTP")]
+    #[schema(example = json!(["HTTP"]), nullable = false)]
     pub transport: Option<Vec<String>>,
 }
 
