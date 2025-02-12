@@ -295,8 +295,12 @@ pub(crate) async fn share_credential(
 
         For list-based revocation methods, the signed lists and DID documents
         containing the public keys used to verify the lists are cached. Use the
-        `bypassCache[]` parameter to force the system to retrieve these entities
+        `forceRefresh` parameter to force the system to retrieve these entities
         from the external resource.
+
+        For mdocs and credentials issued with LVVC revocation, use the `forceRefresh`
+        parameter to force the system to request a new MSO (for mdocs) or a new
+        LVVC with the latest status.
 
         Related guide: [Caching](../api/caching.mdx)
     "},

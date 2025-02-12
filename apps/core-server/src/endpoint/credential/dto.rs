@@ -315,7 +315,13 @@ pub struct SuspendCredentialRequestRestDTO {
 pub struct CredentialRevocationCheckResponseRestDTO {
     pub credential_id: Uuid,
     pub status: CredentialStateRestEnum,
+    /// Indicates whether the system performed the check as planned.
+    /// When using `forceRefresh`, indicates whether the external resource
+    /// was reached and gave a response. For mdocs this value will only be
+    /// `true` if a new MSO was issued.
     pub success: bool,
+    /// Explanation of why the revocation check failed. Only present
+    /// when `success: false`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
