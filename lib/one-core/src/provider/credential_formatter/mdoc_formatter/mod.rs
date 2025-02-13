@@ -62,7 +62,7 @@ mod test;
 static LAYOUT_NAMESPACE: &str = "ch.procivis.mdoc_layout.1";
 
 pub struct MdocFormatter {
-    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+    did_mdl_validator: Arc<dyn DidMdlValidator>,
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -87,7 +87,7 @@ pub struct Params {
 impl MdocFormatter {
     pub fn new(
         params: Params,
-        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+        did_mdl_validator: Arc<dyn DidMdlValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         base_url: Option<String>,
@@ -101,16 +101,6 @@ impl MdocFormatter {
             base_url,
             datatype_config,
         }
-    }
-
-    fn did_mdl_validator(&self) -> Result<Arc<dyn DidMdlValidator>, FormatterError> {
-        Ok(self
-            .did_mdl_validator
-            .as_ref()
-            .ok_or(FormatterError::CouldNotExtractPresentation(
-                "Missing did mdl validator".to_owned(),
-            ))?
-            .clone())
     }
 
     fn extract_presentation_context(
@@ -302,14 +292,24 @@ impl CredentialFormatter for MdocFormatter {
         token: &str,
         _verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(self.key_algorithm_provider.as_ref(), token, true)
+        extract_credentials_internal(
+            &*self.key_algorithm_provider,
+            &*self.did_mdl_validator,
+            token,
+            true,
+        )
     }
 
     async fn extract_credentials_unverified(
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(self.key_algorithm_provider.as_ref(), token, false)
+        extract_credentials_internal(
+            &*self.key_algorithm_provider,
+            &*self.did_mdl_validator,
+            token,
+            false,
+        )
     }
 
     async fn format_presentation(
@@ -380,8 +380,6 @@ impl CredentialFormatter for MdocFormatter {
 
         let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
-        let did_mdl_validator = self.did_mdl_validator()?;
-
         let mut current_issuer_did = None;
 
         // can we have more than one document?
@@ -389,7 +387,7 @@ impl CredentialFormatter for MdocFormatter {
             let issuer_signed = document.issuer_signed;
 
             let issuer_did = extract_did_from_x5chain_header(
-                Some(did_mdl_validator.as_ref()),
+                Some(self.did_mdl_validator.as_ref()),
                 &issuer_signed.issuer_auth,
             )?;
 
@@ -732,11 +730,17 @@ async fn try_verify_issuer_auth(
 
 fn extract_credentials_internal(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    did_mdl_validator: &dyn DidMdlValidator,
     token: &str,
     verify: bool,
 ) -> Result<DetailCredential, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
-    let issuer_did = extract_did_from_x5chain_header(None, &issuer_signed.issuer_auth)?;
+    let validator = if verify {
+        Some(did_mdl_validator)
+    } else {
+        None
+    };
+    let issuer_did = extract_did_from_x5chain_header(validator, &issuer_signed.issuer_auth)?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
     let Some(namespaces) = issuer_signed.name_spaces else {
         return Err(FormatterError::Failed(

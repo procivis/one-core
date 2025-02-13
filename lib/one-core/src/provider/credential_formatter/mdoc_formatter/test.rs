@@ -274,7 +274,7 @@ async fn test_credential_formatting_ok_for_es256() {
 
     let formatter = MdocFormatter::new(
         params,
-        Some(Arc::new(MockDidMdlValidator::new())),
+        Arc::new(MockDidMdlValidator::new()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -480,7 +480,7 @@ async fn test_unverified_credential_extraction() {
 
     let formatter = MdocFormatter::new(
         params,
-        Some(Arc::new(MockDidMdlValidator::new())),
+        Arc::new(MockDidMdlValidator::new()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -681,11 +681,17 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
             move |_| Some(key_algorithm.clone())
         });
 
+    let mut did_mdl_validator = MockDidMdlValidator::new();
+    did_mdl_validator
+        .expect_validate_certificate()
+        .once()
+        .returning(|_| Ok(()));
+
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
         params,
-        Some(Arc::new(MockDidMdlValidator::new())),
+        Arc::new(did_mdl_validator),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -732,7 +738,7 @@ fn test_credential_schema_id() {
     };
     let formatter = MdocFormatter::new(
         params,
-        Some(Arc::new(MockDidMdlValidator::new())),
+        Arc::new(MockDidMdlValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         None,

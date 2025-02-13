@@ -393,9 +393,15 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         let params = format_config
                             .get(name)
                             .expect("MDOC formatter params are mandatory");
+
+                        let did_mdl_validator = providers
+                            .did_mdl_validator
+                            .as_ref()
+                            .expect("Did mdl validator is mandatory");
+
                         Arc::new(MdocFormatter::new(
                             params,
-                            providers.did_mdl_validator.clone(),
+                            did_mdl_validator.clone(),
                             did_method_provider.clone(),
                             key_algorithm_provider.clone(),
                             providers.core_base_url.clone(),
