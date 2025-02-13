@@ -28,7 +28,7 @@ strum.workspace          = true
 thiserror.workspace      = true
 time.workspace           = true
 tokio                    = { workspace = true, features = ['rt-multi-thread'] }
-uniffi                   = { workspace = true, features = ["cli", "tokio"] }
+uniffi                   = { workspace = true, features = ["tokio"] }
 url.workspace            = true
 uuid.workspace           = true
 

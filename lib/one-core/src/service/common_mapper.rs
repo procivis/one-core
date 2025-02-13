@@ -41,9 +41,9 @@ impl<const MAX: usize> TryFrom<String> for BoundedB64Image<MAX> {
                 "Missing base64 data".to_string(),
             ));
         };
-        let mut buf = [0; MAX];
+        let mut buf = vec![0; MAX];
         // Decode will fail if data is longer than `buf` (`MAX` bytes)
-        Base64::decode(&mut buf, base64, None).map_err(|err| {
+        Base64::decode(buf.as_mut_slice(), base64, None).map_err(|err| {
             ValidationError::InvalidImage(format!("Failed to decode base64 data: {err}"))
         })?;
         Ok(BoundedB64Image(img))

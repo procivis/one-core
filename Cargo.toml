@@ -50,7 +50,7 @@ time               = { version = "0.3", features = ["macros", "serde"] }
 tokio              = { version = "1.38" }
 tracing            = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-uniffi             = { version = "0.28", features = ["cli"] }
+uniffi             = { version = "0.29" }
 url                = { version = "2.5", features = ["serde"] }
 urlencoding        = { version = "2.1" }
 utoipa             = { version = "5.3", default-features = false, features = ["macros"] }
@@ -60,9 +60,9 @@ wiremock           = { version = "0.6" }
 zeroize            = { version = "1.8" }
 
 [workspace.lints.clippy]
-redundant_clone               = "warn"
-dbg_macro                     = "deny"
-print_stderr                  = "deny"
+dbg_macro       = "deny"
+print_stderr    = "deny"
+redundant_clone = "warn"
 
 [patch.crates-io]
 json-ld = { git = "https://github.com/procivis/json-ld", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }

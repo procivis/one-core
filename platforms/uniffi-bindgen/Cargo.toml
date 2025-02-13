@@ -7,7 +7,7 @@ publish           = false
 version           = "0.1.0"
 
 [dependencies]
-uniffi.workspace = true
+uniffi = { workspace = true, features = ["cli"] }
 
 [lints]
 workspace = true
