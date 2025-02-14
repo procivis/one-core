@@ -79,6 +79,7 @@ mod m20250117_085705_remove_state_tables;
 mod m20250124_152249_update_status_list_enum_variant_in_remote_entity_type_table;
 mod m20250203_143642_add_rse_storage_type;
 mod m20250205_120540_rename_bitstring_status_list_type_in_revocation_list_table;
+mod m20250214_102249_missing_remote_entity_type;
 
 pub struct Migrator;
 
@@ -159,6 +160,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250124_152249_update_status_list_enum_variant_in_remote_entity_type_table::Migration),
             Box::new(m20250203_143642_add_rse_storage_type::Migration),
             Box::new(m20250205_120540_rename_bitstring_status_list_type_in_revocation_list_table::Migration),
+            Box::new(m20250214_102249_missing_remote_entity_type::Migration),
         ]
     }
 }
