@@ -24,9 +24,9 @@ use crate::model::did::{Did, DidType};
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionRequestedCredentialResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -512,6 +512,7 @@ pub struct ProvedCredential {
     pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
+#[derive(Debug)]
 pub struct AcceptProofResult {
     pub proved_credentials: Vec<ProvedCredential>,
     pub proved_claims: Vec<Claim>,

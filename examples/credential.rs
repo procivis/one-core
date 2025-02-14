@@ -2,12 +2,15 @@ use std::sync::Arc;
 
 use one_core::model::key::Key;
 use one_core::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialSchemaData, Issuer, PublishedClaim,
+    CredentialData, CredentialPresentation, Issuer, PublishedClaim,
 };
+use one_core::provider::credential_formatter::nest_claims;
+use one_core::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::model::{CredentialFormat, KeyAlgorithmType, StorageType};
 use one_dev_services::service::error::CredentialServiceError;
 use one_dev_services::OneDevCore;
+use reqwest::Url;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -50,62 +53,52 @@ async fn main() -> Result<(), CredentialServiceError> {
 
     let credential_service = core.credential_service;
 
-    let credential_data = CredentialData {
-        id: Some("https://test-credential".to_string()),
-        issuance_date: OffsetDateTime::now_utc(),
-        valid_for: Duration::days(365),
-        claims: vec![
-            PublishedClaim {
-                key: "root/array/0".into(),
-                value: "array_item1".into(),
-                datatype: Some("STRING".to_owned()),
-                array_item: true,
-            },
-            PublishedClaim {
-                key: "root/array/1".into(),
-                value: "array_item2".into(),
-                datatype: Some("STRING".to_owned()),
-                array_item: true,
-            },
-            PublishedClaim {
-                key: "root/nested".into(),
-                value: "nested_item".into(),
-                datatype: Some("STRING".to_owned()),
-                array_item: false,
-            },
-            PublishedClaim {
-                key: "root_item".into(),
-                value: "root_item".into(),
-                datatype: Some("STRING".to_owned()),
-                array_item: false,
-            },
-        ],
-        issuer_did: issuer_did.as_str().parse().map(Issuer::Url).unwrap(),
-        status: vec![],
-        schema: CredentialSchemaData {
-            id: None,
-            r#type: None,
-            context: None,
-            name: "".to_string(),
-            metadata: None,
+    let claims = vec![
+        PublishedClaim {
+            key: "root/array/0".into(),
+            value: "array_item1".into(),
+            datatype: Some("STRING".to_owned()),
+            array_item: true,
         },
-        name: None,
-        description: None,
-        terms_of_use: vec![],
-        evidence: vec![],
-        related_resource: None,
-    };
+        PublishedClaim {
+            key: "root/array/1".into(),
+            value: "array_item2".into(),
+            datatype: Some("STRING".to_owned()),
+            array_item: true,
+        },
+        PublishedClaim {
+            key: "root/nested".into(),
+            value: "nested_item".into(),
+            datatype: Some("STRING".to_owned()),
+            array_item: false,
+        },
+        PublishedClaim {
+            key: "root_item".into(),
+            value: "root_item".into(),
+            datatype: Some("STRING".to_owned()),
+            array_item: false,
+        },
+    ];
 
     // We use the same did as issuer and holder in this example
-    let holder_did = issuer_did;
+    let holder_did = issuer_did.clone();
+    let issuer = Issuer::Url(issuer_did.into_url());
+    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .with_id(holder_did.clone().into_url());
+
+    let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+        .with_id("https://test-credential".parse::<Url>().unwrap())
+        .with_valid_from(OffsetDateTime::now_utc())
+        .with_valid_until(OffsetDateTime::now_utc() + Duration::days(365));
+
+    let credential_data = CredentialData {
+        vcdm,
+        claims,
+        holder_did: Some(holder_did),
+    };
 
     let token = credential_service
-        .format_credential(
-            credential_data,
-            CredentialFormat::SdJwt,
-            holder_did,
-            issuer_key,
-        )
+        .format_credential(credential_data, CredentialFormat::SdJwt, issuer_key)
         .await
         .expect("Credential formatting failed");
     println!("SDJWT token = {token}\n");
@@ -132,7 +125,7 @@ async fn main() -> Result<(), CredentialServiceError> {
         .expect("Credential extraction failed");
     println!("Parsed presentation content: {:#?}\n", details);
 
-    let values = details.claims.values;
+    let values = details.claims.claims;
 
     assert_eq!(
         values.get("root_item").unwrap().as_str().unwrap(),

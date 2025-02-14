@@ -659,7 +659,8 @@ async fn test_accept_credential() {
                 issuer_did: None,
                 subject: None,
                 claims: CredentialSubject {
-                    values: HashMap::from([("key1".to_string(), json!("key1_value"))]),
+                    claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),
+                    id: None,
                 },
                 status: vec![],
                 credential_schema: Some(

@@ -1,14 +1,13 @@
+use std::collections::HashMap;
+
 use anyhow::Context;
 use shared_types::DidValue;
 
-use super::model::{VCContent, VerifiableCredential, VC, VP};
-use crate::provider::credential_formatter::common::nest_claims;
+use super::model::{VcClaim, VerifiableCredential, VP};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential,
-    Issuer, Presentation,
+    CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, Presentation,
 };
 
 impl From<CredentialSchemaData> for Option<CredentialSchema> {
@@ -25,47 +24,27 @@ impl From<CredentialSchemaData> for Option<CredentialSchema> {
     }
 }
 
-pub(super) fn format_vc(
-    credential: CredentialData,
-    issuer: Issuer,
-    additional_context: Vec<ContextType>,
-    additional_types: Vec<String>,
-    embed_layout_properties: bool,
-) -> Result<VC, FormatterError> {
-    let types = vec!["VerifiableCredential".to_owned()]
-        .into_iter()
-        .chain(additional_types)
-        .collect();
-
-    // Strip layout (whole metadata as it only contains layout)
-    let mut credential_schema: Option<CredentialSchema> = credential.schema.into();
-    if let Some(schema) = &mut credential_schema {
-        if !embed_layout_properties {
-            schema.metadata = None;
-        }
-    }
-
-    Ok(VC {
-        vc: VCContent {
-            context: additional_context,
-            r#type: types,
-            id: credential.id,
-            issuer: Some(issuer),
-            credential_subject: CredentialSubject {
-                values: nest_claims(credential.claims)?.into_iter().collect(),
-            },
-            credential_status: credential.status,
-            credential_schema,
-            valid_from: None,
-            valid_until: None,
-        },
-    })
-}
-
-impl TryFrom<Jwt<VC>> for DetailCredential {
+impl TryFrom<Jwt<VcClaim>> for DetailCredential {
     type Error = anyhow::Error;
 
-    fn try_from(jwt: Jwt<VC>) -> Result<Self, Self::Error> {
+    fn try_from(jwt: Jwt<VcClaim>) -> Result<Self, Self::Error> {
+        let credential_subject = jwt
+            .payload
+            .custom
+            .vc
+            .credential_subject
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("JWT missing credential subject"))?;
+
+        // credential subject id should be present in the payload or the vcdm
+        let subject = jwt
+            .payload
+            .subject
+            .as_deref()
+            .or(credential_subject.id.as_ref().map(|url| url.as_str()))
+            .and_then(|did| DidValue::from_did_url(did).ok());
+
         Ok(Self {
             id: jwt.payload.jwt_id,
             valid_from: jwt.payload.issued_at,
@@ -73,13 +52,18 @@ impl TryFrom<Jwt<VC>> for DetailCredential {
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
             issuer_did: jwt.payload.issuer.map(|did| did.parse()).transpose()?,
-            subject: jwt
-                .payload
-                .subject
-                .and_then(|did| DidValue::from_did_url(did).ok()),
-            claims: jwt.payload.custom.vc.credential_subject,
+            subject,
+            claims: CredentialSubject {
+                id: credential_subject.id,
+                claims: HashMap::from_iter(credential_subject.claims),
+            },
             status: jwt.payload.custom.vc.credential_status,
-            credential_schema: jwt.payload.custom.vc.credential_schema,
+            credential_schema: jwt
+                .payload
+                .custom
+                .vc
+                .credential_schema
+                .and_then(|s| s.into_iter().next()),
         })
     }
 }

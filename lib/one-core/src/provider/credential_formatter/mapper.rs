@@ -1,18 +1,25 @@
+use indexmap::IndexSet;
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::fmt::Urn;
 
 use super::common::map_claims;
+use super::model::{CredentialData, CredentialSchema};
+use super::nest_claims;
+use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::RevocationType;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus, Issuer,
+    CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::error::ServiceError;
 
 pub fn credential_data_from_credential_detail_response(
     credential: CredentialDetailResponseDTO,
-    core_base_url: &str,
+    holder_did: DidValue,
+    _core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
+    context: IndexSet<ContextType>,
 ) -> Result<CredentialData, ServiceError> {
     let issuer_did = credential.issuer_did.map(|did| did.did).ok_or_else(|| {
         ServiceError::MappingError(format!(
@@ -21,55 +28,66 @@ pub fn credential_data_from_credential_detail_response(
         ))
     })?;
 
-    let issuance_date = OffsetDateTime::now_utc();
-    let valid_for = time::Duration::days(365 * 2);
+    let flat_claims = map_claims(&credential.claims, false);
+    let claims = nest_claims(flat_claims.clone())?;
+
+    let valid_from = OffsetDateTime::now_utc();
+    let valid_until = valid_from + time::Duration::days(365 * 2);
 
     // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
     // We also include it if LLVC credentials are used for revocation
-    let id = if credential.schema.format.eq("JSON_LD_BBSPLUS")
+    let credential_id = if credential.schema.format.eq("JSON_LD_BBSPLUS")
         || credential_status
             .iter()
             .any(|status| status.r#type == RevocationType::Lvvc.to_string())
     {
-        Some(Urn::from_uuid(credential.id.into()).to_string())
+        Urn::from_uuid(credential.id.into())
+            .to_string()
+            .parse()
+            .ok()
     } else {
         None
     };
 
+    let mut credential_subject = VcdmCredentialSubject::new(claims);
+    credential_subject.id = credential.holder_did.map(|did| did.did.into_url());
+
+    let layout_metadata = match (
+        credential.schema.layout_properties,
+        credential.schema.layout_type,
+    ) {
+        (Some(l), Some(t)) => Some(CredentialSchemaMetadata {
+            layout_properties: l.into(),
+            layout_type: t,
+        }),
+        _ => None,
+    };
+    let credential_schema = CredentialSchema {
+        id: credential.schema.schema_id,
+        r#type: credential.schema.schema_type.to_string(),
+        metadata: layout_metadata,
+    };
+
+    // todo: Uncomment this to add the credential context after bbs+ is fixed
+    // let mut context = context;
+    // let credential_schema_context: Url =
+    //     format!("{core_base_url}/ssi/context/v1/{}", credential.schema.id)
+    //         .parse()
+    //         .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
+    // context.insert(ContextType::Url(credential_schema_context));
+
+    let issuer = Issuer::Url(issuer_did.into_url());
+    let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+        .add_credential_schema(credential_schema)
+        .with_valid_from(valid_from)
+        .with_valid_until(valid_until);
+    vcdm.id = credential_id;
+    vcdm.context.extend(context);
+    vcdm.credential_status.extend(credential_status);
+
     Ok(CredentialData {
-        id,
-        issuance_date,
-        valid_for,
-        claims: map_claims(&credential.claims, false),
-        issuer_did: issuer_did
-            .as_str()
-            .parse()
-            .map(Issuer::Url)
-            .map_err(|_| ServiceError::ValidationError("Issuer DID is not URL".to_string()))?,
-        status: credential_status,
-        schema: CredentialSchemaData {
-            id: Some(credential.schema.schema_id),
-            r#type: Some(credential.schema.schema_type.to_string()),
-            context: Some(format!(
-                "{core_base_url}/ssi/context/v1/{}",
-                credential.schema.id
-            )),
-            name: credential.schema.name,
-            metadata: match (
-                credential.schema.layout_properties,
-                credential.schema.layout_type,
-            ) {
-                (Some(l), Some(t)) => Some(CredentialSchemaMetadata {
-                    layout_properties: l.into(),
-                    layout_type: t,
-                }),
-                _ => None,
-            },
-        },
-        name: None,
-        description: None,
-        terms_of_use: vec![],
-        evidence: vec![],
-        related_resource: None,
+        vcdm,
+        claims: flat_claims,
+        holder_did: Some(holder_did),
     })
 }

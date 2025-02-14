@@ -1,8 +1,9 @@
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
+use crate::provider::credential_formatter::vcdm::VcdmCredential;
 
 #[derive(Debug)]
 pub struct CredentialIssueRequest {
-    pub credential: LdCredential,
+    pub credential: VcdmCredential,
     pub options: CredentialIssueOptions,
 }
 
@@ -20,7 +21,7 @@ pub struct CredentialIssueResponse {
 
 #[derive(Debug)]
 pub struct CredentialVerifiyRequest {
-    pub verifiable_credential: LdCredential,
+    pub verifiable_credential: VcdmCredential,
     pub options: VerifyOptions,
 }
 
@@ -35,7 +36,7 @@ pub struct CredentialVerifyResponse {
     pub checks: Vec<String>,
     pub warnings: Vec<String>,
     pub errors: Vec<String>,
-    pub credential: LdCredential,
+    pub credential: VcdmCredential,
 }
 
 #[derive(Debug)]

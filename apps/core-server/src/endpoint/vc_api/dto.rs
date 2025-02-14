@@ -1,4 +1,5 @@
 use one_core::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
+use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::did_method::dto::DidDocumentDTO;
 use one_core::service::vc_api::dto::{
     CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
@@ -15,7 +16,7 @@ use crate::endpoint::ssi::dto::DidDocumentRestDTO;
 #[serde(rename_all = "camelCase")]
 #[into(CredentialIssueRequest)]
 pub struct CredentialIssueRequestDTO {
-    pub credential: LdCredential,
+    pub credential: VcdmCredential,
     pub options: IssueOptionsDTO,
 }
 
@@ -40,7 +41,7 @@ pub struct CredentialIssueResponseDTO {
 #[serde(rename_all = "camelCase")]
 #[into(CredentialVerifiyRequest)]
 pub struct CredentialVerifyRequestDTO {
-    pub verifiable_credential: LdCredential,
+    pub verifiable_credential: VcdmCredential,
     pub options: VerifyOptionsDTO,
 }
 
@@ -60,7 +61,7 @@ pub struct CredentialVerifyResponseDTO {
     pub checks: Vec<String>,
     pub warnings: Vec<String>,
     pub errors: Vec<String>,
-    pub credential: LdCredential,
+    pub credential: VcdmCredential,
 }
 
 #[derive(Debug, Serialize, Deserialize, Into)]
