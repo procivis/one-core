@@ -1738,7 +1738,7 @@ pub(super) fn credentials_supported_mdoc(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let credential_configuration = OpenID4VCICredentialConfigurationData {
-        wallet_storage_type: schema.wallet_storage_type.map(Into::into),
+        wallet_storage_type: schema.wallet_storage_type,
         format: map_core_to_oidc_format(&schema.format)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
         // We only take objects from the initial structure as arrays are not allowed on the first level

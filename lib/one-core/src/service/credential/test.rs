@@ -3235,7 +3235,7 @@ fn test_validate_create_exchange_protocol_disabled_operation() {
     assert!(matches!(
         result,
         Err(ServiceError::Validation(
-            ValidationError::InvalidExchangeOperation { .. }
+            ValidationError::InvalidExchangeOperation
         ))
     ));
 }

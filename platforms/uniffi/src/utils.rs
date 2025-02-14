@@ -29,11 +29,7 @@ pub fn into_id<T: From<Uuid>>(input: &str) -> Result<T, ServiceError> {
 }
 
 pub fn into_id_opt<T: From<Uuid>>(input: Option<String>) -> Result<Option<T>, ServiceError> {
-    Ok(input
-        .as_deref()
-        .map(into_id::<T>)
-        .transpose()?
-        .map(Into::into))
+    input.as_deref().map(into_id::<T>).transpose()
 }
 
 pub fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {

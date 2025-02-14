@@ -1075,7 +1075,7 @@ async fn handle_credential_invitation(
     Ok(InvitationResponseDTO::Credential {
         interaction_id,
         credentials: vec![credential],
-        tx_code: tx_code.map(Into::into),
+        tx_code,
     })
 }
 
