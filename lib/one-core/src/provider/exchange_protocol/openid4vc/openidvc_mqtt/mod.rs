@@ -70,7 +70,7 @@ pub struct OpenId4VcMqtt {
     config: Arc<CoreConfig>,
     params: ConfigParams,
     openid_params: OpenID4VCParams,
-    handle: Mutex<Option<SubscriptionHandle>>,
+    handle: Mutex<HashMap<ProofId, SubscriptionHandle>>,
 
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -112,7 +112,7 @@ impl OpenId4VcMqtt {
             config,
             params,
             openid_params,
-            handle: Mutex::new(None),
+            handle: Mutex::new(HashMap::new()),
             interaction_repository,
             did_repository,
             key_algorithm_provider,
@@ -348,10 +348,6 @@ impl OpenId4VcMqtt {
             .send(encrypted)
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        if let Some(handle) = self.handle.lock().await.take() {
-            handle.task_handle.abort();
-        }
 
         Ok(())
     }
@@ -650,6 +646,7 @@ impl OpenId4VcMqtt {
             reject,
         };
 
+        let proof_id = proof.id;
         let handle = tokio::spawn(
             mqtt_verifier_flow(
                 topics,
@@ -667,9 +664,12 @@ impl OpenId4VcMqtt {
             .in_current_span(),
         );
 
-        let old = self.handle.lock().await.replace(SubscriptionHandle {
-            task_handle: handle,
-        });
+        let old = self.handle.lock().await.insert(
+            proof_id,
+            SubscriptionHandle {
+                task_handle: handle,
+            },
+        );
 
         if let Some(old) = old {
             old.task_handle.abort()
@@ -678,8 +678,8 @@ impl OpenId4VcMqtt {
         Ok(())
     }
 
-    pub async fn retract_proof(&self) {
-        if let Some(old) = self.handle.lock().await.take() {
+    pub async fn retract_proof(&self, proof_id: &ProofId) {
+        if let Some(old) = self.handle.lock().await.remove(proof_id) {
             old.task_handle.abort()
         };
     }

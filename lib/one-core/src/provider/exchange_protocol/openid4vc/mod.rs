@@ -566,7 +566,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                                 "MQTT not configured for retract proof".to_string(),
                             )
                         })?
-                        .retract_proof()
+                        .retract_proof(&proof.id)
                         .await;
                 }
             }
