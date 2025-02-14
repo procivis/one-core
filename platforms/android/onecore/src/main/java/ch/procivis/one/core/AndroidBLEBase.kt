@@ -13,9 +13,21 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 abstract class AndroidBLEBase(val context: Context, logTag: String) {
-    val MAX_MTU = 512
-    val CLIENT_CONFIG_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
-    val TAG = logTag
+    companion object {
+        const val MAX_MTU = 512
+        val CLIENT_CONFIG_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+        /**
+         * shared synchronization object
+         * @sample
+         *   synchronized(lock) {
+         *     // prevent data-races here
+         *   }
+         */
+        val lock = Any()
+    }
+
+    protected val TAG = logTag
 
     private var bluetoothManager: BluetoothManager? = null
     protected fun getBluetoothManager(): BluetoothManager {
@@ -92,14 +104,6 @@ abstract class AndroidBLEBase(val context: Context, logTag: String) {
         }
     }
 
-    /**
-     * shared synchronization object
-     * @sample
-     *   synchronized(lock) {
-     *     // prevent data-races here
-     *   }
-     */
-    protected val lock = Any()
 
     protected class Promise<in T>(private val continuation: Continuation<T>) {
         @Volatile

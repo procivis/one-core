@@ -15,6 +15,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import java.lang.ref.WeakReference
 import java.util.UUID
 import kotlin.math.min
 
@@ -129,7 +130,10 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
     private val mSubscriptions: MutableMap<DeviceCharacteristicAddress, SubscriptionData> =
         HashMap()
-    private val mSubscribingInProgress: MutableMap<DeviceCharacteristicAddress, Pair<Promise<Unit>, Boolean>> =
+
+    private data class SubscribingEntry(val promise: Promise<Unit>, val enable: Boolean) {}
+
+    private val mSubscribingInProgress: MutableMap<DeviceCharacteristicAddress, SubscribingEntry> =
         HashMap()
 
     @SuppressLint("MissingPermission")
@@ -161,7 +165,6 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         }
     }
 
-    @SuppressLint("MissingPermission")
     private fun setCharacteristicSubscriptionCCCD(
         characteristic: BluetoothGattCharacteristic,
         address: DeviceCharacteristicAddress,
@@ -171,27 +174,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
     ) {
         val descriptor = characteristic.getDescriptor(CLIENT_CONFIG_DESCRIPTOR)
         if (descriptor != null) {
-            val value = if (enable) {
-                BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            } else {
-                BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val statusCode = gatt.writeDescriptor(descriptor, value)
-                if (statusCode != BluetoothStatusCodes.SUCCESS) {
-                    throw statusCodeException(
-                        statusCode, address.service, address.characteristic
-                    )
-                }
-            } else {
-                if (!descriptor.setValue(value) || !gatt.writeDescriptor(descriptor)) {
-                    throw BleException.Unknown("Failed to write Characteristic descriptor")
-                }
-            }
-
-            mSubscribingInProgress[address] = Pair(promise, enable)
-
+            setSubscriptionCCCD(descriptor, address, gatt, enable, promise)
         } else {
             if (enable) {
                 mSubscriptions[address] = SubscriptionData()
@@ -201,6 +184,36 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
             }
             promise.succeed(Unit)
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun setSubscriptionCCCD(
+        descriptor: BluetoothGattDescriptor,
+        address: DeviceCharacteristicAddress,
+        gatt: BluetoothGatt,
+        enable: Boolean,
+        promise: Promise<Unit>
+    ) {
+        val value = if (enable) {
+            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        } else {
+            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val statusCode = gatt.writeDescriptor(descriptor, value)
+            if (statusCode != BluetoothStatusCodes.SUCCESS) {
+                throw statusCodeException(
+                    statusCode, address.service, address.characteristic
+                )
+            }
+        } else {
+            if (!descriptor.setValue(value) || !gatt.writeDescriptor(descriptor)) {
+                throw BleException.Unknown("Failed to write Characteristic descriptor")
+            }
+        }
+
+        mSubscribingInProgress[address] = SubscribingEntry(promise, enable)
     }
 
     override suspend fun getNotifications(
@@ -426,245 +439,18 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         }
     }
 
-    @SuppressLint("MissingPermission")
     private fun getConnectCallback(
         peripheral: String,
         connectPromise: Promise<UShort>
     ): BluetoothGattCallback {
-        var mMTU: UShort? = null
-        var connected = false
-        var servicesDiscovered = false
-
-        return object : BluetoothGattCallback() {
-            override fun onConnectionStateChange(
-                gatt: BluetoothGatt, status: Int, newState: Int
-            ) {
-                super.onConnectionStateChange(gatt, status, newState)
-                Log.d(TAG, "onConnectionStateChange: $newState")
-
-                if (status != BluetoothGatt.GATT_SUCCESS) {
-                    gatt.close()
-                    connectPromise.fail(BleException.Unknown("Connection failure, status: $status, state: $newState"))
-                    return
-                }
-
-                when (newState) {
-                    BluetoothProfile.STATE_CONNECTED -> {
-                        Log.d(TAG, "Device connected")
-                        connected = true
-                        if (mMTU != null) {
-                            connectPromise.succeed(mMTU!!)
-                        } else if (!gatt.discoverServices()) {
-                            connectPromise.fail(BleException.Unknown("Couldn't discover services"))
-                        }
-                    }
-
-                    BluetoothProfile.STATE_DISCONNECTED -> {
-                        Log.d(TAG, "Device disconnected")
-                        connectPromise.fail(BleException.DeviceNotConnected(peripheral))
-                        synchronized(lock) {
-                            onDeviceDisconnected(peripheral)
-                        }
-                        gatt.close()
-                    }
-                }
-            }
-
-            override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-                super.onServicesDiscovered(gatt, status)
-                Log.d(TAG, "onServicesDiscovered: $status")
-
-                if (status != BluetoothGatt.GATT_SUCCESS) {
-                    gatt.close()
-                    connectPromise.fail(BleException.Unknown("Service discovery failure, status: $status"))
-                    return
-                }
-
-                servicesDiscovered = true
-
-                if (mMTU != null) {
-                    connectPromise.succeed(mMTU!!)
-                } else if (!gatt.requestMtu(MAX_MTU)) {
-                    connectPromise.fail(BleException.Unknown("Couldn't request MTU"))
-                }
-            }
-
-            override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
-                super.onMtuChanged(gatt, mtu, status)
-                Log.d(TAG, "onMtuChanged: $mtu")
-
-                if (status != BluetoothGatt.GATT_SUCCESS) {
-                    gatt.close()
-                    connectPromise.fail(BleException.Unknown("MTU request failure, status: $status"))
-                    return
-                }
-
-                val m = min(mtu, MAX_MTU).toUShort()
-                if (connected && servicesDiscovered) {
-                    connectPromise.succeed(m)
-                } else {
-                    mMTU = m
-                }
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onCharacteristicChanged(
-                gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic
-            ) {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    super.onCharacteristicChanged(gatt, characteristic)
-                    onCharacteristicChanged(
-                        gatt, characteristic, characteristic.value
-                    )
-                }
-            }
-
-            override fun onCharacteristicChanged(
-                gatt: BluetoothGatt,
-                characteristic: BluetoothGattCharacteristic,
-                value: ByteArray
-            ) {
-                Log.d(TAG, "onCharacteristicChanged: " + characteristic.uuid)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    super.onCharacteristicChanged(gatt, characteristic, value)
-                }
-
-                val address = DeviceCharacteristicAddress(
-                    gatt.device.address, characteristic.service.uuid, characteristic.uuid
-                )
-                synchronized(lock) {
-                    val data = mSubscriptions[address]
-                    if (data != null) {
-                        data.messages.add(value)
-                        val p = data.promise
-                        if (p != null) {
-                            p.succeed(data.messages.toList())
-                            data.promise = null
-                            data.messages.clear()
-                        }
-                    }
-                }
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onCharacteristicRead(
-                gatt: BluetoothGatt?,
-                characteristic: BluetoothGattCharacteristic,
-                status: Int
-            ) {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    super.onCharacteristicRead(gatt, characteristic, status)
-                    onCharacteristicRead(
-                        gatt!!, characteristic, characteristic.value, status
-                    )
-                }
-            }
-
-            override fun onCharacteristicRead(
-                gatt: BluetoothGatt,
-                characteristic: BluetoothGattCharacteristic,
-                data: ByteArray,
-                status: Int
-            ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    super.onCharacteristicRead(gatt, characteristic, data, status);
-                }
-
-                Log.d(TAG, "onCharacteristicRead: ${characteristic.uuid}, status: $status")
-                val address = DeviceCharacteristicAddress(
-                    gatt.device.address, characteristic.service.uuid, characteristic.uuid
-                )
-
-                synchronized(lock) {
-                    val readInProgress = mReadInProgress.remove(address)
-                    if (readInProgress != null) {
-                        when (status) {
-                            BluetoothGatt.GATT_SUCCESS -> {
-                                readInProgress.succeed(data)
-                            }
-
-                            else -> {
-                                readInProgress.fail(BleException.Unknown("Characteristic Read failure, status: $status"))
-                            }
-                        }
-                    }
-                }
-            }
-
-            override fun onCharacteristicWrite(
-                gatt: BluetoothGatt,
-                characteristic: BluetoothGattCharacteristic,
-                status: Int
-            ) {
-                super.onCharacteristicWrite(gatt, characteristic, status);
-                Log.d(TAG, "onCharacteristicWrite: ${characteristic.uuid}, status: $status")
-
-                val address = DeviceCharacteristicAddress(
-                    gatt.device.address, characteristic.service.uuid, characteristic.uuid
-                )
-
-                synchronized(lock) {
-                    val writeInProgress = mWriteInProgress.remove(address)
-                    if (writeInProgress != null) {
-                        when (status) {
-                            BluetoothGatt.GATT_SUCCESS -> {
-                                writeInProgress.succeed(Unit)
-                            }
-
-                            else -> {
-                                writeInProgress.fail(BleException.Unknown("Characteristic write failure, status: $status"))
-                            }
-                        }
-                    }
-                }
-            }
-
-            override fun onDescriptorWrite(
-                gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int
-            ) {
-                super.onDescriptorWrite(gatt, descriptor, status);
-                Log.d(TAG, "onDescriptorWrite: ${descriptor.uuid}, status: $status")
-
-                val subscription = DeviceCharacteristicAddress(
-                    gatt.device.address,
-                    descriptor.characteristic.service.uuid,
-                    descriptor.characteristic.uuid
-                )
-
-                synchronized(lock) {
-                    val subscribingInProgress = mSubscribingInProgress.remove(subscription)
-                    if (subscribingInProgress != null) {
-                        when (status) {
-                            BluetoothGatt.GATT_SUCCESS -> {
-                                if (subscribingInProgress.second) {
-                                    mSubscriptions[subscription] = SubscriptionData()
-                                } else {
-                                    val ongoing = mSubscriptions.remove(subscription)
-                                    if (ongoing != null) {
-                                        ongoing.promise?.fail(BleException.BroadcastNotStarted())
-                                    }
-                                }
-
-                                subscribingInProgress.first.succeed(Unit)
-                            }
-
-                            else -> {
-                                subscribingInProgress.first.fail(
-                                    BleException.Unknown("Descriptor write failure, status: $status")
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        return ConnectCallback(WeakReference(this), peripheral, connectPromise)
     }
 
     private fun onDeviceDisconnected(deviceAddress: String) {
         mConnections.remove(deviceAddress)
 
         mSubscribingInProgress.filter { it.key.deviceAddress == deviceAddress }.forEach {
-            it.value.first.fail(BleException.DeviceNotConnected(deviceAddress))
+            it.value.promise.fail(BleException.DeviceNotConnected(deviceAddress))
             mSubscribingInProgress.remove(it.key)
         }
 
@@ -705,6 +491,243 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         return when (writeType) {
             CharacteristicWriteTypeBindingEnum.WITH_RESPONSE -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             CharacteristicWriteTypeBindingEnum.WITHOUT_RESPONSE -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        }
+    }
+
+    private class ConnectCallback(
+        private val parent: WeakReference<AndroidBLECentral>,
+        private val peripheral: String,
+        private val connectPromise: Promise<UShort>,
+    ) : BluetoothGattCallback() {
+        private var mMTU: UShort? = null
+        private var connected = false
+        private var servicesDiscovered = false
+        private val TAG: String = parent.get()?.TAG.toString()
+
+        @SuppressLint("MissingPermission")
+        override fun onConnectionStateChange(
+            gatt: BluetoothGatt, status: Int, newState: Int
+        ) {
+            super.onConnectionStateChange(gatt, status, newState)
+            Log.d(TAG, "onConnectionStateChange: $newState")
+
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                gatt.close()
+                connectPromise.fail(BleException.Unknown("Connection failure, status: $status, state: $newState"))
+                return
+            }
+
+            when (newState) {
+                BluetoothProfile.STATE_CONNECTED -> {
+                    Log.d(TAG, "Device connected")
+                    connected = true
+                    if (mMTU != null) {
+                        connectPromise.succeed(mMTU!!)
+                    } else if (!gatt.discoverServices()) {
+                        connectPromise.fail(BleException.Unknown("Couldn't discover services"))
+                    }
+                }
+
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    Log.d(TAG, "Device disconnected")
+                    connectPromise.fail(BleException.DeviceNotConnected(peripheral))
+                    synchronized(lock) {
+                        parent.get()?.onDeviceDisconnected(peripheral)
+                    }
+                    gatt.close()
+                }
+            }
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            super.onServicesDiscovered(gatt, status)
+            Log.d(TAG, "onServicesDiscovered: $status")
+
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                gatt.close()
+                connectPromise.fail(BleException.Unknown("Service discovery failure, status: $status"))
+                return
+            }
+
+            servicesDiscovered = true
+
+            if (mMTU != null) {
+                connectPromise.succeed(mMTU!!)
+            } else if (!gatt.requestMtu(MAX_MTU)) {
+                connectPromise.fail(BleException.Unknown("Couldn't request MTU"))
+            }
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            super.onMtuChanged(gatt, mtu, status)
+            Log.d(TAG, "onMtuChanged: $mtu")
+
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                gatt.close()
+                connectPromise.fail(BleException.Unknown("MTU request failure, status: $status"))
+                return
+            }
+
+            val m = min(mtu, MAX_MTU).toUShort()
+            if (connected && servicesDiscovered) {
+                connectPromise.succeed(m)
+            } else {
+                mMTU = m
+            }
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic
+        ) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                super.onCharacteristicChanged(gatt, characteristic)
+                onCharacteristicChanged(
+                    gatt, characteristic, characteristic.value
+                )
+            }
+        }
+
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
+            Log.d(TAG, "onCharacteristicChanged: " + characteristic.uuid)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                super.onCharacteristicChanged(gatt, characteristic, value)
+            }
+
+            val address = DeviceCharacteristicAddress(
+                gatt.device.address, characteristic.service.uuid, characteristic.uuid
+            )
+            synchronized(lock) {
+                val data = parent.get()?.mSubscriptions?.get(address)
+                if (data != null) {
+                    data.messages.add(value)
+                    val p = data.promise
+                    if (p != null) {
+                        p.succeed(data.messages.toList())
+                        data.promise = null
+                        data.messages.clear()
+                    }
+                }
+            }
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                super.onCharacteristicRead(gatt, characteristic, status)
+                onCharacteristicRead(
+                    gatt!!, characteristic, characteristic.value, status
+                )
+            }
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            data: ByteArray,
+            status: Int
+        ) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                super.onCharacteristicRead(gatt, characteristic, data, status);
+            }
+
+            Log.d(TAG, "onCharacteristicRead: ${characteristic.uuid}, status: $status")
+            val address = DeviceCharacteristicAddress(
+                gatt.device.address, characteristic.service.uuid, characteristic.uuid
+            )
+
+            synchronized(lock) {
+                val readInProgress = parent.get()?.mReadInProgress?.remove(address)
+                if (readInProgress != null) {
+                    when (status) {
+                        BluetoothGatt.GATT_SUCCESS -> {
+                            readInProgress.succeed(data)
+                        }
+
+                        else -> {
+                            readInProgress.fail(BleException.Unknown("Characteristic Read failure, status: $status"))
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            super.onCharacteristicWrite(gatt, characteristic, status);
+            Log.d(TAG, "onCharacteristicWrite: ${characteristic.uuid}, status: $status")
+
+            val address = DeviceCharacteristicAddress(
+                gatt.device.address, characteristic.service.uuid, characteristic.uuid
+            )
+
+            synchronized(lock) {
+                val writeInProgress = parent.get()?.mWriteInProgress?.remove(address)
+                if (writeInProgress != null) {
+                    when (status) {
+                        BluetoothGatt.GATT_SUCCESS -> {
+                            writeInProgress.succeed(Unit)
+                        }
+
+                        else -> {
+                            writeInProgress.fail(BleException.Unknown("Characteristic write failure, status: $status"))
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int
+        ) {
+            super.onDescriptorWrite(gatt, descriptor, status);
+            Log.d(TAG, "onDescriptorWrite: ${descriptor.uuid}, status: $status")
+
+            val subscription = DeviceCharacteristicAddress(
+                gatt.device.address,
+                descriptor.characteristic.service.uuid,
+                descriptor.characteristic.uuid
+            )
+
+            synchronized(lock) {
+                parent.get()?.mSubscribingInProgress?.remove(subscription)
+                    ?.let { subscribingInProgress ->
+                        when (status) {
+                            BluetoothGatt.GATT_SUCCESS -> {
+                                parent.get()?.mSubscriptions?.let { mSubscriptions ->
+                                    if (subscribingInProgress.enable) {
+                                        mSubscriptions[subscription] = SubscriptionData()
+                                    } else {
+                                        mSubscriptions.remove(subscription)?.let { ongoing ->
+                                            ongoing.promise?.fail(BleException.BroadcastNotStarted())
+                                        }
+                                    }
+                                }
+
+                                subscribingInProgress.promise.succeed(Unit)
+                            }
+
+                            else -> {
+                                subscribingInProgress.promise.fail(
+                                    BleException.Unknown("Descriptor write failure, status: $status")
+                                )
+                            }
+                        }
+                    }
+            }
         }
     }
 }
