@@ -7,7 +7,7 @@ use p256::elliptic_curve::SecretKey;
 use p256::pkcs8::DecodePublicKey;
 use p256::{AffinePoint, EncodedPoint, NistP256, PublicKey};
 use rand::thread_rng;
-use zeroize::Zeroizing;
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::encryption::EncryptionError;
 use crate::jwe::{decode_b64, RemoteJwk};
@@ -85,7 +85,7 @@ impl ES256Signer {
         ))
     }
 
-    pub fn generate_key_pair() -> (Zeroizing<Vec<u8>>, Vec<u8>) {
+    pub fn generate_key_pair() -> (SecretSlice<u8>, Vec<u8>) {
         let sk = SigningKey::random(&mut thread_rng());
         let pk = VerifyingKey::from(&sk);
         (
@@ -94,17 +94,17 @@ impl ES256Signer {
         )
     }
 
-    pub fn private_key_as_jwk(secret_key: &[u8]) -> Result<Zeroizing<String>, SignerError> {
-        let secret_key = p256::SecretKey::from_slice(secret_key)
+    pub fn private_key_as_jwk(secret_key: &SecretSlice<u8>) -> Result<SecretString, SignerError> {
+        let secret_key = p256::SecretKey::from_slice(secret_key.expose_secret())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
-        Ok(secret_key.to_jwk_string())
+        Ok(SecretString::from(secret_key.to_jwk_string().to_string()))
     }
 
     pub fn shared_secret_p256(
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
         recipient_jwk: &RemoteJwk,
-    ) -> Result<Zeroizing<Vec<u8>>, EncryptionError> {
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
         let x = decode_b64(recipient_jwk.x.as_str(), "x coordinate")?;
         let y_encoded = recipient_jwk
             .y
@@ -122,18 +122,14 @@ impl ES256Signer {
                 "Invalid JWK coordinates".to_string(),
             ))?;
 
-        let secret_key: SecretKey<NistP256> = SecretKey::from_slice(private_key)
+        let secret_key: SecretKey<NistP256> = SecretKey::from_slice(private_key.expose_secret())
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
 
-        let shared_secret: [u8; 32] =
+        let shared_secret: Vec<u8> =
             diffie_hellman(secret_key.to_nonzero_scalar(), peer_affine_point)
                 .raw_secret_bytes()
-                .as_slice()
-                .try_into()
-                .map_err(|e| {
-                    EncryptionError::Crypto(format!("failed to convert to array: {}", e))
-                })?;
-        Ok(Zeroizing::new(shared_secret.to_vec()))
+                .to_vec();
+        Ok(SecretSlice::from(shared_secret))
     }
 
     pub fn bytes_as_jwk(public_key: &[u8]) -> Result<RemoteJwk, EncryptionError> {
@@ -149,9 +145,9 @@ impl Signer for ES256Signer {
         &self,
         input: &[u8],
         public_key: &[u8],
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
     ) -> Result<Vec<u8>, SignerError> {
-        let sk = SigningKey::from_bytes(private_key.into()).map_err(|err| {
+        let sk = SigningKey::from_bytes(private_key.expose_secret().into()).map_err(|err| {
             SignerError::CouldNotExtractPublicKey(format!("couldn't initialize secret key: {err}"))
         })?;
         let pk = VerifyingKey::from(&sk);

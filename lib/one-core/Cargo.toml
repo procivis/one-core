@@ -46,6 +46,7 @@ rdf-types                = { version = "0.15" }
 regex.workspace          = true
 reqwest.workspace        = true
 rumqttc                  = { version = "0.24", default-features = false, features = ["use-native-tls"] }
+secrecy                  = { workspace = true}
 serde.workspace          = true
 serde_json.workspace     = true
 serde_qs.workspace       = true
@@ -72,7 +73,6 @@ uuid                     = { workspace = true, features = ["serde"] }
 x25519-dalek             = { version = "2.0", features = ["reusable_secrets", "serde"] }
 x509-parser              = { version = "0.16", features = ["verify"] }
 yasna                    = { version = "0.5" }
-zeroize                  = { workspace = true, features = ["serde"] }
 zip                      = { version = "2.1" }
 
 [dev-dependencies]

@@ -15,6 +15,7 @@ use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
+use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -65,7 +66,7 @@ async fn test_get_trust_entity_by_did_success() {
 
 struct FakeEs256Signer {
     public_key: Vec<u8>,
-    private_key: Vec<u8>,
+    private_key: SecretSlice<u8>,
     key_id: String,
 }
 
@@ -149,7 +150,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         .clone();
     let signer = FakeEs256Signer {
         public_key,
-        private_key: private_key.to_vec(),
+        private_key,
         key_id: key_id.clone(),
     };
     let bearer_token = Jwt::<BearerTokenPayload> {

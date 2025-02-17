@@ -1,6 +1,6 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use ed25519_compact::{x25519, PublicKey};
-use zeroize::Zeroizing;
+use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::encryption::EncryptionError;
 use crate::jwe::{decode_b64, RemoteJwk};
@@ -10,7 +10,7 @@ pub struct EDDSASigner {}
 
 pub struct KeyPair {
     pub public: Vec<u8>,
-    pub private: Zeroizing<Vec<u8>>,
+    pub private: SecretSlice<u8>,
 }
 
 impl EDDSASigner {
@@ -35,8 +35,8 @@ impl EDDSASigner {
         }
     }
 
-    pub fn parse_private_key(secret_key: &[u8]) -> Result<KeyPair, SignerError> {
-        let secret_key = ed25519_compact::SecretKey::from_slice(secret_key)
+    pub fn parse_private_key(secret_key: &SecretSlice<u8>) -> Result<KeyPair, SignerError> {
+        let secret_key = ed25519_compact::SecretKey::from_slice(secret_key.expose_secret())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
         let public_key = secret_key.public_key();
 
@@ -55,9 +55,9 @@ impl EDDSASigner {
     }
 
     pub fn private_key_into_x25519(
-        private_key_eddsa: &[u8],
-    ) -> Result<Zeroizing<Vec<u8>>, SignerError> {
-        let key = ed25519_compact::SecretKey::from_slice(private_key_eddsa)
+        private_key_eddsa: &SecretSlice<u8>,
+    ) -> Result<SecretSlice<u8>, SignerError> {
+        let key = ed25519_compact::SecretKey::from_slice(private_key_eddsa.expose_secret())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
         let key = ed25519_compact::x25519::SecretKey::from_ed25519(&key)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
@@ -65,11 +65,12 @@ impl EDDSASigner {
     }
 
     pub fn shared_secret_x25519(
-        private_key_ed25519: &[u8],
+        private_key_ed25519: &SecretSlice<u8>,
         recipient_jwk: &RemoteJwk,
-    ) -> Result<Zeroizing<Vec<u8>>, EncryptionError> {
-        let secret_key = ed25519_compact::SecretKey::from_slice(private_key_ed25519)
-            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
+        let secret_key =
+            ed25519_compact::SecretKey::from_slice(private_key_ed25519.expose_secret())
+                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
         let secret_x25519 = x25519::SecretKey::from_ed25519(&secret_key)
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
 
@@ -78,7 +79,7 @@ impl EDDSASigner {
         let shared_secret = *peer_pub_key.dh(&secret_x25519).map_err(|e| {
             EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e))
         })?;
-        Ok(Zeroizing::new(shared_secret.to_vec()))
+        Ok(SecretSlice::from(shared_secret.to_vec()))
     }
 
     pub fn ed25519_to_x25519_jwk(public_key_ed25519: &[u8]) -> Result<RemoteJwk, EncryptionError> {
@@ -141,9 +142,9 @@ impl Signer for EDDSASigner {
         &self,
         input: &[u8],
         public_key: &[u8],
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
     ) -> Result<Vec<u8>, SignerError> {
-        let ed25519_kp = ed25519_compact::KeyPair::from_slice(private_key)
+        let ed25519_kp = ed25519_compact::KeyPair::from_slice(private_key.expose_secret())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         if ed25519_kp.pk.as_slice() != public_key {

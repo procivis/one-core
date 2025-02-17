@@ -3,8 +3,8 @@ use std::fs::File;
 use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
 use one_crypto::encryption::{decrypt_file, encrypt_file};
+use secrecy::SecretString;
 use tempfile::{tempfile_in, NamedTempFile};
-use zeroize::Zeroizing;
 
 use super::dto::{BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO};
 use super::utils::{
@@ -21,7 +21,7 @@ impl BackupService {
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     pub async fn create_backup(
         &self,
-        password: Zeroizing<String>,
+        password: SecretString,
         output_path: String,
     ) -> Result<BackupCreateResponseDTO, ServiceError> {
         let output_dir = dir_path_from_file_path(&output_path)?;
@@ -87,7 +87,7 @@ impl BackupService {
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     pub async fn unpack_backup(
         &self,
-        password: Zeroizing<String>,
+        password: SecretString,
         input_path: String,
         output_path: String,
     ) -> Result<MetadataDTO, ServiceError> {

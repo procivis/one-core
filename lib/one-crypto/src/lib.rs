@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use hmac::Hmac;
+use secrecy::SecretSlice;
 use sha2::Sha256;
 use thiserror::Error;
 
@@ -118,7 +119,7 @@ pub trait Signer: Send + Sync {
         &self,
         input: &[u8],
         public_key: &[u8],
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
     ) -> Result<Vec<u8>, SignerError>;
 
     /// Direct signature verification.

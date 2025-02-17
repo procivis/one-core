@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use maplit::{hashmap, hashset};
 use mockall::predicate::eq;
+use secrecy::SecretSlice;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -96,8 +97,8 @@ async fn test_presentation_reject_ok() {
         continuation_task_id,
         organisation_id,
         session: Some(MdocBleHolderInteractionSessionData {
-            sk_device: SkDevice::new([0; 32]),
-            sk_reader: SkReader::new([0; 32]),
+            sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
+            sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
             device_request_bytes,
             device_address: "test address".to_string(),
             mtu: 512,
@@ -203,8 +204,8 @@ async fn test_get_presentation_definition_ok() {
         continuation_task_id: Uuid::new_v4(),
         organisation_id,
         session: Some(MdocBleHolderInteractionSessionData {
-            sk_device: SkDevice::new([0; 32]),
-            sk_reader: SkReader::new([0; 32]),
+            sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
+            sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
             device_request_bytes,
             device_address: "test address".to_string(),
             mtu: 512,

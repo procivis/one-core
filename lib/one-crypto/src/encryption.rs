@@ -4,6 +4,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use chacha20poly1305::aead::{Aead, Nonce};
 use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit};
 use rand::rngs::OsRng;
+use secrecy::{ExposeSecret, SecretString};
 
 use super::password::{derive_key, derive_key_with_salt};
 
@@ -16,13 +17,13 @@ pub enum EncryptionError {
 }
 
 pub fn encrypt_file(
-    password: &str,
+    password: &SecretString,
     output_path: &str,
     mut input_file: impl Read,
 ) -> Result<(), EncryptionError> {
     let key = derive_key(password);
 
-    let cipher = ChaCha20Poly1305::new_from_slice(&key.key)
+    let cipher = ChaCha20Poly1305::new_from_slice(key.key.expose_secret())
         .map_err(|err| EncryptionError::Crypto(err.to_string()))?;
 
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
@@ -44,7 +45,7 @@ pub fn encrypt_file(
 }
 
 pub fn decrypt_file<T: Write + Seek>(
-    password: &str,
+    password: &SecretString,
     mut encrypted_file: impl Read,
     output_file: &mut T,
 ) -> Result<(), EncryptionError> {
@@ -53,7 +54,7 @@ pub fn decrypt_file<T: Write + Seek>(
 
     let key = derive_key_with_salt(password, &key_salt);
 
-    let cipher = ChaCha20Poly1305::new_from_slice(key.as_ref())
+    let cipher = ChaCha20Poly1305::new_from_slice(key.expose_secret())
         .map_err(|err| EncryptionError::Crypto(err.to_string()))?;
 
     let mut nonce = Nonce::<ChaCha20Poly1305>::default();

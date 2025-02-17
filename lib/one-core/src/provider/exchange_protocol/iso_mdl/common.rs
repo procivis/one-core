@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::iter;
 
+use aes_gcm::aead::consts::U32;
+use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit};
 use anyhow::{anyhow, bail, Context};
@@ -8,10 +10,10 @@ use coset::iana::{self, EnumI64};
 use coset::{AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label};
 use hkdf::Hkdf;
 use rand::rngs::OsRng;
+use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey};
-use zeroize::Zeroize;
 
 use super::device_engagement::DeviceEngagement;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
@@ -223,22 +225,40 @@ impl KeyAgreement<EReaderKey> {
     }
 }
 
-#[derive(Debug, Clone, Zeroize, Serialize, Deserialize)]
+pub mod secret_slice {
+    use serde::{Deserialize, Deserializer};
+
+    use super::*;
+    pub fn serialize<S: Serializer>(secret: &SecretSlice<u8>, s: S) -> Result<S::Ok, S::Error> {
+        secret.expose_secret().serialize(s)
+    }
+
+    pub fn deserialize<'de, D>(d: D) -> Result<SecretSlice<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data = Vec::<u8>::deserialize(d)?;
+        Ok(SecretSlice::from(data))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkDevice {
-    secret_key: [u8; 32],
+    #[serde(with = "secret_slice")]
+    secret_key: SecretSlice<u8>,
 }
 
 impl SkDevice {
-    pub fn new(secret_key: [u8; 32]) -> Self {
+    pub fn new(secret_key: SecretSlice<u8>) -> Self {
         Self { secret_key }
     }
 
     pub fn encrypt(&self, plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-        encrypt(self.secret_key, plaintext, Self::iv()).context("SkDevice encryption failed")
+        encrypt(&self.secret_key, plaintext, Self::iv()).context("SkDevice encryption failed")
     }
 
     pub fn decrypt(&self, ciphertext: &[u8]) -> anyhow::Result<Vec<u8>> {
-        decrypt(self.secret_key, ciphertext, Self::iv()).context("SkDevice decryption failed")
+        decrypt(&self.secret_key, ciphertext, Self::iv()).context("SkDevice decryption failed")
     }
 
     // we're not using a counter(it's always 1) since we're going to encrypt/decrypt the message only once
@@ -247,22 +267,23 @@ impl SkDevice {
     }
 }
 
-#[derive(Debug, Clone, Zeroize, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkReader {
-    secret_key: [u8; 32],
+    #[serde(with = "secret_slice")]
+    secret_key: SecretSlice<u8>,
 }
 
 impl SkReader {
-    pub fn new(secret_key: [u8; 32]) -> Self {
+    pub fn new(secret_key: SecretSlice<u8>) -> Self {
         Self { secret_key }
     }
 
     pub fn encrypt(&self, plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-        encrypt(self.secret_key, plaintext, Self::iv()).context("SkReader encryption failed")
+        encrypt(&self.secret_key, plaintext, Self::iv()).context("SkReader encryption failed")
     }
 
     pub fn decrypt(&self, ciphertext: &[u8]) -> anyhow::Result<Vec<u8>> {
-        decrypt(self.secret_key, ciphertext, Self::iv()).context("SkReader decryption failed")
+        decrypt(&self.secret_key, ciphertext, Self::iv()).context("SkReader decryption failed")
     }
 
     const fn iv() -> [u8; 12] {
@@ -279,33 +300,41 @@ fn derive_session_keys(
     let salt = Sha256::digest(session_transcript_bytes);
     let hkdf = Hkdf::<Sha256>::new(Some(&salt), z_ab.as_bytes());
 
-    let mut sk_device = [0u8; 32];
-    hkdf.expand(b"SKDevice", &mut sk_device)
+    let mut sk_device = SecretSlice::from(vec![0u8; 32]);
+    hkdf.expand(b"SKDevice", sk_device.expose_secret_mut())
         .context("Failed to expand session key for SKDevice")?;
 
-    let mut sk_reader = [0u8; 32];
-    hkdf.expand(b"SKReader", &mut sk_reader)
+    let mut sk_reader = SecretSlice::from(vec![0u8; 32]);
+    hkdf.expand(b"SKReader", sk_reader.expose_secret_mut())
         .context("Failed to expand session key for SKReader")?;
 
     Ok((SkDevice::new(sk_device), SkReader::new(sk_reader)))
 }
 
-fn encrypt(secret_key: [u8; 32], plaintext: &[u8], nonce: [u8; 12]) -> anyhow::Result<Vec<u8>> {
-    let key = secret_key.into();
+fn encrypt(
+    secret_key: &SecretSlice<u8>,
+    plaintext: &[u8],
+    nonce: [u8; 12],
+) -> anyhow::Result<Vec<u8>> {
+    let key = GenericArray::<u8, U32>::from_slice(secret_key.expose_secret());
     let nonce = nonce.into();
 
-    let ciphertext = Aes256Gcm::new(&key)
+    let ciphertext = Aes256Gcm::new(key)
         .encrypt(&nonce, plaintext)
         .context("Encryption failed")?;
 
     Ok(ciphertext)
 }
 
-fn decrypt(secret_key: [u8; 32], ciphertext: &[u8], nonce: [u8; 12]) -> anyhow::Result<Vec<u8>> {
-    let key = secret_key.into();
+fn decrypt(
+    secret_key: &SecretSlice<u8>,
+    ciphertext: &[u8],
+    nonce: [u8; 12],
+) -> anyhow::Result<Vec<u8>> {
+    let key = GenericArray::<u8, U32>::from_slice(secret_key.expose_secret());
     let nonce = nonce.into();
 
-    let plaintext = Aes256Gcm::new(&key)
+    let plaintext = Aes256Gcm::new(key)
         .decrypt(&nonce, ciphertext)
         .context("Decryption failed")?;
 
@@ -404,8 +433,14 @@ mod test {
             .derive_session_keys(device_pk, b"session_transcript_bytes")
             .unwrap();
 
-        assert_eq!(sk_device1.secret_key, sk_device2.secret_key);
-        assert_eq!(sk_reader1.secret_key, sk_reader2.secret_key);
+        assert_eq!(
+            sk_device1.secret_key.expose_secret(),
+            sk_device2.secret_key.expose_secret()
+        );
+        assert_eq!(
+            sk_reader1.secret_key.expose_secret(),
+            sk_reader2.secret_key.expose_secret()
+        );
     }
 
     #[test]

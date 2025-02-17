@@ -9,9 +9,9 @@ use p256::elliptic_curve::JwkEcKey;
 use p256::NistP256;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
+use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 use crate::encryption::EncryptionError;
 
@@ -77,24 +77,18 @@ impl TryFrom<JwkEcKey> for RemoteJwk {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, ZeroizeOnDrop)]
+#[derive(Debug, Clone, Deserialize)]
 struct PrivateJwk {
-    #[zeroize(skip)]
     pub kty: String,
-    #[zeroize(skip)]
     pub crv: String,
-    #[zeroize(skip)]
-    pub x: String,
-    #[zeroize(skip)]
-    pub y: Option<String>,
-    pub d: String,
+    pub d: SecretString,
 }
 
 /// Construct JWE using AES256GCM encryption
 pub fn build_jwe(
     payload: &[u8],
     header: Header,
-    shared_secret: Zeroizing<Vec<u8>>,
+    shared_secret: SecretSlice<u8>,
     remote_jwk: RemoteJwk,
 ) -> Result<String, EncryptionError> {
     let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyuinfo)
@@ -125,7 +119,7 @@ pub fn build_jwe(
 
     let nonce = Aes256Gcm::generate_nonce(&mut ChaCha20Rng::from_entropy());
     let mut encrypted = payload.to_vec();
-    let cipher = Aes256Gcm::new(GenericArray::from_slice(&*encryption_key));
+    let cipher = Aes256Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
     let tag = cipher
         .encrypt_in_place_detached(&nonce, protected_header_b64.as_bytes(), &mut encrypted)
         .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {}", e)))?;
@@ -174,7 +168,7 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
 
 pub fn decrypt_jwe_payload(
     jwe: &str,
-    private_jwk: Zeroizing<String>,
+    private_jwk: SecretString,
 ) -> Result<Vec<u8>, EncryptionError> {
     let encrypted_jwe = EncryptedJWE::from_str(jwe)?;
     encrypted_jwe.decrypt(private_jwk)
@@ -189,12 +183,12 @@ struct EncryptedJWE {
 }
 
 impl EncryptedJWE {
-    fn decrypt(&self, private_key_jwk: Zeroizing<String>) -> Result<Vec<u8>, EncryptionError> {
-        let private_jwk: PrivateJwk = serde_json::from_str(&private_key_jwk)
+    fn decrypt(&self, private_key_jwk: SecretString) -> Result<Vec<u8>, EncryptionError> {
+        let private_jwk: PrivateJwk = serde_json::from_str(private_key_jwk.expose_secret())
             .map_err(|e| EncryptionError::Crypto(format!("Failed to parse private JWK: {}", e)))?;
 
         let shared_secret = match (private_jwk.kty.as_str(), private_jwk.crv.as_str()) {
-            ("EC", "P-256") => self.derive_shared_secret_p256(private_key_jwk)?,
+            ("EC", "P-256") => self.derive_shared_secret_p256(&private_key_jwk)?,
             ("OKP", "Ed25519") | ("OKP", "X25519") => {
                 self.derive_shared_secret_x25519(&private_jwk)?
             }
@@ -205,9 +199,9 @@ impl EncryptedJWE {
             }
         };
 
-        let encryption_key = self.derive_encryption_key(&*shared_secret)?;
+        let encryption_key = self.derive_encryption_key(&shared_secret)?;
 
-        let cipher = Aes256Gcm::new(GenericArray::from_slice(&*encryption_key));
+        let cipher = Aes256Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
         let mut plaintext = self.payload.clone();
         cipher
             .decrypt_in_place_detached(
@@ -222,9 +216,9 @@ impl EncryptedJWE {
 
     fn derive_shared_secret_p256(
         &self,
-        jwk: Zeroizing<String>,
-    ) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
-        let private_key_jwk: JwkEcKey = serde_json::from_str(&jwk)
+        jwk: &SecretString,
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
+        let private_key_jwk: JwkEcKey = serde_json::from_str(jwk.expose_secret())
             .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWK: {}", e)))?;
         let secret_key = private_key_jwk.to_secret_key::<NistP256>().map_err(|e| {
             EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
@@ -236,21 +230,17 @@ impl EncryptedJWE {
                 EncryptionError::Crypto(format!("Failed to decode JWK to public key: {}", e))
             })?;
 
-        let shared_secret: [u8; 32] =
+        let shared_secret =
             diffie_hellman(&secret_key.to_nonzero_scalar(), peer_pub_key.as_affine())
                 .raw_secret_bytes()
-                .as_slice()
-                .try_into()
-                .map_err(|e| {
-                    EncryptionError::Crypto(format!("failed to convert to array: {}", e))
-                })?;
-        Ok(Zeroizing::new(shared_secret))
+                .to_vec();
+        Ok(SecretSlice::from(shared_secret))
     }
 
     fn derive_shared_secret_x25519(
         &self,
         private_key_jwk: &PrivateJwk,
-    ) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
         let header: JweHeader<RemoteJwk> =
             serde_json::from_slice(&self.protected_header).map_err(|e| {
                 EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
@@ -264,13 +254,13 @@ impl EncryptedJWE {
         let shared_secret = peer_pub_key.dh(&secret_key).map_err(|e| {
             EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e))
         })?;
-        Ok(Zeroizing::new(*shared_secret))
+        Ok(SecretSlice::from(shared_secret.to_vec()))
     }
 
     fn derive_encryption_key(
         &self,
-        shared_secret: &[u8],
-    ) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+        shared_secret: &SecretSlice<u8>,
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
         let header: JweHeader<RemoteJwk> = serde_json::from_slice(&self.protected_header)
             .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
 
@@ -282,10 +272,10 @@ impl EncryptedJWE {
 }
 
 fn derive_encryption_key_aes256gcm(
-    shared_secret: &[u8],
+    shared_secret: &SecretSlice<u8>,
     apu: &[u8],
     apv: &[u8],
-) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+) -> Result<SecretSlice<u8>, EncryptionError> {
     const ALG: &[u8] = b"A256GCM";
     const KEY_LENGTH: u32 = 256;
 
@@ -298,20 +288,25 @@ fn derive_encryption_key_aes256gcm(
     other_info.extend(apv);
     other_info.extend(KEY_LENGTH.to_be_bytes());
 
-    let mut encryption_key = Zeroizing::new([0; 32]);
-    concat_kdf::derive_key_into::<sha2::Sha256>(shared_secret, &other_info, &mut *encryption_key)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to derive encryption key: {}", e)))?;
+    let mut encryption_key = SecretSlice::from(vec![0u8; 32]);
+    concat_kdf::derive_key_into::<sha2::Sha256>(
+        shared_secret.expose_secret(),
+        &other_info,
+        encryption_key.expose_secret_mut(),
+    )
+    .map_err(|e| EncryptionError::Crypto(format!("Failed to derive encryption key: {}", e)))?;
     Ok(encryption_key)
 }
 
 fn x25519_secret_key_from_jwk(jwk: &PrivateJwk) -> Result<x25519::SecretKey, EncryptionError> {
-    let d = decode_b64(jwk.d.as_str(), "private key value d")?;
+    let d = SecretSlice::from(decode_b64(jwk.d.expose_secret(), "private key value d")?);
 
     match jwk.crv.as_str() {
         "Ed25519" => {
-            let ed25519_key = ed25519_compact::SecretKey::from_slice(&d).map_err(|e| {
-                EncryptionError::Crypto(format!("Failed to create ed25519 key: {}", e))
-            })?;
+            let ed25519_key =
+                ed25519_compact::SecretKey::from_slice(d.expose_secret()).map_err(|e| {
+                    EncryptionError::Crypto(format!("Failed to create ed25519 key: {}", e))
+                })?;
             x25519::SecretKey::from_ed25519(&ed25519_key).map_err(|e| {
                 EncryptionError::Crypto(format!(
                     "Failed to convert ed25519 key to x25519 key: {}",
@@ -319,7 +314,7 @@ fn x25519_secret_key_from_jwk(jwk: &PrivateJwk) -> Result<x25519::SecretKey, Enc
                 ))
             })
         }
-        "X25519" => x25519::SecretKey::from_slice(&d)
+        "X25519" => x25519::SecretKey::from_slice(d.expose_secret())
             .map_err(|e| EncryptionError::Crypto(format!("Failed to create x25519 key: {}", e))),
         crv => Err(EncryptionError::Crypto(format!(
             "unsupported crv \"{crv}\""
@@ -433,7 +428,7 @@ mod test {
         //     y: Some("d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU".to_string()),
         // };
 
-        let shared_secret: Zeroizing<Vec<u8>> = Zeroizing::new(vec![
+        let shared_secret = SecretSlice::from(vec![
             185, 127, 8, 220, 210, 43, 60, 110, 151, 231, 212, 11, 160, 247, 208, 50, 2, 70, 29,
             59, 74, 15, 220, 210, 56, 58, 108, 68, 29, 73, 222, 66,
         ]);
@@ -471,7 +466,7 @@ mod test {
         //     y: None,
         // };
 
-        let shared_secret: Zeroizing<Vec<u8>> = Zeroizing::new(vec![
+        let shared_secret = SecretSlice::from(vec![
             15, 180, 14, 191, 235, 127, 224, 178, 119, 167, 9, 251, 183, 199, 13, 60, 54, 14, 104,
             238, 55, 240, 60, 67, 165, 233, 126, 97, 200, 236, 182, 114,
         ]);

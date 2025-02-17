@@ -6,7 +6,7 @@ use one_core::service::backup::dto::{
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_dto_mapper::{convert_inner, From};
-use zeroize::Zeroizing;
+use secrecy::SecretString;
 
 use super::credential::CredentialDetailBindingDTO;
 use super::did::DidListItemBindingDTO;
@@ -25,7 +25,7 @@ impl OneCoreBinding {
         let core = self.use_core().await?;
         Ok(core
             .backup_service
-            .create_backup(Zeroizing::new(password), output_path)
+            .create_backup(SecretString::from(password), output_path)
             .await?
             .into())
     }
@@ -82,7 +82,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             core.backup_service
                 .unpack_backup(
-                    Zeroizing::new(password),
+                    SecretString::from(password),
                     input_path,
                     self.backup_db_path.clone(),
                 )

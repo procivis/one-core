@@ -8,6 +8,7 @@ use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::model::{CredentialFormat, KeyAlgorithmType, StorageType};
 use one_dev_services::service::error::CredentialServiceError;
 use one_dev_services::OneDevCore;
+use secrecy::ExposeSecret;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -32,7 +33,7 @@ async fn main() -> Result<(), CredentialServiceError> {
         public_key: key_pair.public,
         name: "My New Key".to_owned(),
         //Encryption is disabled so key_reference just holds private key
-        key_reference: key_pair.private.to_vec(),
+        key_reference: key_pair.private.expose_secret().to_vec(),
         storage_type: StorageType::Internal.to_string(),
         key_type: KeyAlgorithmType::Es256.to_string(),
         organisation: None,

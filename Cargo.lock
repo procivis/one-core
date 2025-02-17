@@ -1072,6 +1072,7 @@ dependencies = [
  "rand",
  "reqwest 0.12.9",
  "sea-orm",
+ "secrecy",
  "sentry",
  "serde",
  "serde_json",
@@ -1601,11 +1602,11 @@ dependencies = [
  "one-core",
  "one-dev-services",
  "reqwest 0.12.9",
+ "secrecy",
  "shared-types",
  "time",
  "tokio",
  "uuid",
- "zeroize",
 ]
 
 [[package]]
@@ -3694,6 +3695,7 @@ dependencies = [
  "rstest",
  "rumqttc",
  "rusty-fork",
+ "secrecy",
  "serde",
  "serde_json",
  "serde_qs",
@@ -3721,7 +3723,6 @@ dependencies = [
  "x25519-dalek",
  "x509-parser",
  "yasna",
- "zeroize",
  "zip",
 ]
 
@@ -3735,6 +3736,7 @@ dependencies = [
  "one-crypto",
  "one-dto-mapper",
  "reqwest 0.12.9",
+ "secrecy",
  "serde",
  "serde_json",
  "shared-types",
@@ -3748,7 +3750,6 @@ dependencies = [
  "uniffi",
  "url",
  "uuid",
- "zeroize",
 ]
 
 [[package]]
@@ -3769,11 +3770,11 @@ dependencies = [
  "pqc_dilithium",
  "rand",
  "rand_chacha",
+ "secrecy",
  "serde",
  "serde_json",
  "sha2 0.10.8",
  "thiserror 2.0.0",
- "zeroize",
 ]
 
 [[package]]
@@ -3782,11 +3783,11 @@ version = "0.1.0"
 dependencies = [
  "one-core",
  "one-crypto",
+ "secrecy",
  "shared-types",
  "strum",
  "thiserror 2.0.0",
  "time",
- "zeroize",
 ]
 
 [[package]]
@@ -5255,6 +5256,16 @@ dependencies = [
  "pkcs8",
  "serdect",
  "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "secrecy"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e891af845473308773346dc847b2c23ee78fe442e0472ac50e22a18a93d3ae5a"
+dependencies = [
+ "serde",
  "zeroize",
 ]
 
@@ -7601,7 +7612,6 @@ version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 dependencies = [
- "serde",
  "zeroize_derive",
 ]
 

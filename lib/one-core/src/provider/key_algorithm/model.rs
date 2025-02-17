@@ -1,7 +1,7 @@
 //! `struct`s for key algorithm provider.
 
+use secrecy::SecretSlice;
 use serde::Serialize;
-use zeroize::Zeroizing;
 
 use crate::provider::key_algorithm::key::KeyHandle;
 
@@ -17,7 +17,7 @@ pub struct GeneratedKey {
 
     // to be used for DB (Internal key storage)
     pub public: Vec<u8>,
-    pub private: Zeroizing<Vec<u8>>,
+    pub private: SecretSlice<u8>,
 }
 
 #[derive(Serialize, Clone, Default)]

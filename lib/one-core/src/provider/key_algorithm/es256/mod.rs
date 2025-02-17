@@ -7,8 +7,8 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::jwe::RemoteJwk;
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
+use secrecy::{SecretSlice, SecretString};
 use serde::Deserialize;
-use zeroize::Zeroizing;
 
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -81,7 +81,7 @@ impl KeyAlgorithm for Es256 {
     fn reconstruct_key(
         &self,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
@@ -171,12 +171,12 @@ impl Es256PublicKeyHandle {
 }
 
 struct Es256PrivateKeyHandle {
-    private_key: Zeroizing<Vec<u8>>,
+    private_key: SecretSlice<u8>,
     public_key: Vec<u8>,
 }
 
 impl Es256PrivateKeyHandle {
-    fn new(private_key: Zeroizing<Vec<u8>>, public_key: Vec<u8>) -> Self {
+    fn new(private_key: SecretSlice<u8>, public_key: Vec<u8>) -> Self {
         Self {
             private_key,
             public_key,
@@ -208,7 +208,7 @@ impl SignaturePrivateKeyHandle for Es256PrivateKeyHandle {
         ES256Signer {}.sign(message, &self.public_key, &self.private_key)
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         ES256Signer::private_key_as_jwk(&self.private_key)
             .map_err(|e| KeyHandleError::EncodingPrivateJwk(e.to_string()))
     }
@@ -233,7 +233,7 @@ impl PrivateKeyAgreementHandle for Es256PrivateKeyHandle {
     async fn shared_secret(
         &self,
         remote_jwk: &RemoteJwk,
-    ) -> Result<Zeroizing<Vec<u8>>, KeyHandleError> {
+    ) -> Result<SecretSlice<u8>, KeyHandleError> {
         ES256Signer::shared_secret_p256(&self.private_key, remote_jwk)
             .map_err(KeyHandleError::Encryption)
     }

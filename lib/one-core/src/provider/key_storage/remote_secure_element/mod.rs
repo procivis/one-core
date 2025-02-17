@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
+use secrecy::SecretString;
 use shared_types::KeyId;
-use zeroize::Zeroizing;
 
 use super::secure_element::NativeKeyStorage;
 use crate::model::key::{Key, PublicKeyJwk};
@@ -100,7 +100,7 @@ impl SignaturePrivateKeyHandle for RemoteSecureElementKeyHandle {
             .map_err(|error| SignerError::CouldNotSign(error.to_string()))
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         Err(KeyHandleError::EncodingPrivateJwk(
             "unsupported for remote secure element storage".to_string(),
         ))

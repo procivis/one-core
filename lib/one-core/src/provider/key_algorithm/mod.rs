@@ -1,6 +1,6 @@
 use error::KeyAlgorithmError;
 use model::GeneratedKey;
-use zeroize::Zeroizing;
+use secrecy::SecretSlice;
 
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -28,7 +28,7 @@ pub trait KeyAlgorithm: Send + Sync {
     fn reconstruct_key(
         &self,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError>;
 

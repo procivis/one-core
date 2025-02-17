@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::{Signer, SignerError};
+use secrecy::{SecretSlice, SecretString};
 use serde::Deserialize;
-use zeroize::Zeroizing;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -69,7 +69,7 @@ impl KeyAlgorithm for MlDsa {
     fn reconstruct_key(
         &self,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
@@ -143,12 +143,12 @@ impl MlDsaPublicKeyHandle {
 }
 
 struct MlDsaPrivateKeyHandle {
-    private_key: Zeroizing<Vec<u8>>,
+    private_key: SecretSlice<u8>,
     public_key: Vec<u8>,
 }
 
 impl MlDsaPrivateKeyHandle {
-    fn new(private_key: Zeroizing<Vec<u8>>, public_key: Vec<u8>) -> Self {
+    fn new(private_key: SecretSlice<u8>, public_key: Vec<u8>) -> Self {
         Self {
             private_key,
             public_key,
@@ -188,7 +188,7 @@ impl SignaturePrivateKeyHandle for MlDsaPrivateKeyHandle {
         CRYDI3Signer {}.sign(message, &self.public_key, &self.private_key)
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         todo!()
     }
 }

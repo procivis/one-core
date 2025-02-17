@@ -13,13 +13,13 @@ use mapper::{
 };
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{CryptoProvider, Signer, SignerError};
+use secrecy::SecretString;
 use serde::Deserialize;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
-use zeroize::Zeroizing;
 
 use crate::model::key::{Key, PublicKeyJwk};
 use crate::provider::http_client::HttpClient;
@@ -314,7 +314,7 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
         Ok(decoded)
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         Err(KeyHandleError::EncodingPrivateJwk(
             "unsupported storage type".to_string(),
         ))

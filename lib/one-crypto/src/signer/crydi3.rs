@@ -1,12 +1,12 @@
 use pqc_dilithium::*;
-use zeroize::Zeroizing;
+use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::{Signer, SignerError};
 pub struct CRYDI3Signer {}
 
 pub struct KeyPair {
     pub public: Vec<u8>,
-    pub private: Zeroizing<Vec<u8>>,
+    pub private: SecretSlice<u8>,
 }
 
 impl CRYDI3Signer {
@@ -24,9 +24,10 @@ impl Signer for CRYDI3Signer {
         &self,
         input: &[u8],
         public_key: &[u8],
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
     ) -> Result<Vec<u8>, SignerError> {
-        let key_pair = Keypair::new(public_key.to_vec(), private_key.to_vec())
+        // TODO ONE-4671: KeyPair is _not_ zeroizing!
+        let key_pair = Keypair::new(public_key.to_vec(), private_key.expose_secret().to_vec())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         Ok(key_pair.sign(input).to_vec())

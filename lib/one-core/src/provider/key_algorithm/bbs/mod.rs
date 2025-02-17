@@ -5,7 +5,7 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use one_crypto::SignerError;
-use zeroize::Zeroizing;
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -41,14 +41,14 @@ impl KeyAlgorithm for BBS {
                 public: Arc::new(BBSPublicKeyHandle::new(key_pair.public.clone(), None)),
             }),
             public: key_pair.public,
-            private: Zeroizing::new(key_pair.private.to_vec()),
+            private: SecretSlice::from(key_pair.private.expose_secret().to_vec()),
         })
     }
 
     fn reconstruct_key(
         &self,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
@@ -117,12 +117,12 @@ impl KeyAlgorithm for BBS {
 }
 
 struct BBSPrivateKeyHandle {
-    private_key: Zeroizing<Vec<u8>>,
+    private_key: SecretSlice<u8>,
     public_key: Vec<u8>,
 }
 
 impl BBSPrivateKeyHandle {
-    fn new(private_key: Zeroizing<Vec<u8>>, public_key: Vec<u8>) -> Self {
+    fn new(private_key: SecretSlice<u8>, public_key: Vec<u8>) -> Self {
         Self {
             private_key,
             public_key,
@@ -215,7 +215,7 @@ impl MultiMessageSignaturePrivateKeyHandle for BBSPrivateKeyHandle {
         BBSSigner::sign_bbs(header, messages, &self.private_key, &self.public_key)
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         todo!()
     }
 }

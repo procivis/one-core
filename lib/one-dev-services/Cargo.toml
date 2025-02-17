@@ -16,7 +16,7 @@ shared-types = { version = "0.1.0", path = "../shared-types" }
 strum        = { workspace = true }
 thiserror    = { workspace = true }
 time         = { workspace = true }
-zeroize      = { workspace = true }
+secrecy      = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["strum"]

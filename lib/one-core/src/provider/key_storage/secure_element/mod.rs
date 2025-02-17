@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
+use secrecy::SecretString;
 use serde::Deserialize;
 use shared_types::KeyId;
-use zeroize::Zeroizing;
 
 use crate::model::key::{Key, PublicKeyJwk};
 use crate::provider::key_algorithm::key::{
@@ -119,7 +119,7 @@ impl SignaturePrivateKeyHandle for SecureElementKeyHandle {
             .map_err(|error| SignerError::CouldNotSign(error.to_string()))
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         Err(KeyHandleError::EncodingPrivateJwk(
             "unsupported for remote secure element storage".to_string(),
         ))

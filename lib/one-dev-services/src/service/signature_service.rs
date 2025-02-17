@@ -10,7 +10,7 @@ use std::sync::Arc;
 use one_core::provider::key_algorithm::model::GeneratedKey;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use one_crypto::CryptoProvider;
-use zeroize::Zeroizing;
+use secrecy::SecretSlice;
 
 use super::error::SignatureServiceError;
 use crate::model::KeyAlgorithmType;
@@ -49,7 +49,7 @@ impl SignatureService {
         &self,
         algorithm: &KeyAlgorithmType,
         public_key: &[u8],
-        private_key: Zeroizing<Vec<u8>>,
+        private_key: SecretSlice<u8>,
         data: &[u8],
     ) -> Result<Vec<u8>, SignatureServiceError> {
         let algorithm = self
@@ -63,7 +63,7 @@ impl SignatureService {
 
         let signer = self.crypto_provider.get_signer(&signer_algorithm_id)?;
 
-        Ok(signer.sign(data, public_key, private_key.as_slice())?)
+        Ok(signer.sign(data, public_key, &private_key)?)
     }
 
     pub fn verify(

@@ -20,6 +20,7 @@ one-core                 = { version = "0.1.0", path = "../../lib/one-core", fea
 one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
 reqwest                  = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
+secrecy.workspace        = true
 serde.workspace          = true
 serde_json.workspace     = true
 shared-types             = { version = "0.1.0", path = "../../lib/shared-types" }
@@ -31,7 +32,6 @@ tokio                    = { workspace = true, features = ['rt-multi-thread'] }
 uniffi                   = { workspace = true, features = ["tokio"] }
 url.workspace            = true
 uuid.workspace           = true
-zeroize.workspace        = true
 
 [target.'cfg(target_os = "android")'.dependencies]
 tracing-android    = { version = "0.2" }

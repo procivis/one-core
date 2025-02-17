@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use zeroize::Zeroizing;
+use secrecy::SecretSlice;
 
 use super::error::KeyAlgorithmProviderError;
 use super::KeyAlgorithm;
@@ -34,7 +34,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
         &self,
         algorithm: &str,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError>;
 }
@@ -137,7 +137,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         &self,
         algorithm: &str,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
         let algorithm = self.algorithms.get(algorithm).ok_or(

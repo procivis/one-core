@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use mockall::predicate;
 use mockall::predicate::{always, eq};
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use zeroize::Zeroizing;
 
 use super::InternalKeyProvider;
 use crate::model::key::Key;
@@ -26,7 +27,7 @@ async fn test_internal_generate() {
                 public: Arc::new(MockSignaturePublicKeyHandle::default()),
             }),
             public: vec![1],
-            private: Zeroizing::new(vec![1, 2, 3]),
+            private: SecretSlice::from(vec![1, 2, 3]),
         })
     });
 
@@ -57,7 +58,7 @@ async fn test_internal_generate_with_encryption() {
                 public: Arc::new(MockSignaturePublicKeyHandle::default()),
             }),
             public: vec![1],
-            private: Zeroizing::new(vec![1, 2, 3]),
+            private: SecretSlice::from(vec![1, 2, 3]),
         })
     });
 
@@ -72,7 +73,7 @@ async fn test_internal_generate_with_encryption() {
     let provider = InternalKeyProvider::new(
         Arc::new(mock_key_algorithm_provider),
         Params {
-            encryption: Some("password".to_string()),
+            encryption: Some(SecretString::from("password")),
         },
     );
 
@@ -95,14 +96,16 @@ async fn test_internal_sign_with_encryption() {
                     public: Arc::new(MockSignaturePublicKeyHandle::default()),
                 }),
                 public: vec![1],
-                private: Zeroizing::new(vec![1, 2, 3]),
+                private: SecretSlice::from(vec![1, 2, 3]),
             })
         });
     mock_key_algorithm
         .expect_reconstruct_key()
         .with(
             eq(vec![1]),
-            eq(Some(Zeroizing::new(vec![1, 2, 3]))),
+            predicate::function(|val: &Option<SecretSlice<u8>>| {
+                val.as_ref().unwrap().expose_secret() == vec![1, 2, 3]
+            }),
             always(),
         )
         .return_once(|_, _, _| {
@@ -130,7 +133,7 @@ async fn test_internal_sign_with_encryption() {
     let provider = InternalKeyProvider::new(
         Arc::new(mock_key_algorithm_provider),
         Params {
-            encryption: Some("password".to_string()),
+            encryption: Some(SecretString::from("password")),
         },
     );
 

@@ -9,8 +9,8 @@ use pairing_crypto::bbs::{
     BbsProofGenRequest, BbsProofGenRevealMessageRequest, BbsProofVerifyRequest, BbsSignRequest,
     BbsVerifyRequest,
 };
+use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroizing;
 
 use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
@@ -28,10 +28,10 @@ impl Signer for BBSSigner {
         &self,
         input: &[u8],
         public_key: &[u8],
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
     ) -> Result<Vec<u8>, SignerError> {
-        let secret_key =
-            SecretKey::from_vec(private_key).map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+        let secret_key = SecretKey::from_vec(private_key.expose_secret())
+            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
         let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
@@ -82,7 +82,7 @@ pub struct BbsProofInput {
 
 pub struct GeneratedKey {
     pub public: Vec<u8>,
-    pub private: Zeroizing<Vec<u8>>,
+    pub private: SecretSlice<u8>,
 }
 
 impl BBSSigner {
@@ -203,11 +203,11 @@ impl BBSSigner {
     pub fn sign_bbs(
         header: Vec<u8>,
         messages: Vec<Vec<u8>>,
-        private_key: &[u8],
+        private_key: &SecretSlice<u8>,
         public_key: &[u8],
     ) -> Result<Vec<u8>, SignerError> {
-        let secret_key =
-            SecretKey::from_vec(private_key).map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+        let secret_key = SecretKey::from_vec(private_key.expose_secret())
+            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
         let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 

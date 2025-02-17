@@ -7,8 +7,8 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::jwe::RemoteJwk;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use serde::Deserialize;
-use zeroize::Zeroizing;
 
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -84,7 +84,7 @@ impl KeyAlgorithm for Eddsa {
     fn reconstruct_key(
         &self,
         public_key: &[u8],
-        private_key: Option<Zeroizing<Vec<u8>>>,
+        private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
@@ -182,12 +182,12 @@ impl EddsaPublicKeyHandle {
 }
 
 struct EddsaPrivateKeyHandle {
-    private_key: Zeroizing<Vec<u8>>,
+    private_key: SecretSlice<u8>,
     public_key: Vec<u8>,
 }
 
 impl EddsaPrivateKeyHandle {
-    fn new(private_key: Zeroizing<Vec<u8>>, public_key: Vec<u8>) -> Self {
+    fn new(private_key: SecretSlice<u8>, public_key: Vec<u8>) -> Self {
         Self {
             private_key,
             public_key,
@@ -219,26 +219,26 @@ impl SignaturePrivateKeyHandle for EddsaPrivateKeyHandle {
         EDDSASigner {}.sign(message, &self.public_key, &self.private_key)
     }
 
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         let key_pair = EDDSASigner::parse_private_key(&self.private_key)
             .map_err(|e| KeyHandleError::EncodingPrivateJwk(e.to_string()))?;
 
         let x = Base64UrlSafeNoPadding::encode_to_string(key_pair.public.as_slice())
             .map_err(|err| KeyHandleError::EncodingPrivateJwk(err.to_string()))?;
 
-        let d = Base64UrlSafeNoPadding::encode_to_string(key_pair.private.as_slice())
-            .map(Zeroizing::new)
+        let d = Base64UrlSafeNoPadding::encode_to_string(key_pair.private.expose_secret())
+            .map(SecretString::from)
             .map_err(|err| KeyHandleError::EncodingPrivateJwk(err.to_string()))?;
 
         let jwk = serde_json::json!({
             "kty": "OKP",
             "crv": "Ed25519",
             "x": x,
-            "d": d,
+            "d": d.expose_secret(),
         })
         .to_string();
 
-        Ok(Zeroizing::new(jwk))
+        Ok(SecretString::from(jwk))
     }
 }
 
@@ -247,7 +247,7 @@ impl PrivateKeyAgreementHandle for EddsaPrivateKeyHandle {
     async fn shared_secret(
         &self,
         remote_jwk: &RemoteJwk,
-    ) -> Result<Zeroizing<Vec<u8>>, KeyHandleError> {
+    ) -> Result<SecretSlice<u8>, KeyHandleError> {
         EDDSASigner::shared_secret_x25519(&self.private_key, remote_jwk)
             .map_err(KeyHandleError::Encryption)
     }

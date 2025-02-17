@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use cocoon::MiniCocoon;
 use one_crypto::{utilities, SignerError};
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use shared_types::KeyId;
-use zeroize::Zeroizing;
 
 use crate::model::key::Key;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -23,13 +23,13 @@ mod test;
 
 pub struct InternalKeyProvider {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    encryption_key: Option<[u8; 32]>,
+    encryption_key: Option<SecretSlice<u8>>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub encryption: Option<String>,
+    pub encryption: Option<SecretString>,
 }
 
 impl InternalKeyProvider {
@@ -85,10 +85,8 @@ impl KeyStorage for InternalKeyProvider {
             .key_algorithm_from_name(&key.key_type)
             .ok_or(SignerError::MissingAlgorithm(key.key_type.clone()))?;
 
-        let private_key = Zeroizing::new(
-            decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
-                .map_err(|_| SignerError::CouldNotExtractKeyPair)?,
-        );
+        let private_key = decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
+            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         algorithm
             .reconstruct_key(&key.public_key, Some(private_key), None)
@@ -98,31 +96,34 @@ impl KeyStorage for InternalKeyProvider {
 
 pub fn decrypt_if_password_is_provided(
     data: &[u8],
-    encryption_key: &Option<[u8; 32]>,
-) -> Result<Vec<u8>, KeyStorageError> {
+    encryption_key: &Option<SecretSlice<u8>>,
+) -> Result<SecretSlice<u8>, KeyStorageError> {
     match encryption_key {
-        None => Ok(data.to_vec()),
+        None => Ok(SecretSlice::from(data.to_vec())),
         Some(encryption_key) => {
             // seed is not used for decryption, so passing dummy value
-            let cocoon = MiniCocoon::from_key(encryption_key, &[0u8; 32]);
+            let cocoon = MiniCocoon::from_key(encryption_key.expose_secret(), &[0u8; 32]);
             cocoon
                 .unwrap(data)
+                .map(SecretSlice::from)
                 .map_err(|_| KeyStorageError::PasswordDecryptionFailure)
         }
     }
 }
 
 fn encrypt_if_password_is_provided(
-    buffer: &[u8],
-    encryption_key: &Option<[u8; 32]>,
+    buffer: &SecretSlice<u8>,
+    encryption_key: &Option<SecretSlice<u8>>,
 ) -> Result<Vec<u8>, KeyStorageError> {
     match encryption_key {
-        None => Ok(buffer.to_vec()),
+        None => Ok(buffer.expose_secret().to_vec()),
         Some(encryption_key) => {
-            let mut cocoon =
-                MiniCocoon::from_key(encryption_key, &utilities::generate_random_seed_32());
+            let mut cocoon = MiniCocoon::from_key(
+                encryption_key.expose_secret(),
+                &utilities::generate_random_seed_32(),
+            );
             cocoon
-                .wrap(buffer)
+                .wrap(buffer.expose_secret())
                 .map_err(|_| KeyStorageError::Failed("Encryption failure".to_string()))
         }
     }
@@ -130,6 +131,6 @@ fn encrypt_if_password_is_provided(
 
 /// Simplified KDF
 /// * TODO: use pbkdf2 or similar algorithm to prevent dictionary brute-force password attack
-pub fn convert_passphrase_to_encryption_key(passphrase: &str) -> [u8; 32] {
-    Sha256::digest(passphrase).into()
+pub fn convert_passphrase_to_encryption_key(passphrase: &SecretString) -> SecretSlice<u8> {
+    SecretSlice::from(Sha256::digest(passphrase.expose_secret()).to_vec())
 }

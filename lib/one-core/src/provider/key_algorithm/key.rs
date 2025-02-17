@@ -4,10 +4,9 @@ use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::RemoteJwk;
 use one_crypto::signer::bbs::parse_bbs_input;
 use one_crypto::SignerError;
+use secrecy::{SecretSlice, SecretString};
 use thiserror::Error;
-use zeroize::Zeroizing;
 
-use super::error::KeyAlgorithmError;
 use crate::model::key::PublicKeyJwk;
 
 #[derive(Clone)]
@@ -90,7 +89,7 @@ impl KeyHandle {
         }
     }
 
-    pub fn private_key_as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+    pub fn private_key_as_jwk(&self) -> Result<SecretString, KeyHandleError> {
         match &self {
             KeyHandle::SignatureOnly(value) => value
                 .private()
@@ -197,7 +196,7 @@ pub trait SignaturePublicKeyHandle: Send + Sync {
 #[async_trait::async_trait]
 pub trait SignaturePrivateKeyHandle: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError>;
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError>;
 }
 
 #[derive(Clone)]
@@ -241,15 +240,7 @@ pub trait PrivateKeyAgreementHandle: Send + Sync {
     async fn shared_secret(
         &self,
         remote_jwk: &RemoteJwk,
-    ) -> Result<Zeroizing<Vec<u8>>, KeyHandleError>;
-
-    /// Temporary solution for josekit support
-    /// TODO: prevent exposing private key
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
-        Err(KeyHandleError::EncodingPrivateJwk(
-            KeyAlgorithmError::NotSupported(std::any::type_name::<Self>().to_string()).to_string(),
-        ))
-    }
+    ) -> Result<SecretSlice<u8>, KeyHandleError>;
 }
 
 #[derive(Clone)]
@@ -311,5 +302,5 @@ pub trait MultiMessageSignaturePublicKeyHandle: Send + Sync {
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait MultiMessageSignaturePrivateKeyHandle: Send + Sync {
     fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, SignerError>;
-    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError>;
+    fn as_jwk(&self) -> Result<SecretString, KeyHandleError>;
 }
