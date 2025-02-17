@@ -53,7 +53,7 @@ pub fn decrypt_file<T: Write + Seek>(
 
     let key = derive_key_with_salt(password, &key_salt);
 
-    let cipher = ChaCha20Poly1305::new_from_slice(&key)
+    let cipher = ChaCha20Poly1305::new_from_slice(key.as_ref())
         .map_err(|err| EncryptionError::Crypto(err.to_string()))?;
 
     let mut nonce = Nonce::<ChaCha20Poly1305>::default();

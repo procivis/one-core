@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use super::BackupService;
 use crate::model::backup::{Metadata, UnexportableEntities};
@@ -224,14 +225,14 @@ async fn test_backup_flow() {
     let db_path: String = db.path().to_string_lossy().into();
 
     let unexportable = service
-        .create_backup("foo".into(), zip_path.clone())
+        .create_backup(Zeroizing::new("foo".into()), zip_path.clone())
         .await
         .unwrap();
 
     assert_eq!(unexportable.history_id, history_id);
 
     let metadata = service
-        .unpack_backup("foo".into(), zip_path, db_path)
+        .unpack_backup(Zeroizing::new("foo".into()), zip_path, db_path)
         .await
         .unwrap();
 

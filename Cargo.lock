@@ -3748,6 +3748,7 @@ dependencies = [
  "uniffi",
  "url",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
