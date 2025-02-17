@@ -6,11 +6,9 @@ use crate::provider::credential_formatter::model::DetailCredential;
 // SD-JWT LVVCs have the secured credential as the `id` claim.
 // JSON-LD (BBS+) LVVCs have the LVVC as the credential subject.
 pub fn is_lvvc_credential(credential: &DetailCredential) -> bool {
-    (credential.subject.is_some()
-        || credential.claims.id.is_some()
-        || credential.claims.claims.contains_key("id"))
-        && (credential.claims.claims.contains_key("status")
-            || credential.claims.claims.contains_key("LvvcSubject"))
+    (credential.subject.is_some() || credential.claims.values.contains_key("id"))
+        && (credential.claims.values.contains_key("status")
+            || credential.claims.values.contains_key("LvvcSubject"))
 }
 
 pub fn get_lvvc_credential_subject(credential: &DetailCredential) -> Option<&str> {
@@ -18,14 +16,9 @@ pub fn get_lvvc_credential_subject(credential: &DetailCredential) -> Option<&str
         Some(subject) => Some(subject.as_str()),
         None => credential
             .claims
-            .id
-            .as_ref()
-            .map(|id| id.as_str())
-            .or(credential
-                .claims
-                .claims
-                .get("id")
-                .and_then(|id| id.as_str())),
+            .values
+            .get("id")
+            .and_then(|id| id.as_str()),
     }
 }
 
@@ -62,8 +55,7 @@ mod tests {
         let test_subject_id = "did:example:123".parse().unwrap();
 
         let claims = CredentialSubject {
-            id: None,
-            claims: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
+            values: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
         };
 
         // parsed JSON-LD based LVVCs contain the LVVC as the credential subject
@@ -73,34 +65,24 @@ mod tests {
 
     #[test]
     fn test_is_lvvc_id_in_claims() {
-        let cases = [
-            CredentialSubject {
-                id: None,
-                claims: HashMap::from([
-                    (
-                        "id".to_string(),
-                        serde_json::Value::String(Uuid::new_v4().urn().to_string()),
-                    ),
-                    ("status".to_string(), serde_json::Value::Null),
-                ]),
-            },
-            CredentialSubject {
-                id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
-                claims: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
-            },
-        ];
+        let claims = CredentialSubject {
+            values: HashMap::from([
+                (
+                    "id".to_string(),
+                    serde_json::Value::String(Uuid::new_v4().urn().to_string()),
+                ),
+                ("status".to_string(), serde_json::Value::Null),
+            ]),
+        };
 
-        for claims in cases {
-            // parsed JWT based LVVCs contain the LVVC in the claims array claims
-            let credential = create_test_detail_credential(None, claims);
-            assert!(is_lvvc_credential(&credential));
-        }
+        // parsed JWT based LVVCs contain the LVVC in the claims array claims
+        let credential = create_test_detail_credential(None, claims);
+        assert!(is_lvvc_credential(&credential));
     }
     #[test]
     fn test_is_lvvc_correctly_rejects() {
         let claims = CredentialSubject {
-            id: None,
-            claims: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
+            values: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
         };
 
         // The subject ID is missing both in the claims and the credential subject

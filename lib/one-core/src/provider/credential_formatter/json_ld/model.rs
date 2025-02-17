@@ -10,7 +10,6 @@ use url::Url;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
-use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
 
 pub type VerifiableCredential = Vec<serde_json::Map<String, serde_json::Value>>;
 
@@ -20,6 +19,19 @@ pub static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
     "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld",
     "https://w3id.org/security/data-integrity/v2",
 ];
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+#[serde(untagged)]
+pub enum ContextType {
+    Url(Url),
+    Object(serde_json::Map<String, serde_json::Value>),
+}
+
+impl From<Url> for ContextType {
+    fn from(value: Url) -> Self {
+        Self::Url(value)
+    }
+}
 
 // The main credential
 #[serde_as]
@@ -154,7 +166,7 @@ pub struct LdPresentation {
     pub nonce: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub proof: Option<VcdmProof>,
+    pub proof: Option<LdProof>,
 }
 
 #[serde_as]

@@ -5,51 +5,68 @@ use std::vec;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::signer::bbs::BbsInput;
 use one_crypto::utilities;
+use shared_types::DidValue;
 
 use super::model::{BbsProofComponents, GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 use super::{mapper, JsonLdBbsplus};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
-use crate::provider::credential_formatter::model::{AuthenticationFn, CredentialStatus};
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
+use crate::provider::credential_formatter::json_ld::model::ContextType;
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, CredentialData, CredentialStatus,
+};
 
 #[allow(clippy::too_many_arguments)]
 impl JsonLdBbsplus {
     pub(super) async fn format(
         &self,
-        mut vcdm: VcdmCredential,
+        credential: CredentialData,
+        holder_did: Option<&DidValue>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: AuthenticationFn,
+        embed_layout_properties: bool,
     ) -> Result<String, FormatterError> {
         if auth_fn.get_key_type() != "BBS_PLUS" {
             return Err(FormatterError::BBSOnly);
         }
 
-        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
-            "Missing jwk key id".to_string(),
-        ))?;
-
         // Those fields have to be presented by holder for verifier.
         // It's not the same as 'required claim' for issuance.
         // Here we add everything that is mandatory which is everything except CredentialSubject.
-        let mandatory_pointers = prepare_mandatory_pointers(&vcdm.credential_status);
+        let mandatory_pointers = prepare_mandatory_pointers(&credential.status);
+
+        let mut ld_credential = json_ld::prepare_credential(
+            credential,
+            holder_did,
+            contexts,
+            types,
+            embed_layout_properties,
+        )?;
 
         let hmac_key = utilities::generate_random_seed_32();
 
         // We are getting a string from normalization so we operate on it.
-        let canonical_vcdm = json_ld::canonize_any(&vcdm, self.caching_loader.clone()).await?;
+        let canonical =
+            json_ld::canonize_any(&ld_credential, self.caching_loader.to_owned()).await?;
 
-        let label_map = self.create_label_map(&canonical_vcdm, &hmac_key)?;
+        let identifier_map = self.create_blank_node_identifier_map(&canonical, &hmac_key)?;
 
-        let transformed = self.transform_canonical(&label_map, &canonical_vcdm)?;
+        let transformed = self.transform_canonical(&identifier_map, &canonical)?;
 
         let grouped = self.create_grouped_transformation(&transformed)?;
 
-        let mut proof = VcdmProof::builder()
-            .context(vcdm.context.clone())
-            .proof_purpose("assertionMethod")
-            .cryptosuite("bbs-2023")
-            .verification_method(key_id)
-            .build();
+        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
+            "Missing jwk key id".to_string(),
+        ))?;
+
+        let mut proof = json_ld::prepare_proof_config(
+            "assertionMethod",
+            "bbs-2023",
+            key_id,
+            ld_credential.context.clone(),
+        )
+        .await?;
 
         let canonical_proof_config =
             json_ld::canonize_any(&proof, self.caching_loader.to_owned()).await?;
@@ -70,21 +87,24 @@ impl JsonLdBbsplus {
 
         proof.proof_value = Some(proof_value);
         proof.context = None;
-        vcdm.proof = Some(proof);
+        ld_credential.proof = Some(proof);
 
-        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
+        let resp = serde_json::to_string(&ld_credential)
+            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+
+        Ok(resp)
     }
 
-    pub(super) fn create_label_map(
+    pub(super) fn create_blank_node_identifier_map(
         &self,
-        canonical_vcdm: &str,
+        canon: &str,
         hmac_key: &[u8],
     ) -> Result<HashMap<String, String>, FormatterError> {
         let mut bnode_map = HashMap::new();
 
         // This is simplified approach where we mark claims as optional
         // and everything else as mandatory
-        for line in canonical_vcdm.lines() {
+        for line in canon.lines() {
             let first = line
                 .split(' ')
                 .next()
@@ -92,7 +112,11 @@ impl JsonLdBbsplus {
                     "Canonical representation is broken.".to_string(),
                 ))?;
 
-            if let Some(identifier) = first.strip_prefix("_:") {
+            if first.starts_with("_:") {
+                let identifier = first.strip_prefix("_:").ok_or(FormatterError::Failed(
+                    "Strip must succeed after verification".to_owned(),
+                ))?;
+
                 match bnode_map.entry(first.to_owned()) {
                     Entry::Occupied(_) => {}
                     Entry::Vacant(entry) => {
@@ -130,10 +154,10 @@ impl JsonLdBbsplus {
 
     pub(super) fn transform_canonical(
         &self,
-        label_map: &HashMap<String, String>,
-        canonical_vcdm: &str,
+        identifier_map: &HashMap<String, String>,
+        canon: &str,
     ) -> Result<Vec<String>, FormatterError> {
-        let lines: Result<Vec<String>, FormatterError> = canonical_vcdm
+        let lines: Result<Vec<String>, FormatterError> = canon
             .lines()
             .map(|line| {
                 let mut parts: Vec<String> = line.split(' ').map(|s| s.to_owned()).collect();
@@ -144,7 +168,7 @@ impl JsonLdBbsplus {
                 ))?;
 
                 if subject.starts_with("_:") {
-                    label_map
+                    identifier_map
                         .get(subject.as_str())
                         .ok_or(FormatterError::CouldNotFormat(
                             "Canonical transformation failed".to_owned(),
@@ -157,12 +181,11 @@ impl JsonLdBbsplus {
                     "Canonical transformation failed".to_owned(),
                 ))?;
                 if object.starts_with("_:") {
-                    let replacement =
-                        label_map
-                            .get(object.as_str())
-                            .ok_or(FormatterError::CouldNotFormat(
-                                "Canonical transformation failed".to_owned(),
-                            ))?;
+                    let replacement = identifier_map.get(object.as_str()).ok_or(
+                        FormatterError::CouldNotFormat(
+                            "Canonical transformation failed".to_owned(),
+                        ),
+                    )?;
                     replacement.clone_into(object);
                 }
 
@@ -218,7 +241,7 @@ impl JsonLdBbsplus {
 
     pub(super) fn prepare_proof_hashes(
         &self,
-        canonical_proof_config: &str,
+        transformed_proof_config: &str,
         transformed_document: &GroupedFormatDataDocument,
     ) -> Result<HashData, FormatterError> {
         let hashing_function = "sha-256";
@@ -226,8 +249,8 @@ impl JsonLdBbsplus {
             FormatterError::CouldNotFormat(format!("Hasher {} unavailable", hashing_function))
         })?;
 
-        let canonized_proof_config_hash = hasher
-            .hash(canonical_proof_config.as_bytes())
+        let transformed_proof_config_hash = hasher
+            .hash(transformed_proof_config.as_bytes())
             .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
 
         let mandatory_triples: Vec<&str> = transformed_document
@@ -245,7 +268,7 @@ impl JsonLdBbsplus {
 
         Ok(HashData {
             transformed_document: transformed_document.clone(),
-            proof_config_hash: canonized_proof_config_hash,
+            proof_config_hash: transformed_proof_config_hash,
             mandatory_hash: mandatory_triples_hash,
         })
     }
@@ -313,14 +336,11 @@ pub(crate) fn prepare_signature_input(
 fn prepare_mandatory_pointers(credential_status: &[CredentialStatus]) -> Vec<String> {
     let mut pointers = vec![
         "/issuer".to_string(),
-        // todo: should this be "validFrom" for v2.0 VCs? also is issuanceDate really mandatory since vcdm defines it optional?
         "/issuanceDate".to_string(),
         "/type".to_string(),
     ];
-
     if !credential_status.is_empty() {
         pointers.push("/credentialStatus".to_owned());
     }
-
     pointers
 }

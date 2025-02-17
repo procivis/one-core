@@ -102,7 +102,7 @@ impl RevocationListService {
             .await
             .map_err(ServiceError::from)?;
 
-        let status = status_from_lvvc_claims(&extracted_credential.claims.claims)?;
+        let status = status_from_lvvc_claims(&extracted_credential.claims.values)?;
         match status {
             // ONE-1780: return current lvvc credential if not active
             LvvcStatus::Revoked | LvvcStatus::Suspended { .. } => {

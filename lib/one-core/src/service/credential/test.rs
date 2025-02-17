@@ -1317,8 +1317,7 @@ async fn test_check_revocation_invalid_state() {
                     issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
                     subject: None,
                     claims: CredentialSubject {
-                        claims: HashMap::new(),
-                        id: None,
+                        values: HashMap::new(),
                     },
                     status: vec![CredentialStatus {
                         id: Some("did:status:test".parse().unwrap()),
@@ -1382,8 +1381,7 @@ async fn test_check_revocation_non_revocable() {
                 issuer_did: None,
                 subject: None,
                 claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
+                    values: Default::default(),
                 },
                 status: vec![],
                 credential_schema: None,
@@ -1473,8 +1471,7 @@ async fn test_check_revocation_already_revoked() {
                     issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
                     subject: None,
                     claims: CredentialSubject {
-                        claims: HashMap::new(),
-                        id: None,
+                        values: HashMap::new(),
                     },
                     status: vec![CredentialStatus {
                         id: Some("did:status:test".parse().unwrap()),
@@ -1561,8 +1558,7 @@ async fn test_check_revocation_being_revoked() {
                 issuer_did: None,
                 subject: None,
                 claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
+                    values: Default::default(),
                 },
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),

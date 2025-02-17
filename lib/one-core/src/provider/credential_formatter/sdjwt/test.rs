@@ -3,24 +3,18 @@ use std::collections::HashSet;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::MockHasher;
 use serde_json::{json, Value};
-use shared_types::DidValue;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, Issuer,
+    CredentialData, CredentialPresentation, CredentialSchemaData, CredentialStatus, Issuer,
     PublishedClaim,
 };
-use crate::provider::credential_formatter::nest_claims;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     compute_object_disclosures, parse_disclosure, select_disclosures, DisclosureArray,
 };
 use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
-use crate::provider::credential_formatter::vcdm::{
-    ContextType, VcdmCredential, VcdmCredentialSubject,
-};
 
 #[test]
 fn test_prepare_sd_presentation() {
@@ -460,48 +454,43 @@ fn test_select_disclosures_returns_error_when_disclosed_key_not_found_in_disclos
     assert!(select_disclosures(vec!["abcd".into()], disclosures, &hasher).is_err())
 }
 
-pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
+pub fn get_credential_data(status: Vec<CredentialStatus>, core_base_url: &str) -> CredentialData {
+    let id = Some(Uuid::new_v4().to_string());
     let issuance_date = OffsetDateTime::now_utc();
     let valid_for = time::Duration::days(365 * 2);
-
-    let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())
-        .parse::<Url>()
-        .unwrap()
-        .into();
-    let schema = CredentialSchema {
-        id: "http://schema.test/id".to_owned(),
-        r#type: "TestType".to_owned(),
+    let schema = CredentialSchemaData {
+        id: Some("http://schema.test/id".to_owned()),
+        r#type: Some("TestType".to_owned()),
+        context: Some(format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())),
+        name: "".to_owned(),
         metadata: None,
     };
 
-    let holder_did: DidValue = "did:example:123".parse().unwrap();
-
-    let claims = vec![
-        PublishedClaim {
-            key: "name".into(),
-            value: "John".into(),
-            datatype: Some("STRING".to_owned()),
-            array_item: false,
-        },
-        PublishedClaim {
-            key: "age".into(),
-            value: "42".into(),
-            datatype: Some("NUMBER".to_owned()),
-            array_item: false,
-        },
-    ];
-    let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap());
-    let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
-        .add_context(schema_context)
-        .add_credential_schema(schema)
-        .add_credential_status(status)
-        .with_valid_from(issuance_date)
-        .with_valid_until(issuance_date + valid_for);
-
     CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did),
+        id,
+        issuance_date,
+        valid_for,
+        claims: vec![
+            PublishedClaim {
+                key: "name".into(),
+                value: "John".into(),
+                datatype: Some("STRING".to_owned()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "age".into(),
+                value: "42".into(),
+                datatype: Some("NUMBER".to_owned()),
+                array_item: false,
+            },
+        ],
+        issuer_did: Issuer::Url("did:issuer:test".parse().unwrap()),
+        status,
+        schema,
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     }
 }

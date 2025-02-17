@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use error::FormatterError;
+use json_ld::model::ContextType;
 use model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx,
-    FormatPresentationCtx, Presentation, TokenVerifier,
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
+    ExtractPresentationCtx, FormatPresentationCtx, Presentation, TokenVerifier,
 };
 use shared_types::{CredentialSchemaId, DidValue};
 
@@ -31,7 +32,6 @@ pub mod sdjwt;
 pub mod sdjwt_formatter;
 pub mod sdjwtvc_formatter;
 pub mod status_list_jwt_formatter;
-pub mod vcdm;
 
 #[cfg(test)]
 mod test;
@@ -42,9 +42,12 @@ mod test;
 #[async_trait]
 pub trait CredentialFormatter: Send + Sync {
     /// Formats and signs a credential.
-    async fn format_credential(
+    async fn format_credentials(
         &self,
-        credential_data: model::CredentialData,
+        credential: CredentialData,
+        holder_did: &Option<DidValue>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: model::AuthenticationFn,
     ) -> Result<String, error::FormatterError>;
 

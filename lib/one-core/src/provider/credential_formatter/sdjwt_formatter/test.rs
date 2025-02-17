@@ -4,26 +4,22 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
-use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
-use url::Url;
 use uuid::Uuid;
 
 use super::SDJWTFormatter;
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
+use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Features, Issuer,
-    MockTokenVerifier, PublishedClaim,
+    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx, Features,
+    Issuer, MockTokenVerifier, PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
-use crate::provider::credential_formatter::sdjwt_formatter::{Params, VcClaim};
-use crate::provider::credential_formatter::vcdm::{
-    ContextType, VcdmCredential, VcdmCredentialSubject,
-};
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::credential_formatter::sdjwt_formatter::{Params, Sdvc};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 
@@ -65,24 +61,25 @@ async fn test_format_credential_a() {
         },
     };
 
-    let mut credential_data = get_credential_data(
-        CredentialStatus {
+    let credential_data = get_credential_data(
+        vec![CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
-        },
+        }],
         "http://base_url",
     );
-    credential_data
-        .vcdm
-        .context
-        .insert(ContextType::Url("http://context.com".parse().unwrap()));
-    credential_data.vcdm.r#type.push("Type1".to_string());
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some("did:example:123".parse().unwrap()),
+            vec![ContextType::Url("http://context.com".parse().unwrap())],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+        )
         .await;
 
     assert!(result.is_ok());
@@ -118,7 +115,7 @@ async fn test_format_credential_a() {
         &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
     );
 
-    let payload: JWTPayload<VcClaim> = serde_json::from_str(
+    let payload: JWTPayload<Sdvc> = serde_json::from_str(
         &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
             .unwrap(),
     )
@@ -138,11 +135,11 @@ async fn test_format_credential_a() {
 
     let vc = payload.custom.vc;
 
-    assert!(vc.credential_subject[0].claims["_sd"]
-        .as_array()
-        .unwrap()
+    assert!(vc
+        .credential_subject
+        .digests
         .iter()
-        .all(|hashed_claim| hashed_claim.as_str().unwrap() == "YWJjMTIz"));
+        .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
 
     assert!(vc
         .context
@@ -216,19 +213,25 @@ async fn test_format_credential_with_array() {
     };
 
     let credential_data = get_credential_data_with_array(
-        CredentialStatus {
+        vec![CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
-        },
+        }],
         "http://base_url",
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some("did:example:123".parse().unwrap()),
+            vec![ContextType::Url("http://context.com".parse().unwrap())],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+        )
         .await;
 
     assert!(result.is_ok());
@@ -270,7 +273,7 @@ async fn test_format_credential_with_array() {
         &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
     );
 
-    let payload: JWTPayload<VcClaim> = serde_json::from_str(
+    let payload: JWTPayload<Sdvc> = serde_json::from_str(
         &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
             .unwrap(),
     )
@@ -283,13 +286,7 @@ async fn test_format_credential_with_array() {
 
     assert_eq!(
         HashSet::<&str>::from_iter([hash4, hash3]),
-        HashSet::from_iter(
-            vc.credential_subject[0].claims["_sd"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|d| d.as_str().unwrap())
-        )
+        HashSet::from_iter(vc.credential_subject.digests.iter().map(|s| s.as_str()))
     );
 }
 
@@ -400,8 +397,8 @@ async fn test_extract_credentials() {
         Some(&"Val1".into())
     );
 
-    assert_eq!(credentials.claims.claims.get("name").unwrap(), "John");
-    assert_eq!(credentials.claims.claims.get("age").unwrap(), "42");
+    assert_eq!(credentials.claims.values.get("name").unwrap(), "John");
+    assert_eq!(credentials.claims.values.get("age").unwrap(), "42");
 }
 
 #[tokio::test]
@@ -503,10 +500,10 @@ async fn test_extract_credentials_with_array() {
         .await
         .unwrap();
 
-    let root_item = credentials.claims.claims.get("root_item").unwrap();
+    let root_item = credentials.claims.values.get("root_item").unwrap();
     assert_eq!(root_item.as_str(), Some("root_item"));
 
-    let root = credentials.claims.claims.get("root").unwrap();
+    let root = credentials.claims.values.get("root").unwrap();
     let nested = root.get("nested").unwrap();
     assert_eq!(nested.as_str(), Some("nested_item"));
 
@@ -613,10 +610,10 @@ async fn test_extract_credentials_with_array_stripped() {
         .await
         .unwrap();
 
-    let root_item = credentials.claims.claims.get("root_item").unwrap();
+    let root_item = credentials.claims.values.get("root_item").unwrap();
     assert_eq!(root_item.as_str(), Some("root_item"));
 
-    let root = credentials.claims.claims.get("root").unwrap();
+    let root = credentials.claims.values.get("root").unwrap();
     assert!(root.get("nested").is_none());
 
     let array = root.get("array").unwrap().as_array().unwrap();
@@ -716,57 +713,53 @@ fn test_get_capabilities() {
     );
 }
 
-fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str) -> CredentialData {
+fn get_credential_data_with_array(
+    status: Vec<CredentialStatus>,
+    core_base_url: &str,
+) -> CredentialData {
+    let id = Some(Uuid::new_v4().to_string());
     let issuance_date = OffsetDateTime::now_utc();
     let valid_for = time::Duration::days(365 * 2);
-
-    let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())
-        .parse::<Url>()
-        .unwrap()
-        .into();
-    let schema = CredentialSchema {
-        id: "CredentialSchemaId".to_owned(),
-        r#type: "TestType".to_owned(),
+    let schema = CredentialSchemaData {
+        id: Some("CredentialSchemaId".to_owned()),
+        r#type: Some("TestType".to_owned()),
+        context: Some(format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())),
+        name: "".to_owned(),
         metadata: None,
     };
 
-    let holder_did: DidValue = "did:example:123".parse().unwrap();
-
-    let claims = vec![
-        PublishedClaim {
-            key: "root/array/0".into(),
-            value: "array_item".into(),
-            datatype: Some("STRING".to_owned()),
-            array_item: true,
-        },
-        PublishedClaim {
-            key: "root/nested".into(),
-            value: "nested_item".into(),
-            datatype: Some("STRING".to_owned()),
-            array_item: false,
-        },
-        PublishedClaim {
-            key: "root_item".into(),
-            value: "root_item".into(),
-            datatype: Some("STRING".to_owned()),
-            array_item: false,
-        },
-    ];
-
-    let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap());
-
-    let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
-        .add_context(schema_context)
-        .add_credential_schema(schema)
-        .add_credential_status(status)
-        .with_valid_from(issuance_date)
-        .with_valid_until(issuance_date + valid_for);
-
     CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did),
+        id,
+        issuance_date,
+        valid_for,
+        claims: vec![
+            PublishedClaim {
+                key: "root/array/0".into(),
+                value: "array_item".into(),
+                datatype: Some("STRING".to_owned()),
+                array_item: true,
+            },
+            PublishedClaim {
+                key: "root/nested".into(),
+                value: "nested_item".into(),
+                datatype: Some("STRING".to_owned()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "root_item".into(),
+                value: "root_item".into(),
+                datatype: Some("STRING".to_owned()),
+                array_item: false,
+            },
+        ],
+        issuer_did: Issuer::Url("did:issuer:test".parse().unwrap()),
+        status,
+        schema,
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     }
 }
 

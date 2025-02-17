@@ -9,11 +9,11 @@ use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use strum::{Display, IntoStaticStr};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::error::FormatterError;
-use super::vcdm::VcdmCredential;
+use super::json_ld::model::{Evidence, RelatedResource, TermsOfUse};
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -61,11 +61,11 @@ pub struct DetailCredential {
     pub credential_schema: Option<CredentialSchema>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialSubject {
-    // relevant only for VCDM
-    pub id: Option<Url>,
-    pub claims: HashMap<String, serde_json::Value>,
+    #[serde(flatten)]
+    pub values: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -156,9 +156,18 @@ impl PartialEq<str> for PublishedClaimValue {
 
 #[derive(Debug)]
 pub struct CredentialData {
-    pub vcdm: VcdmCredential,
+    pub id: Option<String>,
+    pub issuance_date: OffsetDateTime,
+    pub valid_for: Duration,
     pub claims: Vec<PublishedClaim>,
-    pub holder_did: Option<DidValue>,
+    pub issuer_did: Issuer,
+    pub status: Vec<CredentialStatus>,
+    pub schema: CredentialSchemaData,
+    pub name: Option<Name>,
+    pub description: Option<Description>,
+    pub terms_of_use: Vec<TermsOfUse>,
+    pub evidence: Vec<Evidence>,
+    pub related_resource: Option<Vec<RelatedResource>>,
 }
 
 #[derive(Debug)]
@@ -313,16 +322,9 @@ impl Issuer {
                 FormatterError::Failed("Parsing did from object failed".to_string())
             })?),
             Self::Url(url) => Ok(url
-                .as_str()
+                .to_string()
                 .parse()
                 .map_err(|_| FormatterError::Failed("Parsing did from url failed".to_string()))?),
-        }
-    }
-
-    pub fn as_url(&self) -> &Url {
-        match self {
-            Issuer::Url(url) => url,
-            Issuer::Object { id, .. } => id,
         }
     }
 }

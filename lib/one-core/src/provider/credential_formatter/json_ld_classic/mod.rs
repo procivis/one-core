@@ -1,12 +1,10 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
 use indexmap::indexset;
-use itertools::Itertools;
 use model::CredentialEnvelope;
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::CryptoProvider;
 use serde::ser::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -15,22 +13,21 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
-use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
-use super::model::CredentialData;
-use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
+use super::json_ld::model::{LdCredentialSubject, DEFAULT_ALLOWED_CONTEXTS};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
-use crate::provider::credential_formatter::json_ld::model::{LdPresentation, VerifiableCredential};
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, Context, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Issuer,
-    Presentation, VerificationFn,
+use crate::provider::credential_formatter::json_ld::model::{
+    ContextType, LdCredential, LdPresentation, LdProof, VerifiableCredential,
 };
-use crate::provider::credential_formatter::vcdm::ContextType;
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
+    DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
+    FormatterCapabilities, Issuer, Presentation, VerificationFn,
+};
 use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -55,28 +52,45 @@ pub struct JsonLdClassic {
 pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     leeway: Duration,
-    #[serde(default)]
-    embed_layout_properties: bool,
+    embed_layout_properties: Option<bool>,
     allowed_contexts: Option<Vec<Url>>,
 }
 
 #[async_trait]
 impl CredentialFormatter for JsonLdClassic {
-    async fn format_credential(
+    async fn extract_credentials_unverified(
         &self,
-        credential_data: CredentialData,
+        credential: &str,
+    ) -> Result<DetailCredential, FormatterError> {
+        self.extract_credentials_internal(credential, None).await
+    }
+
+    async fn format_credentials(
+        &self,
+        credential: CredentialData,
+        holder_did: &Option<DidValue>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let mut vcdm = credential_data.vcdm;
+        let credential = json_ld::prepare_credential(
+            credential,
+            holder_did.as_ref(),
+            contexts,
+            types,
+            self.params.embed_layout_properties.unwrap_or_default(),
+        )?;
+
         let algorithm = auth_fn.get_key_type().to_string();
 
-        if !self.params.embed_layout_properties {
-            vcdm.remove_layout_properties();
-        }
+        let credential = self
+            .format_credential_internal(auth_fn, credential, &algorithm)
+            .await?;
 
-        let vcdm = self.add_proof(vcdm, &algorithm, auth_fn).await?;
+        let resp = serde_json::to_string(&credential)
+            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
-        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
+        Ok(resp)
     }
 
     async fn format_status_list(
@@ -104,27 +118,46 @@ impl CredentialFormatter for JsonLdClassic {
                 .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
         );
 
-        let credential_subject_id: Url =
-            format!("{revocation_list_url}#list").parse().map_err(|_| {
-                FormatterError::Failed("Invalid issuer credential subject id".to_string())
-            })?;
-        let credential_subject = VcdmCredentialSubject::new([
-            ("type", json!("BitstringStatusList")),
-            ("statusPurpose", json!(status_purpose)),
-            ("encodedList", json!(encoded_list)),
-        ])
-        .with_id(credential_subject_id);
+        let credential_subject = LdCredentialSubject {
+            id: None,
+            subject: [
+                ("id".into(), format!("{}#list", revocation_list_url).into()),
+                ("type".into(), json!("BitstringStatusList")),
+                ("statusPurpose".into(), json!(status_purpose)),
+                ("encodedList".into(), json!(encoded_list)),
+            ]
+            .into_iter()
+            .collect(),
+        };
 
-        let credential_id = Url::parse(&revocation_list_url).map_err(|_| {
-            FormatterError::Failed("Revocation list is not a valid URL".to_string())
-        })?;
+        let credential = LdCredential {
+            context: indexset![ContextType::Url(Context::CredentialsV2.to_url())],
+            id: Some(revocation_list_url.parse().map_err(|_| {
+                FormatterError::Failed("Revocation list is not a valid URL".to_string())
+            })?),
+            r#type: vec![
+                "VerifiableCredential".to_string(),
+                "BitstringStatusListCredential".to_string(),
+            ],
+            issuer,
+            valid_from: Some(OffsetDateTime::now_utc()),
+            credential_subject: vec![credential_subject],
+            credential_status: vec![],
+            credential_schema: None,
+            valid_until: None,
+            issuance_date: None,
+            proof: None,
+            refresh_service: None,
+            name: None,
+            description: None,
+            terms_of_use: vec![],
+            evidence: vec![],
+            related_resource: None,
+        };
 
-        let credential = VcdmCredential::new_v2(issuer, credential_subject)
-            .with_id(credential_id)
-            .add_type("BitstringStatusListCredential".to_string())
-            .with_valid_from(OffsetDateTime::now_utc());
-
-        let credential = self.add_proof(credential, &algorithm, auth_fn).await?;
+        let credential = self
+            .format_credential_internal(auth_fn, credential, &algorithm)
+            .await?;
 
         serde_json::to_string(&credential).map_err(|err| {
             FormatterError::Failed(format!(
@@ -140,13 +173,6 @@ impl CredentialFormatter for JsonLdClassic {
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, Some(verification_fn))
             .await
-    }
-
-    async fn extract_credentials_unverified(
-        &self,
-        credential: &str,
-    ) -> Result<DetailCredential, FormatterError> {
-        self.extract_credentials_internal(credential, None).await
     }
 
     async fn format_credential_presentation(
@@ -231,18 +257,13 @@ impl CredentialFormatter for JsonLdClassic {
             "Missing jwk key id".to_string(),
         ))?;
 
-        let mut proof = VcdmProof::builder()
-            .context(context)
-            .created(OffsetDateTime::now_utc())
-            .proof_purpose("authentication")
-            .cryptosuite(cryptosuite)
-            .verification_method(key_id)
-            .build();
+        let mut proof =
+            json_ld::prepare_proof_config("authentication", cryptosuite, key_id, context).await?;
 
         let proof_hash = prepare_proof_hash(
             &presentation,
-            &proof,
             &*self.crypto,
+            &proof,
             self.caching_loader.to_owned(),
             None,
         )
@@ -352,12 +373,12 @@ impl JsonLdClassic {
         credential: &str,
         verification_fn: Option<VerificationFn>,
     ) -> Result<DetailCredential, FormatterError> {
-        let vcdm: VcdmCredential = serde_json::from_str(credential)
+        let credential: LdCredential = serde_json::from_str(credential)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
         if let Some(verification_fn) = verification_fn {
             verify_credential_signature(
-                vcdm.clone(),
+                credential.clone(),
                 verification_fn,
                 &*self.crypto,
                 self.caching_loader.to_owned(),
@@ -367,11 +388,11 @@ impl JsonLdClassic {
         }
 
         if !json_ld::is_context_list_valid(
-            &vcdm.context,
+            &credential.context,
             self.params.allowed_contexts.as_ref(),
             &DEFAULT_ALLOWED_CONTEXTS,
-            vcdm.credential_schema.as_ref(),
-            vcdm.id.as_ref(),
+            credential.credential_schema.as_ref(),
+            credential.id.as_ref(),
         ) {
             return Err(FormatterError::CouldNotVerify(
                 "Used context is not allowed".to_string(),
@@ -379,30 +400,21 @@ impl JsonLdClassic {
         }
 
         // We only take first subject now as one credential only contains one credential schema
-        let credential_subject = vcdm.credential_subject.into_iter().next().ok_or_else(|| {
-            FormatterError::CouldNotExtractCredentials(
-                "Missing credential subject in JSON-LD credential".to_string(),
-            )
-        })?;
-
         let claims = CredentialSubject {
-            id: credential_subject.id.clone(),
-            claims: HashMap::from_iter(credential_subject.claims),
+            values: credential.credential_subject[0].subject.clone(),
         };
 
         Ok(DetailCredential {
-            id: vcdm.id.map(|url| url.to_string()),
-            valid_from: vcdm.valid_from.or(vcdm.issuance_date),
-            valid_until: vcdm.valid_until.or(vcdm.expiration_date),
+            id: credential.id.map(|url| url.to_string()),
+            valid_from: credential.valid_from.or(credential.issuance_date),
+            valid_until: credential.valid_until,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(vcdm.issuer.to_did_value()?),
-            subject: credential_subject
-                .id
-                .and_then(|id| DidValue::from_did_url(id).ok()),
+            issuer_did: Some(credential.issuer.to_did_value()?),
+            subject: credential.credential_subject[0].id.clone(),
             claims,
-            status: vcdm.credential_status,
-            credential_schema: vcdm.credential_schema.map(|v| v[0].clone()),
+            status: credential.credential_status,
+            credential_schema: credential.credential_schema.map(|v| v[0].clone()),
         })
     }
 
@@ -434,7 +446,7 @@ impl JsonLdClassic {
             return Err(FormatterError::CouldNotVerify(
                 "Used context is not allowed".to_string(),
             ));
-        };
+        }
 
         let credentials: Vec<String> = presentation
             .verifiable_credential
@@ -462,12 +474,12 @@ impl JsonLdClassic {
         })
     }
 
-    async fn add_proof(
+    async fn format_credential_internal(
         &self,
-        mut vcdm: VcdmCredential,
-        algorithm: &str,
         auth_fn: AuthenticationFn,
-    ) -> Result<VcdmCredential, FormatterError> {
+        mut credential: LdCredential,
+        algorithm: &str,
+    ) -> Result<LdCredential, FormatterError> {
         let cryptosuite = match algorithm {
             "EDDSA" => "eddsa-rdfc-2022",
             "ES256" => "ecdsa-rdfc-2019",
@@ -482,18 +494,18 @@ impl JsonLdClassic {
             "Missing jwk key id".to_string(),
         ))?;
 
-        let mut proof = VcdmProof::builder()
-            .context(vcdm.context.clone())
-            .created(OffsetDateTime::now_utc())
-            .proof_purpose("assertionMethod")
-            .cryptosuite(cryptosuite)
-            .verification_method(key_id)
-            .build();
+        let mut proof = json_ld::prepare_proof_config(
+            "assertionMethod",
+            cryptosuite,
+            key_id,
+            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
+        )
+        .await?;
 
         let proof_hash = prepare_proof_hash(
-            &vcdm,
-            &proof,
+            &credential,
             &*self.crypto,
+            &proof,
             self.caching_loader.to_owned(),
             None,
         )
@@ -504,20 +516,20 @@ impl JsonLdClassic {
         proof.proof_value = Some(signed_proof);
         // we remove the context proof since the same context is already present in the VC
         proof.context = None;
-        vcdm.proof = Some(proof);
+        credential.proof = Some(proof);
 
-        Ok(vcdm)
+        Ok(credential)
     }
 }
 
 pub(super) async fn verify_credential_signature(
-    mut vcdm: VcdmCredential,
+    mut ld_credential: LdCredential,
     verification_fn: VerificationFn,
     crypto: &dyn CryptoProvider,
     caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
 ) -> Result<(), FormatterError> {
-    let mut proof = vcdm
+    let mut proof = ld_credential
         .proof
         .as_ref()
         .ok_or(FormatterError::CouldNotVerify("Missing proof".to_owned()))?
@@ -526,23 +538,29 @@ pub(super) async fn verify_credential_signature(
         "Missing proof_value".to_owned(),
     ))?;
     let key_id = proof.verification_method.as_str();
-    let issuer_did = vcdm.issuer.to_did_value()?;
+    let issuer_did = &ld_credential.issuer;
 
     // Remove proof value and proof for canonicalization
     proof.proof_value = None;
-    vcdm.proof = None;
+    ld_credential.proof = None;
 
     // In case the node proof does not have a dedicated context, we should use the one from the credential
     if proof.context.is_none() {
-        proof.context = Some(vcdm.context.to_owned());
+        proof.context = Some(ld_credential.context.to_owned());
     }
 
-    let proof_hash =
-        prepare_proof_hash(&vcdm, &proof, crypto, caching_loader, extra_information).await?;
+    let proof_hash = prepare_proof_hash(
+        &ld_credential,
+        crypto,
+        &proof,
+        caching_loader,
+        extra_information,
+    )
+    .await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        &issuer_did,
+        &issuer_did.to_did_value()?,
         key_id,
         &proof.cryptosuite,
         verification_fn,
@@ -577,7 +595,7 @@ pub(super) async fn verify_presentation_signature(
     proof.proof_value = None;
 
     let proof_hash =
-        prepare_proof_hash(&presentation, &proof, crypto, caching_loader, None).await?;
+        prepare_proof_hash(&presentation, crypto, &proof, caching_loader, None).await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,
@@ -648,43 +666,42 @@ pub(super) async fn sign_proof_hash(
     Ok(format!("z{}", bs58::encode(signature).into_string()))
 }
 
-pub(super) async fn prepare_proof_hash(
-    document: &impl Serialize,
-    proof: &VcdmProof,
+pub(super) async fn prepare_proof_hash<T>(
+    object: &T,
     crypto: &dyn CryptoProvider,
+    proof: &LdProof,
     caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
-) -> Result<Vec<u8>, FormatterError> {
-    fn proof_hash(
-        hasher: &dyn Hasher,
-        document: &[u8],
-        proof: &[u8],
-        extra_information: Option<&[u8]>,
-    ) -> Result<Vec<u8>, FormatterError> {
-        [proof, document]
-            .into_iter()
-            .chain(extra_information)
-            .map(|bytes| {
-                hasher
-                    .hash(bytes)
-                    .map_err(|err| FormatterError::CouldNotFormat(format!("Hasher error: `{err}`")))
-            })
-            .flatten_ok()
-            .try_collect()
-    }
+) -> Result<Vec<u8>, FormatterError>
+where
+    T: Serialize,
+{
+    let transformed_document = json_ld::canonize_any(object, caching_loader.clone()).await?;
+
+    let transformed_proof_config = json_ld::canonize_any(proof, caching_loader).await?;
 
     let hashing_function = "sha-256";
     let hasher = crypto.get_hasher(hashing_function).map_err(|_| {
-        FormatterError::CouldNotFormat(format!("Hasher {hashing_function} unavailable"))
+        FormatterError::CouldNotFormat(format!("Hasher {} unavailable", hashing_function))
     })?;
 
-    let transformed_document = json_ld::canonize_any(document, caching_loader.clone()).await?;
-    let transformed_proof_config = json_ld::canonize_any(proof, caching_loader).await?;
+    let mut transformed_proof_config_hash = hasher
+        .hash(transformed_proof_config.as_bytes())
+        .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
 
-    proof_hash(
-        &*hasher,
-        transformed_document.as_bytes(),
-        transformed_proof_config.as_bytes(),
-        extra_information,
-    )
+    let transformed_document_hash = hasher
+        .hash(transformed_document.as_bytes())
+        .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
+
+    transformed_proof_config_hash.extend(transformed_document_hash);
+
+    if let Some(extra_information) = extra_information {
+        let extra_information_hash = hasher
+            .hash(extra_information)
+            .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
+
+        transformed_proof_config_hash.extend(extra_information_hash);
+    }
+
+    Ok(transformed_proof_config_hash)
 }

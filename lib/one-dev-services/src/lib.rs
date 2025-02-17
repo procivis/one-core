@@ -304,7 +304,7 @@ impl OneDevCore {
                             leeway: time::Duration::seconds(
                                 config.formatter_config.leeway.try_into().unwrap(),
                             ),
-                            embed_layout_properties: false,
+                            embed_layout_properties: None,
                             allowed_contexts: None,
                         },
                         crypto_provider.clone(),

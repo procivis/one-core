@@ -17,17 +17,17 @@ use crate::model::credential_schema::LayoutType;
 use crate::model::did::KeyRole;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::common::MockAuth;
+use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Issuer,
+    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx, Issuer,
     MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::resolver::DidCachingLoader;
@@ -68,19 +68,25 @@ async fn test_format_credential() {
     );
 
     let credential_data = get_credential_data(
-        CredentialStatus {
+        vec![CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
-        },
+        }],
         "http://base_url",
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some("did:example:123".parse().unwrap()),
+            vec![ContextType::Url("http://context.com".parse().unwrap())],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+        )
         .await;
 
     assert!(result.is_ok());
@@ -225,7 +231,7 @@ async fn test_extract_credentials() {
 
     let claim_values_as_json = credentials
         .claims
-        .claims
+        .values
         .into_iter()
         .collect::<serde_json::Map<String, serde_json::Value>>();
 
@@ -394,54 +400,50 @@ async fn test_format_extract_round_trip() {
         .await
         .unwrap();
 
-    let claims = vec![
-        PublishedClaim {
-            key: "age".to_string(),
-            value: PublishedClaimValue::Integer(22),
-            datatype: Some("NUMBER".to_string()),
-            array_item: false,
-        },
-        PublishedClaim {
-            key: "object/name".to_string(),
-            value: PublishedClaimValue::String("Mike".to_string()),
-            datatype: Some("STRING".to_string()),
-            array_item: false,
-        },
-        PublishedClaim {
-            key: "is_over_18".to_string(),
-            value: PublishedClaimValue::Bool(true),
-            datatype: Some("BOOLEAN".to_string()),
-            array_item: false,
-        },
-        PublishedClaim {
-            key: "object/measurements/0/air pollution".to_string(),
-            value: PublishedClaimValue::Float(24.6),
-            datatype: Some("NUMBER".to_string()),
-            array_item: true,
-        },
-    ];
-
-    let schema = CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "FallbackSchema2024".to_string(),
-        metadata: None,
-    };
-    let holder_did =
-        DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
-
-    let issuer = Issuer::Url(issuer_did.to_string().parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
-        .with_id(holder_did.clone().into_url());
-
-    let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
-        .add_credential_schema(schema)
-        .with_valid_from(now)
-        .with_valid_until(now + Duration::seconds(10));
-
     let credential_data = CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did),
+        id: None,
+        issuance_date: now,
+        valid_for: Duration::seconds(10),
+        claims: vec![
+            PublishedClaim {
+                key: "age".to_string(),
+                value: PublishedClaimValue::Integer(22),
+                datatype: Some("NUMBER".to_string()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "object/name".to_string(),
+                value: PublishedClaimValue::String("Mike".to_string()),
+                datatype: Some("STRING".to_string()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "is_over_18".to_string(),
+                value: PublishedClaimValue::Bool(true),
+                datatype: Some("BOOLEAN".to_string()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "object/measurements/0/air pollution".to_string(),
+                value: PublishedClaimValue::Float(24.6),
+                datatype: Some("NUMBER".to_string()),
+                array_item: true,
+            },
+        ],
+        issuer_did: Issuer::Url(issuer_did.to_string().parse().unwrap()),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: Some("FallbackSchema2024".to_string()),
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: None,
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     };
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
@@ -470,6 +472,8 @@ async fn test_format_extract_round_trip() {
         .expect_jose_alg()
         .returning(|| Some("EdDSA".to_string()));
 
+    let holder_did =
+        DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
     let key_verification = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
@@ -477,7 +481,13 @@ async fn test_format_extract_round_trip() {
     });
 
     let token = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some(holder_did),
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+        )
         .await
         .unwrap();
     let result = formatter
@@ -486,7 +496,7 @@ async fn test_format_extract_round_trip() {
         .unwrap();
 
     assert_eq!(
-        result.claims.claims,
+        result.claims.values,
         hashmap! {
             "object".into() => json!({
                 "name": "Mike",

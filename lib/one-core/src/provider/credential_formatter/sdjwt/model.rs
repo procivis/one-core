@@ -5,8 +5,8 @@ use serde_json::Value;
 use serde_with::{serde_as, OneOrMany};
 use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus, Issuer};
-use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,11 +47,11 @@ pub struct VPContent {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VcClaim {
+pub struct Sdvc {
     #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<String>,
 
-    pub vc: JwtVcdmCredential,
+    pub vc: VCContent,
     /// Hash algorithm
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
     #[serde(rename = "_sd_alg", default, skip_serializing_if = "Option::is_none")]

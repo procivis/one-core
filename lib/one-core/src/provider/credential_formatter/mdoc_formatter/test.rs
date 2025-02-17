@@ -10,9 +10,8 @@ use super::mdoc::*;
 use super::*;
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::provider::credential_formatter::model::{
-    Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
+    CredentialSchemaData, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -178,43 +177,46 @@ fn test_device_response_serialize_deserialize() {
 async fn test_credential_formatting_ok_for_es256() {
     let issuer_did = Issuer::Url("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap());
 
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-        array_item: false,
-    }];
-
-    let vcdm = VcdmCredential::new_v2(
-        issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: Some(CredentialSchemaMetadata {
-            layout_type: LayoutType::Card,
-            layout_properties: LayoutProperties {
-                background: Some(BackgroundProperties {
-                    color: Some("color".to_string()),
-                    image: None,
-                }),
-                logo: None,
-                primary_attribute: None,
-                secondary_attribute: None,
-                picture_attribute: None,
-                code: None,
-            },
-        }),
-    });
+    let credential_data = CredentialData {
+        id: None,
+        issuance_date: OffsetDateTime::now_utc(),
+        valid_for: time::Duration::seconds(10),
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
+        issuer_did: issuer_did.clone(),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: None,
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: Some(CredentialSchemaMetadata {
+                layout_type: LayoutType::Card,
+                layout_properties: LayoutProperties {
+                    background: Some(BackgroundProperties {
+                        color: Some("color".to_string()),
+                        image: None,
+                    }),
+                    logo: None,
+                    primary_attribute: None,
+                    secondary_attribute: None,
+                    picture_attribute: None,
+                    code: None,
+                },
+            }),
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
+    };
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
-
-    let credential_data = CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did.clone()),
-    };
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -286,7 +288,13 @@ async fn test_credential_formatting_ok_for_es256() {
         .return_const("ES256".to_string());
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some(holder_did),
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+        )
         .await
         .unwrap();
 
@@ -374,30 +382,36 @@ async fn test_unverified_credential_extraction() {
     // arrange
     let issuer_did = Issuer::Url("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap());
 
-    let holder_did: DidValue = "did:holder:123".parse().unwrap();
-
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-        array_item: false,
-    }];
-
-    let vcdm = VcdmCredential::new_v2(
-        issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "doctype".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: None,
-    });
+    let issuance_date = OffsetDateTime::now_utc();
+    let valid_for = time::Duration::seconds(10);
 
     let credential_data = CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did.clone()),
+        id: Some(Uuid::new_v4().urn().to_string()),
+        issuance_date,
+        valid_for,
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
+        issuer_did: issuer_did.to_owned(),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("doctype".to_string()),
+            r#type: None,
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: None,
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     };
+
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -480,7 +494,13 @@ async fn test_unverified_credential_extraction() {
         .return_const("ES256".to_string());
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some(holder_did),
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+        )
         .await
         .unwrap();
 
@@ -506,6 +526,16 @@ async fn test_unverified_credential_extraction() {
     );
 
     assert_eq!(
+        issuance_date.replace_microsecond(0).unwrap(),
+        credential.valid_from.unwrap()
+    );
+
+    assert_eq!(
+        (issuance_date + valid_for).replace_microsecond(0).unwrap(),
+        credential.valid_until.unwrap()
+    );
+
+    assert_eq!(
         hashmap! {
             "a".into() => json!({
                 "b": {
@@ -513,7 +543,7 @@ async fn test_unverified_credential_extraction() {
                 }
             })
         },
-        credential.claims.claims
+        credential.claims.values
     )
 }
 
@@ -548,43 +578,46 @@ async fn test_credential_formatting_ok_for_es256_layout_not_transfered() {
 async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
     let issuer_did = Issuer::Url("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap());
 
-    let holder_did: DidValue = "did:holder:123".parse().unwrap();
-
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-        array_item: false,
-    }];
-
-    let vcdm = VcdmCredential::new_v2(
-        issuer_did,
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: Some(CredentialSchemaMetadata {
-            layout_type: LayoutType::Card,
-            layout_properties: LayoutProperties {
-                background: Some(BackgroundProperties {
-                    color: Some("color".to_string()),
-                    image: None,
-                }),
-                logo: None,
-                primary_attribute: None,
-                secondary_attribute: None,
-                picture_attribute: None,
-                code: None,
-            },
-        }),
-    });
-
     let credential_data = CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did.clone()),
+        id: None,
+        issuance_date: OffsetDateTime::now_utc(),
+        valid_for: time::Duration::seconds(10),
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
+        issuer_did: issuer_did.clone(),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: None,
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: Some(CredentialSchemaMetadata {
+                layout_type: LayoutType::Card,
+                layout_properties: LayoutProperties {
+                    background: Some(BackgroundProperties {
+                        color: Some("color".to_string()),
+                        image: None,
+                    }),
+                    logo: None,
+                    primary_attribute: None,
+                    secondary_attribute: None,
+                    picture_attribute: None,
+                    code: None,
+                },
+            }),
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     };
+
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -672,7 +705,13 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         .return_const("ES256".to_string());
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some(holder_did.to_owned()),
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+        )
         .await
         .unwrap();
 

@@ -13,18 +13,17 @@ use url::Url;
 
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::jsonld_forbidden_claim_names;
-use super::model::CredentialData;
+use super::json_ld::model::{ContextType, LdCredential};
 use super::CredentialFormatter;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx, Features,
-    FormatPresentationCtx, FormatterCapabilities, Presentation, SelectiveDisclosure,
-    VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    SelectiveDisclosure, VerificationFn,
 };
-use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -56,46 +55,29 @@ pub struct JsonLdBbsplus {
 pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: Duration,
-    #[serde(default)]
-    pub embed_layout_properties: bool,
+    pub embed_layout_properties: Option<bool>,
     pub allowed_contexts: Option<Vec<Url>>,
-}
-
-impl JsonLdBbsplus {
-    pub fn new(
-        params: Params,
-        crypto: Arc<dyn CryptoProvider>,
-        base_url: Option<String>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        caching_loader: JsonLdCachingLoader,
-        client: Arc<dyn HttpClient>,
-    ) -> Self {
-        Self {
-            params,
-            crypto,
-            base_url,
-            did_method_provider,
-            key_algorithm_provider,
-            caching_loader: ContextCache::new(caching_loader, client),
-        }
-    }
 }
 
 #[async_trait]
 impl CredentialFormatter for JsonLdBbsplus {
-    async fn format_credential(
+    async fn format_credentials(
         &self,
-        credential_data: CredentialData,
+        credential: CredentialData,
+        holder_did: &Option<DidValue>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let mut vcdm = credential_data.vcdm;
-
-        if !self.params.embed_layout_properties {
-            vcdm.remove_layout_properties();
-        }
-
-        self.format(vcdm, auth_fn).await
+        self.format(
+            credential,
+            holder_did.as_ref(),
+            contexts,
+            types,
+            auth_fn,
+            self.params.embed_layout_properties.unwrap_or_default(),
+        )
+        .await
     }
 
     async fn format_status_list(
@@ -125,11 +107,10 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        let vc: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
+        let ld_credential: LdCredential = serde_json::from_str(credential).map_err(|e| {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
-
-        DetailCredential::try_from(vc)
+        ld_credential.try_into()
     }
 
     async fn format_credential_presentation(
@@ -218,5 +199,26 @@ impl CredentialFormatter for JsonLdBbsplus {
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         unimplemented!()
+    }
+}
+
+impl JsonLdBbsplus {
+    pub fn new(
+        params: Params,
+        crypto: Arc<dyn CryptoProvider>,
+        base_url: Option<String>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        caching_loader: JsonLdCachingLoader,
+        client: Arc<dyn HttpClient>,
+    ) -> Self {
+        Self {
+            params,
+            crypto,
+            base_url,
+            did_method_provider,
+            key_algorithm_provider,
+            caching_loader: ContextCache::new(caching_loader, client),
+        }
     }
 }

@@ -667,31 +667,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bon"
-version = "3.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe7acc34ff59877422326db7d6f2d845a582b16396b6b08194942bf34c6528ab"
-dependencies = [
- "bon-macros",
- "rustversion",
-]
-
-[[package]]
-name = "bon-macros"
-version = "3.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4159dd617a7fbc9be6a692fe69dc2954f8e6bb6bb5e4d7578467441390d77fd0"
-dependencies = [
- "darling",
- "ident_case",
- "prettyplease",
- "proc-macro2",
- "quote",
- "rustversion",
- "syn 2.0.87",
-]
-
-[[package]]
 name = "borrow-or-share"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2644,7 +2619,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b10559a0d518effd4f2cee107f40f83acf8583dcd3e6760b9b60293b0d2c2a70"
 dependencies = [
  "pct-str 2.0.0",
- "serde",
  "smallvec",
  "static-regular-grammar",
  "thiserror 1.0.68",
@@ -2981,7 +2955,6 @@ dependencies = [
  "langtag 0.4.0",
  "locspan 0.8.2",
  "rdf-types 0.22.4",
- "serde",
  "smallvec",
  "thiserror 1.0.68",
 ]
@@ -2994,7 +2967,6 @@ checksum = "66994b2bac615128d07a1e4527ad29e98b004dd1a1769e7b8fbc1173ccf43006"
 dependencies = [
  "lexical",
  "ryu-js",
- "serde",
  "smallvec",
 ]
 
@@ -3012,7 +2984,6 @@ dependencies = [
  "locspan 0.7.16",
  "locspan-derive",
  "ryu-js",
- "serde",
  "smallstr",
  "smallvec",
 ]
@@ -3031,7 +3002,6 @@ dependencies = [
  "locspan 0.8.2",
  "locspan-derive",
  "ryu-js",
- "serde",
  "smallstr",
  "smallvec",
  "utf8-decode",
@@ -3321,9 +3291,6 @@ name = "locspan"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33890449fcfac88e94352092944bf321f55e5deb4e289a6f51c87c55731200a0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "locspan-derive"
@@ -3688,7 +3655,6 @@ dependencies = [
  "async-trait",
  "bincode",
  "bit-vec",
- "bon",
  "bs58",
  "ciborium",
  "cocoon",
@@ -3708,7 +3674,6 @@ dependencies = [
  "itertools 0.13.0",
  "json-ld 0.15.1",
  "json-ld 0.21.1",
- "json-ld-syntax 0.21.1",
  "json-syntax 0.9.6",
  "jsonptr",
  "jsonschema",
@@ -4282,16 +4247,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a239bcdfda2c685fda1add3b4695c06225f50075e3cfb5b954e91545587edff2"
 dependencies = [
  "ryu_floating_decimal",
-]
-
-[[package]]
-name = "prettyplease"
-version = "0.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64d1ec885c64d0457d564db4ec299b2dae3f9c02808b8ad9c3a089c591b18033"
-dependencies = [
- "proc-macro2",
- "syn 2.0.87",
 ]
 
 [[package]]
@@ -5687,7 +5642,6 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63b1aefdf380735ff8ded0b15f31aab05daf1f70216c01c02a12926badd1df9d"
 dependencies = [
- "serde",
  "smallvec",
 ]
 

@@ -31,8 +31,8 @@ use self::mdoc::{
     MobileSecurityObjectVersion, Namespace, Namespaces, OID4VPHandover, SessionTranscript,
     ValidityInfo, ValueDigests,
 };
-use super::model::CredentialData;
-use super::nest_claims;
+use super::common::nest_claims;
+use super::json_ld::model::ContextType;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
@@ -41,10 +41,10 @@ use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialSubject, DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
-    FormatterCapabilities, Presentation, PublishedClaim, SelectiveDisclosure, SignatureProvider,
-    TokenVerifier, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
+    CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
+    Features, FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim,
+    SelectiveDisclosure, SignatureProvider, TokenVerifier, VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::mdl::DidMdlValidator;
@@ -171,48 +171,53 @@ impl MdocFormatter {
 
 #[async_trait]
 impl CredentialFormatter for MdocFormatter {
-    async fn format_credential(
+    async fn format_credentials(
         &self,
-        credential_data: CredentialData,
+        credential: CredentialData,
+        holder_did: &Option<DidValue>,
+        _additional_context: Vec<ContextType>,
+        _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let vcdm = credential_data.vcdm;
-        let credential_schema = vcdm
-            .credential_schema
-            .and_then(|schema| schema.into_iter().next())
-            .ok_or_else(|| {
-                FormatterError::Failed("MDOC credential missing credential schema".to_string())
-            })?;
-
-        let mut claims = nest_claims(credential_data.claims.clone())?;
-
-        if let Some(metadata) = credential_schema.metadata {
-            let layout_value = match self.params.embed_layout_properties {
-                Some(true) => {
-                    json!({
-                        "id": credential_schema.id,
-                        "layoutProperties": metadata.layout_properties,
-                        "layoutType": metadata.layout_type,
-                    })
-                }
-                _ => {
-                    json!({
-                        "id": credential_schema.id
-                    })
-                }
-            };
-
-            claims.insert(LAYOUT_NAMESPACE.to_string(), layout_value);
-        }
-
-        let namespaces =
-            try_build_namespaces(claims, credential_data.claims, &self.datatype_config)?;
-
-        let holder_did = credential_data.holder_did.ok_or_else(|| {
-            FormatterError::CouldNotFormat("Missing holder did for mdoc".to_string())
+        let credential_schema_id = credential.schema.id.ok_or_else(|| {
+            FormatterError::Failed(
+                "Cannot format credential, missing credential schema id".to_string(),
+            )
         })?;
 
-        let cose_key = try_build_cose_key(&*self.did_method_provider, &holder_did).await?;
+        let holder_did = holder_did.as_ref().ok_or_else(|| {
+            FormatterError::Failed("Cannot format credential, missing holder did".to_string())
+        })?;
+
+        let additional_namespaces: IndexMap<Namespace, serde_json::Value> =
+            if let Some(metadata) = credential.schema.metadata {
+                let layout_value = match self.params.embed_layout_properties {
+                    Some(true) => {
+                        json!({
+                            "id": credential_schema_id,
+                            "layoutProperties": metadata.layout_properties,
+                            "layoutType": metadata.layout_type,
+                        })
+                    }
+                    _ => {
+                        json!({
+                            "id": credential_schema_id
+                        })
+                    }
+                };
+                IndexMap::from([(LAYOUT_NAMESPACE.to_string(), layout_value)])
+            } else {
+                IndexMap::new()
+            };
+
+        let namespaces = try_build_namespaces(
+            credential.claims,
+            additional_namespaces,
+            &self.datatype_config,
+        )?;
+
+        let cose_key =
+            try_build_cose_key(&*self.did_method_provider, &holder_did.to_owned()).await?;
 
         let device_key_info = DeviceKeyInfo {
             device_key: DeviceKey(cose_key),
@@ -235,7 +240,7 @@ impl CredentialFormatter for MdocFormatter {
             digest_algorithm,
             value_digests: try_build_value_digests(&namespaces, digest_algorithm)?,
             device_key_info,
-            doc_type: credential_schema.id,
+            doc_type: credential_schema_id,
             validity_info,
         };
         let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)
@@ -248,7 +253,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(auth_fn.get_key_type())?;
 
-        let x5chain_header = build_x5chain_header(vcdm.issuer.to_did_value()?)?;
+        let x5chain_header = build_x5chain_header(credential.issuer_did.to_did_value()?)?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)
@@ -798,7 +803,7 @@ fn extract_credentials_internal(
         invalid_before: None,
         issuer_did: Some(issuer_did),
         subject: Some(holder_did),
-        claims: CredentialSubject { claims, id: None },
+        claims: CredentialSubject { values: claims },
         status: vec![],
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
@@ -926,15 +931,18 @@ pub async fn try_verify_detached_signature_with_provider(
 }
 
 fn try_build_namespaces(
-    claims: IndexMap<String, serde_json::Value>,
-    flat_claims: Vec<PublishedClaim>,
+    claims: Vec<PublishedClaim>,
+    additional_namespaces: IndexMap<String, serde_json::Value>,
     datatype_config: &DatatypeConfig,
 ) -> Result<Namespaces, FormatterError> {
     let mut namespaces = Namespaces::new();
 
+    let mut nested = nest_claims(claims.clone())?;
+    nested.extend(additional_namespaces);
+
     let mut digest_id: u64 = 0;
 
-    for (namespace_key, namespace_value) in claims.iter() {
+    for (namespace_key, namespace_value) in nested.iter() {
         let namespace = namespaces.entry(namespace_key.to_owned()).or_default();
 
         let namespace_object = namespace_value
@@ -957,7 +965,7 @@ fn try_build_namespaces(
                 element_value: build_ciborium_value(
                     item_value,
                     &format!("{namespace_key}/{item_key}"),
-                    &flat_claims,
+                    &claims,
                     datatype_config,
                 )?,
             };

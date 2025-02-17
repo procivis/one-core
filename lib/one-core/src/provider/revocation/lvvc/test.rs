@@ -109,8 +109,7 @@ fn extracted_credential(status: &str) -> DetailCredential {
         issuer_did: None,
         subject: None,
         claims: CredentialSubject {
-            claims: HashMap::from([("status".to_string(), json!(status))]),
-            id: None,
+            values: HashMap::from([("status".to_string(), json!(status))]),
         },
         status: vec![],
         credential_schema: None,

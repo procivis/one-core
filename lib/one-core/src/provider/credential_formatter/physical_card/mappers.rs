@@ -5,10 +5,10 @@ use super::model::{
     MRZ_CREDENTIAL_SUBJECT_TYPE,
 };
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, CredentialSubject, DetailCredential,
 };
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::exchange_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
 
 impl OptiocalBarcodeCredential {
@@ -29,7 +29,7 @@ impl OptiocalBarcodeCredential {
             ))),
         };
 
-        let credential: VcdmCredential = serde_json::from_str(&input.credential).map_err(|e| {
+        let credential: LdCredential = serde_json::from_str(&input.credential).map_err(|e| {
             FormatterError::Failed(format!("Failed to deserialize credential: {e}"))
         })?;
 
@@ -72,10 +72,7 @@ impl OptiocalBarcodeCredential {
                         .map(|(k, v)| (k.to_owned(), v.to_owned()))
                         .collect();
 
-                    Ok(CredentialSubject {
-                        claims: map,
-                        id: None,
-                    })
+                    Ok(CredentialSubject { values: map })
                 } else {
                     Err(FormatterError::Failed("Unknown Barcode format".to_string()))
                 }
@@ -139,11 +136,11 @@ pub enum ProtectedOpticalData {
 
 impl ProtectedOpticalData {
     pub fn new_from_credential_subject(
-        subject: &VcdmCredentialSubject,
+        subject: &LdCredentialSubject,
         code: String,
     ) -> Result<Self, FormatterError> {
         let subject_type = subject
-            .claims
+            .subject
             .get("type")
             .and_then(|v| v.as_str())
             .ok_or(FormatterError::Failed("Missing subject type".to_string()))?;

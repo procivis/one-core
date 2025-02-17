@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::DidValue;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::dto::{
@@ -9,6 +8,7 @@ use super::dto::{
     CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
     PresentationVerifyResponse,
 };
+use super::mapper::value_to_published_claim;
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use super::VCAPIService;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -17,7 +17,9 @@ use crate::model::key::KeyRelations;
 use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
 use crate::provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use crate::provider::credential_formatter::json_ld::model::LdCredential;
-use crate::provider::credential_formatter::model::{CredentialData, ExtractPresentationCtx};
+use crate::provider::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -62,10 +64,11 @@ impl VCAPIService {
             revocation_method,
             ..
         } = create_request.options;
-        let mut vcdm = create_request.credential;
-        validate_verifiable_credential(&vcdm, &self.jsonld_ctx_cache).await?;
 
-        let issuer_did = vcdm
+        validate_verifiable_credential(&create_request.credential, &self.jsonld_ctx_cache).await?;
+
+        let issuer_did = create_request
+            .credential
             .issuer
             .to_did_value()
             .map_err(ServiceError::FormatterError)?;
@@ -92,7 +95,7 @@ impl VCAPIService {
 
         let assertion_methods = self
             .did_method_provider
-            .resolve(&issuer_did)
+            .resolve(&create_request.credential.issuer.to_did_value()?)
             .await?
             .assertion_method
             .ok_or(ServiceError::MappingError(
@@ -109,6 +112,14 @@ impl VCAPIService {
             self.key_algorithm_provider.clone(),
         )?;
 
+        let credential_subject = create_request.credential.credential_subject[0].clone();
+
+        let claims: Vec<PublishedClaim> = credential_subject
+            .subject
+            .into_iter()
+            .flat_map(|claim| value_to_published_claim(claim, "", false))
+            .collect();
+
         let credential_format = credential_format.as_deref().unwrap_or("JSON_LD_CLASSIC");
 
         let formatter = self
@@ -118,8 +129,9 @@ impl VCAPIService {
                 MissingProviderError::Formatter(credential_format.to_string()),
             ))?;
 
+        let mut credential_status = create_request.credential.credential_status;
+
         if revocation_method.is_some() {
-            let credential_status = &mut vcdm.credential_status;
             let revocation_list_id = get_or_create_revocation_list_id(
                 &[Credential {
                     id: Uuid::new_v4().into(),
@@ -165,14 +177,38 @@ impl VCAPIService {
         }
 
         let credential_data = CredentialData {
-            holder_did: vcdm
-                .credential_subject
-                .iter()
-                .find_map(|s| DidValue::from_did_url(s.id.as_ref()?).ok()),
-            vcdm,
-            claims: vec![],
+            id: create_request.credential.id.map(|url| url.to_string()),
+            issuance_date: create_request
+                .credential
+                .valid_from
+                .unwrap_or(OffsetDateTime::now_utc()), // TODO
+            valid_for: Duration::minutes(60), // TODO
+            claims,
+            issuer_did: create_request.credential.issuer,
+            status: credential_status,
+            schema: CredentialSchemaData {
+                id: None,
+                r#type: None,
+                context: None,
+                name: "vc_interop_test_no_schema_data".to_string(),
+                metadata: None,
+            },
+            name: create_request.credential.name,
+            description: create_request.credential.description,
+            terms_of_use: create_request.credential.terms_of_use,
+            evidence: create_request.credential.evidence,
+            related_resource: create_request.credential.related_resource,
         };
-        let test = formatter.format_credential(credential_data, auth_fn).await;
+
+        let test = formatter
+            .format_credentials(
+                credential_data,
+                &credential_subject.id,
+                create_request.credential.context.into_iter().collect(),
+                create_request.credential.r#type,
+                auth_fn,
+            )
+            .await;
 
         let mut verifiable_credential: LdCredential =
             serde_json::from_str(&test?).map_err(|e: serde_json::Error| {

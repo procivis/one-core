@@ -701,7 +701,7 @@ impl SSIHolderService {
             ))?;
         let now = OffsetDateTime::now_utc();
 
-        for (key, value) in credential.claims.claims {
+        for (key, value) in credential.claims.values {
             let this_claim_schema = claim_schemas
                 .iter()
                 .find(|claim_schema| claim_schema.schema.key == key)

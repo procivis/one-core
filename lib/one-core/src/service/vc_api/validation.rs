@@ -2,9 +2,10 @@ use std::sync::LazyLock;
 
 use url::Url;
 
-use crate::provider::credential_formatter::json_ld::model::LdPresentation;
+use crate::provider::credential_formatter::json_ld::model::{
+    ContextType, LdCredential, LdPresentation,
+};
 use crate::provider::credential_formatter::model::Context;
-use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredential};
 use crate::service::error::ServiceError;
 
 static V1: LazyLock<ContextType> =
@@ -76,7 +77,7 @@ pub enum VpValidationError {
 pub struct JsonLdError(Box<dyn std::error::Error + Send + Sync + 'static>);
 
 pub(super) async fn validate_verifiable_credential(
-    credential: &VcdmCredential,
+    credential: &LdCredential,
     document_loader: &impl json_ld_0_21::Loader,
 ) -> Result<(), VcValidationError> {
     validate_json_ld(
@@ -108,7 +109,7 @@ pub(super) async fn validate_verifiable_credential(
     }
 
     for credential_subject in &credential.credential_subject {
-        if credential_subject.id.is_none() && credential_subject.claims.is_empty() {
+        if credential_subject.id.is_none() && credential_subject.subject.is_empty() {
             return Err(VcValidationError::EmptyCredentialSubject);
         }
     }

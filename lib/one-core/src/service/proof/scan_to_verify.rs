@@ -179,7 +179,7 @@ impl ProofService {
         let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
         let mut claims: Vec<(serde_json::Value, ClaimSchema)> = vec![];
         for proof_claim_schema in proof_claim_schemas {
-            let value = credential.claims.claims.get(&proof_claim_schema.schema.key);
+            let value = credential.claims.values.get(&proof_claim_schema.schema.key);
             let value = match value {
                 Some(val) => val,
                 None => {

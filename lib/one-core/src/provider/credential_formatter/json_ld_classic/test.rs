@@ -13,12 +13,11 @@ use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, La
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialSchemaMetadata, ExtractPresentationCtx,
+    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, ExtractPresentationCtx,
     FormatPresentationCtx, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
     PublishedClaimValue,
 };
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -53,48 +52,46 @@ async fn create_token(include_layout: bool) -> Value {
             .unwrap(),
     );
 
-    let schema = CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "FallbackSchema2024".to_string(),
-        metadata: Some(CredentialSchemaMetadata {
-            layout_type: LayoutType::Card,
-            layout_properties: LayoutProperties {
-                background: Some(BackgroundProperties {
-                    color: Some("color".to_string()),
-                    image: None,
-                }),
-                logo: None,
-                primary_attribute: None,
-                secondary_attribute: None,
-                picture_attribute: None,
-                code: None,
-            },
-        }),
+    let credential_data = CredentialData {
+        id: None,
+        issuance_date: OffsetDateTime::now_utc(),
+        valid_for: time::Duration::seconds(10),
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
+        issuer_did: issuer_did.clone(),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: Some("FallbackSchema2024".to_string()),
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: Some(CredentialSchemaMetadata {
+                layout_type: LayoutType::Card,
+                layout_properties: LayoutProperties {
+                    background: Some(BackgroundProperties {
+                        color: Some("color".to_string()),
+                        image: None,
+                    }),
+                    logo: None,
+                    primary_attribute: None,
+                    secondary_attribute: None,
+                    picture_attribute: None,
+                    code: None,
+                },
+            }),
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     };
-
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-        array_item: false,
-    }];
-    let now = OffsetDateTime::now_utc();
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
-
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
-        .with_id(holder_did.clone().into_url());
-
-    let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
-        .with_valid_from(now)
-        .with_valid_until(now + Duration::seconds(10))
-        .add_credential_schema(schema);
-
-    let credential_data = CredentialData {
-        vcdm,
-        claims,
-        holder_did: Some(holder_did.clone()),
-    };
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -132,7 +129,7 @@ async fn create_token(include_layout: bool) -> Value {
 
     let params = Params {
         leeway: Duration::seconds(60),
-        embed_layout_properties: include_layout,
+        embed_layout_properties: Some(include_layout),
         allowed_contexts: None,
     };
     let key_algorithm = MockKeyAlgorithm::new();
@@ -188,7 +185,13 @@ async fn create_token(include_layout: bool) -> Value {
         .return_const("ES256".to_string());
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credentials(
+            credential_data,
+            &Some(holder_did).to_owned(),
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+        )
         .await
         .unwrap();
 
@@ -284,7 +287,7 @@ async fn test_format_presentation_multi_tokens() {
 
     let params = Params {
         leeway: Duration::seconds(60),
-        embed_layout_properties: true,
+        embed_layout_properties: Some(true),
         allowed_contexts: None,
     };
     let algorithm = "ES256";
@@ -495,7 +498,7 @@ async fn test_parse_presentation_multi_tokens() {
 
     let params = Params {
         leeway: Duration::seconds(60),
-        embed_layout_properties: true,
+        embed_layout_properties: Some(true),
         allowed_contexts: None,
     };
 

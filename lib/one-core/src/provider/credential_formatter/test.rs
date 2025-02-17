@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use indexmap::indexset;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -78,8 +77,6 @@ fn generate_credential_detail_response(
 #[test]
 fn test_from_credential_detail_response_nested_claim_mapping() {
     let now = OffsetDateTime::now_utc();
-    let holder_did = DidValue::from_str("did:key:holder").unwrap();
-
     let actual = credential_data_from_credential_detail_response(
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
@@ -140,10 +137,8 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                 value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
             },
         ]),
-        holder_did,
         "http://127.0.0.1",
         vec![],
-        indexset![],
     )
     .unwrap()
     .claims;
@@ -175,8 +170,6 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
 #[test]
 fn test_from_credential_detail_response_nested_claim_mapping_array() {
     let now = OffsetDateTime::now_utc();
-    let holder_did = DidValue::from_str("did:key:holder").unwrap();
-
     let mut datatype_config = DatatypeConfig::default();
     datatype_config.insert(
         "OBJECT".to_owned(),
@@ -249,10 +242,8 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                 value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
             },
         ]),
-        holder_did,
         "http://127.0.0.1",
         vec![],
-        indexset![],
     )
     .unwrap()
     .claims;

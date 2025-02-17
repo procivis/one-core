@@ -18,6 +18,8 @@ use one_core::provider::did_method::provider::DidMethodProvider;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use one_core::provider::key_storage::provider::KeyProvider;
 use one_core::util::key_verification::KeyVerification;
+use one_core::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
+use shared_types::DidValue;
 
 use crate::model::CredentialFormat;
 use crate::service::error::CredentialServiceError;
@@ -48,6 +50,7 @@ impl CredentialService {
         &self,
         credential_data: CredentialData,
         format: CredentialFormat,
+        holder_did: DidValue,
         issuer_key: Key,
     ) -> Result<String, CredentialServiceError> {
         let auth_fn = self.key_storage_provider.get_signature_provider(
@@ -60,7 +63,13 @@ impl CredentialService {
             .credential_formatter_provider
             .get_formatter(&format.to_string())
             .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
-            .format_credential(credential_data, auth_fn)
+            .format_credentials(
+                credential_data,
+                &Some(holder_did),
+                vcdm_v2_base_context(None),
+                vcdm_type(None),
+                auth_fn,
+            )
             .await?;
 
         Ok(token)

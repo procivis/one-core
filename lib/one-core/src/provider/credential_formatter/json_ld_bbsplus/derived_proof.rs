@@ -5,6 +5,7 @@ use itertools::Itertools;
 use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use urlencoding::encode;
 
+use super::super::json_ld::model::LdCredential;
 use super::model::{GroupEntry, TransformedEntry};
 use super::JsonLdBbsplus;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -15,47 +16,46 @@ use crate::provider::credential_formatter::json_ld_bbsplus::model::{
 };
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 use crate::provider::credential_formatter::model::CredentialPresentation;
-use crate::provider::credential_formatter::vcdm::VcdmCredential;
+
 impl JsonLdBbsplus {
     pub(super) async fn derive_proof(
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        let mut vcdm: VcdmCredential = serde_json::from_str(&credential.token).map_err(|e| {
-            FormatterError::CouldNotFormat(format!("Could not deserialize base proof: {e}"))
-        })?;
+        let mut ld_credential: LdCredential =
+            serde_json::from_str(&credential.token).map_err(|e| {
+                FormatterError::CouldNotFormat(format!("Could not deserialize base proof: {e}"))
+            })?;
 
-        let Some(mut proof) = vcdm.proof.take() else {
+        let Some(mut ld_proof) = ld_credential.proof.clone() else {
             return Err(FormatterError::CouldNotFormat("Missing proof".to_string()));
         };
 
-        if proof.cryptosuite != "bbs-2023" {
-            return Err(FormatterError::CouldNotFormat(
-                "Incorrect cryptosuite".to_string(),
-            ));
-        }
-
-        let Some(proof_value) = &proof.proof_value else {
+        let Some(ld_proof_value) = &ld_proof.proof_value else {
             return Err(FormatterError::CouldNotFormat(
                 "Missing proof value".to_string(),
             ));
         };
 
-        let proof_components = extract_proof_value_components(proof_value)?;
-
-        if proof_components.mandatory_pointers.is_empty() && credential.disclosed_keys.is_empty() {
-            return Err(FormatterError::CouldNotVerify(
-                "Nothing has been selected for disclosure".to_string(),
+        if ld_proof.cryptosuite != "bbs-2023" {
+            return Err(FormatterError::CouldNotFormat(
+                "Incorrect cryptosuite".to_string(),
             ));
         }
 
-        // We are getting a string from normalization so we operate on it.
-        let canonical_vcdm = json_ld::canonize_any(&vcdm, self.caching_loader.to_owned()).await?;
+        ld_credential.proof = None;
+
+        let proof_components = extract_proof_value_components(ld_proof_value)?;
 
         let hmac_key = proof_components.hmac_key;
-        let label_map = self.create_label_map(&canonical_vcdm, &hmac_key)?;
 
-        let transformed = self.transform_canonical(&label_map, &canonical_vcdm)?;
+        // We are getting a string from normalization so we operate on it.
+        let canonical =
+            json_ld::canonize_any(&ld_credential, self.caching_loader.to_owned()).await?;
+
+        let identifier_map = self.create_blank_node_identifier_map(&canonical, &hmac_key)?;
+
+        let transformed = self.transform_canonical(&identifier_map, &canonical)?;
 
         let grouped = self.create_grouped_transformation(&transformed)?;
 
@@ -108,7 +108,7 @@ impl JsonLdBbsplus {
                 FormatterError::CouldNotExtractCredentials(format!("Could not derive proof: {e}"))
             })?;
 
-        let mut revealed_document = vcdm;
+        let mut revealed_document = ld_credential;
 
         // selectJsonLd - we just removed what's not disclosed. In our case
         // we can only disclose claims. The rest of the json is mandatory.
@@ -118,7 +118,7 @@ impl JsonLdBbsplus {
             json_ld::canonize_any(&revealed_document, self.caching_loader.to_owned()).await?;
 
         let compressed_verifier_label_map =
-            create_compressed_verifier_label_map(&revealed_transformed, &label_map)?;
+            create_compressed_verifier_label_map(&revealed_transformed, &identifier_map)?;
 
         let derived_proof_value = serialize_derived_proof_value(
             &bbs_proof,
@@ -128,9 +128,9 @@ impl JsonLdBbsplus {
             &[],
         )?;
 
-        proof.proof_value = Some(derived_proof_value);
+        ld_proof.proof_value = Some(derived_proof_value);
 
-        revealed_document.proof = Some(proof);
+        revealed_document.proof = Some(ld_proof);
 
         let resp = serde_json::to_string(&revealed_document)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
@@ -146,13 +146,11 @@ fn adjust_indices(
     indices
         .iter()
         .map(|index| {
-            let pos = adjustment_base.iter().position(|i| i == index).ok_or(
+            adjustment_base.iter().position(|i| i == index).ok_or(
                 FormatterError::CouldNotExtractCredentials(
                     "Missing mandatory index in combined indices".to_owned(),
                 ),
-            )?;
-
-            Ok(pos)
+            )
         })
         .collect::<Result<_, _>>()
 }
@@ -268,7 +266,11 @@ fn traverse_and_collect(
     let mut indices = HashSet::new();
     match key {
         Some(key) => {
-            if let Some((key, carry_over_key)) = key.split_once(NESTED_CLAIM_MARKER) {
+            if key.contains(NESTED_CLAIM_MARKER) {
+                let (key, carry_over_key) = key
+                    .split_once(NESTED_CLAIM_MARKER)
+                    .ok_or(FormatterError::Failed("Invalid key format".to_string()))?;
+
                 let this_entries = find_with_predicate(key, subject, entries)?;
                 for this_entry in this_entries {
                     let this_triple = to_triple(this_entry.entry.as_ref())?;
@@ -339,13 +341,14 @@ fn find_with_predicate<'a>(
     let selected_entries: Vec<_> = entries
         .iter()
         .filter(|entry| {
-            to_triple(entry.entry.as_ref()).is_ok_and(|triple| {
-                println!("{} == {subject}; {triple:?}", triple.subject);
+            if let Ok(triple) = to_triple(entry.entry.as_ref()) {
                 triple.subject == subject
                     && triple
                         .predicate
                         .ends_with(&["#", &key_url_encoded, ">"].concat())
-            })
+            } else {
+                false
+            }
         })
         .collect();
 
@@ -374,7 +377,6 @@ fn find_root_object(entries: &[GroupEntry]) -> Result<(&str, usize), FormatterEr
         ))
 }
 
-#[derive(Debug)]
 pub(super) struct Triple<'a> {
     pub subject: &'a str,
     pub predicate: &'a str,

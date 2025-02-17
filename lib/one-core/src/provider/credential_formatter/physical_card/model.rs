@@ -5,8 +5,8 @@ use time::OffsetDateTime;
 
 use super::mappers::ProtectedOpticalData;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_ld::model::LdCredential;
 use crate::provider::credential_formatter::model::CredentialSchema;
-use crate::provider::credential_formatter::vcdm::VcdmCredential;
 
 pub const MRZ_CREDENTIAL_SUBJECT_TYPE: &str = "MachineReadableZone";
 
@@ -83,6 +83,6 @@ pub struct TerseBitstringStatusListEntry {
 
 pub struct OptiocalBarcodeCredential {
     pub schema: CredentialSchema,
-    pub credential: VcdmCredential,
+    pub credential: LdCredential,
     pub optical_data: ProtectedOpticalData,
 }
