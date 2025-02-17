@@ -411,6 +411,7 @@ deploy:dev:
   variables:
     VALUES_PATH: values/dev
     K8S_NAMESPACE: default
+    DEPLOY_ENVIRONMENT: Dev
 
 deploy:test:
   extends:
@@ -419,6 +420,7 @@ deploy:test:
   variables:
     VALUES_PATH: values/test
     K8S_NAMESPACE: one-test
+    DEPLOY_ENVIRONMENT: Test
 
 deploy:demo:
   extends:
@@ -429,6 +431,7 @@ deploy:demo:
     K8S_NAMESPACE: default
     RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
     CLUSTER_NAME: $DEMO_CLUSTER_NAME
+    DEPLOY_ENVIRONMENT: Demo
 
 deploy:canivc:
   extends:
@@ -437,7 +440,7 @@ deploy:canivc:
   variables:
     VALUES_PATH: values/canivc
     K8S_NAMESPACE: canivc
-
+    DEPLOY_ENVIRONMENT: Canivc
 
 test:build:
   stage: tests
@@ -492,12 +495,12 @@ dtrack:generate-bom:
     - .rule:only_main_or_tag
   script:
     - cargo cyclonedx -f json
-    - > 
-      cyclonedx-cli merge 
-      --input-files ${SBOM_FILES} 
-      --input-format=json 
-      --output-format=json 
-      --group apps 
+    - >
+      cyclonedx-cli merge
+      --input-files ${SBOM_FILES}
+      --input-format=json
+      --output-format=json
+      --group apps
       --name "One-Core"
       --output-file ${SBOM_FILE_PATH}
   artifacts:
@@ -551,8 +554,3 @@ set_jira_version:
   stage: ci_tools
   extends:
     - .ci-tool:set_jira_version
-
-send_notification:
-  stage: ci_tools
-  extends:
-    - .ci-tool:send_notification:teams
