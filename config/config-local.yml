@@ -12,6 +12,20 @@ app:
   enableMetrics: true
   enableServerInfo: true
   enableOpenApi: true
+format:
+  MDOC_SHORT_EXPIRY:
+    type: "MDOC"
+    display:
+      en: "ISO mdoc (short expiry)"
+      de: "ISO mdoc (kurze Gültigkeit)"
+    order: 101
+    params:
+      public:
+        msoExpiresIn: 60
+        msoExpectedUpdateIn: 60
+        msoMinimumRefreshTime: 10
+        leeway: 10
+        embedLayoutProperties: true
 exchange:
   OPENID4VC:
     params:
