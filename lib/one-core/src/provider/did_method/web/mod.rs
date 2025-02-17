@@ -1,4 +1,5 @@
 //! Implementation of did:web.
+//! https://w3c-ccg.github.io/did-method-web/
 
 use std::sync::Arc;
 

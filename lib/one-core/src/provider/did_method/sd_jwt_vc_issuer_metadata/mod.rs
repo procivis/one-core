@@ -1,4 +1,5 @@
 //! Implementation of SD-JWT VC issuer metadata.
+//! https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html#section-3.5
 
 use std::sync::Arc;
 

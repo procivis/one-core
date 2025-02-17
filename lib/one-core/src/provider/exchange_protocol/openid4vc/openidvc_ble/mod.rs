@@ -1,3 +1,6 @@
+//! OpenID4VP over BLE implementation
+//! https://openid.net/specs/openid-4-verifiable-presentations-over-ble-1_0.html
+
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 

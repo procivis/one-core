@@ -1,3 +1,6 @@
+//! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
+//! https://www.iso.org/standard/69084.html
+
 use shared_types::DidValue;
 
 use super::model::{CredentialRevocationInfo, Operation};

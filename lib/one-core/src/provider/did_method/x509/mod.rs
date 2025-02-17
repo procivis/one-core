@@ -1,3 +1,6 @@
+//! Implementation of did:x509.
+//! https://github.com/microsoft/did-x509/blob/main/specification.md
+
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 

@@ -1,4 +1,5 @@
 //! Implementation of did:key.
+//! https://w3c-ccg.github.io/did-method-key
 
 use std::sync::Arc;
 

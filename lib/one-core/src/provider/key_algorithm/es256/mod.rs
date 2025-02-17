@@ -1,3 +1,5 @@
+//! https://datatracker.ietf.org/doc/html/rfc7518
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

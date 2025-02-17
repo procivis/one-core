@@ -1,4 +1,5 @@
 //! Implementation of DID Universal Resolver.
+//! https://github.com/decentralized-identity/universal-resolver/
 
 use std::sync::Arc;
 

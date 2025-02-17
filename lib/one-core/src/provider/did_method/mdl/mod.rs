@@ -1,3 +1,6 @@
+//! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
+//! https://www.iso.org/standard/69084.html
+
 use std::sync::Arc;
 
 use anyhow::Context;

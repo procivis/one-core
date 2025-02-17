@@ -1,3 +1,7 @@
+//! Implementation of OpenID4VCI + OpenID4VP.
+//! https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
+//! https://openid.net/specs/openid-4-verifiable-presentations-1_0.html
+
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 

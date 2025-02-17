@@ -1,4 +1,5 @@
 //! Implementation of did:jwk.
+//! https://github.com/quartzjer/did-jwk/blob/main/spec.md
 
 use std::sync::Arc;
 

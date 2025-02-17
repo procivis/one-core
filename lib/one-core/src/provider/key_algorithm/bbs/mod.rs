@@ -1,3 +1,5 @@
+//! https://www.w3.org/TR/vc-di-bbs/#bbs-2023
+
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};

@@ -1,4 +1,5 @@
 //! Bitstring Status List implementation.
+//! https://www.w3.org/TR/vc-bitstring-status-list/
 
 use std::collections::HashMap;
 use std::sync::Arc;

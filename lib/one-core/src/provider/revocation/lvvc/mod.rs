@@ -1,4 +1,5 @@
 //! LVVC implementation.
+//! https://eprint.iacr.org/2022/1658.pdf
 
 use std::collections::HashMap;
 use std::ops::Sub;

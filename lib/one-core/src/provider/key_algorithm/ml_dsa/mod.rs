@@ -1,3 +1,5 @@
+//! https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-01
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

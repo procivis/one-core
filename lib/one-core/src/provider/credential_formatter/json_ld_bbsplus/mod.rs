@@ -1,4 +1,5 @@
 //! Implementation of JSON-LD credential format with BBS+ signatures, allowing for selective disclosure.
+//! https://www.w3.org/TR/vc-di-bbs/
 
 use std::sync::Arc;
 use std::vec;

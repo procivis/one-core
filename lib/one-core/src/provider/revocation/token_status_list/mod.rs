@@ -1,4 +1,5 @@
 //! Token Status List implementation.
+//! https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-03
 
 use std::collections::HashMap;
 use std::sync::Arc;
