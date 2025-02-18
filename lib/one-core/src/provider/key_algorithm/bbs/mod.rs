@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
+use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use one_crypto::SignerError;
 use zeroize::Zeroizing;
 
@@ -170,36 +170,35 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
 
     fn verify_signature(
         &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<Vec<u8>>>,
+        header: Vec<u8>,
+        messages: Vec<Vec<u8>>,
         signature: &[u8],
     ) -> Result<(), SignerError> {
-        let header = header.ok_or(SignerError::CouldNotSign("missing header".to_string()))?;
-        let messages = messages.ok_or(SignerError::CouldNotSign("missing messages".to_string()))?;
-
         BBSSigner::verify_bbs(header, messages, signature, &self.public_key)
     }
 
     fn derive_proof(
         &self,
-        _header: Option<Vec<u8>>,
-        _messages: Option<Vec<(Vec<u8>, bool)>>,
-        _presentation_header: Option<Vec<u8>>,
-        _signature: &[u8],
+        header: Vec<u8>,
+        messages: Vec<(Vec<u8>, bool)>,
+        signature: Vec<u8>,
     ) -> Result<Vec<u8>, SignerError> {
-        todo!()
+        let derive_input = BbsDeriveInput {
+            header,
+            messages,
+            signature,
+        };
+
+        BBSSigner::derive_proof(&derive_input, &self.public_key)
     }
 
     fn verify_proof(
         &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<(usize, Vec<u8>)>>,
+        header: Vec<u8>,
+        messages: Vec<(usize, Vec<u8>)>,
         presentation_header: Option<Vec<u8>>,
         proof: &[u8],
     ) -> Result<(), SignerError> {
-        let header = header.ok_or(SignerError::CouldNotSign("missing header".to_string()))?;
-        let messages = messages.ok_or(SignerError::CouldNotSign("missing messages".to_string()))?;
-
         let input = BbsProofInput {
             header,
             presentation_header,
@@ -212,14 +211,7 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
 }
 
 impl MultiMessageSignaturePrivateKeyHandle for BBSPrivateKeyHandle {
-    fn sign(
-        &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<Vec<u8>>>,
-    ) -> Result<Vec<u8>, SignerError> {
-        let header = header.ok_or(SignerError::CouldNotSign("missing header".to_string()))?;
-        let messages = messages.ok_or(SignerError::CouldNotSign("missing messages".to_string()))?;
-
+    fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, SignerError> {
         BBSSigner::sign_bbs(header, messages, &self.private_key, &self.public_key)
     }
 

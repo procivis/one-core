@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use itertools::Itertools;
-use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use urlencoding::encode;
 
 use super::super::json_ld::model::LdCredential;
@@ -97,13 +96,28 @@ impl JsonLdBbsplus {
             })
             .collect();
 
-        let derive_input = BbsDeriveInput {
-            header: proof_components.bbs_header,
-            messages: bbs_messages,
-            signature: proof_components.bbs_signature,
-        };
-
-        let bbs_proof = BBSSigner::derive_proof(&derive_input, &proof_components.public_key)
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_id("BBS")
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "Key algorithm not found".to_string(),
+            ))?;
+        let public_key_handle = key_algorithm
+            .reconstruct_key(&proof_components.public_key, None, None)
+            .map_err(|e| {
+                FormatterError::CouldNotExtractCredentials(format!("Could not derive proof: {e}"))
+            })?;
+        let bbs_proof = public_key_handle
+            .multi_message_signature()
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "Could not derive proof: multi message signature key not found".to_string(),
+            ))?
+            .public()
+            .derive_proof(
+                proof_components.bbs_header,
+                bbs_messages,
+                proof_components.bbs_signature,
+            )
             .map_err(|e| {
                 FormatterError::CouldNotExtractCredentials(format!("Could not derive proof: {e}"))
             })?;

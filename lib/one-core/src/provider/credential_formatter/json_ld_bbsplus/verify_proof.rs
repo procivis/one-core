@@ -180,14 +180,12 @@ impl JsonLdBbsplus {
             .get_public_signature_handle(&ld_credential, &ld_proof.verification_method)
             .await?;
         if let Err(error) = handle.public().verify_proof(
-            Some(bbs_header),
-            Some(
-                non_mandatory_nquads
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, value)| (proof_components.selective_indices[i], value.into_bytes()))
-                    .collect(),
-            ),
+            bbs_header,
+            non_mandatory_nquads
+                .into_iter()
+                .enumerate()
+                .map(|(i, value)| (proof_components.selective_indices[i], value.into_bytes()))
+                .collect(),
             Some(proof_components.presentation_header),
             &proof_components.bbs_proof,
         ) {

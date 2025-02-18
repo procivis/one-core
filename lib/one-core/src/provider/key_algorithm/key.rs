@@ -115,11 +115,9 @@ impl KeyHandle {
             }
             KeyHandle::MultiMessageSignature(value) => {
                 let input = parse_bbs_input(message);
-                value.public().verify_signature(
-                    Some(input.header),
-                    Some(input.messages),
-                    signature_bytes,
-                )
+                value
+                    .public()
+                    .verify_signature(input.header, input.messages, signature_bytes)
             }
         }
     }
@@ -145,7 +143,7 @@ impl KeyHandle {
                 value
                     .private()
                     .ok_or(SignerError::MissingKey)?
-                    .sign(Some(input.header), Some(input.messages))
+                    .sign(input.header, input.messages)
             }
         }
     }
@@ -289,23 +287,22 @@ pub trait MultiMessageSignaturePublicKeyHandle: Send + Sync {
 
     fn verify_signature(
         &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<Vec<u8>>>,
+        header: Vec<u8>,
+        messages: Vec<Vec<u8>>,
         signature: &[u8],
     ) -> Result<(), SignerError>;
 
     fn derive_proof(
         &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<(Vec<u8>, bool)>>,
-        presentation_header: Option<Vec<u8>>,
-        signature: &[u8],
+        header: Vec<u8>,
+        messages: Vec<(Vec<u8>, bool)>,
+        signature: Vec<u8>,
     ) -> Result<Vec<u8>, SignerError>;
 
     fn verify_proof(
         &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<(usize, Vec<u8>)>>,
+        header: Vec<u8>,
+        messages: Vec<(usize, Vec<u8>)>,
         presentation_header: Option<Vec<u8>>,
         proof: &[u8],
     ) -> Result<(), SignerError>;
@@ -313,10 +310,6 @@ pub trait MultiMessageSignaturePublicKeyHandle: Send + Sync {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait MultiMessageSignaturePrivateKeyHandle: Send + Sync {
-    fn sign(
-        &self,
-        header: Option<Vec<u8>>,
-        messages: Option<Vec<Vec<u8>>>,
-    ) -> Result<Vec<u8>, SignerError>;
+    fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, SignerError>;
     fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError>;
 }
