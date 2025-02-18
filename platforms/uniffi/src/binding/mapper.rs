@@ -133,11 +133,13 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             verifier_did: value.verifier_did.map(Into::into),
             holder_did: value.holder_did.map(Into::into),
             exchange: value.exchange,
+            transport: value.transport,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),
-            retain_until_date: value
-                .retain_until_date
-                .map(|retain_until_date| retain_until_date.format_timestamp()),
+            retain_until_date: value.retain_until_date.map(|date| date.format_timestamp()),
+            requested_date: value.requested_date.map(|date| date.format_timestamp()),
+            completed_date: value.completed_date.map(|date| date.format_timestamp()),
+            claims_removed_at: value.claims_removed_at.map(|date| date.format_timestamp()),
         }
     }
 }

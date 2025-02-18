@@ -267,9 +267,13 @@ pub struct ProofRequestBindingDTO {
     pub state: ProofStateBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
     pub exchange: String,
+    pub transport: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,
     pub retain_until_date: Option<String>,
+    pub requested_date: Option<String>,
+    pub completed_date: Option<String>,
+    pub claims_removed_at: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
