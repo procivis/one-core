@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use reqwest::Client;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use wiremock::matchers::{headers, path};
@@ -364,7 +365,11 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
 
     let refresh_timeout = OffsetDateTime::now_utc() - get_dummy_date() + Duration::seconds(99999);
     let loader = create_loader(storage, 1, refresh_timeout, Duration::seconds(300));
-    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
+    let client = Client::builder()
+        .timeout(core::time::Duration::from_millis(10))
+        .build()
+        .unwrap();
+    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::new(client))));
 
     let (content, _media_type) = loader.get(url, resolver, false).await.unwrap();
 
@@ -396,7 +401,11 @@ async fn test_load_context_failed_cache_hit_older_than_refreshafter_and_failed_t
         Duration::seconds(301),
         Duration::seconds(300),
     );
-    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
+    let client = Client::builder()
+        .timeout(core::time::Duration::from_millis(10))
+        .build()
+        .unwrap();
+    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::new(client))));
 
     assert!(loader.get(url, resolver, false).await.is_err());
 }
