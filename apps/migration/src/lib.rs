@@ -81,6 +81,7 @@ mod m20250203_143642_add_rse_storage_type;
 mod m20250205_120540_rename_bitstring_status_list_type_in_revocation_list_table;
 mod m20250214_102249_missing_remote_entity_type;
 mod m20250218_094713_add_trust_entity_history_changes;
+mod m20250218_161915_add_proof_role;
 
 pub struct Migrator;
 
@@ -163,6 +164,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250205_120540_rename_bitstring_status_list_type_in_revocation_list_table::Migration),
             Box::new(m20250214_102249_missing_remote_entity_type::Migration),
             Box::new(m20250218_094713_add_trust_entity_history_changes::Migration),
+            Box::new(m20250218_161915_add_proof_role::Migration),
         ]
     }
 }

@@ -42,7 +42,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofStateEnum, UpdateProofRequest,
+    Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum, UpdateProofRequest,
 };
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -688,6 +688,7 @@ impl ProofService {
                 exchange,
                 redirect_uri: None,
                 state: ProofStateEnum::Pending,
+                role: ProofRole::Holder,
                 requested_date: Some(now),
                 completed_date: None,
                 schema: None,

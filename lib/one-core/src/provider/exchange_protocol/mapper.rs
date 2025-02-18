@@ -18,7 +18,7 @@ use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -78,6 +78,7 @@ pub fn proof_from_handle_invitation(
         redirect_uri,
         transport: transport.to_owned(),
         state,
+        role: ProofRole::Holder,
         requested_date: Some(now),
         completed_date: None,
         schema: None,

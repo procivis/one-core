@@ -11,7 +11,7 @@ use one_core::model::key::{Key, KeyRelations};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::proof::{
-    GetProofQuery, Proof, ProofClaimRelations, ProofRelations, ProofStateEnum,
+    GetProofQuery, Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
 };
 use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
@@ -273,6 +273,7 @@ async fn test_create_proof_success() {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
         schema: Some(ProofSchema {

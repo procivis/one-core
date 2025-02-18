@@ -3,7 +3,7 @@ use shared_types::{DidId, DidValue, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::entity::did::DidType;
-use crate::entity::proof::ProofRequestState;
+use crate::entity::proof::{ProofRequestState, ProofRole};
 
 /// temporary struct to map items returned from the list DB query
 #[derive(FromQueryResult)]
@@ -17,6 +17,7 @@ pub(super) struct ProofListItemModel {
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub state: ProofRequestState,
+    pub role: ProofRole,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
 

@@ -14,7 +14,9 @@ use one_core::model::history::HistoryAction;
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::model::proof::{Proof, ProofClaimRelations, ProofRelations, ProofStateEnum};
+use one_core::model::proof::{
+    Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
+};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -678,6 +680,7 @@ pub async fn create_proof(
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state,
+        role: ProofRole::Verifier,
         requested_date,
         completed_date,
         claims: None,

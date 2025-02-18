@@ -8,7 +8,7 @@ use one_core::model::interaction::Interaction;
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
-    Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofStateEnum,
+    Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
 };
 use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -53,6 +53,12 @@ impl ProofsDB {
             _ => None,
         };
 
+        let role = if proof_schema.is_some() {
+            ProofRole::Verifier
+        } else {
+            ProofRole::Holder
+        };
+
         let proof = Proof {
             id: id.unwrap_or_else(|| Uuid::new_v4().into()),
             created_date: get_dummy_date(),
@@ -62,6 +68,7 @@ impl ProofsDB {
             transport: "HTTP".to_string(),
             redirect_uri: None,
             state,
+            role,
             requested_date,
             completed_date,
             claims: Some(vec![ProofClaim {

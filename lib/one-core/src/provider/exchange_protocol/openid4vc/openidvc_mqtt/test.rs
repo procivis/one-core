@@ -13,7 +13,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -442,6 +442,7 @@ async fn test_presentation_reject_success() {
         transport: "MQTT".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
+        role: ProofRole::Holder,
         requested_date: Some(now),
         completed_date: None,
         schema: None,
@@ -522,6 +523,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         transport: "MQTT".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
+        role: ProofRole::Verifier,
         requested_date: Some(OffsetDateTime::now_utc()),
         completed_date: None,
         schema: Some(ProofSchema {

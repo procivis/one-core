@@ -27,7 +27,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{
-    GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofStateEnum,
+    GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
 };
 use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
@@ -143,6 +143,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state,
+        role: ProofRole::Verifier,
         requested_date,
         completed_date,
         schema: Some(ProofSchema {
@@ -312,6 +313,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         }),
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Verifier,
     };
 
     {
@@ -427,6 +429,7 @@ async fn test_get_proof_exists() {
         holder_did: None,
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Verifier,
     };
     {
         let res_clone = proof.clone();
@@ -617,6 +620,7 @@ async fn test_get_proof_with_array_holder() {
         holder_did: Some(dummy_did()),
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Holder,
     };
     {
         let res_clone = proof.clone();
@@ -834,6 +838,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         holder_did: Some(dummy_did()),
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Holder,
     };
     {
         let res_clone = proof.clone();
@@ -1056,6 +1061,7 @@ async fn test_get_proof_with_object_array_holder() {
         holder_did: Some(dummy_did()),
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Holder,
     };
     {
         let res_clone = proof.clone();
@@ -1278,6 +1284,7 @@ async fn test_get_proof_with_array() {
         holder_did: None,
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Verifier,
     };
     {
         let res_clone = proof.clone();
@@ -1513,6 +1520,7 @@ async fn test_get_proof_with_array_in_object() {
         holder_did: None,
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Verifier,
     };
     {
         let res_clone = proof.clone();
@@ -1754,6 +1762,7 @@ async fn test_get_proof_with_object_array() {
         holder_did: None,
         verifier_key: None,
         interaction: None,
+        role: ProofRole::Verifier,
     };
     {
         let res_clone = proof.clone();
@@ -1886,6 +1895,7 @@ async fn test_get_proof_list_success() {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
         schema: Some(ProofSchema {
@@ -3191,7 +3201,8 @@ async fn test_retract_proof_fails_for_holder_openid4vc() {
     let interaction_id = InteractionId::from(Uuid::new_v4());
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     proof.exchange = "OPENID4VC".to_string();
-    proof.schema = None; // not having a proof schema indicates that it is holder role
+    proof.schema = None;
+    proof.role = ProofRole::Holder;
     proof.interaction = Some(Interaction {
         id: interaction_id,
         created_date: OffsetDateTime::now_utc(),
@@ -3472,7 +3483,8 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     let interaction_id = InteractionId::from(Uuid::new_v4());
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     proof.exchange = "ISO_MDL".to_string();
-    proof.schema = None; // mark as holder
+    proof.schema = None;
+    proof.role = ProofRole::Holder;
     proof.interaction = Some(Interaction {
         id: interaction_id,
         created_date: OffsetDateTime::now_utc(),

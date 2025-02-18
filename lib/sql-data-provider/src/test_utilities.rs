@@ -18,7 +18,7 @@ use crate::entity::credential_schema::{CredentialSchemaType, LayoutType, WalletS
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::key_did::KeyRole;
-use crate::entity::proof::ProofRequestState;
+use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
     interaction, key, key_did, organisation, proof, proof_claim, proof_input_claim_schema,
@@ -192,6 +192,7 @@ pub async fn insert_proof_request_to_database(
         transport: Set("HTTP".to_string()),
         redirect_uri: Set(None),
         state: Set(ProofRequestState::Created),
+        role: Set(ProofRole::Verifier),
         requested_date: Set(None),
         completed_date: Set(None),
         verifier_did_id: Set(Some(verifier_did_id)),

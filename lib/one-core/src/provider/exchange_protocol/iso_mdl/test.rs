@@ -16,7 +16,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
@@ -115,6 +115,7 @@ async fn test_presentation_reject_ok() {
         transport: "BLE".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
+        role: ProofRole::Verifier,
         requested_date: Some(OffsetDateTime::now_utc()),
         completed_date: None,
         schema: Some(ProofSchema {
@@ -224,6 +225,7 @@ async fn test_get_presentation_definition_ok() {
         transport: "BLE".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
+        role: ProofRole::Holder,
         requested_date: Some(OffsetDateTime::now_utc()),
         completed_date: None,
         schema: None,

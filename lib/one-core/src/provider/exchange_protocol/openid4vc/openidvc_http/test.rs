@@ -25,7 +25,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -481,6 +481,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
         schema: Some(ProofSchema {
@@ -558,6 +559,7 @@ async fn test_share_proof_with_use_request_uri() {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
         schema: Some(ProofSchema {

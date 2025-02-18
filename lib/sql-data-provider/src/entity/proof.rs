@@ -1,4 +1,4 @@
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofRole as ModelProofRole, ProofStateEnum};
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{DidId, KeyId, ProofId, ProofSchemaId};
@@ -17,6 +17,7 @@ pub struct Model {
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub state: ProofRequestState,
+    pub role: ProofRole,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
 
@@ -96,6 +97,17 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     VerifierKey,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ModelProofRole)]
+#[into(ModelProofRole)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+pub enum ProofRole {
+    #[sea_orm(string_value = "HOLDER")]
+    Holder,
+    #[sea_orm(string_value = "VERIFIER")]
+    Verifier,
 }
 
 impl Related<super::interaction::Entity> for Entity {

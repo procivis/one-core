@@ -89,6 +89,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             transport: value.transport,
             redirect_uri: value.redirect_uri,
             state: value.state.into(),
+            role: value.role.into(),
             requested_date: value.requested_date,
             completed_date: value.completed_date,
             schema: Some(ProofSchema {
@@ -126,6 +127,7 @@ impl From<proof::Model> for Proof {
             transport: value.transport,
             redirect_uri: value.redirect_uri,
             state: value.state.into(),
+            role: value.role.into(),
             requested_date: value.requested_date,
             completed_date: value.completed_date,
             schema: None,
@@ -151,6 +153,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             redirect_uri: Set(value.redirect_uri),
             exchange: Set(value.exchange),
             state: Set(value.state.into()),
+            role: Set(value.role.into()),
             requested_date: Set(value.requested_date),
             completed_date: Set(value.completed_date),
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),

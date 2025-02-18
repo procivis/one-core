@@ -23,6 +23,7 @@ pub struct Proof {
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub state: ProofStateEnum,
+    pub role: ProofRole,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
 
@@ -43,6 +44,12 @@ pub enum ProofStateEnum {
     Accepted,
     Rejected,
     Error,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub enum ProofRole {
+    Holder,
+    Verifier,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

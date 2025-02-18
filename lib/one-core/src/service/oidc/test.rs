@@ -20,7 +20,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
@@ -1256,6 +1256,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     transport: "HTTP".to_string(),
                     redirect_uri: None,
                     state: ProofStateEnum::Pending,
+                    role: ProofRole::Verifier,
                     requested_date: Some(get_dummy_date()),
                     completed_date: None,
                     schema: Some(ProofSchema {
@@ -1679,6 +1680,7 @@ async fn test_get_client_metadata_success() {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
+        role: ProofRole::Holder,
         requested_date: Some(now),
         completed_date: None,
         schema: None,

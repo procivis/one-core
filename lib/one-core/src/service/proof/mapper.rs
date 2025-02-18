@@ -19,7 +19,7 @@ use crate::model::did::Did;
 use crate::model::history::History;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -631,6 +631,7 @@ pub fn proof_from_create_request(
         exchange: request.exchange,
         redirect_uri: request.redirect_uri,
         state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
         schema: Some(schema),
@@ -658,6 +659,7 @@ pub fn proof_for_scan_to_verify(
         exchange: exchange.to_owned(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
         schema: Some(schema.clone()),

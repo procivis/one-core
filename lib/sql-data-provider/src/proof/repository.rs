@@ -225,6 +225,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::IssuanceDate,
             proof::Column::RedirectUri,
             proof::Column::State,
+            proof::Column::Role,
             proof::Column::RequestedDate,
             proof::Column::CompletedDate,
         ])

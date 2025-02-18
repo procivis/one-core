@@ -3,7 +3,7 @@ use url::Url;
 use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType};
 use crate::model::key::Key;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
@@ -191,14 +191,10 @@ pub fn validate_proof_retractable(proof: &Proof, config: &CoreConfig) -> Result<
         }
         .into());
     }
-    // We do not have a "role" column on proof (as we do for credentials).
-    // Hence, we have to infer the role from other properties, like the fact that we do (or do not)
-    // have a proof schema associated with the proof.
-    let is_verifier = proof.schema.is_some();
+
     match config.exchange.get_fields(&proof.exchange)?.r#type {
         ExchangeType::OpenId4Vc => {
-            // for proofs, if you are not verifier then you are holder
-            if !is_verifier {
+            if proof.role == ProofRole::Holder {
                 return Err(InvalidProofRoleForRetraction {
                     role: "holder".to_string(),
                 }
@@ -206,7 +202,7 @@ pub fn validate_proof_retractable(proof: &Proof, config: &CoreConfig) -> Result<
             }
         }
         ExchangeType::IsoMdl => {
-            if is_verifier {
+            if proof.role == ProofRole::Verifier {
                 return Err(InvalidProofRoleForRetraction {
                     role: "verifier".to_string(),
                 }
