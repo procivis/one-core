@@ -168,8 +168,8 @@ impl OpenId4VcMqtt {
 
         let session_keys = generate_session_keys(verifier_public_key)?;
         let encryption = PeerEncryption::new(
-            session_keys.sender_key,
-            session_keys.receiver_key,
+            session_keys.sender_key.clone(),
+            session_keys.receiver_key.clone(),
             session_keys.nonce,
         );
 
@@ -267,7 +267,7 @@ impl OpenId4VcMqtt {
                 .custom
                 .nonce
                 .ok_or(ExchangeProtocolError::Failed("missing nonce".to_string()))?,
-            session_keys: session_keys.to_owned(),
+            session_keys,
             presentation_definition: presentation_request.payload.custom.presentation_definition,
             identity_request_nonce,
             topic_id,

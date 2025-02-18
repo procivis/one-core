@@ -1,18 +1,29 @@
+use aes_gcm::aead::consts::U32;
+use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit};
 use anyhow::Context;
+use secrecy::{ExposeSecret, SecretSlice};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::common_mapper::secret_slice;
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct PeerEncryption {
-    sender_aes_key: [u8; 32],
-    receiver_aes_key: [u8; 32],
+    #[serde(with = "secret_slice")]
+    sender_aes_key: SecretSlice<u8>,
+    #[serde(with = "secret_slice")]
+    receiver_aes_key: SecretSlice<u8>,
     nonce: [u8; 12],
 }
 
 impl PeerEncryption {
-    pub fn new(sender_aes_key: [u8; 32], receiver_aes_key: [u8; 32], nonce: [u8; 12]) -> Self {
+    pub fn new(
+        sender_aes_key: SecretSlice<u8>,
+        receiver_aes_key: SecretSlice<u8>,
+        nonce: [u8; 12],
+    ) -> Self {
         Self {
             sender_aes_key,
             receiver_aes_key,
@@ -24,7 +35,9 @@ impl PeerEncryption {
     where
         T: Serialize,
     {
-        let cipher = Aes256Gcm::new(&self.sender_aes_key.into());
+        let cipher = Aes256Gcm::new(GenericArray::<u8, U32>::from_slice(
+            self.sender_aes_key.expose_secret(),
+        ));
         let plaintext = serde_json::to_vec(data).context("serialization error")?;
 
         // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#section-6.1
@@ -45,7 +58,9 @@ impl PeerEncryption {
     where
         T: DeserializeOwned,
     {
-        let cipher = Aes256Gcm::new(&self.receiver_aes_key.into());
+        let cipher = Aes256Gcm::new(GenericArray::<u8, U32>::from_slice(
+            self.receiver_aes_key.expose_secret(),
+        ));
         let decrypted_payload = cipher
             .decrypt(&self.nonce.into(), ciphertext)
             .context("AES decryption error");

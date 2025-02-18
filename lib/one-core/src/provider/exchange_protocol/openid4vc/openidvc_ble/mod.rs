@@ -10,6 +10,7 @@ use futures::{Stream, TryStreamExt};
 use model::BLEOpenID4VPInteractionData;
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
+use secrecy::SecretSlice;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shared_types::KeyId;
@@ -150,8 +151,8 @@ pub struct BLEPeer {
 impl BLEPeer {
     pub fn new(
         device_info: DeviceInfo,
-        sender_aes_key: [u8; 32],
-        receiver_aes_key: [u8; 32],
+        sender_aes_key: SecretSlice<u8>,
+        receiver_aes_key: SecretSlice<u8>,
         nonce: [u8; 12],
     ) -> Self {
         Self {

@@ -1,6 +1,8 @@
+use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::common_mapper::secret_slice;
 use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
 };
@@ -8,8 +10,10 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MQTTSessionKeys {
     pub public_key: [u8; 32],
-    pub receiver_key: [u8; 32],
-    pub sender_key: [u8; 32],
+    #[serde(with = "secret_slice")]
+    pub receiver_key: SecretSlice<u8>,
+    #[serde(with = "secret_slice")]
+    pub sender_key: SecretSlice<u8>,
     pub nonce: [u8; 12],
 }
 

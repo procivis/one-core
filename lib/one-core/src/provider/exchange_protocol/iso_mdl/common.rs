@@ -16,6 +16,7 @@ use sha2::{Digest, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::device_engagement::DeviceEngagement;
+use crate::common_mapper::secret_slice;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     EmbeddedCbor, SessionTranscript,
 };
@@ -222,23 +223,6 @@ impl KeyAgreement<EReaderKey> {
         session_transcript_bytes: &[u8],
     ) -> anyhow::Result<(SkDevice, SkReader)> {
         derive_session_keys(self.sk, pk.0, session_transcript_bytes)
-    }
-}
-
-pub mod secret_slice {
-    use serde::{Deserialize, Deserializer};
-
-    use super::*;
-    pub fn serialize<S: Serializer>(secret: &SecretSlice<u8>, s: S) -> Result<S::Ok, S::Error> {
-        secret.expose_secret().serialize(s)
-    }
-
-    pub fn deserialize<'de, D>(d: D) -> Result<SecretSlice<u8>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let data = Vec::<u8>::deserialize(d)?;
-        Ok(SecretSlice::from(data))
     }
 }
 

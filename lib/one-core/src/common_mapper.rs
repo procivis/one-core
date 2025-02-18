@@ -463,6 +463,22 @@ impl From<ProofStateEnum> for HistoryAction {
     }
 }
 
+pub mod secret_slice {
+    use secrecy::{ExposeSecret, SecretSlice};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    pub fn serialize<S: Serializer>(secret: &SecretSlice<u8>, s: S) -> Result<S::Ok, S::Error> {
+        secret.expose_secret().serialize(s)
+    }
+
+    pub fn deserialize<'de, D>(d: D) -> Result<SecretSlice<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data = Vec::<u8>::deserialize(d)?;
+        Ok(SecretSlice::from(data))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;

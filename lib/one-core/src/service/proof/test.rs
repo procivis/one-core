@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mockall::predicate::*;
 use mockall::Sequence;
 use rstest::rstest;
+use secrecy::SecretSlice;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -3363,8 +3364,8 @@ async fn test_retract_proof_with_bluetooth_ok() {
                 },
                 peer: BLEPeer::new(
                     DeviceInfo::new(device_address.to_owned(), 123),
-                    [0; 32],
-                    [1; 32],
+                    SecretSlice::from(vec![0; 32]),
+                    SecretSlice::from(vec![1; 32]),
                     [2; 12],
                 ),
                 openid_request: OpenID4VPAuthorizationRequestParams {

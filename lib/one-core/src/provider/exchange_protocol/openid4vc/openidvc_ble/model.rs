@@ -22,6 +22,7 @@ pub(crate) struct BLEOpenID4VPInteractionData {
 
 #[cfg(test)]
 mod tests {
+    use secrecy::SecretSlice;
 
     use super::*;
     use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
@@ -39,7 +40,11 @@ mod tests {
             task_id: Uuid::new_v4(),
             peer: BLEPeer {
                 device_info: DeviceInfo::new("address".to_string(), 16),
-                peer_encryption: PeerEncryption::new([0; 32], [0; 32], [0; 12]),
+                peer_encryption: PeerEncryption::new(
+                    SecretSlice::from(vec![0; 32]),
+                    SecretSlice::from(vec![0; 32]),
+                    [0; 12],
+                ),
             },
             identity_request_nonce: None,
             openid_request: OpenID4VPAuthorizationRequestParams {
