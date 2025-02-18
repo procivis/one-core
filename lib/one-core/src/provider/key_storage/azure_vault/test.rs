@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_crypto::{CryptoProvider, CryptoProviderImpl, Hasher, MockHasher};
+use secrecy::SecretString;
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -32,7 +33,7 @@ async fn get_token_mock(mock_server: &MockServer, expires_in: i64, expect: u64) 
     let token = AzureHsmGetTokenResponse {
         token_type: "Bearer".to_string(),
         expires_in,
-        access_token: "mock_access_token".to_string(),
+        access_token: SecretString::from("mock_access_token"),
     };
 
     wiremock::Mock::given(method(Method::POST))

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 
+use crate::common_mapper::secret_string;
 #[derive(Serialize)]
 pub(super) struct AzureHsmGenerateKeyRequest {
     #[serde(rename = "kty")]
@@ -60,7 +62,8 @@ pub(super) struct AzureHsmGetTokenRequest {
 pub(super) struct AzureHsmGetTokenResponse {
     pub token_type: String,
     pub expires_in: i64,
-    pub access_token: String,
+    #[serde(with = "secret_string")]
+    pub access_token: SecretString,
 }
 
 #[derive(Debug, Serialize)]

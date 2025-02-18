@@ -13,7 +13,7 @@ use mapper::{
 };
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{CryptoProvider, Signer, SignerError};
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
@@ -48,7 +48,7 @@ pub struct Params {
 }
 
 struct AzureAccessToken {
-    pub token: String,
+    pub token: SecretString,
     pub valid_until: OffsetDateTime,
 }
 
@@ -93,7 +93,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         let response: AzureHsmGenerateKeyResponse = self
             .client
             .post(url.as_str())
-            .bearer_auth(&access_token)
+            .bearer_auth(access_token.expose_secret())
             .json(create_generate_key_request())
             .context("json error")
             .map_err(KeyStorageError::Transport)?
@@ -198,7 +198,7 @@ impl AzureTokenFetcher {
         Ok(response)
     }
 
-    async fn get_access_token(&self) -> Result<String, KeyStorageError> {
+    async fn get_access_token(&self) -> Result<SecretString, KeyStorageError> {
         if self.is_token_valid().await {
             Ok(self
                 .access_token
@@ -214,7 +214,7 @@ impl AzureTokenFetcher {
             let valid_until = OffsetDateTime::now_utc().add(Duration::seconds(response.expires_in));
             let mut storage = self.access_token.lock().await;
             *storage = Some(AzureAccessToken {
-                token: response.access_token.to_owned(),
+                token: response.access_token.clone(),
                 valid_until,
             });
             Ok(response.access_token)
@@ -297,7 +297,7 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
         let parsed: AzureHsmSignResponse = self
             .client
             .post(url.as_str())
-            .bearer_auth(&access_token)
+            .bearer_auth(access_token.expose_secret())
             .json(&sign_request)
             .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
             .send()
