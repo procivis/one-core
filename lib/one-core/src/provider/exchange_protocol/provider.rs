@@ -18,10 +18,10 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
@@ -42,7 +42,7 @@ use crate::service::error::{
 };
 use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
-use crate::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
+use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 pub trait ExchangeProtocol:
     ExchangeProtocolImpl<
@@ -401,11 +401,6 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         // TODO - remove organisation usage from here when moved to open core
         let credential_detail =
             credential_detail_response_from_model(credential.clone(), &self.config, None)?;
-        let credential_data = credential_data_from_credential_detail_response(
-            credential_detail,
-            core_base_url,
-            credential_status,
-        )?;
 
         let additional_contexts = revocation_method
             .get_json_ld_context()?
@@ -415,20 +410,20 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .map_err(|_err| {
                 ServiceError::Other("Provided JSON-LD context URL is not a valid URL".to_owned())
             })?;
-
         let contexts = vcdm_v2_base_context(additional_contexts);
+        let credential_data = credential_data_from_credential_detail_response(
+            credential_detail,
+            holder_did.did,
+            core_base_url,
+            credential_status,
+            contexts,
+        )?;
 
         let token = self
             .formatter_provider
             .get_formatter(&format)
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
-            .format_credentials(
-                credential_data,
-                &Some(holder_did.did),
-                contexts,
-                vcdm_type(None),
-                auth_fn,
-            )
+            .format_credential(credential_data, auth_fn)
             .await?;
 
         match (credential_schema.format.as_str(), credential_state) {

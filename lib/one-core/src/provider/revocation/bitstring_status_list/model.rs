@@ -3,7 +3,7 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::model::revocation_list::RevocationListPurpose;
-use crate::provider::credential_formatter::json_ld::model::ContextType;
+use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::revocation::bitstring_status_list::jwt_formatter::{
     from_timestamp_opt, into_timestamp_opt,
 };

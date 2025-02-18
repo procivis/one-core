@@ -173,9 +173,7 @@ pub async fn validate_proof(
             Some(did) => did,
         };
 
-        if Into::<String>::into(claim_subject.to_string())
-            != Into::<String>::into(holder_did.to_string())
-        {
+        if claim_subject != &holder_did {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
             ));
@@ -225,7 +223,7 @@ fn extract_matching_requested_schema(
                     .iter()
                     .filter(|schema| schema.required)
                     .all(|required_claim_schema| {
-                        received_credential.claims.values.iter().any(
+                        received_credential.claims.claims.iter().any(
                             |(namespace, element_value)| {
                                 let required_key = &required_claim_schema.schema.key;
 
@@ -263,13 +261,13 @@ fn extract_matching_requested_claim(
         // requested single element
         received_credential
             .claims
-            .values
+            .claims
             .get(namespace)
             .and_then(|elements| elements.as_object())
             .and_then(|elements| elements.get(element_identifier))
     } else {
         // requested whole namespace
-        received_credential.claims.values.get(requested_key)
+        received_credential.claims.claims.get(requested_key)
     };
 
     // missing optional claim

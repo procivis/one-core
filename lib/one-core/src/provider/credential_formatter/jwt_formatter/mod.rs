@@ -5,18 +5,18 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use mapper::format_vc;
-use model::{EnvelopedContent, VCContent, VPContent, VerifiableCredential, VC, VP};
+use model::{EnvelopedContent, VPContent, VcClaim, VerifiableCredential, VP};
 use serde::Deserialize;
 use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
-use super::json_ld::model::ContextType;
 use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
-use super::model::{Context, CredentialSubject, Features, Issuer};
+use super::model::{CredentialData, Features, Issuer};
+use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -24,9 +24,8 @@ use crate::provider::credential_formatter::jwt_formatter::model::{
     TokenStatusListContent, TokenStatusListSubject,
 };
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    VerificationFn,
+    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -63,34 +62,31 @@ impl JWTFormatter {
 
 #[async_trait]
 impl CredentialFormatter for JWTFormatter {
-    async fn format_credentials(
+    async fn format_credential(
         &self,
-        credential: CredentialData,
-        holder_did: &Option<DidValue>,
-        additional_context: Vec<ContextType>,
-        additional_types: Vec<String>,
+        credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let issued_at = credential.issuance_date;
-        let expires_at = issued_at.checked_add(credential.valid_for);
-        let credential_id = credential.id.clone();
+        let mut vcdm = credential_data.vcdm;
+        let issued_at = vcdm.valid_from.or(vcdm.issuance_date);
+        let expires_at = vcdm.valid_until.or(vcdm.expiration_date);
+        let credential_id = vcdm.id.clone().map(|id| id.to_string());
 
-        let issuer = credential.issuer_did.clone();
+        let issuer = vcdm.issuer.as_url().to_string();
 
-        let vc = format_vc(
-            credential,
-            issuer.clone(),
-            additional_context,
-            additional_types,
-            self.params.embed_layout_properties,
-        )?;
+        if !self.params.embed_layout_properties {
+            vcdm.remove_layout_properties();
+        }
+
+        let vc = VcClaim { vc: vcdm.into() };
 
         let payload = JWTPayload {
-            issued_at: Some(issued_at),
+            issued_at,
             expires_at,
-            invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: Some(issuer.to_did_value()?.to_string()),
-            subject: holder_did.clone().map(|did| did.to_string()),
+            invalid_before: issued_at
+                .and_then(|iat| iat.checked_sub(Duration::seconds(self.get_leeway() as i64))),
+            issuer: Some(issuer),
+            subject: credential_data.holder_did.map(|did| did.to_string()),
             jwt_id: credential_id,
             custom: vc,
             vc_type: None,
@@ -140,40 +136,36 @@ impl CredentialFormatter for JWTFormatter {
 
         match status_list_type {
             StatusListType::BitstringStatusList => {
-                let subject_id = format!("{}#list", revocation_list_url);
-                let credential_subject = CredentialSubject {
-                    values: [
-                        ("id".into(), json!(subject_id)),
-                        ("type".into(), json!("BitstringStatusList")),
-                        ("statusPurpose".into(), json!(status_purpose)),
-                        ("encodedList".into(), json!(encoded_list)),
-                    ]
-                    .into_iter()
-                    .collect(),
+                let revocation_list_url: Url = revocation_list_url.parse().map_err(|_| {
+                    FormatterError::Failed("Invalid revocation list url".to_string())
+                })?;
+
+                let credential_id = revocation_list_url.clone();
+
+                let credential_subject_id = {
+                    let mut url = revocation_list_url;
+                    url.set_fragment(Some("list"));
+                    url
                 };
 
-                let vc = VC {
-                    vc: VCContent {
-                        context: vec![ContextType::Url(Context::CredentialsV2.to_url())],
-                        id: Some(revocation_list_url.to_owned()),
-                        r#type: vec![
-                            "VerifiableCredential".to_string(),
-                            "BitstringStatusListCredential".to_string(),
-                        ],
-                        issuer: Some(issuer),
-                        valid_from: Some(OffsetDateTime::now_utc()),
-                        credential_subject,
-                        credential_status: vec![],
-                        credential_schema: None,
-                        valid_until: None,
-                    },
-                };
+                let credential_subject = VcdmCredentialSubject::new([
+                    ("type", json!("BitstringStatusList")),
+                    ("statusPurpose", json!(status_purpose)),
+                    ("encodedList", json!(encoded_list)),
+                ])
+                .with_id(credential_subject_id.clone());
+
+                let vc = VcdmCredential::new_v2(issuer, credential_subject)
+                    .add_type("BitstringStatusListCredential".to_string())
+                    .with_id(credential_id);
+
+                let vc_claim = VcClaim { vc: vc.into() };
 
                 let payload = JWTPayload {
                     issuer: Some(issuer_did.did.to_string()),
                     jwt_id: None,
-                    subject: Some(subject_id),
-                    custom: vc,
+                    subject: Some(credential_subject_id.to_string()),
+                    custom: vc_claim,
                     issued_at: Some(OffsetDateTime::now_utc()),
                     expires_at: None,
                     invalid_before: None,
@@ -218,20 +210,18 @@ impl CredentialFormatter for JWTFormatter {
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VC> = Jwt::build_from_token(token, Some(verification)).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(verification)).await?;
 
-        TryInto::<DetailCredential>::try_into(jwt)
-            .map_err(|e| FormatterError::Failed(e.to_string()))
+        DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
 
     async fn extract_credentials_unverified(
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        let jwt: Jwt<VC> = Jwt::build_from_token(token, None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None).await?;
 
-        TryInto::<DetailCredential>::try_into(jwt)
-            .map_err(|e| FormatterError::Failed(e.to_string()))
+        DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
 
     async fn format_credential_presentation(
@@ -369,7 +359,7 @@ fn format_payload(credentials: &[String], nonce: Option<String>) -> Result<VP, F
                 let token = format!("data:application/vp+mso_mdoc,{}", token);
 
                 let vp = EnvelopedContent {
-                    context: vcdm_v2_base_context(None),
+                    context: Vec::from_iter(vcdm_v2_base_context(None)),
                     id: token,
                     r#type: vec!["EnvelopedVerifiablePresentation".to_owned()],
                 };
@@ -392,7 +382,7 @@ fn format_payload(credentials: &[String], nonce: Option<String>) -> Result<VP, F
 
     Ok(VP {
         vp: VPContent {
-            context: vcdm_v2_base_context(None),
+            context: Vec::from_iter(vcdm_v2_base_context(None)),
             r#type: types,
             verifiable_credential: tokens,
         },

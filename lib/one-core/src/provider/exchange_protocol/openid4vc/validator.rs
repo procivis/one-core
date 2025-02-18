@@ -99,8 +99,8 @@ pub(super) async fn validate_presentation(
 
 fn is_revocation_credential(credential: &DetailCredential) -> bool {
     is_lvvc_credential(credential)
-        || (credential.claims.values.contains_key("encodedList")
-            && credential.claims.values.contains_key("statusPurpose"))
+        || (credential.claims.claims.contains_key("encodedList")
+            && credential.claims.claims.contains_key("statusPurpose"))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -287,7 +287,7 @@ pub(super) fn validate_claims(
     for expected_credential_claim in expected_credential_claims {
         let resolved = resolve_claim(
             &expected_credential_claim.schema.key,
-            &received_credential.claims.values,
+            &received_credential.claims.claims,
         );
         if let Some(value) = resolved? {
             // Expected claim present in the presentation

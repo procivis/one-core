@@ -72,7 +72,7 @@ impl<Payload> Jwt<Payload> {
     }
 }
 
-impl<Payload: DeserializeOwned> Jwt<Payload> {
+impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
     pub async fn build_from_token(
         token: &str,
         verification: Option<Box<dyn TokenVerifier>>,

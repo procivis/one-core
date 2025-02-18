@@ -262,7 +262,7 @@ impl RevocationMethod for BitstringStatusList {
 
         let encoded_list = status_credential
             .claims
-            .values
+            .claims
             .get("encodedList")
             .and_then(|value| value.as_str())
             .ok_or(RevocationError::ValidationError(

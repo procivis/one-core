@@ -32,18 +32,12 @@ pub enum DidValueError {
 pub struct DidValue(Url);
 
 impl DidValue {
+    pub fn into_url(self) -> Url {
+        self.0
+    }
+
     pub fn as_str(&self) -> &str {
         self.0.as_str()
-    }
-}
-
-impl TryInto<Url> for &DidValue {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<Url, Self::Error> {
-        self.as_str()
-            .parse()
-            .with_context(|| format!("Failed to convert did: {} to URL", self))
     }
 }
 

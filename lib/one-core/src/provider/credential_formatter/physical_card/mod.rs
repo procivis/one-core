@@ -6,17 +6,16 @@ use model::OptiocalBarcodeCredential;
 use one_crypto::CryptoProvider;
 use shared_types::{CredentialSchemaId, DidValue};
 
-use super::json_ld::model::ContextType;
 use super::json_ld_classic::verify_credential_signature;
+use super::model::CredentialData;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    VerificationFn,
+    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx, Features,
+    FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::http_client::HttpClient;
@@ -36,12 +35,9 @@ mod test;
 
 #[async_trait]
 impl CredentialFormatter for PhysicalCardFormatter {
-    async fn format_credentials(
+    async fn format_credential(
         &self,
-        _credential: CredentialData,
-        _holder_did: &Option<DidValue>,
-        _additional_context: Vec<ContextType>,
-        _additional_types: Vec<String>,
+        _credential_data: CredentialData,
         _auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         todo!()

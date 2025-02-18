@@ -1,26 +1,17 @@
-use std::collections::HashMap;
-
 use anyhow::Context;
 use rand::seq::SliceRandom;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, Presentation, PublishedClaim,
-};
-use crate::provider::credential_formatter::sdjwt::model::{
-    SDCredentialSubject, Sdvc, Sdvp, VCContent,
-};
+use crate::provider::credential_formatter::model::Presentation;
+use crate::provider::credential_formatter::sdjwt::model::{Sdvp, VcClaim};
+use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 
 pub(crate) fn vc_from_credential(
-    credential: CredentialData,
+    credential: VcdmCredential,
     digests: Vec<String>,
-    additional_context: Vec<ContextType>,
-    additional_types: Vec<String>,
     algorithm: &str,
-    embed_layout_properties: bool,
-) -> Result<Sdvc, FormatterError> {
+) -> Result<VcClaim, FormatterError> {
     let digests: Vec<String> = {
         let mut digests = digests;
         let mut rng = rand::thread_rng();
@@ -28,55 +19,19 @@ pub(crate) fn vc_from_credential(
         digests
     };
 
-    let types = vec!["VerifiableCredential".to_owned()]
-        .into_iter()
-        .chain(additional_types)
-        .collect();
-
-    // Strip layout (whole metadata as it only contains layout)
-    let mut credential_schema: Option<CredentialSchema> = credential.schema.into();
-    if let Some(schema) = &mut credential_schema {
-        if !embed_layout_properties {
-            schema.metadata = None;
-        }
-    }
-
-    Ok(Sdvc {
-        digests: vec![],
-        vc: VCContent {
-            context: additional_context,
-            r#type: types,
-            id: credential.id,
-            credential_subject: SDCredentialSubject {
-                digests,
-                public_claims: HashMap::new(),
-            },
-            credential_status: credential.status,
-            credential_schema,
-            issuer: Some(credential.issuer_did),
-            valid_from: None,
-            valid_until: None,
+    let mut credential = credential;
+    credential.credential_subject = vec![VcdmCredentialSubject {
+        id: None,
+        claims: indexmap::indexmap! {
+          "_sd".to_string() => serde_json::json!(digests)
         },
+    }];
+
+    Ok(VcClaim {
+        digests: vec![],
+        vc: credential.into(),
         hash_alg: Some(algorithm.to_owned()),
     })
-}
-
-// Build JSON object from claim paths which are similar to JSON pointers without the "/" prefix
-// ex. claim with key=a/b/c, value=10 => { "a": {"b": {"c": 10}}}
-//     claim with key=a/0/c, value=10 => { "a": [{"c": 10}]}
-pub(crate) fn claims_to_json_object(
-    claims: &[PublishedClaim],
-) -> Result<serde_json::Value, FormatterError> {
-    let mut data = serde_json::Value::Object(Default::default());
-
-    for claim in claims {
-        let path = format!("/{}", claim.key);
-        let pointer = jsonptr::Pointer::parse(&path)?;
-        let value: serde_json::Value = claim.value.to_owned().try_into()?;
-        pointer.assign(&mut data, value)?;
-    }
-
-    Ok(data)
 }
 
 impl TryFrom<Jwt<Sdvp>> for Presentation {

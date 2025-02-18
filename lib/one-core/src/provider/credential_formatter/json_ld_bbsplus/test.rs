@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use indexmap::{indexset, IndexSet};
+use indexmap::{IndexMap, IndexSet};
 use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
@@ -21,16 +21,16 @@ use crate::model::did::KeyRole;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::is_context_list_valid;
-use crate::provider::credential_formatter::json_ld::model::{
-    ContextType, LdCredential, LdCredentialSubject,
-};
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 use crate::provider::credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params};
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialSchemaData, CredentialSchemaMetadata, Issuer,
-    MockSignatureProvider, PublishedClaim, PublishedClaimValue,
+    CredentialData, CredentialSchema, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
+    PublishedClaim, PublishedClaimValue,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::vcdm::{
+    ContextType, VcdmCredential, VcdmCredentialSubject,
+};
+use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
@@ -58,7 +58,7 @@ async fn test_canonize_any() {
     let ld_formatter = JsonLdBbsplus::new(
         Params {
             leeway: Duration::seconds(10),
-            embed_layout_properties: None,
+            embed_layout_properties: false,
             allowed_contexts: None,
         },
         Arc::new(crypto),
@@ -73,9 +73,7 @@ async fn test_canonize_any() {
         0, 17, 34, 51, 68, 85, 102, 119, 136, 153, 170, 187, 204, 221, 238, 255, 0, 17, 34, 51, 68,
         85, 102, 119, 136, 153, 170, 187, 204, 221, 238, 255,
     ];
-    let result = ld_formatter
-        .create_blank_node_identifier_map(CANONICAL, &hmac_key)
-        .unwrap();
+    let result = ld_formatter.create_label_map(CANONICAL, &hmac_key).unwrap();
 
     assert_eq!(result.get("_:c14n0"), Some(&"_:b2".to_string()));
     assert_eq!(result.get("_:c14n1"), Some(&"_:b1".to_string()));
@@ -97,7 +95,7 @@ async fn test_transform_canonized() {
     let ld_formatter = JsonLdBbsplus::new(
         Params {
             leeway: Duration::seconds(10),
-            embed_layout_properties: None,
+            embed_layout_properties: false,
             allowed_contexts: None,
         },
         Arc::new(crypto),
@@ -138,7 +136,7 @@ async fn test_transform_grouped() {
     let ld_formatter = JsonLdBbsplus::new(
         Params {
             leeway: Duration::seconds(10),
-            embed_layout_properties: None,
+            embed_layout_properties: false,
             allowed_contexts: None,
         },
         Arc::new(crypto),
@@ -273,34 +271,19 @@ _:b0 <http://127.0.0.1:36585/ssi/context/v1/bb9c433c-3d35-437c-bfb7-919ae6da07aa
 _:b0 <http://127.0.0.1:36585/ssi/context/v1/bb9c433c-3d35-437c-bfb7-919ae6da07aa#Key> \"test\" .
 _:b0 <http://127.0.0.1:36585/ssi/context/v1/bb9c433c-3d35-437c-bfb7-919ae6da07aa#Name> \"test\" .";
 
-fn generate_ld_credential(subject_claims: serde_json::Value) -> LdCredential {
-    LdCredential {
-        context: indexset![],
-        id: Some("did:credential".parse().unwrap()),
-        r#type: vec![],
-        issuer: Issuer::Url("did:key:1234".parse().unwrap()),
-        valid_from: Some(OffsetDateTime::now_utc()),
-        credential_subject: vec![LdCredentialSubject {
-            id: Some("did:key:1234".parse().unwrap()),
-            subject: subject_claims
-                .as_object()
-                .unwrap()
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_owned()))
-                .collect(),
-        }],
-        credential_status: vec![],
-        proof: None,
-        credential_schema: None,
-        valid_until: None,
-        issuance_date: None,
-        name: None,
-        description: None,
-        terms_of_use: vec![],
-        evidence: vec![],
-        refresh_service: None,
-        related_resource: None,
-    }
+fn generate_ld_credential(subject_claims: serde_json::Value) -> VcdmCredential {
+    let serde_json::Value::Object(claims) = subject_claims else {
+        panic!("Invalid claims, expected an object");
+    };
+
+    let credential_subject =
+        VcdmCredentialSubject::new(claims).with_id("did:key:1234".parse::<Url>().unwrap());
+
+    let issuer = Issuer::Url("did:key:1234".parse().unwrap());
+
+    VcdmCredential::new_v2(issuer, credential_subject)
+        .with_id("did:credential".parse::<Url>().unwrap())
+        .with_valid_from(OffsetDateTime::now_utc())
 }
 
 #[test]
@@ -360,7 +343,7 @@ fn test_remove_undisclosed_keys_group_allow_whole_object() {
 
     remove_undisclosed_keys(&mut test_cred, &["foo".to_string()]).unwrap();
 
-    let expected: HashMap<_, _> = serde_json::Map::from_iter(vec![(
+    let expected: IndexMap<_, _> = serde_json::Map::from_iter(vec![(
         "foo".to_string(),
         serde_json::json!({
             "bar": 10,
@@ -370,7 +353,7 @@ fn test_remove_undisclosed_keys_group_allow_whole_object() {
     .into_iter()
     .collect();
 
-    assert_eq!(expected, test_cred.credential_subject[0].subject);
+    assert_eq!(expected, test_cred.credential_subject[0].claims);
 }
 
 #[test]
@@ -384,7 +367,7 @@ fn test_remove_undisclosed_keys_group_allow_separate_claims() {
 
     remove_undisclosed_keys(&mut test_cred, &["foo/bar".to_string()]).unwrap();
 
-    let expected: HashMap<_, _> = serde_json::Map::from_iter(vec![(
+    let expected: IndexMap<_, _> = serde_json::Map::from_iter(vec![(
         "foo".to_string(),
         serde_json::json!({
             "bar": 10
@@ -393,7 +376,7 @@ fn test_remove_undisclosed_keys_group_allow_separate_claims() {
     .into_iter()
     .collect();
 
-    assert_eq!(expected, test_cred.credential_subject[0].subject);
+    assert_eq!(expected, test_cred.credential_subject[0].claims);
 }
 
 #[test]
@@ -407,8 +390,8 @@ fn test_remove_undisclosed_keys_group_allow_none() {
 
     remove_undisclosed_keys(&mut test_cred, &["some_unrelated_claim".to_string()]).unwrap();
 
-    let expected = HashMap::new();
-    assert_eq!(expected, test_cred.credential_subject[0].subject);
+    let expected: IndexMap<String, serde_json::Value> = IndexMap::new();
+    assert_eq!(expected, test_cred.credential_subject[0].claims);
 }
 
 #[test]
@@ -426,7 +409,7 @@ fn test_remove_undisclosed_keys_group_allow_multiple_claims() {
     )
     .unwrap();
 
-    let expected: HashMap<_, _> = serde_json::Map::from_iter(vec![(
+    let expected: IndexMap<_, _> = serde_json::Map::from_iter(vec![(
         "foo".to_string(),
         serde_json::json!({
             "bar": 10,
@@ -436,7 +419,7 @@ fn test_remove_undisclosed_keys_group_allow_multiple_claims() {
     .into_iter()
     .collect();
 
-    assert_eq!(expected, test_cred.credential_subject[0].subject);
+    assert_eq!(expected, test_cred.credential_subject[0].claims);
 }
 
 #[tokio::test]
@@ -463,7 +446,7 @@ async fn test_format_extract_round_trip() {
     let now = OffsetDateTime::now_utc();
     let params = Params {
         leeway: Duration::seconds(60),
-        embed_layout_properties: Some(false),
+        embed_layout_properties: false,
         allowed_contexts: None,
     };
 
@@ -509,31 +492,23 @@ async fn test_format_extract_round_trip() {
         .await
         .unwrap();
 
-    let credential_data = CredentialData {
-        id: None,
-        issuance_date: now,
-        valid_for: Duration::seconds(10),
-        claims: vec![PublishedClaim {
-            key: "a/b/c".to_string(),
-            value: PublishedClaimValue::String("15".to_string()),
-            datatype: Some("STRING".to_string()),
-            array_item: false,
-        }],
-        issuer_did: Issuer::Url(issuer_did.to_string().parse().unwrap()),
-        status: vec![],
-        schema: CredentialSchemaData {
-            id: Some("credential-schema-id".to_string()),
-            r#type: Some("FallbackSchema2024".to_string()),
-            context: None,
-            name: "credential-schema-name".to_string(),
-            metadata: None,
-        },
-        name: None,
-        description: None,
-        terms_of_use: vec![],
-        evidence: vec![],
-        related_resource: None,
-    };
+    let claims = vec![PublishedClaim {
+        key: "a/b/c".to_string(),
+        value: PublishedClaimValue::String("15".to_string()),
+        datatype: Some("STRING".to_string()),
+        array_item: false,
+    }];
+    let holder_did =
+        DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
+
+    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .with_id(holder_did.into_url());
+    let vcdm = VcdmCredential::new_v2(
+        Issuer::Url(issuer_did.clone().into_url()),
+        credential_subject,
+    )
+    .with_valid_from(now)
+    .with_valid_until(now + Duration::seconds(10));
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
         caching_loader,
@@ -571,26 +546,14 @@ async fn test_format_extract_round_trip() {
         .expect_get_public_key()
         .returning(move || public_key_clone.clone());
 
-    let holder_did =
-        &DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
     let key_verification = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
     });
 
-    let token = formatter
-        .format(
-            credential_data,
-            Some(holder_did),
-            vec![],
-            vec![],
-            Box::new(auth_fn),
-            false,
-        )
-        .await
-        .unwrap();
-    formatter
+    let token = formatter.format(vcdm, Box::new(auth_fn)).await.unwrap();
+    let _result = formatter
         .extract_credentials(token.as_str(), key_verification)
         .await
         .unwrap();
@@ -600,7 +563,7 @@ async fn test_format_extract_round_trip() {
 async fn test_extract_invalid_signature() {
     let params = Params {
         leeway: Duration::seconds(60),
-        embed_layout_properties: Some(false),
+        embed_layout_properties: false,
         allowed_contexts: None,
     };
 
@@ -692,46 +655,46 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
             .unwrap(),
     );
 
-    let credential_data = CredentialData {
-        id: None,
-        issuance_date: OffsetDateTime::now_utc(),
-        valid_for: time::Duration::seconds(10),
-        claims: vec![PublishedClaim {
-            key: "a/b/c".to_string(),
-            value: PublishedClaimValue::String("15".to_string()),
-            datatype: Some("STRING".to_string()),
-            array_item: false,
-        }],
-        issuer_did: issuer_did.clone(),
-        status: vec![],
-        schema: CredentialSchemaData {
-            id: Some("credential-schema-id".to_string()),
-            r#type: Some("FallbackSchema2024".to_string()),
-            context: None,
-            name: "credential-schema-name".to_string(),
-            metadata: Some(CredentialSchemaMetadata {
-                layout_type: LayoutType::Card,
-                layout_properties: LayoutProperties {
-                    background: Some(BackgroundProperties {
-                        color: Some("color".to_string()),
-                        image: None,
-                    }),
-                    logo: None,
-                    primary_attribute: None,
-                    secondary_attribute: None,
-                    picture_attribute: None,
-                    code: None,
-                },
-            }),
-        },
-        name: None,
-        description: None,
-        terms_of_use: vec![],
-        evidence: vec![],
-        related_resource: None,
+    let credential_schema = CredentialSchema {
+        id: "credential-schema-id".to_string(),
+        r#type: "FallbackSchema2024".to_string(),
+        metadata: Some(CredentialSchemaMetadata {
+            layout_type: LayoutType::Card,
+            layout_properties: LayoutProperties {
+                background: Some(BackgroundProperties {
+                    color: Some("color".to_string()),
+                    image: None,
+                }),
+                logo: None,
+                primary_attribute: None,
+                secondary_attribute: None,
+                picture_attribute: None,
+                code: None,
+            },
+        }),
     };
 
+    let claims = vec![PublishedClaim {
+        key: "a/b/c".to_string(),
+        value: PublishedClaimValue::String("15".to_string()),
+        datatype: Some("STRING".to_string()),
+        array_item: false,
+    }];
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
+    let now = OffsetDateTime::now_utc();
+
+    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .with_id(holder_did.clone().into_url());
+    let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
+        .with_valid_from(now)
+        .with_valid_until(now + Duration::seconds(10))
+        .add_credential_schema(credential_schema);
+
+    let credential_data = CredentialData {
+        vcdm,
+        claims,
+        holder_did: Some(holder_did.clone()),
+    };
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -769,7 +732,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
 
     let params = Params {
         leeway: Duration::seconds(60),
-        embed_layout_properties: Some(include_layout),
+        embed_layout_properties: include_layout,
         allowed_contexts: None,
     };
 
@@ -829,13 +792,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     auth_fn.expect_get_public_key().returning(|| vec![1, 2, 3]);
 
     let formatted_credential = formatter
-        .format_credentials(
-            credential_data,
-            &Some(holder_did.clone()),
-            vec![],
-            vec![],
-            Box::new(auth_fn),
-        )
+        .format_credential(credential_data, Box::new(auth_fn))
         .await
         .unwrap();
 

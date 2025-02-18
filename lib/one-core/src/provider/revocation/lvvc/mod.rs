@@ -6,23 +6,24 @@ use std::ops::Sub;
 use std::sync::Arc;
 
 use holder_fetch::holder_get_lvvc;
-use mapper::create_id_claim;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use util::get_lvvc_credential_subject;
+use uuid::fmt::Urn;
 use uuid::Uuid;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::json_ld::model::ContextType;
-use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialStatus, Issuer,
-};
+use crate::provider::credential_formatter::model::{CredentialData, CredentialStatus, Issuer};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::vcdm::{
+    ContextType, VcdmCredential, VcdmCredentialSubject,
+};
+use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -37,7 +38,6 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::params::convert_params;
-use crate::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
 
 pub mod dto;
 pub(crate) mod holder_fetch;
@@ -176,7 +176,7 @@ impl LvvcProvider {
             .extract_credentials_unverified(lvvc_credential_content)
             .await?;
 
-        let status = status_from_lvvc_claims(&lvvc.claims.values)?;
+        let status = status_from_lvvc_claims(&lvvc.claims.claims)?;
         Ok(match status {
             LvvcStatus::Accepted => CredentialRevocationState::Valid,
             LvvcStatus::Revoked => CredentialRevocationState::Revoked,
@@ -234,7 +234,7 @@ impl LvvcProvider {
             }
         }
 
-        let status = status_from_lvvc_claims(&lvvc.claims.values)?;
+        let status = status_from_lvvc_claims(&lvvc.claims.claims)?;
         Ok(match status {
             LvvcStatus::Accepted => CredentialRevocationState::Valid,
             LvvcStatus::Revoked => CredentialRevocationState::Revoked,
@@ -377,9 +377,6 @@ pub async fn create_lvvc_with_status(
     let issuer_did = credential.issuer_did.as_ref().ok_or_else(|| {
         RevocationError::MappingError("LVVC issuance is missing issuer DID".to_string())
     })?;
-    let schema = credential.schema.as_ref().ok_or_else(|| {
-        RevocationError::MappingError("LVVC issuance is missing credential schema".to_string())
-    })?;
 
     let key = credential
         .key
@@ -408,9 +405,6 @@ pub async fn create_lvvc_with_status(
             .to_owned(),
     };
 
-    let mut claims = vec![create_id_claim(credential.id)];
-    claims.extend(create_status_claims(&status)?);
-
     let auth_fn = key_provider.get_signature_provider(
         &key.to_owned(),
         Some(issuer_jwk_key_id),
@@ -418,50 +412,49 @@ pub async fn create_lvvc_with_status(
     )?;
 
     let lvvc_credential_id = Uuid::new_v4();
+    let credential_id = format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}")
+        .parse::<Url>()
+        .map_err(|err| RevocationError::ValidationError(format!("Invalid credential id: {err}")))?;
+
+    let issuer = Issuer::Url(issuer_did.did.clone().into_url());
+
+    let credential_subject_id: Url = Urn::from_uuid(credential.id.into())
+        .to_string()
+        .parse()
+        .map_err(|err| {
+            RevocationError::ValidationError(format!("Invalid credential subject id: {err}"))
+        })?;
+
+    let claims = create_status_claims(&status)?;
+    let claims = nest_claims(claims)
+        .map_err(|err| RevocationError::ValidationError(format!("Invalid claims: {err}")))?;
+
+    let credential_subject = VcdmCredentialSubject::new(claims).with_id(credential_subject_id);
+
+    let lvvc_context = json_ld_context
+        .url
+        .map(|ctx| {
+            ctx.parse().map(ContextType::Url).map_err(|_| {
+                RevocationError::MappingError("Invalid JSON-LD context URL".to_string())
+            })
+        })
+        .transpose()?;
+
+    let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+        .add_context(lvvc_context)
+        .add_type(json_ld_context.revokable_credential_type)
+        .with_id(credential_id)
+        .with_valid_from(OffsetDateTime::now_utc())
+        .with_valid_until(OffsetDateTime::now_utc() + credential_expiry);
 
     let credential_data = CredentialData {
-        id: Some(format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}")),
-        issuance_date: OffsetDateTime::now_utc(),
-        valid_for: credential_expiry,
-        claims,
-        issuer_did: issuer_did
-            .did
-            .as_str()
-            .parse()
-            .map(Issuer::Url)
-            .map_err(|_| {
-                RevocationError::ValidationError("Issuer DID must be a URL".to_string())
-            })?,
-        status: vec![],
-        schema: CredentialSchemaData {
-            id: None,
-            context: None,
-            r#type: None,
-            name: schema.name.to_owned(),
-            metadata: None,
-        },
-        name: None,
-        description: None,
-        terms_of_use: vec![],
-        evidence: vec![],
-        related_resource: None,
-    };
-
-    let additional_context = match json_ld_context.url {
-        Some(url) => Some(vec![ContextType::Url(url.parse().map_err(|_| {
-            RevocationError::MappingError("Invalid JSON-LD context URL".to_string())
-        })?)]),
-        None => None,
+        vcdm,
+        claims: vec![],
+        holder_did: None,
     };
 
     let formatted_credential = formatter
-        .format_credentials(
-            credential_data,
-            &None,
-            vcdm_v2_base_context(additional_context),
-            vcdm_type(Some(vec![json_ld_context.revokable_credential_type])),
-            auth_fn,
-        )
+        .format_credential(credential_data, auth_fn)
         .await?;
 
     let lvvc_credential = Lvvc {
