@@ -402,6 +402,7 @@ tests:api:
     HELM_PATH: charts/one-core-chart
     HELM_APP_NAME: one-core
     DEPLOY_IMAGE_TAG: $APP_VERSION
+    PROJECT_TITLE: $CI_PROJECT_TITLE
 
 deploy:dev:
   resource_group: core-dev
