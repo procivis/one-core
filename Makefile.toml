@@ -118,14 +118,6 @@ args = [
 command = "sea-orm-cli"
 dependencies = ["seaormcli"]
 
-[tasks.mobile-build]
-script.pre = '''
-export CARGO_PROFILE_RELEASE_OPT_LEVEL=s
-export CARGO_PROFILE_RELEASE_LTO=true
-export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-export CARGO_PROFILE_RELEASE_STRIP=symbols
-'''
-
 ############################################################### UNIFFI
 # generates binding interfaces for documentation purposes
 [tasks.generate_uniffi_interfaces]
@@ -149,7 +141,7 @@ args    = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aa
 command = "rustup"
 
 [tasks.install_cross]
-args    = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--tag", "v0.2.5"]
+args    = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--rev", "1511a28"]
 command = "cargo"
 
 [tasks.generate_kotlin]
@@ -168,26 +160,36 @@ rm -rf ${CARGO_TARGET_DIR}/android_tmp
 env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.dylib" }
 
 [tasks.build_android_targets]
-extend = "mobile-build"
-script.main = '''
+script = '''
 for target in "i686-linux-android" "armv7-linux-androideabi" "aarch64-linux-android"
 do
-  cross build -p one-core-uniffi --target $target --release
+  case $target in
+    i686-linux-android)
+      arch=x86
+      stripCmd=i686-linux-android-strip
+      ;;
+  
+    armv7-linux-androideabi)
+      arch=armeabi-v7a
+      stripCmd=arm-linux-androideabi-strip
+      ;;
+  
+    aarch64-linux-android)
+      arch=arm64-v8a
+      stripCmd=aarch64-linux-android-strip
+      ;;
+  esac
+
+  cross build -p one-core-uniffi --target $target --profile mobile-release
+
+  targetDir="${CARGO_TARGET_DIR}/uniffi/android/jniLibs/$arch"
+  mkdir -p $targetDir
+  cross-util run --target $target -- "$stripCmd -s -x -o $targetDir/libprocivis_one_core.so ${CARGO_TARGET_DIR}/$target/mobile-release/libone_core_uniffi.so"
 done
 '''
 
-[tasks.collect_android_libs]
-script = '''
-mkdir -p ${CARGO_TARGET_DIR}/uniffi/android/jniLibs/x86/
-cp ${CARGO_TARGET_DIR}/i686-linux-android/release/libone_core_uniffi.so ${CARGO_TARGET_DIR}/uniffi/android/jniLibs/x86/libprocivis_one_core.so
-mkdir -p ${CARGO_TARGET_DIR}/uniffi/android/jniLibs/armeabi-v7a/
-cp ${CARGO_TARGET_DIR}/armv7-linux-androideabi/release/libone_core_uniffi.so ${CARGO_TARGET_DIR}/uniffi/android/jniLibs/armeabi-v7a/libprocivis_one_core.so
-mkdir -p ${CARGO_TARGET_DIR}/uniffi/android/jniLibs/arm64-v8a/
-cp ${CARGO_TARGET_DIR}/aarch64-linux-android/release/libone_core_uniffi.so ${CARGO_TARGET_DIR}/uniffi/android/jniLibs/arm64-v8a/libprocivis_one_core.so
-'''
-
 [tasks.build_android_uniffi]
-dependencies = ["install_cross", "build_android_targets", "generate_kotlin", "collect_android_libs"]
+dependencies = ["install_cross", "build_android_targets", "generate_kotlin"]
 
 ## Android-gradle
 [tasks.prepare_gradle_build_directory]
@@ -220,16 +222,16 @@ rustup target add aarch64-apple-ios-sim aarch64-apple-ios x86_64-apple-ios
 
 [tasks.build_ios_code]
 env = { "IPHONEOS_DEPLOYMENT_TARGET" = "13.0" }
-extend = "mobile-build"
-script.main = '''
-cargo build --package one-core-uniffi --lib --release --target x86_64-apple-ios
-cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios-sim
-cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
+script = '''
+for target in "x86_64-apple-ios" "aarch64-apple-ios-sim" "aarch64-apple-ios"
+do
+  cargo build --package one-core-uniffi --lib --target $target --profile mobile-release
+done
 '''
 
 [tasks.generate_swift]
 script = '''
-cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate --library ${CARGO_TARGET_DIR}/aarch64-apple-ios/release/libone_core_uniffi.dylib -l swift -o ${CARGO_TARGET_DIR}/uniffi/ios/
+cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate --library ${CARGO_TARGET_DIR}/aarch64-apple-ios/mobile-release/libone_core_uniffi.dylib -l swift -o ${CARGO_TARGET_DIR}/uniffi/ios/
 '''
 
 [tasks.collect_ios_libs]
@@ -239,7 +241,7 @@ sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' ${CARGO_TA
 find . -type d -name one_coreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
 for arch in "x86_64-apple-ios" "aarch64-apple-ios-sim" "aarch64-apple-ios"
 do
-  pushd ${CARGO_TARGET_DIR}/$arch/release >/dev/null &&
+  pushd ${CARGO_TARGET_DIR}/$arch/mobile-release >/dev/null &&
   mkdir -p one_coreFFI.framework &&
   cd one_coreFFI.framework &&
   mkdir -p Headers Modules Resources &&
@@ -253,9 +255,9 @@ done
 
 [tasks.create_xc_framework]
 script = '''
-lipo -create ${CARGO_TARGET_DIR}/x86_64-apple-ios/release/one_coreFFI.framework/one_coreFFI ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI -output ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI
+lipo -create ${CARGO_TARGET_DIR}/x86_64-apple-ios/mobile-release/one_coreFFI.framework/one_coreFFI ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework/one_coreFFI -output ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework/one_coreFFI
 rm -rf ${CARGO_TARGET_DIR}/one_coreFFI.xcframework || echo 'skip removing'
-xcodebuild -create-xcframework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios/release/one_coreFFI.framework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/release/one_coreFFI.framework -output ${CARGO_TARGET_DIR}/one_coreFFI.xcframework
+xcodebuild -create-xcframework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios/mobile-release/one_coreFFI.framework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework -output ${CARGO_TARGET_DIR}/one_coreFFI.xcframework
 '''
 
 [tasks.package_ios_bindings]

@@ -36,7 +36,7 @@ rand               = { version = "0.8" }
 regex              = { version = "1.10" }
 reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
 sea-orm            = { version = "1.1", default-features = false }
-secrecy            = { version = "0.10.3" , features = ["serde"]}
+secrecy            = { version = "0.10.3", features = ["serde"] }
 serde              = { version = "1.0" }
 serde_json         = { version = "1.0" }
 serde_qs           = { version = "0.13" }
@@ -66,3 +66,10 @@ redundant_clone = "warn"
 
 [patch.crates-io]
 json-ld = { git = "https://github.com/procivis/json-ld", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }
+
+[profile.mobile-release]
+codegen-units = 1
+inherits      = "release"
+lto           = true
+opt-level     = "s"
+strip         = "symbols"
