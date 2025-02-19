@@ -127,6 +127,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             verifier_did: convert_inner(value.verifier_did),
             exchange: value.exchange,
             state: value.state,
+            role: value.role,
             schema: value.schema.map(|schema| schema.into()),
         })
     }
@@ -407,6 +408,7 @@ pub async fn get_verifier_proof_detail(
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,
+        role: list_item_response.role,
         organisation_id: Some(organisation_id),
         schema: list_item_response.schema,
         redirect_uri,
@@ -607,6 +609,7 @@ pub async fn get_holder_proof_detail(
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,
+        role: list_item_response.role,
         organisation_id,
         schema: list_item_response.schema,
         redirect_uri,

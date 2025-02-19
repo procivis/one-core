@@ -6,7 +6,7 @@ use crate::model::common::GetListResponse;
 use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
-use crate::model::proof::{ProofStateEnum, SortableProofColumn};
+use crate::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use crate::provider::exchange_protocol::openid4vc::model::ClientIdSchemaType;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
@@ -58,6 +58,7 @@ pub struct ProofDetailResponseDTO {
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateEnum,
+    pub role: ProofRole,
     pub organisation_id: Option<OrganisationId>,
     pub schema: Option<GetProofSchemaListItemDTO>,
     pub redirect_uri: Option<String>,
@@ -78,6 +79,7 @@ pub struct ProofListItemResponseDTO {
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateEnum,
+    pub role: ProofRole,
     pub schema: Option<GetProofSchemaListItemDTO>,
 }
 
@@ -109,6 +111,7 @@ pub enum ProofFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
     ProofStates(Vec<ProofStateEnum>),
+    ProofRoles(Vec<ProofRole>),
     ProofIds(Vec<ProofId>),
     ProofIdsNot(Vec<ProofId>),
     ProofSchemaIds(Vec<ProofSchemaId>),

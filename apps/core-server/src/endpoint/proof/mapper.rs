@@ -24,10 +24,13 @@ impl From<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue>
         let proof_states = value
             .proof_states
             .map(|proof_states| ProofFilterValue::ProofStates(convert_inner(proof_states)));
+        let proof_roles = value
+            .proof_roles
+            .map(|proof_roles| ProofFilterValue::ProofRoles(convert_inner(proof_roles)));
 
         let proof_ids = value.ids.map(ProofFilterValue::ProofIds);
         let proof_schema_ids = value.proof_schema_ids.map(ProofFilterValue::ProofSchemaIds);
 
-        organisation_id & name & proof_states & proof_schema_ids & proof_ids
+        organisation_id & name & proof_states & proof_roles & proof_schema_ids & proof_ids
     }
 }

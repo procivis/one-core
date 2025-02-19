@@ -10,7 +10,7 @@ use shared_types::ProofId;
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
-use crate::entity::proof::ProofRequestState;
+use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{did, interaction, proof, proof_claim, proof_schema};
 use crate::list_query_generic::{
     get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
@@ -39,6 +39,9 @@ impl IntoFilterCondition for ProofFilterValue {
                 .into_condition(),
             Self::ProofStates(states) => proof::Column::State
                 .is_in(states.into_iter().map(ProofRequestState::from))
+                .into_condition(),
+            Self::ProofRoles(roles) => proof::Column::Role
+                .is_in(roles.into_iter().map(ProofRole::from))
                 .into_condition(),
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
             Self::ProofIds(ids) => proof::Column::Id.is_in(ids).into_condition(),

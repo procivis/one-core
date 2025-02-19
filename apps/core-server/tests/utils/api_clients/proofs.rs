@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use shared_types::{ProofId, ProofSchemaId};
 
@@ -14,6 +14,7 @@ pub struct ProofsApi {
 pub struct ProofFilters<'a> {
     pub name: Option<&'a str>,
     pub proof_states: Option<&'a [ProofStateEnum]>,
+    pub proof_roles: Option<&'a [ProofRole]>,
     pub proof_schema_ids: Option<&'a [ProofSchemaId]>,
     pub ids: Option<&'a [ProofId]>,
 }
@@ -79,6 +80,12 @@ impl ProofsApi {
         if let Some(states) = filters.proof_states {
             url += &states.iter().fold(Default::default(), |state, elem| {
                 format!("{state}&proofStates[]={}", elem.to_string().to_uppercase())
+            });
+        }
+
+        if let Some(roles) = filters.proof_roles {
+            url += &roles.iter().fold(Default::default(), |state, elem| {
+                format!("{state}&proofRoles[]={}", elem.to_string().to_uppercase())
             });
         }
 

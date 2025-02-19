@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
+use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -40,6 +40,16 @@ pub enum ProofStateRestEnum {
     Accepted,
     Rejected,
     Error,
+}
+
+/// The role the system has in relation to the proof.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[from(ProofRole)]
+#[into(ProofRole)]
+pub enum ProofRoleRestEnum {
+    Holder,
+    Verifier,
 }
 
 /// Exchange protocol being used.
@@ -128,6 +138,9 @@ pub struct ProofsFilterQueryParamsRest {
     /// Return proof requests according to their current state in the system.
     #[param(rename = "proofStates[]", inline, nullable = false)]
     pub proof_states: Option<Vec<ProofStateRestEnum>>,
+    /// Return proof requests according to their current role in the system.
+    #[param(rename = "proofRoles[]", inline, nullable = false)]
+    pub proof_roles: Option<Vec<ProofRoleRestEnum>>,
     /// Filter proof requests by their associated proof schema. Pass an array
     /// of UUID strings.
     #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
@@ -188,6 +201,7 @@ pub struct ProofListItemResponseRestDTO {
     /// Exchange protocol being used.
     pub transport: String,
     pub state: ProofStateRestEnum,
+    pub role: ProofRoleRestEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
@@ -319,6 +333,7 @@ pub struct ProofDetailResponseRestDTO {
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateRestEnum,
+    pub role: ProofRoleRestEnum,
     #[from(with_fn = convert_inner)]
     pub organisation_id: Option<Uuid>,
     #[from(with_fn = convert_inner)]

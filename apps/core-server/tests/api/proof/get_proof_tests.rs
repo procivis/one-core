@@ -92,6 +92,7 @@ async fn test_get_proof_success() {
     resp["organisationId"].assert_eq(&organisation.id);
     resp["transport"].assert_eq(&"HTTP".to_string());
     resp["schema"]["id"].assert_eq(&proof_schema.id);
+    resp["role"].assert_eq(&proof.role.to_string().to_ascii_uppercase());
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
     assert_eq!(

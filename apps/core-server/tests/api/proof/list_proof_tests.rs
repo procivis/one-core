@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use one_core::model::did::{KeyRole, RelatedKey};
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofRole, ProofStateEnum};
 use shared_types::ProofId;
 
 use crate::fixtures::{create_organisation, TestingDidParams};
@@ -801,4 +801,155 @@ async fn test_list_proofs_with_org_by_interaction() {
         .collect();
     assert_eq!(result_proofs.len(), 4);
     assert_eq!(HashSet::from_iter(proofs), result_proofs);
+}
+
+#[tokio::test]
+async fn test_list_proofs_by_role() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let verifier_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+    let mut proofs = vec![];
+
+    for _ in 1..5 {
+        let proof = context
+            .db
+            .proofs
+            .create(
+                None,
+                &verifier_did,
+                None,
+                Some(&proof_schema),
+                ProofStateEnum::Requested,
+                "OPENID4VC",
+                None,
+                verifier_key.to_owned(),
+            )
+            .await;
+
+        proofs.push(proof.id);
+    }
+    let interaction = context
+        .db
+        .interactions
+        .create(None, "https://example.com", &[], &organisation)
+        .await;
+    let holder_proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_did,
+            None,
+            None,
+            ProofStateEnum::Error,
+            "OPENID4VC",
+            Some(&interaction),
+            verifier_key.to_owned(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                proof_roles: Some(&[ProofRole::Verifier]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 4);
+    assert_eq!(resp["totalPages"], 1);
+
+    let result_proofs: HashSet<ProofId> = resp["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["id"].parse())
+        .collect();
+    assert_eq!(result_proofs.len(), 4);
+    assert_eq!(HashSet::from_iter(proofs), result_proofs);
+
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                proof_roles: Some(&[ProofRole::Holder]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+
+    let result_proof = resp["values"].as_array().unwrap().first().cloned().unwrap();
+    assert_eq!(result_proof["id"].parse::<ProofId>(), holder_proof.id);
+    assert_eq!(
+        result_proof["role"],
+        holder_proof.role.to_string().to_ascii_uppercase()
+    );
 }
