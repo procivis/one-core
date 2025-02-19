@@ -99,7 +99,6 @@ workspace-default-features = "allow"
 allow-git = [
     "https://github.com/procivis/pairing_crypto",
     "https://github.com/procivis/dilithium",
-    "https://github.com/procivis/json-ld",
     "https://github.com/procivis/blstrs",
 ]
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]

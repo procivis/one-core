@@ -77,7 +77,7 @@ pub struct JsonLdError(Box<dyn std::error::Error + Send + Sync + 'static>);
 
 pub(super) async fn validate_verifiable_credential(
     credential: &VcdmCredential,
-    document_loader: &impl json_ld_0_21::Loader,
+    document_loader: &impl json_ld::Loader,
 ) -> Result<(), VcValidationError> {
     validate_json_ld(
         &serde_json::to_string(credential).map_err(VcValidationError::Serde)?,
@@ -149,7 +149,7 @@ pub(super) async fn validate_verifiable_credential(
 
 pub(super) async fn validate_verifiable_presentation(
     presentation: &LdPresentation,
-    document_loader: &impl json_ld_0_21::Loader,
+    document_loader: &impl json_ld::Loader,
 ) -> Result<(), VpValidationError> {
     validate_json_ld(
         &serde_json::to_string(presentation).map_err(VpValidationError::Serde)?,
@@ -190,15 +190,15 @@ pub(super) async fn validate_verifiable_presentation(
 
 async fn validate_json_ld(
     document: &str,
-    document_loader: &impl json_ld_0_21::Loader,
+    document_loader: &impl json_ld::Loader,
 ) -> Result<(), JsonLdError> {
-    use json_ld_0_21::expansion::{Action, Policy};
-    use json_ld_0_21::rdf_types::vocabulary;
-    use json_ld_0_21::syntax::{Parse, Value};
-    use json_ld_0_21::{JsonLdProcessor, Options};
+    use json_ld::expansion::{Action, Policy};
+    use json_ld::rdf_types::vocabulary;
+    use json_ld::syntax::{Parse, Value};
+    use json_ld::{JsonLdProcessor, Options};
 
     let (document, _) = Value::parse_str(document).map_err(|err| JsonLdError(err.into()))?;
-    let document = json_ld_0_21::RemoteDocument::new(None, None, document);
+    let document = json_ld::RemoteDocument::new(None, None, document);
 
     let _expanded_document = JsonLdProcessor::expand_full(
         &document,

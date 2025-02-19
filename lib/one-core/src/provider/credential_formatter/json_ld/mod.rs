@@ -1,23 +1,15 @@
 //! Implementation of JSON-LD credential format.
 
-use std::collections::HashSet;
-
 use context::caching_loader::ContextCache;
 use indexmap::IndexSet;
 use serde::Serialize;
-use sophia_api::quad::Spog;
-use sophia_api::source::QuadSource;
-use sophia_api::term::SimpleTerm;
-use sophia_c14n::rdfc10;
-use sophia_jsonld::loader::NoLoader;
-use sophia_jsonld::loader_factory::DefaultLoaderFactory;
-use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use url::Url;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialSchema;
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredential};
 
+mod canonization;
 pub mod context;
 pub mod model;
 
@@ -128,27 +120,7 @@ pub async fn canonize_any(
     let content_str = serde_json::to_string(&json_ld)
         .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
-    canonize(&content_str, caching_loader).await
-}
-
-async fn canonize(content: &str, caching_loader: ContextCache) -> Result<String, FormatterError> {
-    let options = JsonLdOptions::<DefaultLoaderFactory<NoLoader>>::default()
-        .with_document_loader(caching_loader);
-
-    let parser = JsonLdParser::new_with_options(options);
-
-    // This will actually fetch context
-    let parsed = parser.async_parse_str(content).await;
-
-    let dataset: HashSet<Spog<SimpleTerm<'static>>> = parsed
-        .collect_quads()
-        .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
-    let mut buf = Vec::<u8>::new();
-    rdfc10::normalize(&dataset, &mut buf)
-        .map_err(|e| FormatterError::CouldNotFormat(format!("Normalization error: `{}`", e)))?;
-
-    let str = String::from_utf8_lossy(buf.as_slice());
-
-    Ok(str.into_owned())
+    canonization::canonize(&content_str, &caching_loader)
+        .await
+        .map_err(|err| FormatterError::Failed(format!("Canonization failed: {err}")))
 }

@@ -2,12 +2,6 @@ use std::string::FromUtf8Error;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use futures::future::BoxFuture;
-use json_ld::{Loader, RemoteDocument};
-use json_syntax::Parse;
-use locspan::Location;
-use rdf_types::IriVocabulary;
-use sophia_jsonld::loader::FutureExt;
 use time::format_description::well_known::Rfc2822;
 use time::macros::offset;
 use time::OffsetDateTime;
@@ -113,8 +107,6 @@ pub enum JsonLdResolverError {
     TimeError(String),
 }
 
-type ArcIri = sophia_api::prelude::Iri<Arc<str>>;
-
 #[derive(Clone)]
 pub struct ContextCache {
     loader: JsonLdCachingLoader,
@@ -130,70 +122,21 @@ impl ContextCache {
     }
 }
 
-impl Loader<ArcIri, Location<ArcIri>> for ContextCache {
-    type Output = json_syntax::Value<Location<ArcIri>>;
-    type Error = JsonLdResolverError;
-
-    #[inline(always)]
-    fn load_with<'a>(
-        &'a mut self,
-        _namespace: &mut impl IriVocabulary<Iri = ArcIri>,
-        url: ArcIri,
-    ) -> BoxFuture<
-        'a,
-        Result<
-            RemoteDocument<ArcIri, Location<ArcIri>, json_syntax::Value<Location<ArcIri>>>,
-            Self::Error,
-        >,
-    >
-    where
-        ArcIri: 'a,
-    {
-        async move {
-            let (context, media_type) = self
-                .loader
-                .get(url.as_str(), self.resolver.clone(), false)
-                .await?;
-            let context_str = String::from_utf8(context)?;
-
-            let doc = json_syntax::Value::parse_str(&context_str, |span| {
-                Location::new(url.to_owned(), span)
-            })
-            .map_err(|e| JsonLdResolverError::JsonParseError(e.to_string()))?;
-
-            Ok(RemoteDocument::new(
-                Some(url.to_owned()),
-                Some(
-                    media_type
-                        .as_deref()
-                        .unwrap_or("application/ld+json")
-                        .parse()
-                        .map_err(|e: mime::FromStrError| {
-                            JsonLdResolverError::MimeFromStrError(e.to_string())
-                        })?,
-                ),
-                doc,
-            ))
-        }
-        .boxed()
-    }
-}
-
-impl json_ld_0_21::Loader for ContextCache {
+impl json_ld::Loader for ContextCache {
     async fn load(
         &self,
-        url: &json_ld_0_21::Iri,
-    ) -> Result<json_ld_0_21::RemoteDocument<json_ld_0_21::IriBuf>, json_ld_0_21::LoadError> {
-        use json_ld_0_21::syntax::Parse;
+        url: &json_ld::Iri,
+    ) -> Result<json_ld::RemoteDocument<json_ld::IriBuf>, json_ld::LoadError> {
+        use json_ld::syntax::Parse;
 
         let (context, media_type) = self
             .loader
             .get(url, self.resolver.clone(), false)
             .await
-            .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;
+            .map_err(|err| json_ld::LoadError::new(url.to_owned(), err))?;
 
-        let document = json_ld_0_21::syntax::Value::parse_slice(&context)
-            .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?
+        let document = json_ld::syntax::Value::parse_slice(&context)
+            .map_err(|err| json_ld::LoadError::new(url.to_owned(), err))?
             .0;
 
         let content_type = media_type
@@ -201,9 +144,9 @@ impl json_ld_0_21::Loader for ContextCache {
             .unwrap_or("application/ld+json")
             .parse()
             .map(Some)
-            .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;
+            .map_err(|err| json_ld::LoadError::new(url.to_owned(), err))?;
 
-        Ok(json_ld_0_21::RemoteDocument::new(
+        Ok(json_ld::RemoteDocument::new(
             Some(url.to_owned()),
             content_type,
             document,
