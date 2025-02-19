@@ -4,7 +4,9 @@ use anyhow::Context;
 use one_core::model::did::DidRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::OrganisationRelations;
-use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
+use one_core::model::trust_entity::{
+    TrustEntity, TrustEntityRelations, TrustEntityState, UpdateTrustEntityRequest,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
@@ -69,20 +71,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
     }
 
     async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {
-        let trust_entity = self
-            .inner
-            .get(
-                id,
-                &TrustEntityRelations {
-                    did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .context("trust entity is missing")?;
+        let trust_entity = self.get_trust_entity_by_id(id).await?;
 
         self.inner.delete(id).await?;
 
@@ -126,6 +115,58 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         id: TrustEntityId,
         request: UpdateTrustEntityRequest,
     ) -> Result<(), DataLayerError> {
+        let history_action = request.state.clone().and_then(|state| match state {
+            TrustEntityState::Active => Some(HistoryAction::Activated),
+            TrustEntityState::Removed => Some(HistoryAction::Removed),
+            TrustEntityState::Withdrawn => Some(HistoryAction::Withdrawn),
+            TrustEntityState::RemovedAndWithdrawn => None,
+        });
+
+        if let Some(action) = history_action {
+            let trust_entity = self.get_trust_entity_by_id(id).await?;
+
+            let result = self
+                .history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    action,
+                    entity_id: Some(id.into()),
+                    entity_type: HistoryEntityType::TrustEntity,
+                    metadata: None,
+                    organisation: trust_entity.did.and_then(|did| did.organisation),
+                })
+                .await;
+
+            if let Err(err) = result {
+                tracing::debug!("failed to insert trust entity history event: {err:?}");
+            }
+        }
+
         self.inner.update(id, request).await
+    }
+}
+
+impl TrustEntityHistoryDecorator {
+    async fn get_trust_entity_by_id(
+        &self,
+        id: TrustEntityId,
+    ) -> Result<TrustEntity, DataLayerError> {
+        let trust_entity = self
+            .inner
+            .get(
+                id,
+                &TrustEntityRelations {
+                    did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .context("trust entity is missing")?;
+
+        Ok(trust_entity)
     }
 }

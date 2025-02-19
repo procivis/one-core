@@ -92,6 +92,12 @@ pub enum HistoryAction {
     Imported,
     #[sea_orm(string_value = "CLAIMS_REMOVED")]
     ClaimsRemoved,
+    #[sea_orm(string_value = "ACTIVATED")]
+    Activated,
+    #[sea_orm(string_value = "WITHDRAWN")]
+    Withdrawn,
+    #[sea_orm(string_value = "REMOVED")]
+    Removed,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

@@ -145,6 +145,9 @@ pub enum HistoryActionBindingEnum {
     Shared,
     Imported,
     ClaimsRemoved,
+    Activated,
+    Withdrawn,
+    Removed,
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]

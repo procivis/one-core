@@ -109,6 +109,9 @@ pub enum HistoryAction {
     Shared,
     Imported,
     ClaimsRemoved,
+    Activated,
+    Withdrawn,
+    Removed,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
