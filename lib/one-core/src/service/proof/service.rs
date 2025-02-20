@@ -15,8 +15,7 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
 use super::validator::{
-    validate_mdl_exchange, validate_proof_retractable, validate_redirect_uri,
-    validate_verification_key_storage_compatibility,
+    validate_mdl_exchange, validate_redirect_uri, validate_verification_key_storage_compatibility,
 };
 use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
@@ -34,9 +33,7 @@ use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{
-    HistoryAction, HistoryErrorMetadata, HistoryFilterValue, HistoryListQuery,
-};
+use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -63,7 +60,6 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
 };
 use crate::provider::exchange_protocol::openid4vc::model::{OpenID4VCParams, ShareResponse};
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -534,63 +530,6 @@ impl ProofService {
             log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Shared).await;
 
         Ok(EntityShareResponseDTO { url })
-    }
-
-    pub async fn retract_proof(&self, proof_id: ProofId) -> Result<ProofId, ServiceError> {
-        let proof = self
-            .proof_repository
-            .get_proof(
-                &proof_id,
-                &ProofRelations {
-                    interaction: Some(Default::default()),
-                    schema: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .ok_or(EntityNotFoundError::Proof(proof_id))?;
-
-        validate_proof_retractable(&proof, &self.config)?;
-
-        let interaction = proof.interaction.as_ref().ok_or_else(|| {
-            ServiceError::MappingError(format!("Missing interaction in proof {proof_id}"))
-        })?;
-
-        self.exchange_retract_proof(&proof).await?;
-
-        // we keep the interaction data if the transport hasn't been established
-        let can_remove_interaction = !proof.transport.is_empty();
-
-        let (new_state, error_metadata) = if proof.schema.is_none() {
-            // A holder cannot reuse retracted proofs hence we go into the error state here.
-            let error_metadata = HistoryErrorMetadata {
-                error_code: BR_0000,
-                message: "Proof retracted".to_string(),
-            };
-            (ProofStateEnum::Error, Some(error_metadata))
-        } else {
-            (Created, None)
-        };
-        self.proof_repository
-            .update_proof(
-                &proof_id,
-                UpdateProofRequest {
-                    state: Some(new_state),
-                    requested_date: Some(None),
-                    interaction: can_remove_interaction.then_some(None),
-                    ..Default::default()
-                },
-                error_metadata,
-            )
-            .await?;
-
-        if can_remove_interaction {
-            self.interaction_repository
-                .delete_interaction(&interaction.id)
-                .await?;
-        }
-
-        Ok(proof_id)
     }
 
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {

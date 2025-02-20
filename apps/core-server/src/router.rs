@@ -165,10 +165,6 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(proof::controller::get_proof_presentation_definition),
         )
         .route(
-            "/api/proof-request/v1/{id}/retract",
-            post(proof::controller::retract_proof),
-        )
-        .route(
             "/api/proof-request/v1/{id}/claims",
             delete(proof::controller::delete_proof_claims),
         )

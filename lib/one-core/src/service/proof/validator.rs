@@ -3,13 +3,9 @@ use url::Url;
 use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType};
 use crate::model::key::Key;
-use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
-use crate::service::error::BusinessLogicError::{
-    InvalidProofExchangeForRetraction, InvalidProofRoleForRetraction,
-};
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -178,40 +174,5 @@ pub(super) fn validate_verification_key_storage_compatibility(
         Ok(())
     })?;
 
-    Ok(())
-}
-
-pub fn validate_proof_retractable(proof: &Proof, config: &CoreConfig) -> Result<(), ServiceError> {
-    if !matches!(
-        proof.state,
-        ProofStateEnum::Pending | ProofStateEnum::Requested
-    ) {
-        return Err(BusinessLogicError::InvalidProofState {
-            state: proof.state.clone(),
-        }
-        .into());
-    }
-
-    match config.exchange.get_fields(&proof.exchange)?.r#type {
-        ExchangeType::OpenId4Vc => {
-            if proof.role == ProofRole::Holder {
-                return Err(InvalidProofRoleForRetraction {
-                    role: "holder".to_string(),
-                }
-                .into());
-            }
-        }
-        ExchangeType::IsoMdl => {
-            if proof.role == ProofRole::Verifier {
-                return Err(InvalidProofRoleForRetraction {
-                    role: "verifier".to_string(),
-                }
-                .into());
-            }
-        }
-        exchange_type @ ExchangeType::ScanToVerify => {
-            return Err(InvalidProofExchangeForRetraction { exchange_type }.into());
-        }
-    };
     Ok(())
 }

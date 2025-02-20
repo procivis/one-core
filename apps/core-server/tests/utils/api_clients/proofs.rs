@@ -101,11 +101,6 @@ impl ProofsApi {
         self.client.post(&url, None).await
     }
 
-    pub async fn retract(&self, id: impl Display) -> Response {
-        let url = format!("/api/proof-request/v1/{id}/retract");
-        self.client.post(&url, None).await
-    }
-
     pub async fn delete_proof_claims(&self, id: impl Display) -> Response {
         let url = format!("/api/proof-request/v1/{id}/claims");
         self.client.delete(&url).await

@@ -201,38 +201,6 @@ pub(crate) async fn share_proof(
 }
 
 #[utoipa::path(
-    post,
-    path = "/api/proof-request/v1/{id}/retract",
-    responses(OkOrErrorResponse<EntityResponseRestDTO>),
-    params(
-        ("id" = ProofId, Path, description = "Proof id")
-    ),
-    tag = "proof_management",
-    security(
-        ("bearer" = [])
-    ),
-    summary = "Retract a proof request",
-    description = indoc::formatdoc! {"
-        Retracts a proof request. For those proof requests still in `PENDING` or `REQUESTED`, use this endpoint to
-        retract the request, effectively renewing it. This is helpful for preventing the creation of excess proof requests
-        during verification workflows. See the [proof request states](../api/proofRequests.mdx#proof-request-states) guide.
-    "},
-)]
-pub(crate) async fn retract_proof(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<EntityResponseRestDTO> {
-    let result = state
-        .core
-        .proof_service
-        .retract_proof(id)
-        .await
-        .map(|id| EntityResponseRestDTO { id: id.into() });
-
-    OkOrErrorResponse::from_result(result, state, " retracting proof")
-}
-
-#[utoipa::path(
     delete,
     path = "/api/proof-request/v1/{id}/claims",
     responses(EmptyOrErrorResponse),

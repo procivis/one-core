@@ -140,16 +140,6 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
-    pub async fn retract_proof(&self, proof_id: String) -> Result<String, BindingError> {
-        let proof_id = into_id(&proof_id)?;
-
-        let core = self.use_core().await?;
-        let response = core.proof_service.retract_proof(proof_id).await?;
-
-        Ok(response.to_string())
-    }
-
-    #[uniffi::method]
     pub async fn delete_proof_claims(&self, proof_id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
         core.proof_service
