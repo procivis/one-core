@@ -4,7 +4,7 @@ use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::ProofStateEnum;
 use shared_types::ProofId;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::{create_organisation, TestingDidParams};
 use crate::utils::api_clients::proofs::ProofFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -702,4 +702,103 @@ async fn test_list_proof_with_retain_date() {
         .unwrap()
         .iter()
         .all(|proof| !proof["retainUntilDate"].is_null()))
+}
+
+#[tokio::test]
+async fn test_list_proofs_with_org_by_interaction() {
+    // GIVEN
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(None, "https://example.com", &[], &organisation)
+        .await;
+
+    let mut proofs = vec![];
+    for _ in 1..5 {
+        let proof = context
+            .db
+            .proofs
+            .create(
+                None,
+                &did,
+                None,
+                None,
+                ProofStateEnum::Requested,
+                "OPENID4VC",
+                Some(&interaction),
+                key.clone(),
+            )
+            .await;
+
+        proofs.push(proof.id);
+    }
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let different_org = create_organisation(&context.db.db_conn).await;
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            &different_org,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Error,
+            "OPENID4VC",
+            None,
+            key,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .list(0, 10, &organisation.id, Default::default())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 4);
+    assert_eq!(resp["totalPages"], 1);
+
+    let result_proofs: HashSet<ProofId> = resp["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["id"].parse())
+        .collect();
+    assert_eq!(result_proofs.len(), 4);
+    assert_eq!(HashSet::from_iter(proofs), result_proofs);
 }

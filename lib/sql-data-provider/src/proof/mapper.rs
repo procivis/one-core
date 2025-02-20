@@ -1,6 +1,5 @@
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
-use one_core::model::organisation::Organisation;
 use one_core::model::proof::{GetProofList, Proof, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
@@ -8,14 +7,13 @@ use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 use shared_types::ProofId;
-use time::OffsetDateTime;
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
 use crate::entity::proof::ProofRequestState;
-use crate::entity::{did, proof, proof_claim, proof_schema};
+use crate::entity::{did, interaction, proof, proof_claim, proof_schema};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
 
 impl IntoSortingColumn for SortableProofColumn {
@@ -35,9 +33,10 @@ impl IntoFilterCondition for ProofFilterValue {
             Self::Name(string_match) => {
                 get_string_match_condition(proof_schema::Column::Name, string_match)
             }
-            Self::OrganisationId(organisation_id) => {
-                get_equals_condition(proof_schema::Column::OrganisationId, organisation_id)
-            }
+            Self::OrganisationId(organisation_id) => proof_schema::Column::OrganisationId
+                .eq(organisation_id)
+                .or(interaction::Column::OrganisationId.eq(organisation_id))
+                .into_condition(),
             Self::ProofStates(states) => proof::Column::State
                 .is_in(states.into_iter().map(ProofRequestState::from))
                 .into_condition(),
@@ -80,6 +79,27 @@ impl TryFrom<ProofListItemModel> for Proof {
             }),
         };
 
+        let schema = match value.schema_id {
+            None => None,
+            Some(schema_id) => Some(ProofSchema {
+                id: schema_id,
+                created_date: value
+                    .schema_created_date
+                    .ok_or(DataLayerError::MappingError)?,
+                last_modified: value
+                    .schema_last_modified
+                    .ok_or(DataLayerError::MappingError)?,
+                deleted_at: None,
+                name: value.schema_name.ok_or(DataLayerError::MappingError)?,
+                expire_duration: value
+                    .schema_expire_duration
+                    .ok_or(DataLayerError::MappingError)?,
+                imported_source_url: value.schema_imported_source_url,
+                organisation: None,
+                input_schemas: None,
+            }),
+        };
+
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -92,21 +112,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             role: value.role.into(),
             requested_date: value.requested_date,
             completed_date: value.completed_date,
-            schema: Some(ProofSchema {
-                id: value.schema_id,
-                created_date: value.schema_created_date,
-                last_modified: value.schema_last_modified,
-                deleted_at: None,
-                name: value.schema_name,
-                imported_source_url: value.schema_imported_source_url,
-                expire_duration: value.schema_expire_duration,
-                organisation: Some(Organisation {
-                    id: value.schema_organisation_id,
-                    created_date: OffsetDateTime::UNIX_EPOCH,
-                    last_modified: OffsetDateTime::UNIX_EPOCH,
-                }),
-                input_schemas: None,
-            }),
+            schema,
             claims: None,
             verifier_did,
             holder_did: None,

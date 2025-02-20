@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use one_core::model::claim::Claim;
-use one_core::model::did::DidRelations;
 use one_core::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
 };
@@ -41,14 +40,6 @@ impl ProofHistoryDecorator {
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
-                    verifier_did: Some(DidRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     ..Default::default()
                 },
             )
@@ -61,10 +52,6 @@ impl ProofHistoryDecorator {
             .interaction
             .and_then(|interaction| interaction.organisation)
         {
-            Ok(organisation)
-        } else if let Some(organisation) = proof.holder_did.and_then(|did| did.organisation) {
-            Ok(organisation)
-        } else if let Some(organisation) = proof.verifier_did.and_then(|did| did.organisation) {
             Ok(organisation)
         } else {
             Err(anyhow::anyhow!("organisation is None").into())

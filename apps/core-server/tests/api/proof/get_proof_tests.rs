@@ -784,6 +784,11 @@ async fn test_get_proof_as_holder_success() {
         .dids
         .create(&organisation, Default::default())
         .await;
+    let interaction = context
+        .db
+        .interactions
+        .create(None, "https://example.com", &[], &organisation)
+        .await;
 
     let proof = context
         .db
@@ -795,7 +800,7 @@ async fn test_get_proof_as_holder_success() {
             None, // Proof schema is empty on holder side
             ProofStateEnum::Created,
             "OPENID4VC",
-            None,
+            Some(&interaction), // Interaction is present on holder side
             verifier_key,
         )
         .await;

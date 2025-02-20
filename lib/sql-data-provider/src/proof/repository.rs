@@ -245,7 +245,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(did::Column::Method, "verifier_did_method")
         // add related proof schema
         .join(
-            sea_orm::JoinType::InnerJoin,
+            sea_orm::JoinType::LeftJoin,
             proof::Relation::ProofSchema.def(),
         )
         .column_as(proof_schema::Column::Id, "schema_id")
@@ -263,6 +263,11 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(
             proof_schema::Column::OrganisationId,
             "schema_organisation_id",
+        )
+        // add related interaction (which we need to filter by organisation on the holder side)
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            proof::Relation::Interaction.def(),
         )
         .with_list_query(query_params)
         // fallback ordering

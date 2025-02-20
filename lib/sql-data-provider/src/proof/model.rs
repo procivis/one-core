@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use shared_types::{DidId, DidValue, OrganisationId, ProofId, ProofSchemaId};
+use shared_types::{DidId, DidValue, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::entity::did::DidType;
@@ -31,11 +31,10 @@ pub(super) struct ProofListItemModel {
     pub verifier_did_method: Option<String>,
 
     // proof_schema
-    pub schema_id: ProofSchemaId,
-    pub schema_name: String,
-    pub schema_created_date: OffsetDateTime,
-    pub schema_last_modified: OffsetDateTime,
-    pub schema_expire_duration: u32,
-    pub schema_organisation_id: OrganisationId,
+    pub schema_id: Option<ProofSchemaId>,
+    pub schema_name: Option<String>,
+    pub schema_created_date: Option<OffsetDateTime>,
+    pub schema_last_modified: Option<OffsetDateTime>,
+    pub schema_expire_duration: Option<u32>,
     pub schema_imported_source_url: Option<String>,
 }
