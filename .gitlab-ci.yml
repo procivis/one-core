@@ -1,4 +1,4 @@
-image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.84.1-0.1
+image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.84.1-0.2
 
 include:
   - local: "docs/docs.gitlab-ci.yml"
