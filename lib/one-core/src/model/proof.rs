@@ -43,6 +43,7 @@ pub enum ProofStateEnum {
     Requested,
     Accepted,
     Rejected,
+    Retracted,
     Error,
 }
 

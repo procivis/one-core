@@ -197,9 +197,10 @@ impl ProofRepository for ProofProvider {
         if let Some(state) = proof.state {
             match &state {
                 ProofStateEnum::Pending => update_model.requested_date = Set(Some(now)),
-                ProofStateEnum::Accepted | ProofStateEnum::Rejected | ProofStateEnum::Error => {
-                    update_model.completed_date = Set(Some(now))
-                }
+                ProofStateEnum::Accepted
+                | ProofStateEnum::Rejected
+                | ProofStateEnum::Error
+                | ProofStateEnum::Retracted => update_model.completed_date = Set(Some(now)),
                 _ => {}
             };
             update_model.state = Set(state.into());
@@ -210,6 +211,14 @@ impl ProofRepository for ProofProvider {
             .await
             .map_err(to_update_data_layer_error)?;
 
+        Ok(())
+    }
+
+    async fn delete_proof(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
+        proof::Entity::delete_by_id(proof_id)
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
     }
 }

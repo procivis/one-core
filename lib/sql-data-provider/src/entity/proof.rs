@@ -47,6 +47,8 @@ pub enum ProofRequestState {
     Accepted,
     #[sea_orm(string_value = "REJECTED")]
     Rejected,
+    #[sea_orm(string_value = "RETRACTED")]
+    Retracted,
     #[sea_orm(string_value = "ERROR")]
     Error,
 }

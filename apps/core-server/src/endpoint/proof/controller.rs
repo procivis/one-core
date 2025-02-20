@@ -70,6 +70,28 @@ pub(crate) async fn get_proof_details(
 }
 
 #[utoipa::path(
+    delete,
+    path = "/api/proof-request/v1/{id}",
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = ProofId, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Delete proof request",
+    description = "Deletes a proof request that has not completed yet. If the state is in REQUESTED state (i.e. the holder has already retrieved the presentation request) then the proof is retracted instead.",
+)]
+pub(crate) async fn delete_proof(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state.core.proof_service.delete_proof(id).await;
+    EmptyOrErrorResponse::from_result(result, state, "deleting proof")
+}
+
+#[utoipa::path(
     get,
     path = "/api/proof-request/v1",
     responses(OkOrErrorResponse<GetProofsResponseRestDTO>),

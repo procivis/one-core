@@ -4,8 +4,10 @@ use one_core::model::history::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder};
-use shared_types::HistoryId;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+};
+use shared_types::{EntityId, HistoryId};
 
 use super::mapper::create_list_response;
 use crate::entity::history;
@@ -32,6 +34,15 @@ impl HistoryRepository for HistoryProvider {
             .map_err(to_data_layer_error)?;
 
         Ok(history.id)
+    }
+
+    async fn delete_history_by_entity_id(&self, entity_id: EntityId) -> Result<(), DataLayerError> {
+        history::Entity::delete_many()
+            .filter(history::Column::EntityId.eq(entity_id))
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+        Ok(())
     }
 
     async fn get_history_list(

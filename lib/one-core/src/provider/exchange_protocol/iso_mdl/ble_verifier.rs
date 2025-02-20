@@ -111,8 +111,6 @@ pub(crate) async fn start_client(
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), ServiceError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
-    let proof_id = proof.id.to_owned();
-    let proof_repository_clone = proof_repository.clone();
 
     let (sender, receiver) = oneshot::channel();
 
@@ -153,11 +151,6 @@ pub(crate) async fn start_client(
             if let Ok(device_info) = receiver.await {
                 send_end_and_disconnect(&device_info, &peripheral_server_uuid, &*central).await;
             }
-            let error_metadata = HistoryErrorMetadata {
-                error_code: BR_0000,
-                message,
-            };
-            let _ = set_proof_to_error(&proof_repository_clone, proof_id, error_metadata).await;
         },
         OnConflict::ReplaceIfSameFlow,
         false,

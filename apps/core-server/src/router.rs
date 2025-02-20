@@ -158,7 +158,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/api/proof-request/v1/{id}",
-            get(proof::controller::get_proof_details),
+            get(proof::controller::get_proof_details).delete(proof::controller::delete_proof),
         )
         .route(
             "/api/proof-request/v1/{id}/presentation-definition",

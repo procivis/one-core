@@ -53,6 +53,13 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
+    pub async fn delete_proof(&self, proof_id: String) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        core.proof_service.delete_proof(into_id(&proof_id)?).await?;
+        Ok(())
+    }
+
+    #[uniffi::method]
     pub async fn get_proofs(
         &self,
         query: ProofListQueryBindingDTO,
@@ -305,6 +312,7 @@ pub enum ProofStateBindingEnum {
     Requested,
     Accepted,
     Rejected,
+    Retracted,
     Error,
 }
 

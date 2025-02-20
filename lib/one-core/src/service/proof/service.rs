@@ -5,6 +5,7 @@ use futures::future::BoxFuture;
 use shared_types::{OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+use ProofStateEnum::{Created, Pending, Requested, Retracted};
 
 use super::dto::{
     CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
@@ -206,7 +207,7 @@ impl ProofService {
             .into());
         }
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        throw_if_latest_proof_state_not_eq(&proof, Requested)?;
 
         let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
@@ -445,19 +446,19 @@ impl ProofService {
         let proof = self.get_proof_with_state(id).await?;
 
         match proof.state {
-            ProofStateEnum::Created => {
+            Created => {
                 self.proof_repository
                     .update_proof(
                         &proof.id,
                         UpdateProofRequest {
-                            state: Some(ProofStateEnum::Pending),
+                            state: Some(Pending),
                             ..Default::default()
                         },
                         None,
                     )
                     .await?;
             }
-            ProofStateEnum::Pending => {}
+            Pending => {}
             state => {
                 return Err(BusinessLogicError::InvalidProofState { state }.into());
             }
@@ -555,11 +556,7 @@ impl ProofService {
             ServiceError::MappingError(format!("Missing interaction in proof {proof_id}"))
         })?;
 
-        let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
-            ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
-        )?;
-
-        exchange_protocol.retract_proof(&proof).await?;
+        self.exchange_retract_proof(&proof).await?;
 
         // we keep the interaction data if the transport hasn't been established
         let can_remove_interaction = !proof.transport.is_empty();
@@ -572,7 +569,7 @@ impl ProofService {
             };
             (ProofStateEnum::Error, Some(error_metadata))
         } else {
-            (ProofStateEnum::Created, None)
+            (Created, None)
         };
         self.proof_repository
             .update_proof(
@@ -687,7 +684,7 @@ impl ProofService {
                 issuance_date: now,
                 exchange,
                 redirect_uri: None,
-                state: ProofStateEnum::Pending,
+                state: Pending,
                 role: ProofRole::Holder,
                 requested_date: Some(now),
                 completed_date: None,
@@ -719,7 +716,62 @@ impl ProofService {
         })
     }
 
+    pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ServiceError> {
+        let Some(proof) = self
+            .proof_repository
+            .get_proof(
+                &proof_id,
+                &ProofRelations {
+                    interaction: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(EntityNotFoundError::Proof(proof_id).into());
+        };
+
+        match proof.state {
+            Created | Pending => {
+                self.exchange_retract_proof(&proof).await?;
+                self.hard_delete_proof(&proof).await?
+            }
+            Requested => {
+                self.exchange_retract_proof(&proof).await?;
+                let proof_update = UpdateProofRequest {
+                    state: Some(Retracted),
+                    ..Default::default()
+                };
+                self.proof_repository
+                    .update_proof(&proof.id, proof_update, None)
+                    .await?;
+            }
+            state => return Err(BusinessLogicError::InvalidProofState { state }.into()),
+        };
+        Ok(())
+    }
+
     // ============ Private methods
+
+    async fn hard_delete_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
+        self.proof_repository.delete_proof(&proof.id).await?;
+        if let Some(ref interaction) = proof.interaction {
+            self.interaction_repository
+                .delete_interaction(&interaction.id)
+                .await?;
+        };
+        Ok(())
+    }
+
+    /// Release resources consumed by the exchange protocol for this particular proof
+    /// (e.g. BLE advertising).
+    async fn exchange_retract_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
+        let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
+            ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
+        )?;
+        exchange_protocol.retract_proof(proof).await?;
+        Ok(())
+    }
 
     /// Get latest proof state
     async fn get_proof_with_state(&self, id: &ProofId) -> Result<Proof, ServiceError> {

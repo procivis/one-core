@@ -459,6 +459,7 @@ impl From<ProofStateEnum> for HistoryAction {
             ProofStateEnum::Accepted => HistoryAction::Accepted,
             ProofStateEnum::Rejected => HistoryAction::Rejected,
             ProofStateEnum::Error => HistoryAction::Errored,
+            ProofStateEnum::Retracted => HistoryAction::Retracted,
         }
     }
 }

@@ -136,6 +136,14 @@ impl ProofRepository for ProofHistoryDecorator {
         Ok(())
     }
 
+    async fn delete_proof(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
+        self.inner.delete_proof(proof_id).await?;
+        self.history_repository
+            .delete_history_by_entity_id((*proof_id).into())
+            .await?;
+        Ok(())
+    }
+
     async fn update_proof(
         &self,
         proof_id: &ProofId,

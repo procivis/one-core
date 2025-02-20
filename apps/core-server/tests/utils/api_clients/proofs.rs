@@ -111,6 +111,11 @@ impl ProofsApi {
         self.client.delete(&url).await
     }
 
+    pub async fn delete_proof(&self, id: impl Display) -> Response {
+        let url = format!("/api/proof-request/v1/{id}");
+        self.client.delete(&url).await
+    }
+
     pub async fn presentation_definition(&self, id: impl Display) -> Response {
         let url = format!("/api/proof-request/v1/{id}/presentation-definition");
         self.client.get(&url).await

@@ -98,6 +98,8 @@ pub enum HistoryAction {
     Withdrawn,
     #[sea_orm(string_value = "REMOVED")]
     Removed,
+    #[sea_orm(string_value = "RETRACTED")]
+    Retracted,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

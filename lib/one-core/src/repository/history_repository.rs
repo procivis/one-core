@@ -1,4 +1,4 @@
-use shared_types::HistoryId;
+use shared_types::{EntityId, HistoryId};
 
 use crate::model::history::{GetHistoryList, History, HistoryListQuery};
 use crate::repository::error::DataLayerError;
@@ -7,6 +7,8 @@ use crate::repository::error::DataLayerError;
 #[async_trait::async_trait]
 pub trait HistoryRepository: Send + Sync {
     async fn create_history(&self, request: History) -> Result<HistoryId, DataLayerError>;
+
+    async fn delete_history_by_entity_id(&self, entity_id: EntityId) -> Result<(), DataLayerError>;
 
     async fn get_history_list(
         &self,
