@@ -15,8 +15,8 @@ use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::async_verifier_flow::{
-    async_verifier_flow, never, set_proof_state, AsyncTransportHooks, AsyncVerifierFlowParams,
-    FlowState,
+    async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
+    AsyncVerifierFlowParams, FlowState,
 };
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -89,7 +89,7 @@ pub(super) async fn mqtt_verifier_flow(
                 error_code: BR_0000,
                 message,
             };
-            let _ = set_proof_state(
+            set_proof_state_infallible(
                 &proof,
                 ProofStateEnum::Error,
                 Some(error_metadata),

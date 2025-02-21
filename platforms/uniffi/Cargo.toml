@@ -30,6 +30,7 @@ strum.workspace          = true
 thiserror.workspace      = true
 time.workspace           = true
 tokio                    = { workspace = true, features = ['rt-multi-thread'] }
+tracing                  = { workspace = true }
 tracing-subscriber       = { workspace = true }
 uniffi                   = { workspace = true, features = ["tokio"] }
 url.workspace            = true

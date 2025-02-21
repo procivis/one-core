@@ -23,7 +23,9 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
+use crate::provider::bluetooth_low_energy::low_level::dto::{
+    CharacteristicWriteType, DeviceAddress, DeviceInfo,
+};
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
@@ -195,12 +197,7 @@ impl OpenID4VCBLEHolder {
                     };
 
                     if interaction.is_err() {
-                        let _ = unsubscribe_from_characteristic_notifications(
-                            &*central,
-                            &device_info.address,
-                        )
-                        .await;
-                        let _ = central.disconnect(device_info.address).await;
+                        unsubscribe_and_disconnect(device_info.address, central).await;
                     }
 
                     interaction
@@ -222,11 +219,7 @@ impl OpenID4VCBLEHolder {
                         return;
                     };
                     let verifier_address = interaction_data.peer.device_info.address.clone();
-
-                    let _ =
-                        unsubscribe_from_characteristic_notifications(&*central, &verifier_address)
-                            .await;
-                    let _ = central.disconnect(verifier_address).await;
+                    unsubscribe_and_disconnect(verifier_address, central).await;
                 },
                 OnConflict::ReplaceIfSameFlow,
                 true,
@@ -250,7 +243,7 @@ impl OpenID4VCBLEHolder {
                 Ok(verifier_did)
             }
             Err(err) => {
-                let _ = self
+                if let Err(err) = self
                     .proof_repository
                     .update_proof(
                         &proof_id,
@@ -263,7 +256,10 @@ impl OpenID4VCBLEHolder {
                             message: err.to_string(),
                         }),
                     )
-                    .await;
+                    .await
+                {
+                    tracing::warn!("failed setting proof to error: {err}");
+                }
                 Err(err)
             }
         }
@@ -354,14 +350,7 @@ impl OpenID4VCBLEHolder {
 
                         // Give some to the verifier to read everything
                         tokio::time::sleep(Duration::from_secs(1)).await;
-
-                        let _ = unsubscribe_from_characteristic_notifications(
-                            &*central,
-                            &peer_address,
-                        ).await;
-
-                        let _ = central.disconnect(peer_address).await;
-
+                        unsubscribe_and_disconnect(peer_address, central).await;
                         result
                     }
                 },
@@ -369,12 +358,7 @@ impl OpenID4VCBLEHolder {
                     let peer = interaction.peer.clone();
                     move |central, _| async move {
                         let verifier_address = peer.device_info.address.clone();
-                        let _ = unsubscribe_from_characteristic_notifications(
-                            &*central,
-                            &verifier_address,
-                        )
-                        .await;
-                        let _ = central.disconnect(verifier_address).await;
+                        unsubscribe_and_disconnect(verifier_address, central).await;
                     }
                 },
                 false,
@@ -388,6 +372,16 @@ impl OpenID4VCBLEHolder {
                 join_result.ok_or(ExchangeProtocolError::Failed("task aborted".into()))
             })
             .and_then(std::convert::identity)
+    }
+}
+async fn unsubscribe_and_disconnect(peer_address: DeviceAddress, central: Arc<dyn BleCentral>) {
+    if let Err(err) = unsubscribe_from_characteristic_notifications(&*central, &peer_address).await
+    {
+        tracing::warn!("Failed to unsubscribe from characteristic notifications: {err}");
+    }
+
+    if let Err(err) = central.disconnect(peer_address).await {
+        tracing::warn!("Failed to disconnect BLE central: {err}");
     }
 }
 

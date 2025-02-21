@@ -88,7 +88,7 @@ impl CredentialSchemaService {
             .await
             .map_err(ServiceError::from)?;
 
-        let _ = log_history_event_credential_schema(
+        log_history_event_credential_schema(
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Created,
@@ -197,7 +197,7 @@ impl CredentialSchemaService {
         )
         .await?;
 
-        let _ = log_history_event_credential_schema(
+        log_history_event_credential_schema(
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Imported,
@@ -230,7 +230,7 @@ impl CredentialSchemaService {
                 EntityNotFoundError::CredentialSchema(*credential_schema_id),
             ))?;
 
-        let _ = log_history_event_credential_schema(
+        log_history_event_credential_schema(
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Shared,

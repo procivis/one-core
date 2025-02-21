@@ -11,7 +11,7 @@ use one_crypto::utilities;
 use tokio::select;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::{
@@ -32,8 +32,8 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::openid4vc::async_verifier_flow::{
-    async_verifier_flow, never, set_proof_state, AsyncTransportHooks, AsyncVerifierFlowParams,
-    FlowState,
+    async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
+    AsyncVerifierFlowParams, FlowState,
 };
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
@@ -111,7 +111,7 @@ impl OpenID4VCBLEVerifier {
                     start_advertisement(advertising_name, &*peripheral).await
                 },
                 |_, peripheral| async move {
-                    let _ = peripheral.stop_server().await;
+                    stop_server(&*peripheral).await;
                 },
                 OnConflict::ReplaceIfSameFlow,
                 true,
@@ -154,7 +154,7 @@ impl OpenID4VCBLEVerifier {
                     };
 
                     let result = async_verifier_flow(flow_params, hooks, auth_fn).await;
-                    let _ = peripheral.stop_server().await;
+                    stop_server(&*peripheral).await;
                     match &result {
                         Ok(FlowState::Finished) => {
                             if let Some(callback) = callback {
@@ -168,7 +168,7 @@ impl OpenID4VCBLEVerifier {
                                 error_code: BR_0000,
                                 message,
                             });
-                            let _ = set_proof_state(
+                            set_proof_state_infallible(
                                 &proof,
                                 ProofStateEnum::Error,
                                 metadata,
@@ -196,7 +196,7 @@ impl OpenID4VCBLEVerifier {
                             interaction.as_ref().and_then(|i| i.data.as_ref()),
                         )
                     {
-                        let _ = peripheral
+                        let result = peripheral
                             .notify_characteristic_data(
                                 interaction_data.peer.device_info.address,
                                 SERVICE_UUID.to_string(),
@@ -204,8 +204,11 @@ impl OpenID4VCBLEVerifier {
                                 &[],
                             )
                             .await;
+                        if let Err(err) = result {
+                            warn!("failed to notify client about disconnect: {err}")
+                        }
                     };
-                    let _ = peripheral.stop_server().await;
+                    stop_server(&*peripheral).await;
                 },
                 false,
             )
@@ -213,7 +216,7 @@ impl OpenID4VCBLEVerifier {
 
         if !result.is_scheduled() {
             return Err(ExchangeProtocolError::Failed(
-                "ble is busy with other flow".into(),
+                "BLE is busy with other flow".into(),
             ));
         }
 
@@ -221,6 +224,12 @@ impl OpenID4VCBLEVerifier {
     }
 }
 
+async fn stop_server(peripheral: &dyn BlePeripheral) {
+    let result = peripheral.stop_server().await;
+    if let Err(ref err) = result {
+        warn!("failed to stop BLE peripheral server: {err}");
+    }
+}
 async fn wallet_disconnect_event(
     connection_event_stream: &mut ConnectionEventStream,
     wallet_address: &str,
@@ -547,7 +556,7 @@ pub async fn read_presentation_submission(
     );
     tokio::pin!(summary_report_request);
 
-    tracing::info!("About to start reading data, request_size: {request_size}");
+    info!("About to start reading data, request_size: {request_size}");
 
     let mut transfer_summary_dispatched = false;
     loop {
@@ -598,7 +607,7 @@ pub async fn read_presentation_submission(
             received_chunks.len()
         )));
     }
-    tracing::info!("Received all chunks");
+    info!("Received all chunks");
 
     received_chunks.sort_by(|a, b| a.index.cmp(&b.index));
 

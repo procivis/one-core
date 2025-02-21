@@ -76,6 +76,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sql_data_provider::DataLayer;
 use time::Duration;
+use tracing::warn;
 
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
@@ -181,7 +182,10 @@ async fn initialize(
 
     let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
     let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");
-    let _ = std::fs::remove_file(&backup_db_path);
+    let result = std::fs::remove_file(&backup_db_path);
+    if let Err(err) = result {
+        warn!("failed to delete backup database: {err}");
+    }
 
     let core_builder = move |db_path: String| {
         let core_config = cfg.core.clone();

@@ -8,6 +8,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
+use tracing::log::warn;
 use uuid::Uuid;
 
 use super::dto::OpenID4VCICredentialResponseDTO;
@@ -678,7 +679,7 @@ impl OIDCService {
                     error_code: BR_0000,
                     message,
                 };
-                let _ = self.mark_proof_as_failed(&proof.id, error_metadata).await;
+                self.mark_proof_as_failed(&proof.id, error_metadata).await;
                 return;
             }
         };
@@ -846,7 +847,7 @@ impl OIDCService {
                     error_code: BR_0000,
                     message,
                 };
-                self.mark_proof_as_failed(&proof.id, error_metadata).await?;
+                self.mark_proof_as_failed(&proof.id, error_metadata).await;
                 Err(err.into())
             }
         }
@@ -891,12 +892,9 @@ impl OIDCService {
         crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, interaction_data.presentation_definition).map_err(Into::into)
     }
 
-    async fn mark_proof_as_failed(
-        &self,
-        id: &ProofId,
-        error_metadata: HistoryErrorMetadata,
-    ) -> Result<(), ServiceError> {
-        self.proof_repository
+    async fn mark_proof_as_failed(&self, id: &ProofId, error_metadata: HistoryErrorMetadata) {
+        let result = self
+            .proof_repository
             .update_proof(
                 id,
                 UpdateProofRequest {
@@ -905,8 +903,10 @@ impl OIDCService {
                 },
                 Some(error_metadata),
             )
-            .await
-            .map_err(ServiceError::from)
+            .await;
+        if let Err(err) = result {
+            warn!("Failed to set proof state to 'ERROR': {err}");
+        }
     }
 
     async fn unpack_direct_post_request(

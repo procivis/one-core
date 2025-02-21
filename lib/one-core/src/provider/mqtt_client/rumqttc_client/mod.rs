@@ -9,6 +9,7 @@ use rumqttc::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, RwLock};
+use tracing::warn;
 use uuid::Uuid;
 
 use super::{MqttClient, MqttTopic};
@@ -26,7 +27,10 @@ struct Topic {
 
 impl Topic {
     fn notify(&self, value: Vec<u8>) {
-        let _ = self.tx.send(value);
+        let result = self.tx.send(value);
+        if let Err(err) = result {
+            warn!("MQTT failed to send data: {err}")
+        }
     }
 }
 
@@ -200,7 +204,10 @@ impl Drop for RumqttcTopic {
                 return;
             }
 
-            let _ = client.unsubscribe(&topic_name).await;
+            let result = client.unsubscribe(&topic_name).await;
+            if let Err(err) = result {
+                warn!("failed to unsubscribe from MQTT topic {topic_name}: {err}");
+            }
             topic_entry.remove();
 
             tokio::spawn(async move {
@@ -216,7 +223,10 @@ impl Drop for RumqttcTopic {
                     return;
                 }
 
-                let _ = client.disconnect().await;
+                let result = client.disconnect().await;
+                if let Err(err) = result {
+                    warn!("failed to disconnect MQTT client: {err}");
+                }
                 broker_entry.remove();
             });
         });

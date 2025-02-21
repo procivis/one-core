@@ -61,9 +61,10 @@ validator          = { version = "0.19", features = ["derive"] }
 wiremock           = { version = "0.6" }
 
 [workspace.lints.clippy]
-dbg_macro       = "deny"
-print_stderr    = "deny"
-redundant_clone = "warn"
+dbg_macro               = "deny"
+print_stderr            = "deny"
+redundant_clone         = "warn"
+let_underscore_must_use = "warn"
 
 [profile.mobile-release]
 codegen-units = 1

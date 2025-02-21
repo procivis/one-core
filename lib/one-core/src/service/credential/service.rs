@@ -488,7 +488,7 @@ impl CredentialService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
-        let _ = log_history_event_credential(
+        log_history_event_credential(
             &*self.history_repository,
             &credential,
             HistoryAction::Shared,

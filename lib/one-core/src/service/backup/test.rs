@@ -157,7 +157,7 @@ async fn test_finalize_import() {
         });
 
     let service = setup_service(repositories);
-    service.finalize_import().await;
+    service.finalize_import().await.unwrap();
 }
 
 #[tokio::test]

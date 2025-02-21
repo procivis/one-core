@@ -83,7 +83,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
                     .await
             },
             |_, peripheral| async move {
-                let _ = peripheral.stop_server().await;
+                stop_ble_peripheral(&*peripheral).await;
             },
             OnConflict::ReplaceIfSameFlow,
             true,
@@ -126,12 +126,15 @@ pub(crate) async fn receive_mdl_request(
                 let info = wait_for_device(&*peripheral, interaction_data.service_uuid).await;
 
                 if info.is_err() {
-                    let _ = peripheral.stop_server().await;
+                    stop_ble_peripheral(&*peripheral).await;
                 }
 
                 let info = info?;
 
-                let _ = tx.send(info.clone());
+                let result = tx.send(info.clone());
+                if let Err(device_info) = result {
+                    tracing::warn!("failed to send device info: {device_info:?}");
+                }
 
                 let result = async {
                     let session_establishment =
@@ -297,7 +300,7 @@ pub(crate) async fn send_mdl_response(
                 Ok::<_, ExchangeProtocolError>(())
             },
             move |_, peripheral| async move {
-                let _ = peripheral.stop_server().await;
+                stop_ble_peripheral(&*peripheral).await;
             },
             false,
         )
@@ -407,7 +410,7 @@ pub(crate) async fn abort(
     service_uuid: Uuid,
 ) {
     if let Some(device_info) = device_info {
-        let _ = peripheral
+        let result = peripheral
             .notify_characteristic_data(
                 device_info.address.clone(),
                 service_uuid.to_string(),
@@ -415,8 +418,17 @@ pub(crate) async fn abort(
                 &[Command::End as _],
             )
             .await;
+        if let Err(err) = result {
+            tracing::warn!("Failed to notify characteristic data: {err}");
+        }
     }
-    let _ = peripheral.stop_server().await;
+    stop_ble_peripheral(peripheral).await;
+}
+
+async fn stop_ble_peripheral(peripheral: &dyn BlePeripheral) {
+    if let Err(err) = peripheral.stop_server().await {
+        tracing::warn!("failed to stop BLE peripheral: {err}");
+    }
 }
 
 pub async fn set_proof_error(
@@ -424,7 +436,7 @@ pub async fn set_proof_error(
     proof_id: &ProofId,
     error_metadata: HistoryErrorMetadata,
 ) {
-    let _ = proof_repository
+    if let Err(err) = proof_repository
         .update_proof(
             proof_id,
             UpdateProofRequest {
@@ -433,7 +445,10 @@ pub async fn set_proof_error(
             },
             Some(error_metadata),
         )
-        .await;
+        .await
+    {
+        tracing::warn!("failed to set proof to error: {err}");
+    }
 }
 
 fn get_characteristic_options() -> Vec<CreateCharacteristicOptions> {

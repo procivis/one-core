@@ -1,5 +1,6 @@
 use shared_types::{EntityId, OrganisationId};
 use time::OffsetDateTime;
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::model::credential::Credential;
@@ -9,7 +10,6 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
 use crate::repository::history_repository::HistoryRepository;
-use crate::service::error::ServiceError;
 
 pub(crate) fn history_event(
     entity_id: impl Into<EntityId>,
@@ -36,7 +36,7 @@ pub(crate) async fn log_history_event_credential(
     history_repository: &dyn HistoryRepository,
     credential: &Credential,
     event: HistoryAction,
-) -> Result<(), ServiceError> {
+) {
     // Try schema first, then holder_did
     let organisation_id = if let Some(id) = credential
         .schema
@@ -57,52 +57,60 @@ pub(crate) async fn log_history_event_credential(
     {
         id
     } else {
-        return Err(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ));
+        warn!(
+            "failed to create history event {event:#?} for credential {}: missing organisation_id",
+            credential.id
+        );
+        return;
     };
 
-    history_repository
+    let result = history_repository
         .create_history(history_event(
             credential.id,
             organisation_id,
             HistoryEntityType::Credential,
-            event,
+            event.clone(),
         ))
-        .await?;
-
-    Ok(())
+        .await;
+    if let Err(err) = result {
+        warn!(
+            "failed to create history event {event:#?} for credential {}: {err}",
+            credential.id
+        );
+    }
 }
+
 pub(crate) async fn log_history_event_credential_schema(
     history_repository: &dyn HistoryRepository,
     schema: &CredentialSchema,
     event: HistoryAction,
-) -> Result<(), ServiceError> {
-    let organisation_id = schema
-        .organisation
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?
-        .id;
+) {
+    let Some(ref organisation) = schema.organisation else {
+        warn!("failed to create history event {event:#?} for credential schema {}: missing organisation_id", schema.id);
+        return;
+    };
 
-    history_repository
+    let result = history_repository
         .create_history(history_event(
             schema.id,
-            organisation_id,
+            organisation.id,
             HistoryEntityType::CredentialSchema,
-            event,
+            event.clone(),
         ))
-        .await?;
-
-    Ok(())
+        .await;
+    if let Err(err) = result {
+        warn!(
+            "failed to create history event {event:#?} for credential schema {}: {err}",
+            schema.id
+        );
+    }
 }
 
 pub(crate) async fn log_history_event_proof(
     history_repository: &dyn HistoryRepository,
     proof: &Proof,
     event: HistoryAction,
-) -> Result<(), ServiceError> {
+) {
     // Try schema first, then holder_did, then verifier_did
     let organisation_id = if let Some(id) = proof
         .schema
@@ -129,44 +137,51 @@ pub(crate) async fn log_history_event_proof(
     {
         id
     } else {
-        return Err(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ));
+        warn!(
+            "failed to create history event {event:#?} for proof {}: missing organisation_id",
+            proof.id
+        );
+        return;
     };
 
-    history_repository
+    let result = history_repository
         .create_history(history_event(
             proof.id,
             organisation_id,
             HistoryEntityType::Proof,
-            event,
+            event.clone(),
         ))
-        .await?;
-
-    Ok(())
+        .await;
+    if let Err(err) = result {
+        warn!(
+            "failed to create history event {event:#?} for proof {}: {err}",
+            proof.id
+        );
+    }
 }
 
 pub(crate) async fn log_history_event_proof_schema(
     history_repository: &dyn HistoryRepository,
     proof_schema: &ProofSchema,
     event: HistoryAction,
-) -> Result<(), ServiceError> {
-    let organisation_id = proof_schema
-        .organisation
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?
-        .id;
+) {
+    let Some(ref organisation) = proof_schema.organisation else {
+        warn!("failed to create history event {event:#?} for proof schema {}: missing organisation_id", proof_schema.id);
+        return;
+    };
 
-    history_repository
+    let result = history_repository
         .create_history(history_event(
             proof_schema.id,
-            organisation_id,
+            organisation.id,
             HistoryEntityType::ProofSchema,
-            event,
+            event.clone(),
         ))
-        .await?;
-
-    Ok(())
+        .await;
+    if let Err(err) = result {
+        warn!(
+            "failed to create history event {event:#?} for proof schema {}: {err}",
+            proof_schema.id
+        );
+    }
 }

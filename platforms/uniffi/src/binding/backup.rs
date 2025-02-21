@@ -50,7 +50,7 @@ impl OneCoreBinding {
             .map_err(|e| ServiceError::Other(e.to_string()))?;
 
         let core = self.use_core().await?;
-        core.backup_service.finalize_import().await;
+        core.backup_service.finalize_import().await?;
         Ok(())
     }
 

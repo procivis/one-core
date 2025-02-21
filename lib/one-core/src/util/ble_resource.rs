@@ -5,6 +5,7 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinHandle;
+use tracing::log::warn;
 use uuid::Uuid;
 
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
@@ -164,7 +165,10 @@ impl BleWaiter {
         match state.take_if(|action| action.task_id == task_id && action.expect_continuation) {
             None => ScheduleResult::Busy,
             Some(action) => {
-                let _ = action.handle.await;
+                let result = action.handle.await;
+                if let Err(err) = result {
+                    warn!("Scheduling continuation of task {task_id}. Previous step failed: {err}");
+                }
                 let (action, handle) =
                     self.spawn(action.flow_id, flow, cancellation, expect_continuation);
                 let task_id = action.task_id;
@@ -209,7 +213,10 @@ impl BleWaiter {
 
         let handle = tokio::spawn(async move {
             let val = task.await;
-            let _ = finish.send(JoinResult::Ok(val)).await;
+            let result = finish.send(JoinResult::Ok(val)).await;
+            if let Err(err) = result {
+                warn!("Failed to send finish signal: {err}");
+            }
         });
 
         let central = self.central.clone();
@@ -218,7 +225,10 @@ impl BleWaiter {
         let cancellation = Box::new(move || {
             async move {
                 cancellation(central, peripheral).await;
-                let _ = finish_clone.send(JoinResult::Aborted).await;
+                let result = finish_clone.send(JoinResult::Aborted).await;
+                if let Err(err) = result {
+                    warn!("Failed to send finish (aborted) signal: {err}");
+                }
             }
             .boxed()
         });

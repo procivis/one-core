@@ -130,9 +130,8 @@ impl BackupService {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn finalize_import(&self) {
-        let _ = self
-            .organisation_repository
+    pub async fn finalize_import(&self) -> Result<(), ServiceError> {
+        self.organisation_repository
             .get_organisation_list()
             .map(|result| {
                 result.and_then(|organisations| {
@@ -150,7 +149,11 @@ impl BackupService {
                         None,
                     ))
             })
-            .await;
+            .await
+            .map_err(|err| {
+                ServiceError::Other(format!("failed to finalize backup import: {err}"))
+            })?;
+        Ok(())
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]

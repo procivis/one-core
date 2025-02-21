@@ -20,7 +20,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
 };
-use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::history::HistoryAction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -42,7 +42,7 @@ use crate::service::proof_schema::validator::{
     throw_if_proof_schema_contains_physical_card_schema_with_other_schemas,
     throw_if_validity_constraint_missing_for_lvvc,
 };
-use crate::util::history::{history_event, log_history_event_proof_schema};
+use crate::util::history::{log_history_event_credential_schema, log_history_event_proof_schema};
 
 impl ProofSchemaService {
     /// Returns details of a proof schema
@@ -182,18 +182,14 @@ impl ProofSchemaService {
 
         let id = self
             .proof_schema_repository
-            .create_proof_schema(proof_schema)
+            .create_proof_schema(proof_schema.clone())
             .await?;
-
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                id,
-                organisation.id,
-                HistoryEntityType::ProofSchema,
-                HistoryAction::Created,
-            ))
-            .await;
+        log_history_event_proof_schema(
+            &*self.history_repository,
+            &proof_schema,
+            HistoryAction::Created,
+        )
+        .await;
 
         Ok(id)
     }
@@ -245,7 +241,7 @@ impl ProofSchemaService {
             return Err(ValidationError::ProofSchemaSharingNotSupported.into());
         };
 
-        let _ = log_history_event_proof_schema(
+        log_history_event_proof_schema(
             &*self.history_repository,
             &proof_schema,
             HistoryAction::Shared,
@@ -333,18 +329,15 @@ impl ProofSchemaService {
 
         let proof_schema_id = self
             .proof_schema_repository
-            .create_proof_schema(proof_schema)
+            .create_proof_schema(proof_schema.clone())
             .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                proof_schema_id,
-                organisation.id,
-                HistoryEntityType::ProofSchema,
-                HistoryAction::Imported,
-            ))
-            .await;
+        log_history_event_proof_schema(
+            &*self.history_repository,
+            &proof_schema,
+            HistoryAction::Imported,
+        )
+        .await;
 
         Ok(ImportProofSchemaResponseDTO {
             id: proof_schema_id,
@@ -380,15 +373,12 @@ impl ProofSchemaService {
         )
         .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                credential_schema.id,
-                organisation.id,
-                HistoryEntityType::CredentialSchema,
-                HistoryAction::Created,
-            ))
-            .await;
+        log_history_event_credential_schema(
+            &*self.history_repository,
+            &credential_schema,
+            HistoryAction::Created,
+        )
+        .await;
 
         Ok(credential_schema)
     }

@@ -3555,6 +3555,7 @@ dependencies = [
  "thiserror 2.0.0",
  "time",
  "tokio",
+ "tracing",
  "tracing-android",
  "tracing-oslog",
  "tracing-subscriber",

@@ -1,5 +1,4 @@
 use std::env;
-use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::path::PathBuf;
 
@@ -7,7 +6,7 @@ use clap::Parser;
 use core_server::init::{initialize_core, initialize_sentry, initialize_tracing};
 use core_server::router::start_server;
 use core_server::{metrics, ServerConfig};
-use one_core::config::core_config::{self, AppConfig};
+use one_core::config::core_config::AppConfig;
 use one_core::OneCore;
 
 #[derive(Parser, Debug)]
@@ -32,7 +31,7 @@ fn main() {
     config_files.insert(0, "config/config.yml".into());
 
     let app_config: AppConfig<ServerConfig> =
-        core_config::AppConfig::from_files(&config_files).expect("Failed creating config");
+        AppConfig::from_files(&config_files).expect("Failed creating config");
 
     env::set_var("MIGRATION_CORE_URL", &app_config.app.core_base_url);
 
@@ -77,13 +76,16 @@ async fn run_server(config: ServerConfig, core: OneCore) {
 async fn run_task(task: String, core: OneCore) {
     match core.task_service.run(&task).await {
         Ok(result) => {
-            let _ = std::io::stdout().write_fmt(format_args!(
+            print!(
                 "{}",
                 serde_json::to_string_pretty(&result).expect("Failed to format JSON")
-            ));
+            );
         }
         Err(err) => {
-            let _ = std::io::stderr().write_fmt(format_args!("{err}"));
+            #[allow(clippy::print_stderr)]
+            {
+                eprint!("{err}");
+            }
             std::process::exit(1)
         }
     }

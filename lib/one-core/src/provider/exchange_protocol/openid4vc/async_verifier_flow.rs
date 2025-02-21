@@ -176,7 +176,19 @@ pub fn never<T>(_: T) -> BoxFuture<'static, ()> {
     future::pending().boxed()
 }
 
-pub async fn set_proof_state(
+pub async fn set_proof_state_infallible(
+    proof: &Proof,
+    state: ProofStateEnum,
+    error_metadata: Option<HistoryErrorMetadata>,
+    proof_repository: &dyn ProofRepository,
+) {
+    let result = set_proof_state(proof, state, error_metadata, proof_repository).await;
+    if let Err(err) = result {
+        tracing::warn!("failed to set proof state: {}", err);
+    }
+}
+
+async fn set_proof_state(
     proof: &Proof,
     state: ProofStateEnum,
     error_metadata: Option<HistoryErrorMetadata>,

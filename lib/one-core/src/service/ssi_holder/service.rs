@@ -26,7 +26,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{HistoryAction, HistoryEntityType, HistoryErrorMetadata};
+use crate::model::history::{HistoryAction, HistoryErrorMetadata};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -45,7 +45,7 @@ use crate::service::error::{
     ValidationError,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::history_event;
+use crate::util::history::log_history_event_proof;
 use crate::util::oidc::{
     create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
     create_oicd_to_core_format_map, detect_format_with_crypto_suite, map_core_to_oidc_format,
@@ -135,15 +135,12 @@ impl SSIHolderService {
             } => {
                 proof.exchange = exchange;
 
-                let _ = self
-                    .history_repository
-                    .create_history(history_event(
-                        proof.id,
-                        organisation_id,
-                        HistoryEntityType::Proof,
-                        HistoryAction::Requested,
-                    ))
-                    .await;
+                log_history_event_proof(
+                    &*self.history_repository,
+                    &proof,
+                    HistoryAction::Requested,
+                )
+                .await;
 
                 self.fill_verifier_did_in_proof(proof.as_mut()).await?;
 
@@ -151,14 +148,7 @@ impl SSIHolderService {
                     .create_proof(*proof.to_owned())
                     .await?;
 
-                let _ = self
-                    .history_repository
-                    .create_history(history_event(
-                        proof.id,
-                        organisation_id,
-                        HistoryEntityType::Proof,
-                        HistoryAction::Pending,
-                    ))
+                log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Pending)
                     .await;
 
                 HandleInvitationResultDTO::ProofRequest {

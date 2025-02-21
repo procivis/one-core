@@ -4,6 +4,7 @@ use std::pin::Pin;
 use one_core::service::error::ServiceError;
 use tokio::fs;
 use tokio::sync::{RwLock, RwLockReadGuard};
+use tracing::warn;
 
 use crate::error::{BindingError, SDKError};
 
@@ -57,7 +58,10 @@ impl OneCoreBinding {
             return Ok(());
         }
 
-        let _ = fs::remove_file(&self.backup_db_path).await;
+        let result = fs::remove_file(&self.backup_db_path).await;
+        if let Err(err) = result {
+            warn!("failed to remove backup database: {}", err);
+        }
         fs::remove_file(&self.main_db_path)
             .await
             .map_err(|err| ServiceError::Other(err.to_string()))?;

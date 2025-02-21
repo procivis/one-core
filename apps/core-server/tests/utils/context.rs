@@ -64,6 +64,8 @@ impl TestContext {
                 )
             })
             .expect("Failed to create env filter");
+        // no point logging failure of initializing the tracing subscriber
+        #[allow(clippy::let_underscore_must_use)]
         let _ = tracing_subscriber::registry()
             .with(stdout_log)
             .with(filter)

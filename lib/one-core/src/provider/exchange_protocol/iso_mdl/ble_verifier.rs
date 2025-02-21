@@ -138,14 +138,20 @@ pub(crate) async fn start_client(
                     error_code: BR_0000,
                     message,
                 };
-                let _ = set_proof_to_error(&proof_repository, proof.id, error_metadata).await;
+                if let Err(err) =
+                    set_proof_to_error(&proof_repository, proof.id, error_metadata).await
+                {
+                    tracing::warn!("failed to set proof to error: {err}");
+                }
             }
         },
         move |central, _| async move {
             let message = "Cancelling mDL verifier flow".to_string();
             tracing::info!(message);
             if let Ok(true) = central.is_scanning().await {
-                let _ = central.stop_scan().await;
+                if let Err(err) = central.stop_scan().await {
+                    tracing::warn!("failed to stop BLE central: {err}");
+                }
             }
 
             if let Ok(device_info) = receiver.await {
@@ -182,7 +188,9 @@ async fn verifier_flow(
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
 
-    let _ = sender.send(device.to_owned());
+    if let Err(err) = sender.send(device.to_owned()) {
+        tracing::warn!("failed to send device discovery data: {err:?}");
+    }
 
     let peripheral_server_uuid = ble_options.peripheral_server_uuid;
 
@@ -256,14 +264,16 @@ async fn process_proof(
         .status
         .is_some_and(|status| status == StatusCode::SessionTermination);
     if !received_status_termination {
-        let _ = send_end(
+        send_end(
             device.device_address.to_owned(),
             &ble_options.peripheral_server_uuid,
             central,
         )
         .await;
     }
-    let _ = central.disconnect(device.device_address.to_owned()).await;
+    if let Err(err) = central.disconnect(device.device_address.to_owned()).await {
+        tracing::warn!("failed to disconnect BLE central: {err}");
+    }
 
     let decrypted = verifier_session
         .sk_device
@@ -366,8 +376,8 @@ async fn send_end(
     device_address: DeviceAddress,
     peripheral_server_uuid: &Uuid,
     central: &dyn BleCentral,
-) -> Result<(), anyhow::Error> {
-    central
+) {
+    if let Err(err) = central
         .write_data(
             device_address,
             peripheral_server_uuid.to_string(),
@@ -376,7 +386,9 @@ async fn send_end(
             CharacteristicWriteType::WithoutResponse,
         )
         .await
-        .context("send end")
+    {
+        tracing::warn!("failed to write end: {err}");
+    }
 }
 
 async fn send_end_and_disconnect(
@@ -384,13 +396,15 @@ async fn send_end_and_disconnect(
     peripheral_server_uuid: &Uuid,
     central: &dyn BleCentral,
 ) {
-    let _ = send_end(
+    send_end(
         device_info.device_address.clone(),
         peripheral_server_uuid,
         central,
     )
     .await;
-    let _ = central.disconnect(device_info.device_address.clone()).await;
+    if let Err(err) = central.disconnect(device_info.device_address.clone()).await {
+        tracing::warn!("failed to disconnect BLE central: {err}");
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
