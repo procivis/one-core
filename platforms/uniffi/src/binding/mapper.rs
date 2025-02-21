@@ -51,7 +51,7 @@ use crate::binding::history::{
 use crate::binding::interaction::HandleInvitationResponseBindingEnum;
 use crate::binding::key::KeyRequestBindingDTO;
 use crate::binding::proof::{
-    ProofListQueryBindingDTO, ProofListQueryExactColumnBindingEnum, ProofRequestBindingDTO,
+    ProofListQueryBindingDTO, ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
 };
 use crate::binding::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
@@ -122,7 +122,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
     }
 }
 
-impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
+impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
     fn from(value: ProofDetailResponseDTO) -> Self {
         Self {
             id: value.id.to_string(),
@@ -140,6 +140,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             requested_date: value.requested_date.map(|date| date.format_timestamp()),
             completed_date: value.completed_date.map(|date| date.format_timestamp()),
             claims_removed_at: value.claims_removed_at.map(|date| date.format_timestamp()),
+            role: value.role.into(),
         }
     }
 }
@@ -528,6 +529,10 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
             .proof_states
             .map(|proof_states| ProofFilterValue::ProofStates(convert_inner(proof_states)));
 
+        let proof_roles = value
+            .proof_roles
+            .map(|proof_roles| ProofFilterValue::ProofRoles(convert_inner(proof_roles)));
+
         let proof_ids = value
             .ids
             .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
@@ -540,7 +545,8 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
             .transpose()?
             .map(ProofFilterValue::ProofSchemaIds);
 
-        let filtering = organisation_id & name & proof_states & proof_schema_ids & proof_ids;
+        let filtering =
+            organisation_id & name & proof_states & proof_roles & proof_schema_ids & proof_ids;
 
         Ok({
             Self {

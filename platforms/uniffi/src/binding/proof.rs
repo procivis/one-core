@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use futures::FutureExt;
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
-use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
+use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -46,7 +46,7 @@ impl OneCoreBinding {
     pub async fn get_proof(
         &self,
         proof_id: String,
-    ) -> Result<ProofRequestBindingDTO, BindingError> {
+    ) -> Result<ProofResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
         let proof = core.proof_service.get_proof(&into_id(&proof_id)?).await?;
         Ok(proof.into())
@@ -234,6 +234,7 @@ pub struct ProofListQueryBindingDTO {
     pub name: Option<String>,
     pub ids: Option<Vec<String>>,
     pub proof_states: Option<Vec<ProofStateBindingEnum>>,
+    pub proof_roles: Option<Vec<ProofRoleBindingEnum>>,
     pub proof_schema_ids: Option<Vec<String>>,
     pub exact: Option<Vec<ProofListQueryExactColumnBindingEnum>>,
 }
@@ -258,6 +259,7 @@ pub struct ProofListItemBindingDTO {
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateBindingEnum,
+    pub role: ProofRoleBindingEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemBindingDTO>,
     #[from(with_fn = optional_time)]
@@ -265,13 +267,14 @@ pub struct ProofListItemBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
-pub struct ProofRequestBindingDTO {
+pub struct ProofResponseBindingDTO {
     pub id: String,
     pub created_date: String,
     pub last_modified: String,
     pub verifier_did: Option<DidListItemBindingDTO>,
     pub holder_did: Option<DidListItemBindingDTO>,
     pub state: ProofStateBindingEnum,
+    pub role: ProofRoleBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
     pub exchange: String,
     pub transport: String,
@@ -314,6 +317,14 @@ pub enum ProofStateBindingEnum {
     Rejected,
     Retracted,
     Error,
+}
+
+#[derive(Clone, Debug, Into, From, uniffi::Enum)]
+#[from(ProofRole)]
+#[into(ProofRole)]
+pub enum ProofRoleBindingEnum {
+    Holder,
+    Verifier,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
