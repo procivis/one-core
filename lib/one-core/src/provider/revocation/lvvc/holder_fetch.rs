@@ -72,6 +72,10 @@ pub(crate) async fn holder_get_lvvc(
             Ok(lvvc)
         }
         Err(remote_fetch_err) => {
+            // don't fall back to the existing LVVC credential on force refresh
+            if force_refresh {
+                return Err(remote_fetch_err);
+            }
             // fetching remote LVVC failed, use locally stored (if any)
             locally_stored_lvvc.ok_or(remote_fetch_err)
         }

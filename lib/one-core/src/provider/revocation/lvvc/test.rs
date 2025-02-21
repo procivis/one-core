@@ -24,6 +24,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::{LvvcProvider, Params};
 use crate::provider::revocation::model::{CredentialDataByRole, CredentialRevocationState};
 use crate::provider::revocation::RevocationMethod;
@@ -155,27 +156,8 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         .mount(&mock_server)
         .await;
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_signature_provider()
-        .returning(|_, _, _| {
-            let mut auth_fn = MockSignatureProvider::new();
-            auth_fn
-                .expect_sign()
-                .returning(|_| Ok("signed".as_bytes().to_vec()));
-
-            Ok(Box::new(auth_fn))
-        });
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider.expect_get_formatter().returning(|_| {
-        let mut formatter = MockCredentialFormatter::new();
-        formatter
-            .expect_extract_credentials_unverified()
-            .returning(|_| Ok(extracted_credential("ACCEPTED")));
-
-        Some(Arc::new(formatter))
-    });
+    let (key_provider, formatter_provider, did_method_provider, key_algorithm_provider) =
+        common_mock_providers();
 
     let (did, credential) = generic_did_credential(CredentialRole::Holder);
 
@@ -196,23 +178,6 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         .once()
         .withf(move |cred| cred.linked_credential_id == credential_id)
         .returning(|_| Ok(()));
-
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .once()
-        .returning(|_, _| Ok("verification_method_id".to_string()));
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_name()
-        .returning(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_issuance_jose_alg_id()
-                .returning(|| Some("ES256".to_string()));
-            Some(Arc::new(key_algorithm))
-        });
 
     let lvvc_url = format!("{}/lvvcurl", mock_server.uri()).parse().unwrap();
     let status = CredentialStatus {
@@ -296,4 +261,125 @@ async fn test_check_revocation_status_as_holder_cached() {
         .await
         .unwrap();
     assert_eq!(CredentialRevocationState::Valid, result);
+}
+
+#[tokio::test]
+async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/lvvcurl"))
+        .and(header_regex("Authorization", "Bearer .*\\.c2lnbmVk")) // c2lnbmVk == base64("signed")
+        .respond_with(ResponseTemplate::new(400))
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider.expect_get_formatter().returning(|_| {
+        let mut formatter = MockCredentialFormatter::new();
+        formatter
+            .expect_extract_credentials_unverified()
+            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+
+        Some(Arc::new(formatter))
+    });
+
+    let (did, credential) = generic_did_credential(CredentialRole::Holder);
+
+    let mut validity_credential_repository = MockValidityCredentialRepository::new();
+    let credential_id = credential.id;
+    validity_credential_repository
+        .expect_get_latest_by_credential_id()
+        .once()
+        .returning(move |_, _| {
+            Ok(Some(ValidityCredential {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                credential: "this.is.jwt".to_string().into_bytes(),
+                linked_credential_id: credential_id,
+                r#type: ValidityCredentialType::Lvvc,
+            }))
+        });
+
+    let (key_provider, formatter_provider, did_method_provider, key_algorithm_provider) =
+        common_mock_providers();
+
+    let lvvc_url = format!("{}/lvvcurl", mock_server.uri()).parse().unwrap();
+    let status = CredentialStatus {
+        id: Some(lvvc_url),
+        r#type: "".to_string(),
+        status_purpose: None,
+        additional_fields: Default::default(),
+    };
+
+    let provider = create_provider(
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        validity_credential_repository,
+        did_method_provider,
+    );
+
+    let result = provider
+        .check_credential_revocation_status(
+            &status,
+            &did.did,
+            Some(CredentialDataByRole::Holder(Box::new(credential))),
+            true,
+        )
+        .await;
+    assert!(result.is_err());
+    assert!(matches!(result, Err(RevocationError::HttpClientError(_))))
+}
+
+fn common_mock_providers() -> (
+    MockKeyProvider,
+    MockCredentialFormatterProvider,
+    MockDidMethodProvider,
+    MockKeyAlgorithmProvider,
+) {
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .returning(|_, _, _| {
+            let mut auth_fn = MockSignatureProvider::new();
+            auth_fn
+                .expect_sign()
+                .returning(|_| Ok("signed".as_bytes().to_vec()));
+
+            Ok(Box::new(auth_fn))
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider.expect_get_formatter().returning(|_| {
+        let mut formatter = MockCredentialFormatter::new();
+        formatter
+            .expect_extract_credentials_unverified()
+            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+
+        Some(Arc::new(formatter))
+    });
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_verification_method_id_from_did_and_key()
+        .once()
+        .returning(|_, _| Ok("verification_method_id".to_string()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_issuance_jose_alg_id()
+                .returning(|| Some("ES256".to_string()));
+            Some(Arc::new(key_algorithm))
+        });
+    (
+        key_provider,
+        formatter_provider,
+        did_method_provider,
+        key_algorithm_provider,
+    )
 }
