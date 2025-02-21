@@ -150,7 +150,8 @@ async fn test_run_one_update() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(1)
+        .once()
+        .with(eq(credential.schema.unwrap().revocation_method))
         .returning(move |_| Some(revocation_method.clone()));
 
     let task = setup(TestDependencies {

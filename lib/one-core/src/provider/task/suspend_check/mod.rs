@@ -115,11 +115,17 @@ impl Task for SuspendCheckProvider {
                 return Err(EntityNotFoundError::Credential(credential_id).into());
             };
 
+            let Some(ref credential_schema) = credential.schema else {
+                return Err(ServiceError::MappingError(
+                    "credential_schema is None".to_string(),
+                ));
+            };
+
             let revocation_method = self
                 .revocation_method_provider
-                .get_revocation_method("BITSTRINGSTATUSLIST")
+                .get_revocation_method(credential_schema.revocation_method.as_str())
                 .ok_or(MissingProviderError::RevocationMethod(
-                    "BITSTRINGSTATUSLIST".to_string(),
+                    credential_schema.revocation_method.to_string(),
                 ))?;
 
             let issuer = credential
