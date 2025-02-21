@@ -1,13 +1,11 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use time::OffsetDateTime;
 
 use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
+use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -15,13 +13,11 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::http_client::HttpClient;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::provider::KeyProvider;
-use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
+use crate::util::key_verification::KeyVerification;
 
 impl CredentialService {
     pub(super) async fn check_mdoc_update(
@@ -63,16 +59,9 @@ impl CredentialService {
         }
 
         if mso_refresh_possible && (force_refresh || mso_requires_update(detail_credential)) {
-            let result = obtain_and_update_new_mso(
-                credential,
-                &*self.credential_repository,
-                &*self.key_provider,
-                &self.key_algorithm_provider,
-                &*self.did_method_provider,
-                &interaction_data,
-                &*self.client,
-            )
-            .await;
+            let result = self
+                .obtain_and_update_new_mso(credential, &interaction_data)
+                .await;
 
             // If we have managed to refresh mso
             if result.is_ok() {
@@ -81,103 +70,121 @@ impl CredentialService {
         }
         Ok(new_state)
     }
-}
 
-async fn obtain_and_update_new_mso(
-    credential: &Credential,
-    credentials: &dyn CredentialRepository,
-    key_provider: &dyn KeyProvider,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    did_method_provider: &dyn DidMethodProvider,
-    interaction_data: &HolderInteractionData,
-    client: &dyn HttpClient,
-) -> Result<(), ServiceError> {
-    let key = credential
-        .key
-        .as_ref()
-        .ok_or(ServiceError::Other("Missing key".to_owned()))?
-        .clone();
-    let holder_did = credential
-        .holder_did
-        .as_ref()
-        .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
-        .clone();
+    async fn obtain_and_update_new_mso(
+        &self,
+        credential: &Credential,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<(), ServiceError> {
+        let key = credential
+            .key
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing key".to_owned()))?
+            .clone();
+        let holder_did = credential
+            .holder_did
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
+            .clone();
 
-    let key_id = did_method_provider
-        .get_verification_method_id_from_did_and_key(&holder_did, &key)
-        .await?;
+        let key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(&holder_did, &key)
+            .await?;
 
-    let auth_fn = key_provider
-        .get_signature_provider(&key, None, key_algorithm_provider.clone())
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
+            interaction_data.issuer_url.clone(),
+            Some(key_id),
+            None,
+            auth_fn,
+        )
+        .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
-        interaction_data.issuer_url.clone(),
-        Some(key_id),
-        None,
-        auth_fn,
-    )
-    .await
-    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    let schema = credential
-        .schema
-        .as_ref()
-        .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
-
-    let body = OpenID4VCICredential {
-        proof: OpenID4VCIProof {
-            proof_type: "jwt".to_string(),
-            jwt: proof_jwt,
-        },
-        format: "mso_mdoc".to_owned(),
-        vct: None,
-        credential_definition: None,
-        doctype: Some(schema.schema_id.to_owned()),
-    };
-
-    let access_token =
-        &interaction_data
-            .access_token
+        let schema = credential
+            .schema
             .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
-                "Missing access token".to_string(),
-            ))?;
+            .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
 
-    let response = client
-        .post(&interaction_data.credential_endpoint)
-        .bearer_auth(access_token)
-        .json(&body)
-        .context("json error")
-        .map_err(ExchangeProtocolError::Transport)?
-        .send()
-        .await
-        .context("send error")
-        .map_err(ExchangeProtocolError::Transport)?;
-    let response = response
-        .error_for_status()
-        .context("status error")
-        .map_err(ExchangeProtocolError::Transport)?;
+        let body = OpenID4VCICredential {
+            proof: OpenID4VCIProof {
+                proof_type: "jwt".to_string(),
+                jwt: proof_jwt,
+            },
+            format: "mso_mdoc".to_owned(),
+            vct: None,
+            credential_definition: None,
+            doctype: Some(schema.schema_id.to_owned()),
+        };
 
-    let result: OpenID4VCICredentialResponseDTO =
-        serde_json::from_slice(&response.body).map_err(ExchangeProtocolError::JsonError)?;
+        let access_token =
+            &interaction_data
+                .access_token
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Missing access token".to_string(),
+                ))?;
 
-    // Update credential value
-    let update_request = UpdateCredentialRequest {
-        id: credential.id,
-        credential: Some(result.credential.as_bytes().to_vec()),
-        holder_did_id: None,
-        issuer_did_id: None,
-        state: None,
-        interaction: None,
-        key: None,
-        redirect_uri: None,
-        claims: None,
-        suspend_end_date: Clearable::DontTouch,
-    };
+        let response = self
+            .client
+            .post(&interaction_data.credential_endpoint)
+            .bearer_auth(access_token)
+            .json(&body)
+            .context("json error")
+            .map_err(ExchangeProtocolError::Transport)?
+            .send()
+            .await
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
+        let response = response
+            .error_for_status()
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
-    credentials.update_credential(update_request).await?;
-    Ok(())
+        let result: OpenID4VCICredentialResponseDTO =
+            serde_json::from_slice(&response.body).map_err(ExchangeProtocolError::JsonError)?;
+
+        let formatter = self
+            .formatter_provider
+            .get_formatter(schema.format.as_str())
+            .ok_or_else(|| {
+                ExchangeProtocolError::Failed(format!("{} formatter not found", schema.format))
+            })?;
+
+        let verification_fn = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+        });
+        formatter
+            .extract_credentials(&result.credential, verification_fn)
+            .await
+            .map_err(|e| ExchangeProtocolError::CredentialVerificationFailed(e.into()))?;
+
+        // Update credential value
+        let update_request = UpdateCredentialRequest {
+            id: credential.id,
+            credential: Some(result.credential.as_bytes().to_vec()),
+            holder_did_id: None,
+            issuer_did_id: None,
+            state: None,
+            interaction: None,
+            key: None,
+            redirect_uri: None,
+            claims: None,
+            suspend_end_date: Clearable::DontTouch,
+        };
+
+        self.credential_repository
+            .update_credential(update_request)
+            .await?;
+        Ok(())
+    }
 }
 
 struct TokenCheckResult {
