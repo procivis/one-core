@@ -40,6 +40,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             format: value.format,
             imported_source_url: value.imported_source_url,
             revocation_method: value.revocation_method,
+            external_schema: value.external_schema,
             organisation_id,
             claims: claim_schemas,
             wallet_storage_type: value.wallet_storage_type,
@@ -101,6 +102,7 @@ pub(super) fn from_create_request_with_id(
 
     let schema_type = schema_type.unwrap_or(match format_type {
         "MDOC" => CredentialSchemaType::Mdoc,
+        "SD_JWT_VC" => CredentialSchemaType::SdJwtVc,
         _ => CredentialSchemaType::ProcivisOneSchema2024,
     });
 
@@ -112,6 +114,7 @@ pub(super) fn from_create_request_with_id(
         name: request.name,
         format: request.format,
         wallet_storage_type: request.wallet_storage_type,
+        external_schema: request.external_schema,
         revocation_method: request.revocation_method,
         claim_schemas: Some(
             claim_schemas
@@ -240,6 +243,7 @@ impl From<ImportCredentialSchemaRequestSchemaDTO> for CreateCredentialSchemaRequ
             revocation_method: value.revocation_method,
             organisation_id: value.organisation_id.into(),
             claims: value.claims.into_iter().map(Into::into).collect(),
+            external_schema: value.external_schema,
             wallet_storage_type: convert_inner(value.wallet_storage_type),
             layout_type: value.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: convert_inner(value.layout_properties),

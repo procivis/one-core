@@ -133,6 +133,7 @@ async fn test_presentation_reject_ok() {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     imported_source_url: "CORE_URL".to_string(),
+                    external_schema: false,
                     last_modified: OffsetDateTime::now_utc(),
                     deleted_at: None,
                     name: "".to_string(),
@@ -327,6 +328,7 @@ async fn test_get_presentation_definition_ok() {
         format: "ISO_MDL".to_string(),
         revocation_method: "NONE".to_string(),
         layout_type: LayoutType::Card,
+        external_schema: false,
         schema_id: schema_id.clone(),
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         organisation: Some(Organisation {

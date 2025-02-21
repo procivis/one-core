@@ -384,6 +384,7 @@ pub async fn create_credential_schema(
             .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
         schema_id: params.schema_id.unwrap_or(id.to_string()),
         allow_suspension: true,
+        external_schema: false,
     };
 
     data_layer
@@ -431,6 +432,7 @@ pub async fn create_credential_schema_with_claims(
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
         format: "JWT".to_string(),
+        external_schema: false,
         revocation_method: revocation_method.to_owned(),
         claim_schemas: Some(claim_schemas),
         layout_type: LayoutType::Card,

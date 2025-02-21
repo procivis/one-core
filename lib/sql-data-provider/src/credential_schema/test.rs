@@ -111,6 +111,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
             format: "JWT".to_string(),
+            external_schema: false,
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 new_claim_schemas
@@ -183,6 +184,7 @@ async fn test_create_credential_schema_success() {
             last_modified: get_dummy_date(),
             deleted_at: None,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            external_schema: false,
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             format: "JWT".to_string(),

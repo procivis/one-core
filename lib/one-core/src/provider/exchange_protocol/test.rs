@@ -1103,6 +1103,7 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            external_schema: false,
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "revocation method".to_string(),

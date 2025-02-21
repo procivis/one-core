@@ -229,6 +229,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
             return Err(FormatterError::Failed("Missing schema_id".to_string()));
         };
 
+        if request.external_schema {
+            return Ok(schema_id.to_string());
+        }
+
         let mut url = Url::parse(core_base_url)
             .map_err(|error| FormatterError::Failed(format!("Invalid base URL: {error}")))?;
 

@@ -117,39 +117,49 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
     fn find_schema_data(
         &self,
         credential_config: &OpenID4VCICredentialConfigurationData,
-        schema_id: &str,
         offer_id: &str,
     ) -> Result<BasicSchemaData, ExchangeProtocolError> {
         let format = credential_config.format.as_str();
-        let vct = credential_config.vct.as_ref();
+        // Heuristic to determine if the credential is offered by a Procivis issuer or not
+        let external_schema = credential_config.wallet_storage_type.is_none();
 
-        let data = match (format, vct) {
-            ("mso_mdoc", _) => BasicSchemaData {
+        let data = match format {
+            "mso_mdoc" => BasicSchemaData {
                 id: credential_config
                     .doctype
                     .as_deref()
-                    .unwrap_or(schema_id)
+                    .unwrap_or(offer_id)
                     .to_owned(),
                 r#type: CredentialSchemaType::Mdoc.to_string(),
+                external_schema,
                 offer_id: offer_id.to_owned(),
             },
             // external sd-jwt vc
             // support for example+sd-jwt is required for interop with the EUDIW issuer,
             // see https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78
-            ("vc+sd-jwt" | "dc+sd-jwt" | "example+sd-jwt", Some(vct))
-                if credential_config.wallet_storage_type.is_none() =>
-            {
+            "vc+sd-jwt" | "dc+sd-jwt" | "example+sd-jwt" => {
+                // We use the vc+sd-jwt format identifier for both SD-JWT-VC and SD-JWT credential formats.
+                // Checking the credential configuration for the VCT is a workaround.
+                let (schema_type, id) = match credential_config.vct.as_ref() {
+                    Some(vct) => (CredentialSchemaType::SdJwtVc, vct.to_owned()),
+                    None => (
+                        CredentialSchemaType::ProcivisOneSchema2024,
+                        offer_id.to_owned(),
+                    ),
+                };
+
                 BasicSchemaData {
-                    id: schema_id.to_owned(),
-                    r#type: vct.to_owned(),
+                    id,
+                    r#type: schema_type.to_string(),
                     offer_id: offer_id.to_owned(),
+                    external_schema,
                 }
             }
-
             _ => BasicSchemaData {
-                id: schema_id.to_owned(),
+                id: offer_id.to_owned(),
                 r#type: CredentialSchemaType::ProcivisOneSchema2024.to_string(),
                 offer_id: offer_id.to_owned(),
+                external_schema,
             },
         };
 
@@ -179,7 +189,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         });
 
         let result = match schema.r#type.as_str() {
-            "ProcivisOneSchema2024" => {
+            "ProcivisOneSchema2024" | "SdJwtVc" if !schema.external_schema => {
                 let procivis_schema = fetch_procivis_schema(&schema_url, &*self.http_client)
                     .await
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
@@ -190,6 +200,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         format: procivis_schema.format,
                         revocation_method: procivis_schema.revocation_method,
                         organisation_id: self.organisation.id,
+                        external_schema: false,
                         claims: procivis_schema
                             .claims
                             .into_iter()
@@ -202,15 +213,9 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     },
                     self.organisation.clone(),
                     "",
-                    "JWT",
-                    None,
+                    procivis_schema.schema_type,
                 )
                 .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
-
-                let schema = CredentialSchema {
-                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-                    ..schema
-                };
 
                 let claims =
                     map_offered_claims_to_credential_schema(&schema, *credential_id, claim_keys)?;
@@ -266,13 +271,13 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         },
                         wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
                         layout_type,
+                        external_schema: false,
                         layout_properties,
                         schema_id: Some(schema.id.clone()),
                     },
                     self.organisation.clone(),
                     "",
-                    "MDOC",
-                    None,
+                    "mdoc".to_string(),
                 )
                 .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
@@ -354,6 +359,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     last_modified: now,
                     name,
                     format: credential_format,
+                    external_schema: false,
                     imported_source_url: schema_url,
                     wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
                     revocation_method: "NONE".to_string(),

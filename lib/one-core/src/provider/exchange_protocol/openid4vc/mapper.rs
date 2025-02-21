@@ -36,8 +36,8 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     Arrayed, BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
     CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
-    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, LayoutProperties,
-    LogoProperties,
+    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, CredentialSchemaType,
+    LayoutProperties, LogoProperties,
 };
 use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
@@ -150,12 +150,15 @@ pub(crate) fn get_claim_name_by_json_path(
     path: &[String],
 ) -> Result<String, ExchangeProtocolError> {
     const VC_CREDENTIAL_PREFIX: &str = "$.vc.credentialSubject.";
+    const SD_JWT_VC_CREDENTIAL_PREFIX: &str = "$.";
 
     match path.first() {
         Some(vc) if vc.starts_with(VC_CREDENTIAL_PREFIX) => {
             Ok(vc[VC_CREDENTIAL_PREFIX.len()..].to_owned())
         }
-
+        Some(vc) if vc.starts_with(SD_JWT_VC_CREDENTIAL_PREFIX) => {
+            Ok(vc[SD_JWT_VC_CREDENTIAL_PREFIX.len()..].to_owned())
+        }
         Some(subscript_path) if subscript_path.starts_with("$['") => {
             let path: Vec<&str> = subscript_path
                 .split(['$', '[', ']', '\''])
@@ -604,15 +607,13 @@ pub fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
     core_base_url: &str,
-    format_type: &str,
-    schema_type: Option<String>,
+    schema_type: String,
 ) -> Result<CredentialSchema, ExchangeProtocolError> {
     from_create_request_with_id(
         Uuid::new_v4().into(),
         request,
         organisation,
         core_base_url,
-        format_type,
         schema_type,
     )
 }
@@ -622,8 +623,7 @@ pub fn from_create_request_with_id(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
     core_base_url: &str,
-    format_type: &str,
-    schema_type: Option<String>,
+    schema_type: String,
 ) -> Result<CredentialSchema, ExchangeProtocolError> {
     if request.claims.is_empty() {
         return Err(ExchangeProtocolError::Failed(
@@ -637,10 +637,6 @@ pub fn from_create_request_with_id(
 
     let url = format!("{core_base_url}/ssi/schema/v1/{id}");
     let schema_id = request.schema_id.unwrap_or(url.clone());
-    let schema_type = schema_type.unwrap_or(match format_type {
-        "MDOC" => "mdoc".to_owned(),
-        _ => "ProcivisOneSchema2024".to_owned(),
-    });
 
     Ok(CredentialSchema {
         id,
@@ -651,6 +647,7 @@ pub fn from_create_request_with_id(
         format: request.format,
         wallet_storage_type: request.wallet_storage_type,
         revocation_method: request.revocation_method,
+        external_schema: request.external_schema,
         claim_schemas: Some(
             claim_schemas
                 .into_iter()
@@ -1093,11 +1090,17 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
     format_to_type_mapper: TypeToDescriptorMapper,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, ExchangeProtocolError> {
+    let path = match credential_schema.schema_type {
+        CredentialSchemaType::SdJwtVc => ["$.vct".to_string()],
+        _ => ["$.credentialSchema.id".to_string()],
+    }
+    .to_vec();
+
     let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
         id: None,
         name: None,
         purpose: None,
-        path: vec!["$.credentialSchema.id".to_string()],
+        path,
         optional: None,
         filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
             r#type: "string".to_string(),
@@ -1163,6 +1166,7 @@ fn format_path(claim_key: &str, format_type: &str) -> Result<String, ExchangePro
             None => Ok(format!("$['{claim_key}']")),
             Some((namespace, key)) => Ok(format!("$['{namespace}']['{key}']")),
         },
+        "SdJwtVc" => Ok(format!("$.{}", claim_key)),
         _ => Ok(format!("$.vc.credentialSubject.{}", claim_key)),
     }
 }
@@ -1679,6 +1683,7 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             last_modified: value.last_modified,
             imported_source_url: value.imported_source_url,
             name: value.name,
+            external_schema: value.external_schema,
             format: value.format,
             revocation_method: value.revocation_method,
             wallet_storage_type: value.wallet_storage_type,

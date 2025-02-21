@@ -889,6 +889,8 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
+    #[serde(default)]
+    pub external_schema: bool,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: String,
@@ -932,6 +934,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
+    pub external_schema: bool,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,
 }

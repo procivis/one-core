@@ -545,6 +545,7 @@ mod tests {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "CredentialSchema".to_string(),
                 format: "MDOC".to_string(),
+                external_schema: false,
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 layout_type: LayoutType::Card,

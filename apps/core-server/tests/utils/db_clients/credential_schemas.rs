@@ -24,6 +24,7 @@ pub struct TestingCreateSchemaParams {
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    pub external_schema: bool,
 }
 
 pub struct CredentialSchemasDB {
@@ -87,6 +88,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
+            external_schema: params.external_schema,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
@@ -161,6 +163,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
+            external_schema: params.external_schema,
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
@@ -275,6 +278,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
+            external_schema: params.external_schema,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -381,6 +385,7 @@ impl CredentialSchemasDB {
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
+            external_schema: params.external_schema,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: params
@@ -498,6 +503,7 @@ impl CredentialSchemasDB {
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
+            external_schema: params.external_schema,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: params
@@ -711,6 +717,7 @@ impl CredentialSchemasDB {
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
+            external_schema: params.external_schema,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: params
@@ -758,6 +765,7 @@ impl CredentialSchemasDB {
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: "JWT".to_string(),
+            external_schema: false,
             revocation_method: "NONE".to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -815,6 +823,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: format.to_string(),
             revocation_method: revocation_method.to_owned(),
+            external_schema: false,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {

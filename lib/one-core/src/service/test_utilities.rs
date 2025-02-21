@@ -51,6 +51,14 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
+            SD_JWT_VC:
+                type: 'SD_JWT_VC'
+                display: 'format.sdjwtvc'
+                order: 1
+                params:
+                    public:
+                        leeway: 60
+                        schemaIdRequired: true
             JSON_LD_CLASSIC:
                 type: 'JSON_LD_CLASSIC'
                 display: 'display'
@@ -204,6 +212,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            external_schema: false,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "format".to_string(),
@@ -343,6 +352,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        external_schema: false,
         imported_source_url: "CORE_URL".to_string(),
         format: "format".to_string(),
         revocation_method: "format".to_string(),

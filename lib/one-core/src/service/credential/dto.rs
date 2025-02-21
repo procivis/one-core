@@ -87,6 +87,8 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
+    #[serde(default)]
+    pub external_schema: bool,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
@@ -106,6 +108,8 @@ pub enum CredentialSchemaType {
     FallbackSchema2024,
     #[strum(serialize = "mdoc")]
     Mdoc,
+    #[strum(serialize = "SdJwtVc")]
+    SdJwtVc,
     #[strum(serialize = "{0}")]
     #[serde(untagged)]
     Other(String),

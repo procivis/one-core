@@ -38,6 +38,7 @@ fn generate_credential_detail_response(
             name: "".to_string(),
             format: "".to_string(),
             revocation_method: "".to_string(),
+            external_schema: false,
             organisation_id: Uuid::new_v4().into(),
             wallet_storage_type: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,

@@ -132,6 +132,7 @@ pub(super) fn credential_list_model_to_repository_model(
         format: credential.credential_schema_format,
         revocation_method: credential.credential_schema_revocation_method,
         schema_type: credential.credential_schema_schema_type.into(),
+        external_schema: credential.credential_schema_external_schema,
         imported_source_url: credential.credential_schema_imported_source_url,
         schema_id: credential.credential_schema_schema_id,
         claim_schemas: None,

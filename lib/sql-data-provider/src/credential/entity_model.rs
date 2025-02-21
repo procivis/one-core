@@ -32,6 +32,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_schema_type: CredentialSchemaType,
     pub credential_schema_allow_suspension: bool,
+    pub credential_schema_external_schema: bool,
     pub issuer_did_created_date: Option<OffsetDateTime>,
     pub issuer_did_deactivated: Option<bool>,
     pub issuer_did_did: Option<DidValue>,

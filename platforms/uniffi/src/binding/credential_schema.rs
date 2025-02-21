@@ -249,6 +249,7 @@ pub enum CredentialSchemaTypeBindingEnum {
     ProcivisOneSchema2024 {},
     FallbackSchema2024 {},
     Mdoc {},
+    SdJwtVc {},
     Other { value: String },
 }
 
@@ -360,6 +361,8 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub allow_suspension: Option<bool>,
+    #[try_into(infallible)]
+    pub external_schema: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

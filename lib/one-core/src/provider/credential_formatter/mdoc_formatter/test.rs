@@ -710,6 +710,7 @@ fn test_credential_schema_id() {
         name: "".to_string(),
         format: "".to_string(),
         revocation_method: "".to_string(),
+        external_schema: false,
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         wallet_storage_type: None,

@@ -345,6 +345,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
                 "credential_configurations_supported":
                 {
                     format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    "wallet_storage_type": "SOFTWARE",
                     "credential_definition": {
                         "type": [
                             "VerifiableCredential"
@@ -537,6 +538,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
                 "credential_issuer": credential_issuer,
                 "credential_configurations_supported": {
                     format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    "wallet_storage_type": "SOFTWARE",
                     "credential_definition": {
                         "type": [
                             "VerifiableCredential"
@@ -740,6 +742,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
                 "credential_issuer": credential_issuer,
                 "credential_configurations_supported": {
                     format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    "wallet_storage_type": "SOFTWARE",
                     "credential_definition": {
                         "type": [
                             "VerifiableCredential"
@@ -966,7 +969,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
                 "credential_issuer": credential_issuer,
                 "credential_configurations_supported":
                     {
-                        format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    "wallet_storage_type": "SOFTWARE",
                         "credential_definition": {
                             "type": [
                                 "VerifiableCredential"
@@ -1149,6 +1153,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not
                 "credential_configurations_supported":
                 {
                     format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    "wallet_storage_type": "SOFTWARE",
                     "credential_definition": {
                         "type": [
                             "VerifiableCredential"
@@ -1262,6 +1267,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
                 "credential_configurations_supported":
                 {
                     format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                    "wallet_storage_type": "SOFTWARE",
                     "credential_definition": {
                         "type": [
                             "VerifiableCredential"

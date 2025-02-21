@@ -97,6 +97,7 @@ async fn setup_empty() -> TestSetup {
         format: "JWT".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         revocation_method: "NONE".to_string(),
+        external_schema: false,
         claim_schemas: Some(
             new_claim_schemas
                 .into_iter()

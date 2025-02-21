@@ -99,6 +99,7 @@ pub async fn insert_credential_schema_to_database(
         id: Set(new_id.to_owned()),
         imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
+        external_schema: Set(false),
         last_modified: Set(get_dummy_date()),
         format: Set(format.to_owned()),
         name: Set(name.to_owned()),

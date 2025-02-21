@@ -475,6 +475,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 .position(|field| {
                     field.filter.is_some()
                         && field.path.contains(&"$.credentialSchema.id".to_string())
+                        || field.path.contains(&"$.vct".to_string())
                 })
                 .ok_or(ExchangeProtocolError::Failed(
                     "schema_id filter not found".to_string(),

@@ -76,6 +76,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
+            external_schema: false,
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),

@@ -377,6 +377,7 @@ impl From<String> for CredentialSchemaType {
         match value.as_str() {
             "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
             "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
+            "SdJwtVc" => CredentialSchemaType::SdJwtVc,
             "mdoc" => CredentialSchemaType::Mdoc,
             _ => Self::Other(value),
         }

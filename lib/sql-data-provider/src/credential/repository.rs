@@ -272,6 +272,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential_schema::Column::AllowSuspension,
             "credential_schema_allow_suspension",
         )
+        .column_as(
+            credential_schema::Column::ExternalSchema,
+            "credential_schema_external_schema",
+        )
         .column_as(did::Column::CreatedDate, "issuer_did_created_date")
         .column_as(did::Column::Deactivated, "issuer_did_deactivated")
         .column_as(did::Column::Did, "issuer_did_did")

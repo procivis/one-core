@@ -814,6 +814,7 @@ fn test_schema_id() {
         format: "".to_string(),
         revocation_method: "".to_string(),
         organisation_id: OrganisationId::from(Uuid::new_v4()),
+        external_schema: false,
         claims: vec![],
         wallet_storage_type: None,
         layout_type: LayoutType::Card,

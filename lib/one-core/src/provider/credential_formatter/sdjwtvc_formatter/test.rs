@@ -322,6 +322,7 @@ fn test_schema_id() {
         revocation_method: "".to_string(),
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
+        external_schema: false,
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,

@@ -79,6 +79,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 last_modified: OffsetDateTime::now_utc(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 name: "name".into(),
+                external_schema: false,
                 format: "format".into(),
                 revocation_method: "revocation_method".into(),
                 claim_schemas: Some(vec![CredentialSchemaClaim {

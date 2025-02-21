@@ -291,6 +291,7 @@ pub struct BasicSchemaData {
     pub id: String,
     pub r#type: String,
     pub offer_id: String,
+    pub external_schema: bool,
 }
 
 pub struct BuildCredentialSchemaResponse {
@@ -317,7 +318,6 @@ pub trait HandleInvitationOperations: Send + Sync {
     fn find_schema_data(
         &self,
         credential_config: &openid4vc::model::OpenID4VCICredentialConfigurationData,
-        schema_id: &str,
         offer_id: &str,
     ) -> Result<BasicSchemaData, ExchangeProtocolError>;
 

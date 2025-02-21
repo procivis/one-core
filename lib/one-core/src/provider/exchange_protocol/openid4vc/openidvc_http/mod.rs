@@ -994,11 +994,8 @@ async fn handle_credential_invitation(
             ))
         })?;
 
-    let schema_data = handle_invitation_operations.find_schema_data(
-        credential_config,
-        configuration_id,
-        configuration_id,
-    )?;
+    let schema_data =
+        handle_invitation_operations.find_schema_data(credential_config, configuration_id)?;
 
     let holder_data = HolderInteractionData {
         issuer_url: issuer_metadata.credential_issuer.clone(),

@@ -48,6 +48,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
+    #[serde(default)]
+    pub external_schema: bool,
 }
 
 /// Part of the `credentialSchema` property.
@@ -59,6 +61,7 @@ pub enum CredentialSchemaType {
     FallbackSchema2024,
     #[serde(rename = "mdoc")]
     Mdoc,
+    SdJwtVc,
     #[serde(untagged)]
     Other(String),
 }
@@ -68,6 +71,7 @@ impl From<String> for CredentialSchemaType {
         match value.as_str() {
             "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
             "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
+            "SdJwtVc" => CredentialSchemaType::SdJwtVc,
             "mdoc" => CredentialSchemaType::Mdoc,
             _ => Self::Other(value),
         }
@@ -83,6 +87,7 @@ impl utoipa::PartialSchema for CredentialSchemaType {
             .enum_values(Some([
                 "ProcivisOneSchema2024",
                 "FallbackSchema2024",
+                "SdJwtVc",
                 "mdoc",
             ]));
 
@@ -125,6 +130,7 @@ pub struct CredentialSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
+    pub external_schema: bool,
 }
 
 #[skip_serializing_none]
@@ -265,6 +271,11 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
+    /// If `true`, credentials issued using this schema will use the specified `schema_id` directly.
+    /// If `false`, a Procivis credential schema will be created for the given `schema_id`.
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub external_schema: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]
@@ -436,6 +447,8 @@ pub struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
+    #[try_into(infallible)]
+    pub external_schema: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Into, ToSchema)]

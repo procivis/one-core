@@ -16,6 +16,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             wallet_storage_type: value.wallet_storage_type,
             revocation_method: value.revocation_method,
             deleted_at: value.deleted_at,
+            external_schema: value.external_schema,
             claim_schemas: None,
             organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
             layout_type: value.layout_type.unwrap_or(LayoutType::Card),

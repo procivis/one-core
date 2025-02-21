@@ -33,6 +33,7 @@ pub struct CredentialSchema {
     pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     pub allow_suspension: bool,
+    pub external_schema: bool,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -47,6 +48,8 @@ pub enum CredentialSchemaType {
     FallbackSchema2024,
     #[strum(serialize = "mdoc")]
     Mdoc,
+    #[strum(serialize = "SdJwtVc")]
+    SdJwtVc,
     #[strum(serialize = "{0}")]
     #[serde(untagged)]
     Other(String),
@@ -57,6 +60,7 @@ impl From<String> for CredentialSchemaType {
         match value.as_str() {
             "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
             "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
+            "SdJwtVc" => CredentialSchemaType::SdJwtVc,
             "mdoc" => CredentialSchemaType::Mdoc,
             _ => Self::Other(value),
         }

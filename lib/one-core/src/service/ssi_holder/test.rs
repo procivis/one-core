@@ -813,6 +813,7 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
+            external_schema: false,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),

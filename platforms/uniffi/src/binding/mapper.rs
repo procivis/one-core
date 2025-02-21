@@ -320,6 +320,7 @@ impl From<CredentialSchemaType> for CredentialSchemaTypeBindingEnum {
         match value {
             CredentialSchemaType::ProcivisOneSchema2024 => Self::ProcivisOneSchema2024 {},
             CredentialSchemaType::FallbackSchema2024 => Self::FallbackSchema2024 {},
+            CredentialSchemaType::SdJwtVc => Self::SdJwtVc {},
             CredentialSchemaType::Mdoc => Self::Mdoc {},
             CredentialSchemaType::Other(value) => Self::Other { value },
         }
@@ -335,6 +336,7 @@ impl From<CredentialSchemaTypeBindingEnum> for CredentialSchemaType {
             CredentialSchemaTypeBindingEnum::FallbackSchema2024 { .. } => {
                 CredentialSchemaType::FallbackSchema2024
             }
+            CredentialSchemaTypeBindingEnum::SdJwtVc {} => CredentialSchemaType::SdJwtVc,
             CredentialSchemaTypeBindingEnum::Mdoc { .. } => CredentialSchemaType::Mdoc,
             CredentialSchemaTypeBindingEnum::Other { value } => CredentialSchemaType::Other(value),
         }
@@ -350,6 +352,7 @@ impl From<CredentialSchemaTypeBindingEnum>
                 Self::ProcivisOneSchema2024
             }
             CredentialSchemaTypeBindingEnum::FallbackSchema2024 { .. } => Self::FallbackSchema2024,
+            CredentialSchemaTypeBindingEnum::SdJwtVc {} => Self::SdJwtVc,
             CredentialSchemaTypeBindingEnum::Mdoc { .. } => Self::Mdoc,
             CredentialSchemaTypeBindingEnum::Other { value } => Self::Other(value),
         }

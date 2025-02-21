@@ -93,6 +93,7 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         created_date: schema.created_date,
         last_modified: schema.last_modified,
         name: schema.name,
+        external_schema: schema.external_schema,
         format: schema.format,
         revocation_method: schema.revocation_method,
         wallet_storage_type: convert_inner(schema.wallet_storage_type),

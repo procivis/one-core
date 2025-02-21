@@ -192,6 +192,7 @@ fn generic_credential() -> Credential {
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            external_schema: false,
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -498,6 +499,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
+                    external_schema: false,
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -769,10 +771,11 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     operations
         .expect_find_schema_data()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(BasicSchemaData {
                 id: credential_schema_id.to_string(),
                 r#type: "SD_JWT_VC".to_string(),
+                external_schema: false,
                 offer_id: credential_clone.id.to_string(),
             })
         });
@@ -1332,6 +1335,7 @@ fn generic_schema() -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
+        external_schema: false,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
@@ -1445,6 +1449,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
+        external_schema: false,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         claim_schemas: Some(vec![
@@ -1561,6 +1566,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        external_schema: false,
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {

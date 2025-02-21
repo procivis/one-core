@@ -102,6 +102,7 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "SchemaName".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         format: "JWT".to_string(),
+        external_schema: false,
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             required: true,
@@ -1292,6 +1293,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                                 deleted_at: None,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
+                                external_schema: false,
                                 name: "Credential1".to_owned(),
                                 format: "JWT".to_owned(),
                                 revocation_method: "NONE".to_owned(),

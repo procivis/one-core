@@ -21,6 +21,7 @@ pub struct Model {
     pub format: String,
     pub revocation_method: String,
     pub wallet_storage_type: Option<WalletStorageType>,
+    pub external_schema: bool,
     pub organisation_id: OrganisationId,
     #[sea_orm(column_type = "Text")]
     pub layout_type: LayoutType,
@@ -40,6 +41,7 @@ pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
     Mdoc,
+    SdJwtVc,
     Other(String),
 }
 
@@ -64,6 +66,7 @@ impl sea_orm::ActiveEnum for CredentialSchemaType {
         match self {
             Self::ProcivisOneSchema2024 => "ProcivisOneSchema2024",
             Self::FallbackSchema2024 => "FallbackSchema2024",
+            Self::SdJwtVc => "SdJwtVc",
             Self::Mdoc => "mdoc",
             Self::Other(val) => val,
         }
@@ -74,6 +77,7 @@ impl sea_orm::ActiveEnum for CredentialSchemaType {
         match v.as_ref() {
             "ProcivisOneSchema2024" => Ok(Self::ProcivisOneSchema2024),
             "FallbackSchema2024" => Ok(Self::FallbackSchema2024),
+            "SdJwtVc" => Ok(Self::SdJwtVc),
             "mdoc" => Ok(Self::Mdoc),
             val => Ok(Self::Other(val.to_owned())),
         }

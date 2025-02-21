@@ -12,3 +12,4 @@ mod jwt_mdoc_openid_full_flow;
 mod jwt_openid_full_flow;
 mod mdoc_openid_full_flow;
 mod sdjwt_openid_full_flow;
+mod sdjwt_vc_openid_full_flow;
