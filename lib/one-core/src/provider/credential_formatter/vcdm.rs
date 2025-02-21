@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bon::bon;
 use indexmap::{indexset, IndexMap, IndexSet};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{serde_as, skip_serializing_none, OneOrMany};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -27,6 +27,7 @@ impl From<Url> for ContextType {
     }
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -35,39 +36,27 @@ pub struct VcdmCredential {
     #[serde(rename = "@context")]
     pub context: IndexSet<ContextType>,
 
-    #[serde(
-        default,
-        deserialize_with = "some_or_error",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, deserialize_with = "some_or_error")]
     pub id: Option<Url>,
 
     pub r#type: Vec<String>,
 
     pub issuer: Issuer,
 
-    #[serde(
-        default,
-        with = "time::serde::rfc3339::option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub valid_from: Option<OffsetDateTime>,
 
     // VCDM v1.1, for VCDM 2.0 use valid_from
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub issuance_date: Option<OffsetDateTime>,
 
-    #[serde(
-        default,
-        with = "time::serde::rfc3339::option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub valid_until: Option<OffsetDateTime>,
 
     // VCDM v1.1, for VCDM 2.0 use valid_until
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub expiration_date: Option<OffsetDateTime>,
 
     #[serde_as(as = "OneOrMany<_>")]
@@ -77,32 +66,30 @@ pub struct VcdmCredential {
     #[serde_as(as = "OneOrMany<_>")]
     pub credential_status: Vec<CredentialStatus>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<VcdmProof>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub credential_schema: Option<Vec<CredentialSchema>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub refresh_service: Option<Vec<RefreshService>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub name: Option<Name>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub description: Option<Description>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub terms_of_use: Option<Vec<VcdmTermsOfUse>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub evidence: Option<Vec<VcdmEvidence>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub related_resource: Option<Vec<VcdmRelatedResource>>,
 }
@@ -208,10 +195,10 @@ pub struct RefreshService {
     fields: serde_json::Map<String, serde_json::Value>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VcdmCredentialSubject {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<Url>,
     #[serde(flatten)]
     pub claims: IndexMap<String, serde_json::Value>,
@@ -238,26 +225,21 @@ impl VcdmCredentialSubject {
 
 pub type Claims = HashMap<String, String>;
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VcdmProof {
     #[serde(rename = "@context")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<IndexSet<ContextType>>,
     r#type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default, with = "time::serde::rfc3339::option")]
     created: Option<OffsetDateTime>,
     pub cryptosuite: String,
     pub verification_method: String,
     pub proof_purpose: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof_value: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     nonce: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     challenge: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     domain: Option<String>,
 }
 
@@ -291,6 +273,7 @@ impl VcdmProof {
     }
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -298,14 +281,11 @@ pub struct VcdmTermsOfUse {
     #[serde_as(as = "OneOrMany<_>")]
     r#type: Vec<String>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "some_or_error"
-    )]
+    #[serde(default, deserialize_with = "some_or_error")]
     id: Option<Url>,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone, bon::Builder)]
 #[serde(rename_all = "camelCase")]
@@ -313,11 +293,7 @@ pub struct VcdmEvidence {
     #[serde_as(as = "OneOrMany<_>")]
     r#type: Vec<String>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "some_or_error"
-    )]
+    #[serde(default, deserialize_with = "some_or_error")]
     id: Option<Url>,
 }
 
@@ -331,6 +307,7 @@ pub struct VcdmRelatedResource {
     pub digest_multibase: Option<String>,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -338,36 +315,24 @@ pub struct VcdmRelatedResource {
 pub struct JwtVcdmCredential {
     pub(super) issuer: Option<Issuer>,
 
-    #[serde(
-        default,
-        with = "time::serde::rfc3339::option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub(super) valid_from: Option<OffsetDateTime>,
 
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub(super) issuance_date: Option<OffsetDateTime>,
 
-    #[serde(
-        default,
-        with = "time::serde::rfc3339::option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub(super) valid_until: Option<OffsetDateTime>,
 
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub(super) expiration_date: Option<OffsetDateTime>,
 
     #[serde(rename = "@context")]
     pub(super) context: IndexSet<ContextType>,
 
-    #[serde(
-        default,
-        deserialize_with = "some_or_error",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, deserialize_with = "some_or_error")]
     id: Option<Url>,
 
     pub(super) r#type: Vec<String>,
@@ -379,32 +344,30 @@ pub struct JwtVcdmCredential {
     #[serde_as(as = "OneOrMany<_>")]
     pub(super) credential_status: Vec<CredentialStatus>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     proof: Option<VcdmProof>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub(super) credential_schema: Option<Vec<CredentialSchema>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     refresh_service: Option<Vec<RefreshService>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     name: Option<Name>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     description: Option<Description>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     terms_of_use: Option<Vec<VcdmTermsOfUse>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     evidence: Option<Vec<VcdmEvidence>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     related_resource: Option<Vec<VcdmRelatedResource>>,
 }

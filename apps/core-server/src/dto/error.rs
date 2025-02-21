@@ -5,6 +5,7 @@ use axum::Json;
 use axum_extra::typed_header::TypedHeaderRejection;
 use one_dto_mapper::From;
 use serde::Serialize;
+use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
 
 #[derive(Serialize, From, ToSchema)]
@@ -168,11 +169,11 @@ pub enum ErrorCode {
     BR_0201,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, ToSchema)]
 pub struct ErrorResponseRestDTO {
     pub code: ErrorCode,
     pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub cause: Option<Cause>,
 }
 

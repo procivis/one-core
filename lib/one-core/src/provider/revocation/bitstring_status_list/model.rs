@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
@@ -15,6 +16,7 @@ pub enum ContentType {
     BitstringStatusListCredential,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCContent {
@@ -28,19 +30,19 @@ pub struct VCContent {
         serialize_with = "into_timestamp_opt",
         deserialize_with = "from_timestamp_opt"
     )]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub issued: Option<OffsetDateTime>,
     #[serde(
         serialize_with = "into_timestamp_opt",
         deserialize_with = "from_timestamp_opt"
     )]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub valid_from: Option<OffsetDateTime>,
     #[serde(
         serialize_with = "into_timestamp_opt",
         deserialize_with = "from_timestamp_opt"
     )]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub valid_until: Option<OffsetDateTime>,
     pub credential_subject: CredentialSubject,
 }

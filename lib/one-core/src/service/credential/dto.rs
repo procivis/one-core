@@ -1,5 +1,6 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
@@ -33,6 +34,7 @@ pub struct CredentialListItemResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialDetailResponseDTO {
@@ -70,6 +72,7 @@ pub struct MdocMsoValidityResponseDTO {
     pub last_update: OffsetDateTime,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialSchemaResponseDTO {
@@ -88,9 +91,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub schema_id: String,
     pub imported_source_url: String,
     pub schema_type: CredentialSchemaType,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_type: Option<LayoutType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
 }

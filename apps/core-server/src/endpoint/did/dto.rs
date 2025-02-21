@@ -47,6 +47,9 @@ pub struct DidListItemResponseRestDTO {
     pub deactivated: bool,
 }
 
+use serde_with::skip_serializing_none;
+
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -95,6 +98,7 @@ pub struct DidResponseKeysRestDTO {
     pub capability_delegation: Vec<KeyListItemResponseRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestRestDTO {

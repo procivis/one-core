@@ -12,7 +12,7 @@ use figment::Figment;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
-use serde_with::{serde_as, DurationSeconds};
+use serde_with::{serde_as, skip_serializing_none, DurationSeconds};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
@@ -482,15 +482,15 @@ impl<T> Default for ConfigBlock<T> {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Fields<T> {
     pub r#type: T,
     pub display: Value,
     pub order: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
-    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
     #[serde(default, deserialize_with = "deserialize_params")]
     pub params: Option<Params>,
@@ -539,6 +539,7 @@ where
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {

@@ -96,11 +96,11 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
     }
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialConfigurationData)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Object,
         example = "{
             credential_schema_id: {
@@ -120,26 +120,18 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
         }",
     )]
     pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub order: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestRestDTO>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub doctype: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub vct: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
 }
 
@@ -217,6 +209,7 @@ pub struct OpenID4VCIProofRequestRestDTO {
     pub jwt: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidDocumentDTO)]
@@ -263,6 +256,7 @@ pub enum PublicKeyJwkRestDTO {
     Mlwe(PublicKeyJwkMlweDataRestDTO),
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkMlweDataDTO)]
 pub struct PublicKeyJwkMlweDataRestDTO {
@@ -271,6 +265,7 @@ pub struct PublicKeyJwkMlweDataRestDTO {
     pub x: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkOctDataDTO)]
 pub struct PublicKeyJwkOctDataRestDTO {
@@ -278,6 +273,7 @@ pub struct PublicKeyJwkOctDataRestDTO {
     pub k: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkRsaDataDTO)]
 pub struct PublicKeyJwkRsaDataRestDTO {
@@ -286,6 +282,7 @@ pub struct PublicKeyJwkRsaDataRestDTO {
     pub n: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkEllipticDataDTO)]
 pub struct PublicKeyJwkEllipticDataRestDTO {
@@ -299,6 +296,7 @@ pub struct PublicKeyJwkEllipticDataRestDTO {
 #[serde(transparent)]
 pub struct TimestampRest(pub i64);
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCITokenResponseDTO)]
 pub struct OpenID4VCITokenResponseRestDTO {
@@ -306,10 +304,8 @@ pub struct OpenID4VCITokenResponseRestDTO {
     pub token_type: String,
     pub expires_in: TimestampRest,
     #[from(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub refresh_token: Option<String>,
     #[from(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub refresh_token_expires_in: Option<TimestampRest>,
 }
 
@@ -335,6 +331,7 @@ pub enum OpenID4VCIErrorRestEnum {
     RuntimeError(String),
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(OpenID4VPDirectPostRequestDTO)]
 pub struct OpenID4VPDirectPostRequestRestDTO {
@@ -382,6 +379,7 @@ pub struct PresentationSubmissionMappingRestDTO {
     pub descriptor_map: Vec<PresentationSubmissionDescriptorRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(PresentationSubmissionDescriptorDTO)]
 pub struct PresentationSubmissionDescriptorRestDTO {
@@ -400,6 +398,7 @@ pub struct NestedPresentationSubmissionDescriptorRestDTO {
     pub path: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VPDirectPostResponseDTO)]
 pub struct OpenID4VPDirectPostResponseRestDTO {
@@ -423,6 +422,7 @@ pub struct LVVCIssuerResponseRestDTO {
     pub credential: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(OpenID4VCICredentialResponseDTO)]
@@ -445,6 +445,7 @@ pub struct PostSsiIssuerSubmitQueryParams {
     pub did_value: DidValue,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialOfferDTO)]
 pub struct OpenID4VCICredentialOfferRestDTO {
@@ -458,6 +459,7 @@ pub struct OpenID4VCICredentialOfferRestDTO {
     pub issuer_did: Option<DidValue>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
 #[from(ExtendedSubjectDTO)]
 pub struct ExtendedSubjectRestDTO {
@@ -506,11 +508,11 @@ pub struct OpenID4VCIGrantRestDTO {
     pub pre_authorized_code: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialDefinitionRestDTO {
     pub r#type: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Object,
         example = "{
             credential_schema_id: {
@@ -596,13 +598,12 @@ pub struct OpenID4VPPresentationDefinitionResponseRestDTO {
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptorRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionInputDescriptor)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
     pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO>,
@@ -618,6 +619,7 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO {
     pub proof_type: Vec<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionConstraint)]
 pub struct OpenID4VPPresentationDefinitionConstraintRestDTO {
@@ -628,19 +630,16 @@ pub struct OpenID4VPPresentationDefinitionConstraintRestDTO {
     pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionConstraintField)]
 pub struct OpenID4VPPresentationDefinitionConstraintFieldRestDTO {
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub id: Option<Uuid>,
     pub path: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub optional: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub intent_to_retain: Option<bool>,
 }
 
@@ -657,6 +656,7 @@ pub struct OpenID4VPFormatRestDTO {
     pub alg: Vec<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPClientMetadata)]
 pub struct OpenID4VPClientMetadataResponseRestDTO {
@@ -713,6 +713,7 @@ pub struct GetTrustAnchorResponseRestDTO {
     pub entities: Vec<GetTrustEntityResponseRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
 #[from(GetTrustAnchorEntityListResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -743,10 +744,10 @@ pub struct GetTrustEntityResponseRestDTO {
 pub struct SdJwtVcTypeMetadataResponseRestDTO {
     pub vct: String,
     pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcDisplayMetadataRestDTO>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub claims: Vec<SdJwtVcClaimRestDTO>,
     #[from(with_fn = convert_inner)]
@@ -796,7 +797,7 @@ pub struct SdJwtVcSimpleRenderingLogoRestDTO {
 #[from(SdJwtVcClaimDTO)]
 pub struct SdJwtVcClaimRestDTO {
     pub path: Vec<Value>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcClaimDisplayRestDTO>,
     #[from(with_fn = convert_inner)]
@@ -812,7 +813,6 @@ pub enum SdJwtVcClaimSdRestEnum {
     Never,
 }
 
-#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcClaimDisplayDTO)]
 pub struct SdJwtVcClaimDisplayRestDTO {
@@ -820,54 +820,38 @@ pub struct SdJwtVcClaimDisplayRestDTO {
     pub label: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryInto)]
 #[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub action: Option<PatchTrustEntityActionRestDTO>,
     /// Specify the entity name.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[schema(nullable = false)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub name: Option<String>,
     /// base64 encoded image. Maximum size = 50kb.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "::serde_with::rust::double_option"
-    )]
+    #[serde(default, with = "::serde_with::rust::double_option")]
     #[try_into(with_fn = try_convert_inner_of_inner)]
     pub logo: Option<Option<String>>,
     /// Specify the entity's domain name.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "::serde_with::rust::double_option"
-    )]
+    #[serde(default, with = "::serde_with::rust::double_option")]
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub website: Option<Option<String>>,
     /// Specify a Terms of Service URL.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "::serde_with::rust::double_option"
-    )]
+    #[serde(default, with = "::serde_with::rust::double_option")]
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub terms_url: Option<Option<String>>,
     /// Specify the Privacy Policy URL.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "::serde_with::rust::double_option"
-    )]
+    #[serde(default, with = "::serde_with::rust::double_option")]
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub privacy_url: Option<Option<String>>,
     /// Whether the entity is a trusted issuer, verifier, or both.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[schema(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
 }

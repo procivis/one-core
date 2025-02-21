@@ -1,6 +1,7 @@
 use one_core::service::history::dto::HistoryResponseDTO;
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,
 };
@@ -20,6 +21,7 @@ use crate::serialize::front_time;
 pub type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(HistoryResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -35,6 +37,7 @@ pub struct HistoryResponseRestDTO {
     pub organisation_id: OrganisationId,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, ToSchema, TryFrom)]
 #[try_from(T = HistoryResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]

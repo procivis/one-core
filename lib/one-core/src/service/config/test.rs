@@ -38,7 +38,6 @@ fn convert_internal_structure_to_dto() {
           "datatype": {
             "STRING": {
               "display": "display",
-              "order": null,
               "params": {
                 "autocomplete": false
               },
@@ -89,7 +88,6 @@ fn do_not_serialize_private_parameters() {
           "datatype": {
             "STRING": {
               "display": "display",
-              "order": null,
               "params": {},
               "type": "STRING"
             }

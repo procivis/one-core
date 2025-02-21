@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use shared_types::CredentialId;
 use url::Url;
 
@@ -62,12 +63,13 @@ pub struct ConnectIssuerResponseDTO {
 /// (Partial) SD-JWT VC type metadata.
 /// See https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html#name-type-metadata-format for
 /// more details.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcTypeMetadataResponseDTO {
     // StringOrURI
     pub vct: String,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub name: Option<String>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -76,51 +78,56 @@ pub struct SdJwtVcTypeMetadataResponseDTO {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub claims: Vec<SdJwtVcClaimDTO>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub schema: Option<serde_json::Value>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub schema_uri: Option<Url>,
     // Non-standard property
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcDisplayMetadataDTO {
     pub lang: String,
     pub name: String,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub rendering: Option<SdJwtVcRenderingDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcRenderingDTO {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub simple: Option<SdJwtVcSimpleRenderingDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcSimpleRenderingDTO {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub logo: Option<SdJwtVcSimpleRenderingLogoDTO>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub background_color: Option<String>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub text_color: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcSimpleRenderingLogoDTO {
     pub uri: Url,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub alt_text: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcClaimDTO {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -129,7 +136,7 @@ pub struct SdJwtVcClaimDTO {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub display: Vec<SdJwtVcClaimDisplayDTO>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub sd: Option<SdJwtVcClaimSd>,
 }
 

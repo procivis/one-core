@@ -7,6 +7,7 @@ use one_core::service::credential::dto::{
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -22,6 +23,7 @@ use crate::endpoint::credential_schema::dto::{
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialListItemResponseDTO)]
@@ -64,6 +66,7 @@ pub struct MdocMsoValidityResponseRestDTO {
     pub last_update: OffsetDateTime,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(CredentialDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -115,6 +118,7 @@ pub enum CredentialRoleRestEnum {
 }
 
 /// Credential schema being used to issue the credential.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DetailCredentialSchemaResponseDTO)]
@@ -126,10 +130,7 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    #[serde(
-        serialize_with = "front_time_option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
@@ -248,6 +249,7 @@ pub enum SortableCredentialColumnRestEnum {
     State,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -292,6 +294,7 @@ pub struct CredentialRequestClaimRestDTO {
 }
 
 /// Array of credentials to be checked for revocation status.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialRevocationCheckRequestRestDTO {
@@ -299,6 +302,7 @@ pub struct CredentialRevocationCheckRequestRestDTO {
     pub force_refresh: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, IntoParams)]
 #[serde(rename_all = "camelCase")]
 #[into(SuspendCredentialRequestDTO)]
@@ -309,6 +313,7 @@ pub struct SuspendCredentialRequestRestDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialRevocationCheckResponseDTO)]
@@ -322,6 +327,5 @@ pub struct CredentialRevocationCheckResponseRestDTO {
     pub success: bool,
     /// Explanation of why the revocation check failed. Only present
     /// when `success: false`.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }

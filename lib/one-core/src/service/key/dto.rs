@@ -1,5 +1,6 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -119,29 +120,32 @@ impl PublicKeyJwkDTO {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Into, From)]
 #[into(PublicKeyJwkRsaData)]
 #[from(PublicKeyJwkRsaData)]
 pub struct PublicKeyJwkRsaDataDTO {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub r#use: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub kid: Option<String>,
     pub e: String,
     pub n: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Into, From)]
 #[into(PublicKeyJwkOctData)]
 #[from(PublicKeyJwkOctData)]
 pub struct PublicKeyJwkOctDataDTO {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub r#use: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub kid: Option<String>,
     pub k: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Into, From)]
 #[into(PublicKeyJwkMlweData)]
 #[from(PublicKeyJwkMlweData)]
@@ -154,16 +158,17 @@ pub struct PublicKeyJwkMlweDataDTO {
     pub x: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Into, From)]
 #[into(PublicKeyJwkEllipticData)]
 #[from(PublicKeyJwkEllipticData)]
 pub struct PublicKeyJwkEllipticDataDTO {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub r#use: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub kid: Option<String>,
     pub crv: String,
     pub x: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub y: Option<String>,
 }

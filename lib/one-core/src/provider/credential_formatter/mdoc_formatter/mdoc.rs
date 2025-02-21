@@ -5,6 +5,7 @@ use coset::AsCborValue;
 use indexmap::IndexMap;
 use serde::de::{self, DeserializeOwned};
 use serde::{ser, Deserialize, Serialize, Serializer};
+use serde_with::skip_serializing_none;
 use sha2::{Digest, Sha256};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -36,31 +37,30 @@ pub type DataElementValue = ciborium::Value;
 const EMBEDDED_CBOR_TAG: u64 = 24;
 const DATE_TIME_CBOR_TAG: u64 = 0;
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceResponse {
     pub version: DeviceResponseVersion,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub documents: Option<Vec<Document>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub document_errors: Option<Vec<DocumentError>>,
     pub status: u64,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Document {
     pub doc_type: DocType,
     pub issuer_signed: IssuerSigned,
     pub device_signed: DeviceSigned,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub errors: Option<Errors>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuerSigned {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name_spaces: Option<Namespaces>,
     pub issuer_auth: CoseSign1,
 }
@@ -82,10 +82,10 @@ pub struct DeviceSigned {
     pub device_auth: DeviceAuth,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceAuth {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub device_signature: Option<CoseSign1>,
 }
 
@@ -158,13 +158,12 @@ pub enum DigestAlgorithm {
     Sha512,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceKeyInfo {
     pub device_key: DeviceKey,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub key_authorizations: Option<KeyAuthorizations>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub key_info: Option<KeyInfo>,
 }
 
@@ -192,14 +191,13 @@ impl TryFrom<ciborium::Value> for DeviceKey {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyAuthorizations {
     // authorized namespaces
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name_spaces: Option<Vec<String>>,
     // authorized data elements
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data_elements: Option<IndexMap<String, Vec<String>>>,
 }
 
@@ -207,13 +205,13 @@ pub struct KeyAuthorizations {
 #[serde(transparent)]
 pub struct KeyInfo(IndexMap<i64, ciborium::Value>);
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidityInfo {
     pub signed: DateTime,
     pub valid_from: DateTime,
     pub valid_until: DateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_update: Option<DateTime>,
 }
 

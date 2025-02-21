@@ -167,10 +167,6 @@ async fn test_share_proof_success_mdoc() {
                 "const": "org.iso.18013.5.1.mDL",
                 "type": "string"
               },
-              "id": null,
-              "name": null,
-              "purpose": null,
-              "optional": null,
               "path": [
                 "$.credentialSchema.id"
               ]
@@ -180,17 +176,11 @@ async fn test_share_proof_success_mdoc() {
               "path": [
                   "$['namespace']"
               ],
-              "name": null,
-              "purpose": null,
               "optional": false,
-              "filter": null,
               "intent_to_retain": true
             },
             {
-              "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
-              "name": null,
-              "purpose": null,
               "intent_to_retain": true,
               "optional": false,
               "path": [
@@ -198,10 +188,7 @@ async fn test_share_proof_success_mdoc() {
               ]
             },
             {
-              "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
-              "name": null,
-              "purpose": null,
               "intent_to_retain": true,
               "optional": false,
               "path": [
@@ -209,10 +196,7 @@ async fn test_share_proof_success_mdoc() {
               ]
             },
             {
-              "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c43",
-              "name": null,
-              "purpose": null,
               "intent_to_retain": true,
               "optional": false,
               "path": [
@@ -220,7 +204,6 @@ async fn test_share_proof_success_mdoc() {
               ]
             }
           ],
-          "validity_credential_nbf": null,
           "limit_disclosure": "required"
         },
         "format": {
@@ -232,8 +215,7 @@ async fn test_share_proof_success_mdoc() {
           }
         },
         "id": "org.iso.18013.5.1.mDL",
-        "name": "test",
-        "purpose": null
+        "name": "test"
     });
 
     assert_eq!(expected, input_descriptor);
@@ -314,7 +296,6 @@ async fn test_share_proof_success_jsonld() {
     let expected = serde_json::json!({
         "id": "input_0",
         "name": "test",
-        "purpose": null,
         "constraints": {
           "fields": [
             {
@@ -322,26 +303,18 @@ async fn test_share_proof_success_jsonld() {
                 "const": "test",
                 "type": "string"
               },
-              "id": null,
-              "name": null,
-              "purpose": null,
-              "optional": null,
               "path": [
                 "$.credentialSchema.id"
               ]
             },
             {
-              "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
-              "name": null,
-              "purpose": null,
               "optional": false,
               "path": [
                 "$.vc.credentialSubject.location_x"
               ]
             }
-          ],
-          "validity_credential_nbf": null
+          ]
         },
         "format": {
           "ldp_vc": {

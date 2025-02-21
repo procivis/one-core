@@ -8,6 +8,7 @@ use one_core::service::proof_schema::dto::{
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -21,6 +22,7 @@ use crate::endpoint::credential_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(CreateProofSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -40,6 +42,7 @@ pub struct CreateProofSchemaRequestRestDTO {
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -193,6 +196,7 @@ pub struct ProofSchemasFilterQueryParamsRest {
     pub exact: Option<Vec<ExactColumn>>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetProofSchemaListItemDTO)]
@@ -201,10 +205,7 @@ pub struct GetProofSchemaListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(
-        serialize_with = "front_time_option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
@@ -217,6 +218,7 @@ pub struct GetProofSchemaListItemResponseRestDTO {
 }
 
 // detail endpoint
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(GetProofSchemaResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -237,6 +239,7 @@ pub struct GetProofSchemaResponseRestDTO {
 }
 
 /// The set of attributes being requested when using this proof schema.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimSchemaResponseDTO)]
@@ -251,12 +254,12 @@ pub struct ProofClaimSchemaResponseRestDTO {
     #[schema(example = "STRING")]
     pub data_type: String,
     #[from(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     #[schema(no_recursion)]
     pub claims: Vec<ProofClaimSchemaResponseRestDTO>,
     pub array: bool,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputSchemaResponseDTO)]

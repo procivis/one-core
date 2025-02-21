@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::DidValue;
 use strum::{Display, IntoStaticStr};
 use time::OffsetDateTime;
@@ -68,12 +69,12 @@ pub struct CredentialSubject {
     pub claims: HashMap<String, serde_json::Value>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchema {
     pub id: String,
     pub r#type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<CredentialSchemaMetadata>,
 }
 
@@ -170,13 +171,12 @@ pub struct CredentialSchemaData {
     pub metadata: Option<CredentialSchemaMetadata>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<Url>,
     pub r#type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub status_purpose: Option<String>,
     #[serde(flatten)]
     pub additional_fields: HashMap<String, serde_json::Value>,
@@ -203,6 +203,7 @@ pub struct ExtractPresentationCtx {
     pub response_uri: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Presentation {
     pub id: Option<String>,
@@ -293,13 +294,14 @@ impl Context {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Issuer {
     Url(Url),
     Object {
         id: Url,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(default)]
         name: Option<Name>,
         #[serde(flatten)]
         rest: Option<IndexMap<String, serde_json::Value>>,
@@ -342,17 +344,15 @@ pub enum Description {
     Language(LanguageValue),
     String(String),
 }
+
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct LanguageValue {
     #[serde(rename = "@value")]
     value: String,
-    #[serde(default, rename = "@language", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "@language")]
     language: Option<String>,
-    #[serde(
-        default,
-        rename = "@direction",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "@direction")]
     direction: Option<String>,
 }

@@ -3530,6 +3530,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
+ "serde_with",
  "sha2 0.10.8",
  "thiserror 2.0.0",
 ]

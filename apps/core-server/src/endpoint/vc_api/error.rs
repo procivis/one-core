@@ -1,6 +1,7 @@
 use one_core::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use one_core::service::error::{MissingProviderError, ServiceError};
 use serde::Serialize;
+use serde_with::skip_serializing_none;
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +18,7 @@ pub enum DidResolverError {
     InvalidPublicKeyLength(#[serde(skip_serializing)] String),
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Debug)]
 pub struct VcApiErrorRestDTO {
     pub status: Option<u16>,

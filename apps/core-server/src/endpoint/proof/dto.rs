@@ -157,6 +157,9 @@ pub struct ProofsFilterQueryParamsRest {
 pub type GetProofQuery =
     ListQueryParamsRest<ProofsFilterQueryParamsRest, SortableProofColumnRestEnum>;
 
+use serde_with::skip_serializing_none;
+
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -178,20 +181,17 @@ pub struct ProofListItemResponseRestDTO {
 
     /// When proof request state changed from `PENDING` to `REQUESTED`.
     /// Not supported in all exchange protocols.
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
     /// Time at which the data shared by the holder for this proof request will be deleted.
     /// Determined by the `expireDuration` parameter of the proof schema.
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
     /// When holder submitted valid proof.
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
@@ -217,14 +217,13 @@ pub struct PresentationDefinitionResponseRestDTO {
     pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestGroupResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleRestDTO,
     #[from(with_fn = convert_inner)]
@@ -233,14 +232,13 @@ pub struct PresentationDefinitionRequestGroupResponseRestDTO {
 
 /// Summary of the credentials requested by the verifier, including suitable
 /// credentials filtered from the wallet.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestedCredentialResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
@@ -249,24 +247,19 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub inapplicable_credentials: Vec<String>,
-    #[serde(
-        serialize_with = "front_time_option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     validity_credential_nbf: Option<OffsetDateTime>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionFieldDTO)]
 pub struct PresentationDefinitionFieldRestDTO {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
     pub key_map: HashMap<String, String>,
 }
@@ -280,20 +273,19 @@ pub enum PresentationDefinitionRuleTypeRestEnum {
     Pick,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionRuleDTO)]
 pub struct PresentationDefinitionRuleRestDTO {
     pub r#type: PresentationDefinitionRuleTypeRestEnum,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub min: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
 }
 
 // detail endpoint
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -312,17 +304,14 @@ pub struct ProofDetailResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
@@ -343,7 +332,6 @@ pub struct ProofDetailResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub proof_inputs: Vec<ProofInputRestDTO>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub claims_removed_at: Option<OffsetDateTime>,
@@ -368,6 +356,7 @@ pub enum ProofClaimValueRestDTO {
     Claims(#[from(with_fn = convert_inner)] Vec<ProofClaimRestDTO>),
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputDTO)]

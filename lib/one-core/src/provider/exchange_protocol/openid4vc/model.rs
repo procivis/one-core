@@ -6,6 +6,7 @@ use indexmap::IndexMap;
 use one_dto_mapper::{convert_inner, Into};
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
 use strum::Display;
 use time::OffsetDateTime;
@@ -37,38 +38,39 @@ pub struct BleOpenId4VpResponse {
     pub presentation_submission: PresentationSubmissionMappingDTO,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCInteractionContent {
     pub pre_authorized_code_used: bool,
     pub access_token: String,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
+    #[serde(default)]
     pub refresh_token: Option<String>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HolderInteractionData {
     pub issuer_url: String,
     pub credential_endpoint: String,
+    #[serde(default)]
     pub token_endpoint: Option<String>,
+    #[serde(default)]
     pub grants: Option<OpenID4VCIGrants>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub access_token: Option<String>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
     pub refresh_token: Option<String>,
-    #[serde(
-        with = "time::serde::rfc3339::option",
-        skip_serializing_if = "Option::is_none",
-        default
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
 }
 
@@ -172,6 +174,7 @@ pub struct OpenID4VCIErrorResponseDTO {
     pub error: OpenID4VCIError,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "grant_type")]
 pub enum OpenID4VCITokenRequestDTO {
@@ -179,7 +182,6 @@ pub enum OpenID4VCITokenRequestDTO {
     PreAuthorizedCode {
         #[serde(rename = "pre-authorized_code")]
         pre_authorized_code: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         tx_code: Option<String>,
     },
     #[serde(rename = "refresh_token")]
@@ -196,36 +198,32 @@ impl OpenID4VCITokenRequestDTO {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCIInteractionDataDTO {
     pub pre_authorized_code_used: bool,
     pub access_token: String,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
     pub refresh_token: Option<String>,
-    #[serde(
-        with = "time::serde::rfc3339::option",
-        skip_serializing_if = "Option::is_none",
-        default
-    )]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCICredentialDefinitionRequestDTO {
     pub r#type: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "credentialSubject")]
     pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCICredentialRequestDTO {
     pub format: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub doctype: Option<String>,
     pub proof: OpenID4VCIProofRequestDTO,
 }
@@ -236,6 +234,7 @@ pub struct OpenID4VCIProofRequestDTO {
     pub jwt: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostRequestDTO {
     pub presentation_submission: Option<PresentationSubmissionMappingDTO>,
@@ -251,6 +250,7 @@ pub struct PresentationSubmissionMappingDTO {
     pub descriptor_map: Vec<PresentationSubmissionDescriptorDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PresentationSubmissionDescriptorDTO {
     pub id: String,
@@ -265,6 +265,7 @@ pub struct NestedPresentationSubmissionDescriptorDTO {
     pub path: String,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostResponseDTO {
     pub redirect_uri: Option<String>,
@@ -296,19 +297,21 @@ pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
     A128CBCHS256,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPClientMetadata {
     #[serde(default)]
     pub jwks: Vec<OpenID4VPClientMetadataJwkDTO>,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: ClientIdSchemaType,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub authorization_encrypted_response_enc:
         Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
     pub client_id: String,
@@ -330,43 +333,36 @@ pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
     pub redirect_uri: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPAuthorizationRequestParams {
     pub client_id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub client_id_scheme: Option<ClientIdSchemaType>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub state: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub nonce: Option<String>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub response_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub response_mode: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub response_uri: Option<Url>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_with_serde_json"
-    )]
+    #[serde(default, deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<OpenID4VPClientMetadata>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub client_metadata_uri: Option<Url>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_with_serde_json"
-    )]
+    #[serde(default, deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub presentation_definition_uri: Option<Url>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub redirect_uri: Option<String>,
 }
 
@@ -391,14 +387,15 @@ pub(super) struct ValidatedProofClaimDTO {
     pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredential {
     pub format: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub vct: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub doctype: Option<String>,
     pub proof: OpenID4VCIProof,
 }
@@ -415,6 +412,7 @@ pub struct OpenID4VCIProof {
 /// Important: This structure is used to deserialize
 /// also from all the other verifier interaction data structures
 /// during proof submission validation
+#[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPVerifierInteractionContent {
     pub nonce: String,
@@ -431,6 +429,7 @@ pub struct OpenID4VPPresentationDefinition {
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptor>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptor {
     pub id: String,
@@ -448,12 +447,13 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptorFormat {
     pub proof_type: Vec<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_credential_nbf: Option<OffsetDateTime>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub limit_disclosure: Option<OpenID4VPPresentationDefinitionLimitDisclosurePreference>,
 }
 
@@ -464,6 +464,7 @@ pub enum OpenID4VPPresentationDefinitionLimitDisclosurePreference {
     Preferred,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub id: Option<ClaimSchemaId>,
@@ -472,7 +473,7 @@ pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub path: Vec<String>,
     pub optional: Option<bool>,
     pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub intent_to_retain: Option<bool>,
 }
 
@@ -531,27 +532,23 @@ pub enum InvitationResponseDTO {
     },
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Into)]
 #[into(LayoutProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaLayoutPropertiesRequestDTO {
     #[into(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<CredentialSchemaBackgroundPropertiesRequestDTO>,
     #[into(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo: Option<CredentialSchemaLogoPropertiesRequestDTO>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub primary_attribute: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub secondary_attribute: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub picture_attribute: Option<String>,
     #[into(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaLogoPropertiesRequestDTO {
@@ -560,6 +557,7 @@ pub struct CredentialSchemaLogoPropertiesRequestDTO {
     pub image: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaBackgroundPropertiesRequestDTO {
@@ -629,6 +627,7 @@ pub struct UpdateResponse<T> {
     pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialOfferDTO {
     pub credential_issuer: String,
@@ -641,6 +640,7 @@ pub struct OpenID4VCICredentialOfferDTO {
     pub issuer_did: Option<DidValue>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ExtendedSubjectDTO {
     pub keys: Option<ExtendedSubjectClaimsDTO>,
@@ -653,15 +653,16 @@ pub struct ExtendedSubjectClaimsDTO {
     pub claims: IndexMap<String, OpenID4VCICredentialValueDetails>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialOfferCredentialDTO {
     pub format: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub doctype: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
 }
 
@@ -671,21 +672,23 @@ pub struct OpenID4VCIGrants {
     pub code: OpenID4VCIGrant,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCIGrant {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub tx_code: Option<OpenID4VCITxCode>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCITxCode {
     #[serde(default)]
     pub input_mode: OpenID4VCITxCodeInputMode,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub length: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub description: Option<String>,
 }
 
@@ -700,6 +703,7 @@ pub enum OpenID4VCITxCodeInputMode {
     Text,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Debug, Default, PartialEq, Eq)]
 pub struct OpenID4VCICredentialSubjectItem {
     // Rest of the keys as objects
@@ -714,15 +718,15 @@ pub struct OpenID4VCICredentialSubjectItem {
     #[serde(flatten, deserialize_with = "empty_is_none")]
     pub additional_values: Option<IndexMap<String, serde_json::Value>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub display: Option<Vec<CredentialSubjectDisplay>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub value_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub mandatory: Option<bool>,
 
     // This is custom and optional - keeps the presentation order of claims
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub order: Option<Vec<String>>,
 }
 
@@ -846,6 +850,7 @@ where
     Ok((!s.is_empty()).then_some(s))
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct CredentialSubjectDisplay {
     pub name: Option<String>,
@@ -892,6 +897,7 @@ pub struct CredentialSchemaDetailResponseDTO {
 }
 
 /// Interaction data used for OpenID4VP (HTTP) on holder side
+#[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPHolderInteractionData {
     pub response_type: Option<String>,
@@ -913,7 +919,7 @@ pub struct OpenID4VPHolderInteractionData {
     #[serde(skip_serializing)]
     pub redirect_uri: Option<String>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub verifier_did: Option<String>,
 }
 
@@ -954,6 +960,7 @@ pub struct ProofClaimSchema {
     pub credential_schema: ProofCredentialSchema,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// deserializes matching `CredentialSchemaListValueResponseRestDTO`

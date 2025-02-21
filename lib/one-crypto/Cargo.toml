@@ -26,6 +26,7 @@ rand.workspace       = true
 rand_chacha          = { version = "0.3" }
 serde.workspace      = true
 serde_json.workspace = true
+serde_with.workspace = true
 sha2                 = { version = "0.10" }
 thiserror.workspace  = true
 secrecy              = { workspace = true}

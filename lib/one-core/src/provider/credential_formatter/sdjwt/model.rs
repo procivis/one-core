@@ -2,34 +2,33 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{serde_as, skip_serializing_none, OneOrMany};
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus, Issuer};
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCContent {
     #[serde(rename = "@context")]
     pub context: Vec<ContextType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub r#type: Vec<String>,
     pub credential_subject: SDCredentialSubject,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     #[serde_as(as = "OneOrMany<_>")]
     pub credential_status: Vec<CredentialStatus>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_schema: Option<CredentialSchema>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub issuer: Option<Issuer>,
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub valid_from: Option<OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub valid_until: Option<OffsetDateTime>,
 }
 
@@ -45,6 +44,7 @@ pub struct VPContent {
     pub verifiable_credential: Vec<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VcClaim {
@@ -54,7 +54,7 @@ pub struct VcClaim {
     pub vc: JwtVcdmCredential,
     /// Hash algorithm
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
-    #[serde(rename = "_sd_alg", default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "_sd_alg", default)]
     pub hash_alg: Option<String>,
 }
 

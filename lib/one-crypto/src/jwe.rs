@@ -12,6 +12,7 @@ use rand_chacha::ChaCha20Rng;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use serde_with::skip_serializing_none;
 
 use crate::encryption::EncryptionError;
 
@@ -40,12 +41,12 @@ pub struct JweHeader<T> {
     pub ephemeral_public_key: T,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RemoteJwk {
     pub kty: String,
     pub crv: String,
     pub x: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub y: Option<String>,
 }
 

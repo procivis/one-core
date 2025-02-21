@@ -139,28 +139,19 @@ async fn test_get_client_request() {
                     }
                 },
                 "id": "input_0",
-                "name": null,
-                "purpose": null,
                 "constraints": {
                     "fields": [
                         {
                             "id": new_claim_schemas[0].0,
-                            "name": null,
-                            "purpose": null,
                             "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false,
-                            "filter": null
+                            "optional": false
                         },
                         {
                             "id": new_claim_schemas[1].0,
-                            "name": null,
-                            "purpose": null,
                             "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": false,
-                            "filter": null
+                            "optional": false
                         }
-                    ],
-                    "validity_credential_nbf": null
+                    ]
                 }
             }]
         }),

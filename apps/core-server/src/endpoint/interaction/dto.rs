@@ -9,12 +9,14 @@ use one_core::service::ssi_holder::dto::{
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationRequestRestDTO {
@@ -24,21 +26,20 @@ pub struct HandleInvitationRequestRestDTO {
     pub transport: Option<Vec<String>>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_ids: Option<Vec<CredentialId>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof_id: Option<ProofId>,
     /// If a pre-authorized code is issued with a transaction code object, the
     /// wallet user must input a transaction code to receive the offered credential.
     /// This code is typically sent through a separate channel such as SMS or email.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
 #[from(OpenID4VCITxCode)]
 pub struct OpenID4VCITxCodeRestDTO {
@@ -47,13 +48,13 @@ pub struct OpenID4VCITxCodeRestDTO {
     /// Type of code expected.
     pub input_mode: OpenID4VCITxCodeInputModeRestDTO,
     #[from(with_fn = convert_inner)]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     /// Length of transaction code, to pass to the frontend for guiding the
     /// wallet holder.
     pub length: Option<i64>,
     #[from(with_fn = convert_inner)]
     #[schema(value_type = String, example = "Pin number", max_length = 300)]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     /// Information about the transaction code, to pass to the frontend for
     /// guiding the wallet holder.
     pub description: Option<String>,
@@ -71,6 +72,7 @@ pub enum OpenID4VCITxCodeInputModeRestDTO {
     Text,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuanceAcceptRequestRestDTO {
@@ -97,6 +99,7 @@ pub struct PresentationRejectRequestRestDTO {
     pub interaction_id: Uuid,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]

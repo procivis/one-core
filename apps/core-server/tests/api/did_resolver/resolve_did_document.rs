@@ -33,7 +33,6 @@ async fn test_resolve_did_jwk_document() {
               "publicKeyJwk": {
                 "crv": "P-256",
                 "kty": "EC",
-                "use": null,
                 "x": "acbIQiuMs3i8_uszEjJ2tpTtRM4EU3yz91PH6CdH2V0",
                 "y": "_KcyLj9vWMptnmKtm46GqDz8wf74I5LKgrl2GzH3nSE"
               }
@@ -92,7 +91,6 @@ async fn test_resolve_did_key_document() {
               "publicKeyJwk": {
                 "crv": "P-256",
                 "kty": "EC",
-                "use": null,
                 "x": "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns",
                 "y": "efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM"
               }
@@ -152,7 +150,6 @@ async fn test_resolve_did_universal_document() {
             "publicKeyJwk": {
               "crv": "secp256k1",
               "kty": "EC",
-              "use": null,
               "x": "Kb_2uNGsrwUNvHvaCNrDFumxUyPMfYwy14JYfjaAHfk",
               "y": "aHSCd5D8XtELoIpi7P9x5uqpixEq6bCzt4BWoQY5QAQ"
             }
@@ -163,10 +160,7 @@ async fn test_resolve_did_universal_document() {
         ],
         "assertionMethod": [
           "#sig_72bd16d6"
-        ],
-        "keyAgreement": null,
-        "capabilityDelegation": null,
-        "capabilityInvocation": null,
+        ]
     });
 
     context
@@ -236,10 +230,8 @@ async fn test_resolve_did_mdl_certificate() {
           "controller": "did:mdl:certificate:MIIDYTCCAwegAwIBAgIUOfrQW7V3t1Df5wF54HMja4jXSiowCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA3MjcwMFoXDTI0MDgxMjAwMDAwMFowSjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxFDASBgNVBAMMC3Byb2NpdmlzLmNoMCowBQYDK2VwAyEA3LOKxB5ik9WikgQmqNFtmuvNC0FMFFVXr6ATVoL-kT6jggHgMIIB3DAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lAQH_BAswCQYHKIGMXQUBAjAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMFoGA1UdHwRTMFEwT6BNoEuGSWh0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbS9jcmwvNDBDRDIyNTQ3RjM4MzRDNTI2QzVDMjJFMUEyNkM3RTIwMzMyNDY2OC8wgcgGCCsGAQUFBwEBBIG7MIG4MFoGCCsGAQUFBzAChk5odHRwOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbS9pc3N1ZXIvNDBDRDIyNTQ3RjM4MzRDNTI2QzVDMjJFMUEyNkM3RTIwMzMyNDY2OC5kZXIwWgYIKwYBBQUHMAGGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL29jc3AvNDBDRDIyNTQ3RjM4MzRDNTI2QzVDMjJFMUEyNkM3RTIwMzMyNDY2OC9jZXJ0LzAmBgNVHRIEHzAdhhtodHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20wFgYDVR0RBA8wDYILcHJvY2l2aXMuY2gwHQYDVR0OBBYEFKz7jJBlcj4WlpOgMzjKwilDZ_ogMAoGCCqGSM49BAMCA0gAMEUCIDj2w5vOQacNAfIdHmfqlsn0nBpBlbBdC784VT0lqA1FAiEAtCGKf9Pd6dOyz6ke30fFb-YfKaOmbDngZ3dlZIh4dvg",
           "publicKeyJwk": {
             "kty": "OKP",
-            "use": null,
             "crv": "Ed25519",
-            "x": "3LOKxB5ik9WikgQmqNFtmuvNC0FMFFVXr6ATVoL-kT4",
-            "y": null
+            "x": "3LOKxB5ik9WikgQmqNFtmuvNC0FMFFVXr6ATVoL-kT4"
           }
         }
       ],
@@ -284,7 +276,6 @@ async fn test_resolve_did_mdl_public_key() {
               "publicKeyJwk": {
                 "crv": "P-256",
                 "kty": "EC",
-                "use": null,
                 "x": "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns",
                 "y": "efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM"
               }

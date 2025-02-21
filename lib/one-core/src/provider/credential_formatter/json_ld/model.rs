@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use indexmap::IndexSet;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{serde_as, skip_serializing_none, OneOrMany};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -22,6 +22,7 @@ pub static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
 ];
 
 // The main credential
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -29,26 +30,22 @@ pub struct LdCredential {
     #[serde(rename = "@context")]
     pub context: IndexSet<ContextType>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_option_or_error_if_null"
-    )]
+    #[serde(default, deserialize_with = "deserialize_option_or_error_if_null")]
     pub id: Option<Url>,
 
     pub r#type: Vec<String>,
     pub issuer: Issuer,
     // we keep this field for backwards compatibility with VCDM v1.1
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub issuance_date: Option<OffsetDateTime>,
 
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub valid_from: Option<OffsetDateTime>,
 
     #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub valid_until: Option<OffsetDateTime>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -59,21 +56,19 @@ pub struct LdCredential {
     #[serde_as(as = "OneOrMany<_>")]
     pub credential_status: Vec<CredentialStatus>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<LdProof>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub credential_schema: Option<Vec<CredentialSchema>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub refresh_service: Option<Vec<LdRefreshService>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub name: Option<Name>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub description: Option<Description>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -84,7 +79,7 @@ pub struct LdCredential {
     #[serde_as(as = "OneOrMany<_>")]
     pub evidence: Vec<Evidence>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub related_resource: Option<Vec<RelatedResource>>,
 }
@@ -99,10 +94,10 @@ pub struct LdRefreshService {
     fields: serde_json::Map<String, serde_json::Value>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LdCredentialSubject {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<DidValue>,
     #[serde(flatten)]
     pub subject: HashMap<String, serde_json::Value>,
@@ -110,30 +105,26 @@ pub struct LdCredentialSubject {
 
 pub type Claims = HashMap<String, String>;
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LdProof {
     #[serde(rename = "@context")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<IndexSet<ContextType>>,
     pub r#type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub created: Option<OffsetDateTime>,
     pub cryptosuite: String,
     pub verification_method: String,
     pub proof_purpose: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof_value: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub challenge: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
 }
 
 // The main presentation
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -150,13 +141,12 @@ pub struct LdPresentation {
     pub verifiable_credential: VerifiableCredential,
     pub holder: Issuer,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<VcdmProof>,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -164,14 +154,11 @@ pub struct TermsOfUse {
     #[serde_as(as = "OneOrMany<_>")]
     r#type: Vec<String>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_option_or_error_if_null"
-    )]
+    #[serde(default, deserialize_with = "deserialize_option_or_error_if_null")]
     id: Option<Url>,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -179,14 +166,11 @@ pub struct Evidence {
     #[serde_as(as = "OneOrMany<_>")]
     r#type: Vec<String>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_option_or_error_if_null"
-    )]
+    #[serde(default, deserialize_with = "deserialize_option_or_error_if_null")]
     id: Option<Url>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RelatedResource {

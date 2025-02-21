@@ -6,6 +6,7 @@ use one_core::service::key::dto::{
 };
 use one_dto_mapper::{From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -15,6 +16,7 @@ use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(KeyRequestDTO)]
 #[serde(rename_all = "camelCase")]

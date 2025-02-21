@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 use url::Url;
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SdJwtVc {
@@ -13,14 +14,10 @@ pub struct SdJwtVc {
 
     /// Hash algorithm
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
-    #[serde(rename = "_sd_alg", default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "_sd_alg", default)]
     pub hash_alg: Option<String>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_status"
-    )]
+    #[serde(default, deserialize_with = "deserialize_status")]
     pub status: Option<SdJwtVcStatus>,
 
     #[serde(flatten)]

@@ -6,6 +6,7 @@ use one_core::service::trust_entity::dto::{
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -61,6 +62,7 @@ pub enum TrustEntityStateRest {
     RemovedAndWithdrawn,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(GetTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -74,13 +76,9 @@ pub struct GetTrustEntityResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub website: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub terms_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
@@ -117,6 +115,7 @@ pub struct TrustEntityFilterQueryParamsRestDto {
     pub organisation_id: Option<OrganisationId>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(TrustEntitiesResponseItemDTO)]
