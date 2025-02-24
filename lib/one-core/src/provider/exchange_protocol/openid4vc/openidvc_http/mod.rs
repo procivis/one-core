@@ -889,7 +889,14 @@ impl OpenID4VCHTTP {
                     ))?
                     .to_string()
             }
-            ClientIdSchemaType::Did => unimplemented!(),
+            ClientIdSchemaType::Did => proof
+                .verifier_did
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "proof is missing verifier_did, required for did client_id_scheme".to_string(),
+                ))?
+                .did
+                .to_string(),
         };
 
         let interaction_content = OpenID4VPVerifierInteractionContent {

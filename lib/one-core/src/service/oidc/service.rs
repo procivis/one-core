@@ -12,6 +12,7 @@ use uuid::Uuid;
 use super::dto::OpenID4VCICredentialResponseDTO;
 use super::mapper::credential_from_proved;
 use super::proof_request::{
+    generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_redirect_uri,
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
@@ -182,7 +183,16 @@ impl OIDCService {
                 )
                 .await?
             }
-            ClientIdSchemaType::Did => unimplemented!(),
+            ClientIdSchemaType::Did => {
+                generate_authorization_request_client_id_scheme_did(
+                    &proof,
+                    interaction_data,
+                    &interaction.id,
+                    &self.key_algorithm_provider,
+                    &*self.key_provider,
+                )
+                .await?
+            }
             ClientIdSchemaType::X509SanDns => {
                 generate_authorization_request_client_id_scheme_x509_san_dns(
                     &proof,

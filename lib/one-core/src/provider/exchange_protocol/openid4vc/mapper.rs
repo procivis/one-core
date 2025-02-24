@@ -79,6 +79,7 @@ use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oidc::proof_request::{
+    generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
@@ -1260,9 +1261,15 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
                 get_params_with_request(token, client_id, client_id_scheme)
             }
             ClientIdSchemaType::Did => {
-                return Err(ExchangeProtocolError::InvalidRequest(
-                    "client_id_scheme type 'did' not supported in this context".to_string(),
-                ))
+                let token = generate_authorization_request_client_id_scheme_did(
+                    proof,
+                    interaction_data.to_owned(),
+                    &interaction_id,
+                    key_algorithm_provider,
+                    key_provider,
+                )
+                .await?;
+                get_params_with_request(token, client_id, client_id_scheme)
             }
         }
     };

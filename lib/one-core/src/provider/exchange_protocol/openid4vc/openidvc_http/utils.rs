@@ -118,6 +118,70 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     })
 }
 
+async fn parse_referenced_data_from_did_signed_token(
+    token: String,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
+) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
+    let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
+        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let client_id = request_token.payload.custom.client_id.clone();
+
+    let Some(kid) = request_token.header.key_id.clone() else {
+        return Err(ExchangeProtocolError::Failed(
+            "JOSE header missing kid".to_string(),
+        ));
+    };
+
+    let verifier_did = client_id
+        .clone()
+        .parse()
+        .map_err(|_| ExchangeProtocolError::Failed("client_id is not a valid DID".to_string()))?;
+
+    let did_document = did_method_provider
+        .resolve(&verifier_did)
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let (_alg_id, alg) = key_algorithm_provider
+        .key_algorithm_from_jose_alg(&request_token.header.algorithm)
+        .ok_or(ExchangeProtocolError::Failed(format!(
+            "Missing algorithm: {}",
+            request_token.header.algorithm
+        )))?;
+
+    let key = did_document
+        .find_verification_method(Some(&kid), Some(KeyRole::AssertionMethod))
+        .ok_or(ExchangeProtocolError::Failed(
+            "Missing key in did".to_string(),
+        ))?
+        .public_key_jwk
+        .clone();
+
+    alg.parse_jwk(&key)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        .signature()
+        .ok_or(ExchangeProtocolError::Failed(
+            "signature missing".to_string(),
+        ))?
+        .public()
+        .verify(
+            request_token.unverified_jwt.as_bytes(),
+            &request_token.signature,
+        )
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
+
+    Ok(OpenID4VPHolderInteractionData {
+        client_id: client_id.clone(),
+        client_id_scheme: ClientIdSchemaType::Did,
+        verifier_did: Some(client_id),
+        ..response_content
+    })
+}
+
 async fn parse_referenced_data_from_verifier_attestation_token(
     token: String,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
@@ -257,9 +321,12 @@ pub(crate) async fn interaction_data_from_query(
             }
             ClientIdSchemaType::RedirectUri => parse_referenced_data_from_unsigned_token(token),
             ClientIdSchemaType::Did => {
-                return Err(ExchangeProtocolError::InvalidRequest(
-                    "did client_id_scheme not supported".to_string(),
-                ));
+                parse_referenced_data_from_did_signed_token(
+                    token,
+                    key_algorithm_provider,
+                    did_method_provider,
+                )
+                .await
             }
             ClientIdSchemaType::X509SanDns => {
                 parse_referenced_data_from_x509_san_dns_token(

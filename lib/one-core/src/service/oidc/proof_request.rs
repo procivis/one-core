@@ -245,6 +245,64 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
 
+pub(crate) async fn generate_authorization_request_client_id_scheme_did(
+    proof: &Proof,
+    interaction_data: OpenID4VPVerifierInteractionContent,
+    interaction_id: &InteractionId,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_provider: &dyn KeyProvider,
+) -> Result<String, ExchangeProtocolError> {
+    let client_response = generate_authorization_request_params(
+        proof,
+        interaction_data,
+        interaction_id,
+        key_algorithm_provider.as_ref(),
+        ClientIdSchemaType::Did,
+    )?;
+
+    let JWTSigner {
+        auth_fn,
+        jose_algorithm,
+        ..
+    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
+
+    let verifier_did = proof
+        .verifier_did
+        .as_ref()
+        .ok_or(ExchangeProtocolError::Failed(
+            "verifier_did is None".to_string(),
+        ))?;
+
+    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+
+    let request_jwt = Jwt {
+        header: JWTHeader {
+            algorithm: jose_algorithm,
+            key_id: auth_fn.get_key_id(),
+            r#type: Some("oauth-authz-req+jwt".to_string()),
+            jwk: None,
+            jwt: None,
+            x5c: None,
+        },
+        payload: JWTPayload {
+            issued_at: None,
+            expires_at,
+            invalid_before: None,
+            issuer: Some(verifier_did.did.to_string()),
+            subject: None,
+            jwt_id: None,
+            custom: client_response,
+            proof_of_possession_key: None,
+            vc_type: None,
+        },
+    };
+
+    request_jwt
+        .tokenize(Some(auth_fn))
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
+}
+
 fn generate_authorization_request_params(
     proof: &Proof,
     interaction_data: OpenID4VPVerifierInteractionContent,

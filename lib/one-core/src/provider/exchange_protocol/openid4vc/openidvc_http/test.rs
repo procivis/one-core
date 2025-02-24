@@ -22,8 +22,9 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
 };
-use crate::model::did::{Did, DidType};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -92,12 +93,14 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(),
+            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
         }),
     )
 }
 
-fn generic_presentation_params() -> OpenID4VCPresentationParams {
+fn generic_presentation_params(
+    client_id_schema: ClientIdSchemaType,
+) -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
         disabled: false,
         url_scheme: "openid4vp".to_string(),
@@ -109,7 +112,7 @@ fn generic_presentation_params() -> OpenID4VCPresentationParams {
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
-            default_client_id_schema: ClientIdSchemaType::RedirectUri,
+            default_client_id_schema: client_id_schema,
             supported_client_id_schemes: vec![
                 ClientIdSchemaType::RedirectUri,
                 ClientIdSchemaType::VerifierAttestation,
@@ -300,7 +303,7 @@ async fn test_generate_share_credentials_offer_by_value() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(),
+            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
         }),
         ..Default::default()
     });
@@ -546,7 +549,135 @@ async fn test_share_proof_with_use_request_uri() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(),
+            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
+        }),
+        ..Default::default()
+    });
+
+    let now = OffsetDateTime::now_utc();
+    let did = Did {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "did".to_string(),
+        did: "did:example:123".parse().unwrap(),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        deactivated: false,
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: Key {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                public_key: vec![],
+                name: "".to_string(),
+                key_reference: vec![],
+                storage_type: "".to_string(),
+                key_type: "".to_string(),
+                organisation: None,
+            },
+        }]),
+        organisation: None,
+    };
+    let proof_id = Uuid::new_v4();
+    let proof = Proof {
+        id: proof_id.into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        exchange: "OPENID4VC".to_string(),
+        transport: "HTTP".to_string(),
+        redirect_uri: None,
+        state: ProofStateEnum::Created,
+        role: ProofRole::Verifier,
+        requested_date: None,
+        completed_date: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "test-share-proof".into(),
+            expire_duration: 123,
+            imported_source_url: None,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: None,
+                credential_schema: None,
+            }]),
+        }),
+        claims: None,
+        verifier_did: Some(did.clone()),
+        holder_did: None,
+        verifier_key: None,
+        interaction: None,
+    };
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
+
+    let key_id = Uuid::new_v4().into();
+    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: "x".to_string(),
+        y: None,
+    });
+    let vp_formats = HashMap::new();
+
+    let ShareResponse { url, .. } = protocol
+        .verifier_share_proof(
+            &proof,
+            format_type_mapper,
+            key_id,
+            encryption_key_jwk,
+            vp_formats,
+            type_to_descriptor_mapper,
+            ClientIdSchemaType::Did,
+        )
+        .await
+        .unwrap();
+    let url: Url = url.parse().unwrap();
+    let query_pairs: HashSet<(Cow<'_, str>, Cow<'_, str>)> = HashSet::from_iter(url.query_pairs());
+
+    assert_eq!(
+        HashSet::from_iter([
+            ("client_id".into(), (&did.did.to_string()).into()),
+            ("client_id_scheme".into(), "did".into()),
+            (
+                "request_uri".into(),
+                format!("http://base_url/ssi/oidc-verifier/v1/{proof_id}/client-request").into()
+            ),
+        ]),
+        query_pairs
+    );
+}
+
+#[tokio::test]
+async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
+    let protocol = setup_protocol(TestInputs {
+        params: Some(OpenID4VCParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: true,
+            refresh_expires_in: 1000,
+            use_request_uri: true,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
+            },
+            presentation: generic_presentation_params(ClientIdSchemaType::Did),
         }),
         ..Default::default()
     });
@@ -915,7 +1046,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(),
+            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
         }),
         ..Default::default()
     });
@@ -1184,7 +1315,7 @@ async fn test_handle_invitation_proof_failed() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(),
+            presentation: generic_presentation_params(ClientIdSchemaType::Did),
         }),
         ..Default::default()
     });
