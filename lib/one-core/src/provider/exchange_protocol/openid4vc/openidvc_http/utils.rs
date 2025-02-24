@@ -35,24 +35,19 @@ pub fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
 }
 
 fn parse_referenced_data_from_unsigned_token(
-    token: String,
+    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
 ) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
-    let DecomposedToken::<OpenID4VPAuthorizationRequestParams> { payload, .. } =
-        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    let result: OpenID4VPHolderInteractionData = payload.custom.into();
+    let result: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
     assert!(result.verifier_did.is_none());
     Ok(result)
 }
 
 async fn parse_referenced_data_from_x509_san_dns_token(
-    token: String,
+    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     x509_ca_certificate: &str,
 ) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
-    let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
-        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
     let x5c = request_token
         .header
         .x5c
@@ -119,13 +114,10 @@ async fn parse_referenced_data_from_x509_san_dns_token(
 }
 
 async fn parse_referenced_data_from_did_signed_token(
-    token: String,
+    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
-    let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
-        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
     let client_id = request_token.payload.custom.client_id.clone();
 
     let Some(kid) = request_token.header.key_id.clone() else {
@@ -183,13 +175,10 @@ async fn parse_referenced_data_from_did_signed_token(
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
-    token: String,
+    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
-    let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
-        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
     let attestation_jwt = request_token
         .header
         .jwt
@@ -296,7 +285,8 @@ pub(crate) async fn interaction_data_from_query(
         request = Some(token);
     }
 
-    if let Some(client_id_scheme) = &query_params.client_id_scheme {
+    let query_client_id_scheme = query_params.client_id_scheme;
+    if let Some(client_id_scheme) = &query_client_id_scheme {
         if request.is_none()
             && (client_id_scheme == &ClientIdSchemaType::VerifierAttestation
                 || client_id_scheme == &ClientIdSchemaType::X509SanDns)
@@ -310,19 +300,36 @@ pub(crate) async fn interaction_data_from_query(
     let mut interaction_data: OpenID4VPHolderInteractionData = query_params.try_into()?;
 
     if let Some(token) = request {
+        let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
+            Jwt::decompose_token(&token)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        // If the `client_id_scheme` was not present in the params but is contained in the request token,
+        // override the fallback `client_id_scheme`.
+        // Yes this is hacky, but in draft 24+ of OID4VP, the `client_id_scheme` will be contained within
+        // `client_id`, so this special case can be removed again.
+        // TODO OPENID4VP draft 24+: remove this if-block
+        if query_client_id_scheme.is_none() {
+            if let Some(client_id_scheme) = request_token.payload.custom.client_id_scheme {
+                interaction_data.client_id_scheme = client_id_scheme;
+            }
+        }
+
         let referenced_params = match &interaction_data.client_id_scheme {
             ClientIdSchemaType::VerifierAttestation => {
                 parse_referenced_data_from_verifier_attestation_token(
-                    token,
+                    request_token,
                     key_algorithm_provider,
                     did_method_provider,
                 )
                 .await
             }
-            ClientIdSchemaType::RedirectUri => parse_referenced_data_from_unsigned_token(token),
+            ClientIdSchemaType::RedirectUri => {
+                parse_referenced_data_from_unsigned_token(request_token)
+            }
             ClientIdSchemaType::Did => {
                 parse_referenced_data_from_did_signed_token(
-                    token,
+                    request_token,
                     key_algorithm_provider,
                     did_method_provider,
                 )
@@ -330,7 +337,7 @@ pub(crate) async fn interaction_data_from_query(
             }
             ClientIdSchemaType::X509SanDns => {
                 parse_referenced_data_from_x509_san_dns_token(
-                    token,
+                    request_token,
                     key_algorithm_provider,
                     did_method_provider,
                     params.presentation.x509_ca_certificate.as_ref().ok_or(
