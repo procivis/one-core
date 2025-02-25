@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none, OneOrMany};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus, Issuer};
@@ -86,4 +87,11 @@ pub struct SDCredentialSubject {
 pub struct DecomposedToken<'a> {
     pub jwt: &'a str,
     pub disclosures: Vec<Disclosure>,
+}
+
+pub struct SdJwtFormattingInputs {
+    pub holder_did: Option<DidValue>,
+    pub leeway: u64,
+    pub token_type: String,
+    pub vc_type: Option<String>,
 }

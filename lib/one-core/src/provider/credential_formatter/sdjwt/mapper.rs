@@ -1,5 +1,4 @@
 use anyhow::Context;
-use rand::seq::SliceRandom;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -8,18 +7,12 @@ use crate::provider::credential_formatter::sdjwt::model::{Sdvp, VcClaim};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 
 pub(crate) fn vc_from_credential(
-    credential: VcdmCredential,
-    digests: Vec<String>,
+    mut credential: VcdmCredential,
+    mut digests: Vec<String>,
     algorithm: &str,
 ) -> Result<VcClaim, FormatterError> {
-    let digests: Vec<String> = {
-        let mut digests = digests;
-        let mut rng = rand::thread_rng();
-        digests.shuffle(&mut rng);
-        digests
-    };
+    digests.sort_unstable();
 
-    let mut credential = credential;
     credential.credential_subject = vec![VcdmCredentialSubject {
         id: None,
         claims: indexmap::indexmap! {

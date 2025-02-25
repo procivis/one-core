@@ -3,15 +3,21 @@ use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
 use one_crypto::{CryptoProvider, Hasher};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::Value;
+use time::Duration;
 
 use super::jwt::model::JWTPayload;
-use super::model::TokenVerifier;
+use super::model::{AuthenticationFn, TokenVerifier};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::{AnyPayload, Jwt};
 use crate::provider::credential_formatter::model::CredentialPresentation;
-use crate::provider::credential_formatter::sdjwt::disclosures::{parse_token, select_disclosures};
+use crate::provider::credential_formatter::sdjwt::disclosures::{
+    compute_object_disclosures, parse_token, select_disclosures,
+};
+use crate::provider::credential_formatter::sdjwt::model::SdJwtFormattingInputs;
+use crate::provider::credential_formatter::vcdm::VcdmCredential;
 
 pub mod disclosures;
 pub mod mapper;
@@ -23,6 +29,66 @@ pub mod test;
 pub(crate) enum SdJwtType {
     SdJwt,
     SdJwtVc,
+}
+
+pub async fn format_credential<T: Serialize>(
+    credential: VcdmCredential,
+    additional_inputs: SdJwtFormattingInputs,
+    auth_fn: AuthenticationFn,
+    hasher: &dyn Hasher,
+    credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
+    cred_and_digests_to_payload: fn(VcdmCredential, Vec<String>) -> Result<T, FormatterError>,
+) -> Result<String, FormatterError> {
+    let issuer = credential.issuer.to_did_value()?.to_string();
+    let id = credential.id.clone();
+    let issued_at = credential.valid_from.or(credential.issuance_date);
+    let expires_at = credential.valid_until.or(credential.expiration_date);
+    let (payload, disclosures) = format_hashed_credential(
+        credential,
+        hasher,
+        credential_to_claims,
+        cred_and_digests_to_payload,
+    )?;
+
+    let payload = JWTPayload {
+        issued_at,
+        expires_at,
+        invalid_before: issued_at
+            .and_then(|iat| iat.checked_sub(Duration::seconds(additional_inputs.leeway as i64))),
+        subject: additional_inputs.holder_did.map(|did| did.to_string()),
+        issuer: Some(issuer),
+        jwt_id: id.map(|id| id.to_string()),
+        custom: payload,
+        vc_type: additional_inputs.vc_type,
+        proof_of_possession_key: None,
+    };
+
+    let key_id = auth_fn.get_key_id();
+    let jwt = Jwt::new(
+        additional_inputs.token_type,
+        auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
+            "Invalid key algorithm".to_string(),
+        ))?,
+        key_id,
+        None,
+        payload,
+    );
+
+    let jwt_token = jwt.tokenize(Some(auth_fn)).await?;
+    let sdjwt = serialize(jwt_token, disclosures);
+    Ok(sdjwt)
+}
+
+fn format_hashed_credential<T>(
+    credential: VcdmCredential,
+    hasher: &dyn Hasher,
+    credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
+    cred_and_digests_to_payload: fn(VcdmCredential, Vec<String>) -> Result<T, FormatterError>,
+) -> Result<(T, Vec<String>), FormatterError> {
+    let claims = credential_to_claims(&credential)?;
+    let (disclosures, digests) = compute_object_disclosures(&claims, hasher)?;
+    let payload = cred_and_digests_to_payload(credential, digests)?;
+    Ok((payload, disclosures))
 }
 
 pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, FormatterError> {

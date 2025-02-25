@@ -14,10 +14,10 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
+use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use shared_types::{CredentialSchemaId, DidValue};
-use time::Duration;
 use url::Url;
 
 use super::model::CredentialData;
@@ -25,7 +25,6 @@ use super::sdjwt;
 use super::vcdm::VcdmCredential;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
@@ -33,11 +32,11 @@ use crate::provider::credential_formatter::model::{
     SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
-use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Sdvp};
-use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::{
-    SdJwtVc, SdJwtVcStatus, SdJwtVcStatusList,
+use crate::provider::credential_formatter::sdjwt::model::{
+    DecomposedToken, SdJwtFormattingInputs, Sdvp,
 };
+use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcStatus};
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
@@ -62,6 +61,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
+        const HASH_ALG: &str = "sha-256";
         // todo: here we need sdjwt-vc specific data model instead of using vcdm
         let vcdm = credential_data.vcdm;
 
@@ -71,15 +71,23 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .and_then(|schemas| schemas.iter().next())
             .map(|schema| schema.id.to_owned())
             .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
+        let inputs = SdJwtFormattingInputs {
+            holder_did: credential_data.holder_did,
+            leeway: self.params.leeway,
+            token_type: "vc+sd-jwt".to_string(),
+            vc_type: Some(schema_id),
+        };
+        let payload_from_cred_and_digests = |cred: VcdmCredential, digests: Vec<String>| {
+            sdjwt_vc_from_credential(cred, digests, HASH_ALG)
+        };
 
         format_credential(
             vcdm,
-            credential_data.holder_did,
+            inputs,
             auth_fn,
-            &*self.crypto,
-            self.params.leeway,
-            "vc+sd-jwt".to_string(),
-            schema_id,
+            &*self.crypto.get_hasher(HASH_ALG)?,
+            credential_to_claims,
+            payload_from_cred_and_digests,
         )
         .await
     }
@@ -317,58 +325,8 @@ pub(super) async fn extract_credentials_internal(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn format_credential(
-    credential: VcdmCredential,
-    holder_did: Option<DidValue>,
-    auth_fn: AuthenticationFn,
-    crypto: &dyn CryptoProvider,
-    leeway: u64,
-    token_type: String,
-    vc_type: String,
-) -> Result<String, FormatterError> {
-    let (vc, disclosures) = format_hashed_credential(&credential, "sha-256", crypto)?;
-
-    let issuer: String = credential.issuer.to_did_value()?.to_string();
-    let credential_id = credential.id.as_ref().map(ToString::to_string);
-    let issued_at = credential.valid_from.or(credential.issuance_date);
-    let expires_at = credential.valid_until.or(credential.expiration_date);
-
-    let payload = JWTPayload {
-        issued_at,
-        expires_at,
-        invalid_before: issued_at.and_then(|iat| iat.checked_sub(Duration::seconds(leeway as i64))),
-        subject: holder_did.map(|did| did.to_string()),
-        issuer: Some(issuer),
-        jwt_id: credential_id,
-        custom: vc,
-        vc_type: Some(vc_type),
-        proof_of_possession_key: None,
-    };
-
-    let key_id = auth_fn.get_key_id();
-    let jwt = Jwt::new(
-        token_type,
-        auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
-            "Invalid key algorithm".to_string(),
-        ))?,
-        key_id,
-        None,
-        payload,
-    );
-
-    let token = jwt.tokenize(Some(auth_fn)).await?;
-    let sdjwt = sdjwt::serialize(token, disclosures);
-
-    Ok(sdjwt)
-}
-
-fn format_hashed_credential(
-    credential: &VcdmCredential,
-    algorithm: &str,
-    crypto: &dyn CryptoProvider,
-) -> Result<(SdJwtVc, Vec<String>), FormatterError> {
-    let claims = credential
+fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterError> {
+    credential
         .credential_subject
         .first()
         .map(|cs| {
@@ -377,33 +335,24 @@ fn format_hashed_credential(
         })
         .ok_or_else(|| {
             FormatterError::Failed("Credential is missing credential subject".to_string())
-        })?;
-    let hasher = crypto.get_hasher("sha-256")?;
+        })
+}
 
-    let (disclosures, sd_section) =
-        sdjwt::disclosures::compute_object_disclosures(&claims, &*hasher)?;
+fn sdjwt_vc_from_credential(
+    credential: VcdmCredential,
+    mut hashed_claims: Vec<String>,
+    algorithm: &str,
+) -> Result<SdJwtVc, FormatterError> {
+    hashed_claims.sort_unstable();
+
     let status = credential.credential_status.first().and_then(|status| {
         let obj: serde_json::Value = status
             .additional_fields
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
-
         serde_json::from_value(obj).ok()
     });
-
-    let vc = vc_from_credential(sd_section, algorithm, status)?;
-
-    Ok((vc, disclosures))
-}
-
-fn vc_from_credential(
-    mut hashed_claims: Vec<String>,
-    algorithm: &str,
-    status: Option<SdJwtVcStatusList>,
-) -> Result<SdJwtVc, FormatterError> {
-    hashed_claims.sort_unstable();
-
     Ok(SdJwtVc {
         digests: hashed_claims,
         hash_alg: Some(algorithm.to_owned()),
