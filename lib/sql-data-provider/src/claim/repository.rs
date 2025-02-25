@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
@@ -35,6 +35,19 @@ impl ClaimRepository for ClaimProvider {
     ) -> Result<(), DataLayerError> {
         claim::Entity::delete_many()
             .filter(claim::Column::CredentialId.eq(request))
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(())
+    }
+
+    async fn delete_claims_for_credentials(
+        &self,
+        request: HashSet<CredentialId>,
+    ) -> Result<(), DataLayerError> {
+        claim::Entity::delete_many()
+            .filter(claim::Column::CredentialId.is_in(request))
             .exec(&self.db)
             .await
             .map_err(to_data_layer_error)?;

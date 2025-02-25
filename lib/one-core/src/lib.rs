@@ -380,6 +380,7 @@ impl OneCore {
 
         let task_providers = tasks_from_config(
             &core_config.task,
+            data_provider.get_claim_repository(),
             data_provider.get_credential_repository(),
             data_provider.get_history_repository(),
             revocation_method_provider.to_owned(),
@@ -552,6 +553,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
+                data_provider.get_claim_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_history_repository(),

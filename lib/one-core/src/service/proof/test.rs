@@ -55,6 +55,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::repository::claim_repository::MockClaimRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -81,6 +82,7 @@ struct Repositories {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
+    pub claim_repository: MockClaimRepository,
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub history_repository: MockHistoryRepository,
@@ -101,6 +103,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.claim_repository),
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.history_repository),

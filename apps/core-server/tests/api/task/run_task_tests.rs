@@ -194,6 +194,9 @@ async fn test_run_retain_proof_check_with_update() {
         .set_proof_claims(&proof.id, credential.claims.unwrap())
         .await;
 
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert!(!credential.claims.unwrap().is_empty());
+
     // WHEN
     let resp = context.api.tasks.run("RETAIN_PROOF_CHECK").await;
 
@@ -202,4 +205,7 @@ async fn test_run_retain_proof_check_with_update() {
 
     let proof = context.db.proofs.get(&proof.id).await;
     assert!(proof.claims.unwrap().is_empty());
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert!(credential.claims.unwrap().is_empty());
 }

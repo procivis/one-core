@@ -12,6 +12,7 @@ use crate::config::core_config::{TaskConfig, TaskType};
 use crate::config::ConfigError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -32,6 +33,7 @@ pub trait Task: Send + Sync {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn tasks_from_config(
     config: &TaskConfig,
+    claim_repository: Arc<dyn ClaimRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -64,6 +66,7 @@ pub(crate) fn tasks_from_config(
                 core_base_url.to_owned(),
             )) as _,
             TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(
+                claim_repository.clone(),
                 proof_repository.clone(),
                 history_repository.clone(),
             )) as _,

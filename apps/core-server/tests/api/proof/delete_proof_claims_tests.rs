@@ -92,6 +92,9 @@ async fn test_delete_proof_claims_success() {
         .set_proof_claims(&proof.id, credential.claims.unwrap())
         .await;
 
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert!(!credential.claims.unwrap().is_empty());
+
     // WHEN
     let resp = context.api.proofs.delete_proof_claims(&proof.id).await;
 
@@ -112,4 +115,7 @@ async fn test_delete_proof_claims_success() {
     );
 
     assert_eq!(proof.claims.unwrap().len(), 0);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert!(credential.claims.unwrap().is_empty());
 }

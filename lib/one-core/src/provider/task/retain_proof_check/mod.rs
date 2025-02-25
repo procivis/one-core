@@ -1,31 +1,39 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::{json, Value};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::Task;
+use crate::model::claim::ClaimRelations;
+use crate::model::credential::CredentialRelations;
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
-use crate::model::proof::ProofStateEnum;
+use crate::model::proof::{ProofClaimRelations, ProofRelations, ProofStateEnum};
+use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::ServiceError;
+use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::service::proof::dto::ProofFilterValue;
 
 pub struct RetainProofCheck {
+    claim_repository: Arc<dyn ClaimRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     history_repository: Arc<dyn HistoryRepository>,
 }
 
 impl RetainProofCheck {
     pub fn new(
+        claim_repository: Arc<dyn ClaimRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
+            claim_repository,
             proof_repository,
             history_repository,
         }
@@ -90,7 +98,41 @@ impl Task for RetainProofCheck {
                     continue;
                 }
 
+                let credential_ids = self
+                    .proof_repository
+                    .get_proof(
+                        &proof.id,
+                        &ProofRelations {
+                            claims: Some(ProofClaimRelations {
+                                claim: ClaimRelations::default(),
+                                credential: Some(CredentialRelations::default()),
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
+                        proof.id,
+                    )))?
+                    .claims
+                    .ok_or(ServiceError::MappingError("claims are None".to_string()))?
+                    .into_iter()
+                    .map(|proof_claim| {
+                        Ok::<CredentialId, ServiceError>(
+                            proof_claim
+                                .credential
+                                .ok_or(ServiceError::MappingError(
+                                    "credential is None".to_string(),
+                                ))?
+                                .id,
+                        )
+                    })
+                    .collect::<Result<HashSet<_>, _>>()?;
+
                 self.proof_repository.delete_proof_claims(&proof.id).await?;
+                self.claim_repository
+                    .delete_claims_for_credentials(credential_ids)
+                    .await?;
             }
 
             page += 1;

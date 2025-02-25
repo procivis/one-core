@@ -6,6 +6,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -28,6 +29,7 @@ pub struct ProofService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
+    claim_repository: Arc<dyn ClaimRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
@@ -51,6 +53,7 @@ impl ProofService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
+        claim_repository: Arc<dyn ClaimRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
         credential_schema: Arc<dyn CredentialSchemaRepository>,
         history_repository: Arc<dyn HistoryRepository>,
@@ -70,6 +73,7 @@ impl ProofService {
             key_algorithm_provider,
             proof_schema_repository,
             did_repository,
+            claim_repository,
             credential_repository,
             credential_schema,
             history_repository,

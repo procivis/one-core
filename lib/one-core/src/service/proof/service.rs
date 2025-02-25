@@ -1,8 +1,9 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::BoxFuture;
-use shared_types::{OrganisationId, ProofId};
+use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use ProofStateEnum::{Created, Pending, Requested, Retracted};
@@ -535,11 +536,41 @@ impl ProofService {
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {
         let proof = self
             .proof_repository
-            .get_proof(&proof_id, &Default::default())
+            .get_proof(
+                &proof_id,
+                &ProofRelations {
+                    claims: Some(ProofClaimRelations {
+                        claim: ClaimRelations::default(),
+                        credential: Some(CredentialRelations::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
             .await?
-            .ok_or(EntityNotFoundError::Proof(proof_id))?;
+            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
+                proof_id,
+            )))?;
+
+        let credential_ids = proof
+            .claims
+            .ok_or(ServiceError::MappingError("claims are None".to_string()))?
+            .into_iter()
+            .map(|proof_claim| {
+                Ok::<CredentialId, ServiceError>(
+                    proof_claim
+                        .credential
+                        .ok_or(ServiceError::MappingError("credential is None".to_string()))?
+                        .id,
+                )
+            })
+            .collect::<Result<HashSet<_>, _>>()?;
 
         self.proof_repository.delete_proof_claims(&proof.id).await?;
+
+        self.claim_repository
+            .delete_claims_for_credentials(credential_ids)
+            .await?;
+
         Ok(())
     }
 

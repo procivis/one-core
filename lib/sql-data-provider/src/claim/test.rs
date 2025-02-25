@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
@@ -9,7 +10,7 @@ use one_core::repository::claim_schema_repository::{
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::{ClaimSchemaId, CredentialId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId};
 use uuid::Uuid;
 
 use super::ClaimProvider;
@@ -21,6 +22,8 @@ struct TestSetup {
     pub repository: Box<dyn ClaimRepository>,
     pub claim_schemas: Vec<ClaimSchema>,
     pub credential_id: CredentialId,
+    pub did_id: DidId,
+    pub credential_schema_id: CredentialSchemaId,
 }
 
 async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestSetup {
@@ -96,6 +99,8 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
                 array: false,
             })
             .collect(),
+        did_id,
+        credential_schema_id: *credential_schema_id,
     }
 }
 
@@ -171,6 +176,80 @@ async fn test_delete_claims_for_credential() {
 
     repository
         .delete_claims_for_credential(credential_id)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        crate::entity::claim::Entity::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn test_delete_claims_for_credentials() {
+    let TestSetup {
+        repository,
+        claim_schemas,
+        db,
+        credential_id,
+        credential_schema_id,
+        did_id,
+    } = setup(get_claim_schema_repository_mock()).await;
+
+    let credential_id_2 = insert_credential(
+        &db,
+        &credential_schema_id,
+        CredentialStateEnum::Created,
+        "OPENID4VC",
+        did_id.to_owned(),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    repository
+        .create_claim_list(
+            claim_schemas
+                .iter()
+                .map(|schema| Claim {
+                    id: ClaimId::new_v4(),
+                    credential_id,
+                    value: "value".to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    path: schema.key.to_owned(),
+                    schema: Some(schema.clone()),
+                })
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+    repository
+        .create_claim_list(
+            claim_schemas
+                .into_iter()
+                .map(|schema| Claim {
+                    id: ClaimId::new_v4(),
+                    credential_id: credential_id_2,
+                    value: "value".to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    path: schema.key.to_owned(),
+                    schema: Some(schema),
+                })
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+    repository
+        .delete_claims_for_credentials(HashSet::from([credential_id, credential_id_2]))
         .await
         .unwrap();
 
