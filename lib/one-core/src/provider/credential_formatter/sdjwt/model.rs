@@ -91,6 +91,7 @@ pub struct DecomposedToken<'a> {
 
 pub struct SdJwtFormattingInputs {
     pub holder_did: Option<DidValue>,
+    pub holder_key_id: Option<String>,
     pub leeway: u64,
     pub token_type: String,
     pub vc_type: Option<String>,

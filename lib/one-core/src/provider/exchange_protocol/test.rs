@@ -221,7 +221,13 @@ async fn test_issuer_submit_succeeds() {
         Some("base_url".to_string()),
     );
 
-    let result = service.issue_credential(&credential_id, dummy_did()).await;
+    let result = service
+        .issue_credential(
+            &credential_id,
+            dummy_did(),
+            format!("{}#0", dummy_did().did),
+        )
+        .await;
     assert!(result.is_ok());
 }
 
@@ -789,7 +795,11 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     );
 
     service
-        .issue_credential(&credential_id, dummy_did())
+        .issue_credential(
+            &credential_id,
+            dummy_did(),
+            format!("{}#0", dummy_did().did),
+        )
         .await
         .unwrap();
 }
@@ -958,7 +968,11 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     );
 
     service
-        .issue_credential(&credential_id, dummy_did())
+        .issue_credential(
+            &credential_id,
+            dummy_did(),
+            format!("{}#0", dummy_did().did),
+        )
         .await
         .unwrap();
 }
@@ -1038,7 +1052,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     assert2::assert!(
         let ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest) =
         service
-        .issue_credential(&credential_id, dummy_did())
+        .issue_credential(&credential_id, dummy_did(), format!("{}#0", dummy_did().did))
         .await
         .err()
         .unwrap()

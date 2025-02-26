@@ -214,6 +214,7 @@ async fn test_credential_formatting_ok_for_es256() {
         vcdm,
         claims,
         holder_did: Some(holder_did.clone()),
+        holder_key_id: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();
@@ -397,6 +398,7 @@ async fn test_unverified_credential_extraction() {
         vcdm,
         claims,
         holder_did: Some(holder_did.clone()),
+        holder_key_id: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();
@@ -584,6 +586,7 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         vcdm,
         claims,
         holder_did: Some(holder_did.clone()),
+        holder_key_id: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();

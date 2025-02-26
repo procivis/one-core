@@ -694,6 +694,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         vcdm,
         claims,
         holder_did: Some(holder_did.clone()),
+        holder_key_id: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();

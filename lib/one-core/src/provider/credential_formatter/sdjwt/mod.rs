@@ -7,8 +7,9 @@ use serde::Serialize;
 use serde_json::Value;
 use time::Duration;
 
-use super::jwt::model::JWTPayload;
+use super::jwt::model::{JWTPayload, ProofOfPossessionKey};
 use super::model::{AuthenticationFn, TokenVerifier};
+use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::{AnyPayload, Jwt};
@@ -18,6 +19,8 @@ use crate::provider::credential_formatter::sdjwt::disclosures::{
 };
 use crate::provider::credential_formatter::sdjwt::model::SdJwtFormattingInputs;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::service::key::dto::PublicKeyJwkDTO;
 
 pub mod disclosures;
 pub mod mapper;
@@ -36,6 +39,7 @@ pub async fn format_credential<T: Serialize>(
     additional_inputs: SdJwtFormattingInputs,
     auth_fn: AuthenticationFn,
     hasher: &dyn Hasher,
+    did_method_provider: &dyn DidMethodProvider,
     credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
     cred_and_digests_to_payload: fn(VcdmCredential, Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<String, FormatterError> {
@@ -50,6 +54,23 @@ pub async fn format_credential<T: Serialize>(
         cred_and_digests_to_payload,
     )?;
 
+    let proof_of_possession_key = if let Some(ref holder_did) = additional_inputs.holder_did {
+        let did_document = did_method_provider
+            .resolve(holder_did)
+            .await
+            .map_err(|err| FormatterError::CouldNotFormat(format!("{}", err)))?;
+        did_document
+            .find_verification_method(
+                additional_inputs.holder_key_id.as_deref(),
+                Some(KeyRole::AssertionMethod),
+            )
+            .map(|verification_method| verification_method.public_key_jwk.clone())
+            .map(PublicKeyJwkDTO::from)
+            .map(|jwk| ProofOfPossessionKey { key_id: None, jwk })
+    } else {
+        None
+    };
+
     let payload = JWTPayload {
         issued_at,
         expires_at,
@@ -60,7 +81,7 @@ pub async fn format_credential<T: Serialize>(
         jwt_id: id.map(|id| id.to_string()),
         custom: payload,
         vc_type: additional_inputs.vc_type,
-        proof_of_possession_key: None,
+        proof_of_possession_key,
     };
 
     let key_id = auth_fn.get_key_id();

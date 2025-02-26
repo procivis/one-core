@@ -481,13 +481,21 @@ async fn initialize(
                                 let params = format_config
                                     .get(name)
                                     .expect("SD-JWT formatter params are mandatory");
-                                Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
+                                Arc::new(SDJWTFormatter::new(
+                                    params,
+                                    crypto.clone(),
+                                    did_method_provider.clone(),
+                                )) as _
                             }
                             "SD_JWT_VC" => {
                                 let params = format_config
                                     .get(name)
                                     .expect("SD-JWT VC formatter params are mandatory");
-                                Arc::new(SDJWTVCFormatter::new(params, crypto.clone())) as _
+                                Arc::new(SDJWTVCFormatter::new(
+                                    params,
+                                    crypto.clone(),
+                                    did_method_provider.clone(),
+                                )) as _
                             }
                             "JSON_LD_CLASSIC" => {
                                 let params = format_config

@@ -171,6 +171,7 @@ impl VCAPIService {
                 .find_map(|s| DidValue::from_did_url(s.id.as_ref()?).ok()),
             vcdm,
             claims: vec![],
+            holder_key_id: None,
         };
         let test = formatter.format_credential(credential_data, auth_fn).await;
 

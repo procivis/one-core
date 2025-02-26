@@ -411,13 +411,7 @@ pub fn dummy_did_document(did: &DidValue) -> DidDocument {
             id: "did-vm-id".to_string(),
             r#type: "did-vm-type".to_string(),
             controller: "did-vm-controller".to_string(),
-            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                r#use: None,
-                kid: None,
-                crv: "P-256".to_string(),
-                x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
-                y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
-            }),
+            public_key_jwk: dummy_jwk(),
         }],
         authentication: None,
         assertion_method: Some(vec!["did-vm-id".to_string()]),
@@ -426,4 +420,14 @@ pub fn dummy_did_document(did: &DidValue) -> DidDocument {
         capability_delegation: None,
         rest: Default::default(),
     }
+}
+
+pub fn dummy_jwk() -> PublicKeyJwk {
+    PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+    })
 }

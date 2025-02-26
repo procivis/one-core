@@ -34,9 +34,11 @@ use crate::provider::credential_formatter::sdjwt::model::*;
 use crate::provider::credential_formatter::sdjwt::{
     format_credential, model, prepare_sd_presentation,
 };
+use crate::provider::did_method::provider::DidMethodProvider;
 
 pub struct SDJWTFormatter {
-    pub crypto: Arc<dyn CryptoProvider>,
+    crypto: Arc<dyn CryptoProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     params: Params,
 }
 
@@ -63,6 +65,7 @@ impl CredentialFormatter for SDJWTFormatter {
 
         let inputs = SdJwtFormattingInputs {
             holder_did: credential_data.holder_did,
+            holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "SD_JWT".to_string(),
             vc_type: None,
@@ -75,6 +78,7 @@ impl CredentialFormatter for SDJWTFormatter {
             inputs,
             auth_fn,
             &*self.crypto.get_hasher(HASH_ALG)?,
+            &*self.did_method_provider,
             credential_to_claims,
             payload_from_cred_and_digests,
         )
@@ -221,8 +225,16 @@ impl CredentialFormatter for SDJWTFormatter {
 }
 
 impl SDJWTFormatter {
-    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
-        Self { params, crypto }
+    pub fn new(
+        params: Params,
+        crypto: Arc<dyn CryptoProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+    ) -> Self {
+        Self {
+            params,
+            crypto,
+            did_method_provider,
+        }
     }
 }
 

@@ -17,6 +17,7 @@ use crate::service::error::ServiceError;
 pub fn credential_data_from_credential_detail_response(
     credential: CredentialDetailResponseDTO,
     holder_did: DidValue,
+    holder_key_id: String,
     _core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
     context: IndexSet<ContextType>,
@@ -92,5 +93,6 @@ pub fn credential_data_from_credential_detail_response(
         vcdm,
         claims: flat_claims,
         holder_did: Some(holder_did),
+        holder_key_id: Some(holder_key_id),
     })
 }

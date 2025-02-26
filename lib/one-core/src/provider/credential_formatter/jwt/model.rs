@@ -68,7 +68,7 @@ pub struct DecomposedToken<Payload> {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ProofOfPossessionKey {
     #[serde(rename = "kid", default)]
     pub key_id: Option<String>,

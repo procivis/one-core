@@ -38,12 +38,14 @@ use crate::provider::credential_formatter::sdjwt::model::{
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcStatus};
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub struct SDJWTVCFormatter {
-    pub crypto: Arc<dyn CryptoProvider>,
+    crypto: Arc<dyn CryptoProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     params: Params,
 }
 
@@ -73,6 +75,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
         let inputs = SdJwtFormattingInputs {
             holder_did: credential_data.holder_did,
+            holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "vc+sd-jwt".to_string(),
             vc_type: Some(schema_id),
@@ -86,6 +89,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             inputs,
             auth_fn,
             &*self.crypto.get_hasher(HASH_ALG)?,
+            &*self.did_method_provider,
             credential_to_claims,
             payload_from_cred_and_digests,
         )
@@ -258,8 +262,16 @@ impl CredentialFormatter for SDJWTVCFormatter {
 }
 
 impl SDJWTVCFormatter {
-    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
-        Self { params, crypto }
+    pub fn new(
+        params: Params,
+        crypto: Arc<dyn CryptoProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+    ) -> Self {
+        Self {
+            params,
+            crypto,
+            did_method_provider,
+        }
     }
 }
 

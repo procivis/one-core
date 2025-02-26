@@ -503,5 +503,6 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
         vcdm,
         claims,
         holder_did: Some(holder_did),
+        holder_key_id: Some("did-vm-id".to_string()),
     }
 }

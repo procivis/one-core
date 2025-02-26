@@ -295,6 +295,7 @@ impl OneDevCore {
                                 .embed_layout_properties,
                         },
                         crypto_provider.clone(),
+                        did_method_provider.clone(),
                     )) as _,
                 ),
                 (

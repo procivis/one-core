@@ -451,6 +451,7 @@ pub async fn create_lvvc_with_status(
         vcdm,
         claims: vec![],
         holder_did: None,
+        holder_key_id: None,
     };
 
     let formatted_credential = formatter

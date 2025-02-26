@@ -85,6 +85,7 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
         vcdm,
         claims,
         holder_did: Some(holder_did),
+        holder_key_id: None,
     }
 }
 
@@ -142,6 +143,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         vcdm,
         claims,
         holder_did: Some(holder_did),
+        holder_key_id: None,
     }
 }
 

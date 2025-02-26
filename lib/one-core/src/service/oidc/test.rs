@@ -658,7 +658,7 @@ async fn test_oidc_issuer_create_credential_success() {
         exchange_provider
             .expect_issue_credential()
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
@@ -769,7 +769,7 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
         exchange_provider
             .expect_issue_credential()
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,

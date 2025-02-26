@@ -65,6 +65,7 @@ pub(crate) trait ExchangeProtocolProviderExtra: ExchangeProtocolProvider {
         &self,
         credential_id: &CredentialId,
         holder_did: Did,
+        holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, ServiceError>;
 }
 
@@ -84,6 +85,7 @@ mockall::mock! {
             &self,
             credential_id: &CredentialId,
             holder_did: Did,
+            holder_key_id: String,
         ) -> Result<SubmitIssuerResponse, ServiceError>;
     }
 }
@@ -195,6 +197,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         &self,
         credential_id: &CredentialId,
         holder_did: Did,
+        holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, ServiceError> {
         let Some(mut credential) = self
             .credential_repository
@@ -414,6 +417,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
             holder_did.did,
+            holder_key_id,
             core_base_url,
             credential_status,
             contexts,

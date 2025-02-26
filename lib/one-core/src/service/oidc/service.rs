@@ -423,22 +423,23 @@ impl OIDCService {
 
         validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &credential.exchange)?;
 
-        let holder_did = if request.proof.proof_type == "jwt" {
+        let (holder_did, holder_key_id) = if request.proof.proof_type == "jwt" {
             let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
             let key_id = jwt.header.key_id.ok_or(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidOrMissingProof,
             ))?;
-            let holder_did_value = DidValue::from_did_url(key_id).map_err(|_| {
+            let holder_did_value = DidValue::from_did_url(key_id.clone()).map_err(|_| {
                 ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
             })?;
 
-            get_or_create_did(
+            let did = get_or_create_did(
                 &*self.did_repository,
                 &schema.organisation,
                 &holder_did_value,
                 DidRole::Holder,
             )
-            .await
+            .await?;
+            Ok((did, key_id))
         } else {
             Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidOrMissingProof,
@@ -455,7 +456,7 @@ impl OIDCService {
 
         let issued_credential = self
             .protocol_provider
-            .issue_credential(&credential.id, holder_did)
+            .issue_credential(&credential.id, holder_did, holder_key_id)
             .await?;
 
         Ok(OpenID4VCICredentialResponseDTO {

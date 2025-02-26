@@ -160,6 +160,7 @@ pub struct CredentialData {
     pub vcdm: VcdmCredential,
     pub claims: Vec<PublishedClaim>,
     pub holder_did: Option<DidValue>,
+    pub holder_key_id: Option<String>,
 }
 
 #[derive(Debug)]

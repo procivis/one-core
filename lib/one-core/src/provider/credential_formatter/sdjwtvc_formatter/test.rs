@@ -17,7 +17,7 @@ use crate::model::credential_schema::LayoutType;
 use crate::model::did::KeyRole;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::credential_formatter::jwt::model::JWTPayload;
+use crate::provider::credential_formatter::jwt::model::{JWTPayload, ProofOfPossessionKey};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Issuer,
     MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
@@ -29,7 +29,8 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFo
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
 use crate::provider::did_method::jwk::JWKDidMethod;
-use crate::provider::did_method::provider::DidMethodProviderImpl;
+use crate::provider::did_method::key::KeyDidMethod;
+use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::resolver::DidCachingLoader;
 use crate::provider::did_method::DidMethod;
 use crate::provider::key_algorithm::eddsa::{Eddsa, EddsaParams};
@@ -40,6 +41,7 @@ use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::service::test_utilities::{dummy_did_document, dummy_jwk};
 use crate::util::key_verification::KeyVerification;
 
 #[tokio::test]
@@ -59,14 +61,6 @@ async fn test_format_credential() {
 
     let leeway = 45u64;
 
-    let sd_formatter = SDJWTVCFormatter::new(
-        Params {
-            leeway,
-            embed_layout_properties: false,
-        },
-        Arc::new(crypto),
-    );
-
     let credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -75,6 +69,19 @@ async fn test_format_credential() {
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
         },
         "http://base_url",
+    );
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = dummy_did_document(&credential_data.holder_did.as_ref().unwrap().clone());
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(holder_did));
+    let sd_formatter = SDJWTVCFormatter::new(
+        Params {
+            leeway,
+            embed_layout_properties: false,
+        },
+        Arc::new(crypto),
+        Arc::new(did_method_provider),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -129,6 +136,13 @@ async fn test_format_credential() {
         payload.invalid_before,
         Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
     );
+    assert_eq!(
+        payload.proof_of_possession_key,
+        Some(ProofOfPossessionKey {
+            key_id: None,
+            jwk: dummy_jwk().into(),
+        })
+    );
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));
@@ -169,6 +183,7 @@ async fn test_extract_credentials() {
             embed_layout_properties: false,
         },
         Arc::new(crypto),
+        Arc::new(MockDidMethodProvider::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -247,6 +262,7 @@ async fn test_extract_presentation() {
             embed_layout_properties: false,
         },
         Arc::new(crypto),
+        Arc::new(MockDidMethodProvider::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -314,6 +330,7 @@ fn test_schema_id() {
             embed_layout_properties: false,
         },
         Arc::new(MockCryptoProvider::default()),
+        Arc::new(MockDidMethodProvider::new()),
     );
     let vct_type = "xyz some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -442,17 +459,24 @@ async fn test_format_extract_round_trip() {
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did),
+        holder_did: Some(holder_did.clone()),
+        holder_key_id: Some(format!("{holder_did}#0")),
     };
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
         caching_loader,
-        HashMap::from_iter(vec![(
-            "JWK".to_owned(),
-            Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
-        )]),
+        HashMap::from_iter(vec![
+            (
+                "JWK".to_owned(),
+                Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+            ),
+            (
+                "KEY".to_owned(),
+                Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+            ),
+        ]),
     ));
-    let formatter = SDJWTVCFormatter::new(params, crypto);
+    let formatter = SDJWTVCFormatter::new(params, crypto, did_method_provider.clone());
 
     let mut auth_fn = MockSignatureProvider::new();
     let public_key = key_pair.public.clone();

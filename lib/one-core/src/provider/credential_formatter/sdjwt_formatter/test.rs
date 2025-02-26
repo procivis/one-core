@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::SDJWTFormatter;
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::credential_formatter::jwt::model::JWTPayload;
+use crate::provider::credential_formatter::jwt::model::{JWTPayload, ProofOfPossessionKey};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Features, Issuer,
     MockTokenVerifier, PublishedClaim,
@@ -24,8 +24,10 @@ use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
 use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::service::test_utilities::{dummy_did_document, dummy_jwk};
 
 impl From<&str> for DisclosureArray {
     fn from(value: &str) -> Self {
@@ -56,15 +58,6 @@ async fn test_format_credential_a() {
         .returning(move |_| Ok(hasher.clone()));
 
     let leeway = 45u64;
-
-    let sd_formatter = SDJWTFormatter {
-        crypto: Arc::new(crypto),
-        params: Params {
-            leeway,
-            embed_layout_properties: false,
-        },
-    };
-
     let mut credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -79,6 +72,20 @@ async fn test_format_credential_a() {
         .context
         .insert(ContextType::Url("http://context.com".parse().unwrap()));
     credential_data.vcdm.r#type.push("Type1".to_string());
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = credential_data.holder_did.as_ref().unwrap().clone();
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(dummy_did_document(&holder_did)));
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(did_method_provider),
+        params: Params {
+            leeway,
+            embed_layout_properties: false,
+        },
+    };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
     let result = sd_formatter
@@ -135,6 +142,13 @@ async fn test_format_credential_a() {
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));
+    assert_eq!(
+        payload.proof_of_possession_key,
+        Some(ProofOfPossessionKey {
+            key_id: None,
+            jwk: dummy_jwk().into(),
+        })
+    );
 
     let vc = payload.custom.vc;
 
@@ -165,7 +179,6 @@ async fn test_format_credential_a() {
         Some(&"Val1".into())
     );
 }
-
 #[tokio::test]
 async fn test_format_credential_with_array() {
     let claim1 = ("array", "[\"array_item\"]");
@@ -207,14 +220,6 @@ async fn test_format_credential_with_array() {
 
     let leeway = 45u64;
 
-    let sd_formatter = SDJWTFormatter {
-        crypto: Arc::new(crypto),
-        params: Params {
-            leeway,
-            embed_layout_properties: false,
-        },
-    };
-
     let credential_data = get_credential_data_with_array(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -224,6 +229,21 @@ async fn test_format_credential_with_array() {
         },
         "http://base_url",
     );
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = dummy_did_document(&credential_data.holder_did.as_ref().unwrap().clone());
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(holder_did));
+
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(did_method_provider),
+        params: Params {
+            leeway,
+            embed_layout_properties: false,
+        },
+    };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
@@ -278,6 +298,13 @@ async fn test_format_credential_with_array() {
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));
+    assert_eq!(
+        payload.proof_of_possession_key,
+        Some(ProofOfPossessionKey {
+            key_id: None,
+            jwk: dummy_jwk().into(),
+        })
+    );
 
     let vc = payload.custom.vc;
 
@@ -330,6 +357,7 @@ async fn test_extract_credentials() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -459,6 +487,7 @@ async fn test_extract_credentials_with_array() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -569,6 +598,7 @@ async fn test_extract_credentials_with_array_stripped() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -634,6 +664,7 @@ async fn test_extract_presentation() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -701,6 +732,7 @@ async fn test_extract_presentation() {
 fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(MockCryptoProvider::default()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         params: Params {
             leeway: 123u64,
             embed_layout_properties: false,
@@ -767,6 +799,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         vcdm,
         claims,
         holder_did: Some(holder_did),
+        holder_key_id: Some("did-vm-id".to_string()),
     }
 }
 
