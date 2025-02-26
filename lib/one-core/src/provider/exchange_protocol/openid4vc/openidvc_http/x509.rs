@@ -7,6 +7,7 @@ use x509_parser::prelude::{GeneralName, ParsedExtension};
 use crate::provider::did_method::mdl::parse_x509_from_der;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 
+#[derive(PartialEq, Eq, Debug)]
 enum Certificate {
     Der(Vec<u8>),
 }
@@ -29,8 +30,12 @@ pub(crate) fn extract_x5c_san_dns(
 
     // CA certificate as the last item in the chain
     let x509_ca_certificate = Base64UrlSafeNoPadding::decode_to_vec(x509_ca_certificate, None)
+        .map(Certificate::Der)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    chain.push(Certificate::Der(x509_ca_certificate));
+
+    if !chain.contains(&x509_ca_certificate) {
+        chain.push(x509_ca_certificate);
+    }
 
     let mut previous: Option<&Certificate> = None;
     for certificate in chain.iter() {
