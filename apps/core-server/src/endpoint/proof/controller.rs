@@ -81,7 +81,13 @@ pub(crate) async fn get_proof_details(
         ("bearer" = [])
     ),
     summary = "Delete proof request",
-    description = "Deletes a proof request that has not completed yet. If the state is in REQUESTED state (i.e. the holder has already retrieved the presentation request) then the proof is retracted instead.",
+    description = indoc::formatdoc! {"
+    Deletes a proof request that has not completed yet. If the request is in
+    `REQUESTED` state then the proof is retracted instead, retaining history
+    of the interaction.
+
+    Related guide: [Manage proof requests](../guides/manageProof.mdx)
+"},
 )]
 pub(crate) async fn delete_proof(
     state: State<AppState>,
