@@ -18,8 +18,10 @@ use crate::router::AppState;
     ),
     summary = "Run task",
     description = indoc::formatdoc! {"
-        Runs a task. Typically tasks are run as part of a schedule via the CLI, but it is also possible to run them
-        through this endpoint.
+        Runs a task. Tasks can be also be run via the CLI after starting
+        the core-server.
+
+        Related guide: [Configuration](../setup/configuration.mdx)
     "},
 )]
 pub(crate) async fn post_task(

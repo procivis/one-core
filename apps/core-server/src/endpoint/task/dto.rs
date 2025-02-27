@@ -6,7 +6,8 @@ use utoipa::ToSchema;
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskRequestRestDTO {
-    /// Identifier of task to be run.
+    /// Choose a task to run. Check the `task` object of the configuration
+    /// for supported options and reference the configuration instance.
     #[schema(example = "SUSPEND_CHECK")]
     pub name: String,
     /// Parameters to pass to the task.
