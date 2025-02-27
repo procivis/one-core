@@ -234,7 +234,7 @@ impl VCAPIService {
         });
 
         let _ = formatter
-            .extract_credentials(&string_token, verification_fn)
+            .extract_credentials(&string_token, verification_fn, None)
             .await?;
 
         Ok(CredentialVerifyResponse {

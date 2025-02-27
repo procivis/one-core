@@ -96,7 +96,7 @@ impl CredentialService {
             .credential_formatter_provider
             .get_formatter(&format.to_string())
             .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
-            .extract_credentials(credential, key_verification)
+            .extract_credentials(credential, key_verification, None)
             .await?;
 
         Ok(details)

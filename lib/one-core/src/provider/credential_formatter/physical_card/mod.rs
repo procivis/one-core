@@ -62,6 +62,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         &self,
         token: &str,
         verification_fn: VerificationFn,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         let credential_with_optical_data = OptiocalBarcodeCredential::from_token(token)?;
         let extra_information_for_proof = credential_with_optical_data.extra_information_bytes();

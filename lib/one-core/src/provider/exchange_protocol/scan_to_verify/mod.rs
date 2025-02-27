@@ -195,7 +195,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         });
 
         let credential = formatter
-            .extract_credentials(&credentials, key_verification)
+            .extract_credentials(&credentials, key_verification, None)
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 

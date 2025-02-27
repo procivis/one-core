@@ -35,7 +35,7 @@ async fn test_prepare_sd_presentation() {
     let nonce = "nonce";
     let hash = "test-hash";
     let holder_binding_ctx = HolderBindingCtx {
-        nonce: Some(nonce.to_string()),
+        nonce: nonce.to_string(),
         aud: aud.to_string(),
     };
 

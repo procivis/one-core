@@ -169,9 +169,6 @@ async fn append_key_binding_token(
         .ok_or(FormatterError::CouldNotFormat(
             "Invalid key algorithm".to_string(),
         ))?;
-    let nonce = holder_binding_ctx
-        .nonce
-        .ok_or(FormatterError::CouldNotFormat("Missing nonce".to_string()))?;
     let sd_hash = hasher
         .hash_base64(token.as_bytes())
         .map_err(|err| FormatterError::CouldNotFormat(format!("failed to hash token: {err}")))?;
@@ -179,7 +176,7 @@ async fn append_key_binding_token(
         issued_at: Some(OffsetDateTime::now_utc()),
         custom: KeyBindingPayload {
             aud: holder_binding_ctx.aud,
-            nonce,
+            nonce: holder_binding_ctx.nonce,
             sd_hash,
         },
         ..Default::default()

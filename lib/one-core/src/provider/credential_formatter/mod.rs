@@ -66,7 +66,8 @@ pub trait CredentialFormatter: Send + Sync {
     async fn extract_credentials(
         &self,
         credentials: &str,
-        verification: Box<dyn model::TokenVerifier>,
+        verification: Box<dyn TokenVerifier>,
+        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError>;
 
     /// Formats presentation with selective disclosure.

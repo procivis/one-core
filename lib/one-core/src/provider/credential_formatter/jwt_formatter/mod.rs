@@ -208,6 +208,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(verification)).await?;

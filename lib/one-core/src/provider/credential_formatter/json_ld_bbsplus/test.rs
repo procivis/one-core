@@ -554,7 +554,7 @@ async fn test_format_extract_round_trip() {
 
     let token = formatter.format(vcdm, Box::new(auth_fn)).await.unwrap();
     let _result = formatter
-        .extract_credentials(token.as_str(), key_verification)
+        .extract_credentials(token.as_str(), key_verification, None)
         .await
         .unwrap();
 }
@@ -642,7 +642,7 @@ async fn test_extract_invalid_signature() {
         }
     });
     let result = formatter
-        .extract_credentials(&token.to_string(), key_verification)
+        .extract_credentials(&token.to_string(), key_verification, None)
         .await;
 
     assert!(matches!(result, Err(FormatterError::CouldNotVerify(_))));

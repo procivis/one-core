@@ -125,6 +125,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: &str,
         verification_fn: VerificationFn,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         self.verify(credential, verification_fn).await
     }

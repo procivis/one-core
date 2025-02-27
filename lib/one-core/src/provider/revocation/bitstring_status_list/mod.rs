@@ -257,7 +257,7 @@ impl RevocationMethod for BitstringStatusList {
 
         let status_credential = self
             .get_formatter_for_parsing(content_type)?
-            .extract_credentials(&response_content, key_verification)
+            .extract_credentials(&response_content, key_verification, None)
             .await?;
 
         let encoded_list = status_credential

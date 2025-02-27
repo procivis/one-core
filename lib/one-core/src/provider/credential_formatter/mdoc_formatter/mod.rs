@@ -289,6 +289,7 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         token: &str,
         _verification: VerificationFn,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(
             &*self.key_algorithm_provider,

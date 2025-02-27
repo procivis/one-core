@@ -398,7 +398,7 @@ async fn test_extract_credentials() {
         .return_const(Box::new(key_algorithm_provider));
 
     let result = sd_formatter
-        .extract_credentials(&token, Box::new(verify_mock))
+        .extract_credentials(&token, Box::new(verify_mock), None)
         .await;
 
     let credentials = result.unwrap();
@@ -528,7 +528,7 @@ async fn test_extract_credentials_with_array() {
         .return_const(Box::new(key_algorithm_provider));
 
     let credentials = sd_formatter
-        .extract_credentials(&token, Box::new(verify_mock))
+        .extract_credentials(&token, Box::new(verify_mock), None)
         .await
         .unwrap();
 
@@ -639,7 +639,7 @@ async fn test_extract_credentials_with_array_stripped() {
         .return_const(Box::new(key_algorithm_provider));
 
     let credentials = sd_formatter
-        .extract_credentials(&token, Box::new(verify_mock))
+        .extract_credentials(&token, Box::new(verify_mock), None)
         .await
         .unwrap();
 

@@ -60,7 +60,8 @@ use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIPr
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_credential_offer, create_issuer_metadata_response,
     create_open_id_for_vp_client_metadata, create_service_discovery_response,
-    get_credential_schema_base_url, parse_access_token, parse_refresh_token,
+    get_credential_schema_base_url, oidc_verifier_direct_post, parse_access_token,
+    parse_refresh_token,
 };
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::service::error::ErrorCode::BR_0000;
@@ -763,7 +764,7 @@ impl OIDCService {
             }
         }
 
-        match crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_direct_post(
+        match oidc_verifier_direct_post(
             unpacked_request,
             proof.to_owned(),
             interaction_data,

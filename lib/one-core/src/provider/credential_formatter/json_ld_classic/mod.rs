@@ -145,6 +145,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         credential: &str,
         verification_fn: VerificationFn,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, Some(verification_fn))
             .await

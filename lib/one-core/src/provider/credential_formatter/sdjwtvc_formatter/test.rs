@@ -506,7 +506,7 @@ async fn test_format_extract_round_trip() {
         .await
         .unwrap();
     let result = formatter
-        .extract_credentials(token.as_str(), key_verification)
+        .extract_credentials(token.as_str(), key_verification, None)
         .await
         .unwrap();
 

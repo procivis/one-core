@@ -115,6 +115,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(token, Some(verification), &*self.crypto).await
     }

@@ -185,7 +185,7 @@ pub struct CredentialStatus {
 
 #[derive(Debug, Default, Clone)]
 pub struct HolderBindingCtx {
-    pub nonce: Option<String>,
+    pub nonce: String,
     pub aud: String,
 }
 

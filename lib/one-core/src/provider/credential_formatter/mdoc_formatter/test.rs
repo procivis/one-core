@@ -686,7 +686,7 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         .returning(move |_, _, _, _, _| Ok(()));
 
     formatter
-        .extract_credentials(&formatted_credential, Box::new(token_verifier))
+        .extract_credentials(&formatted_credential, Box::new(token_verifier), None)
         .await
         .unwrap()
 }

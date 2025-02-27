@@ -455,7 +455,7 @@ async fn test_extract_credentials() {
         .return_const(Box::new(key_algorithm_provider));
 
     let result = jwt_formatter
-        .extract_credentials(&token, Box::new(verify_mock))
+        .extract_credentials(&token, Box::new(verify_mock), None)
         .await;
 
     let credentials = result.unwrap();
@@ -540,7 +540,7 @@ async fn test_extract_credentials_nested_array() {
         .return_const(Box::new(key_algorithm_provider));
 
     let result = jwt_formatter
-        .extract_credentials(&token, Box::new(verify_mock))
+        .extract_credentials(&token, Box::new(verify_mock), None)
         .await;
 
     let credentials = result.unwrap();

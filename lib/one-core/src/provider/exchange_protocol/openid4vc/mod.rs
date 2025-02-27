@@ -564,19 +564,24 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 let interaction_data: BLEOpenID4VPInteractionData =
                     serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
 
-                (interaction_data.client_id, Some(interaction_data.nonce))
+                (interaction_data.client_id, interaction_data.nonce)
             }
             TransportType::Http => {
                 let interaction_data: OpenID4VPHolderInteractionData =
                     serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
 
-                (interaction_data.client_id, interaction_data.nonce)
+                (
+                    interaction_data.client_id,
+                    interaction_data
+                        .nonce
+                        .ok_or(ExchangeProtocolError::Failed("missing nonce".to_string()))?,
+                )
             }
             TransportType::Mqtt => {
                 let interaction_data: MQTTOpenID4VPInteractionDataHolder =
                     serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
 
-                (interaction_data.client_id, Some(interaction_data.nonce))
+                (interaction_data.client_id, interaction_data.nonce)
             }
         };
         Ok(Some(HolderBindingCtx { nonce, aud }))

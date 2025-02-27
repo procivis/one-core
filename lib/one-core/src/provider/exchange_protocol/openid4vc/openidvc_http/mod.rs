@@ -642,7 +642,7 @@ impl OpenID4VCHTTP {
             key_role: KeyRole::AssertionMethod,
         });
         let response_credential = formatter
-            .extract_credentials(&response_value.credential, verification_fn)
+            .extract_credentials(&response_value.credential, verification_fn, None)
             .await
             .map_err(|e| ExchangeProtocolError::CredentialVerificationFailed(e.into()))?;
 
