@@ -20,7 +20,7 @@ use serde_json::Value;
 use shared_types::{CredentialSchemaId, DidValue};
 use url::Url;
 
-use super::model::CredentialData;
+use super::model::{CredentialData, HolderBindingCtx};
 use super::sdjwt;
 use super::vcdm::VcdmCredential;
 use crate::model::did::Did;
@@ -122,6 +122,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
         let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None).await?;

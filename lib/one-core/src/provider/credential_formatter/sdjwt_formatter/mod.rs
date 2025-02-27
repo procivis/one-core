@@ -17,8 +17,8 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    SelectiveDisclosure, VerificationFn,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities,
+    HolderBindingCtx, Presentation, SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -111,6 +111,8 @@ impl CredentialFormatter for SDJWTFormatter {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let model::DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None).await?;

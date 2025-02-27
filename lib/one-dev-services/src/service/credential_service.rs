@@ -75,7 +75,7 @@ impl CredentialService {
             .credential_formatter_provider
             .get_formatter(&format.to_string())
             .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
-            .format_credential_presentation(credential)
+            .format_credential_presentation(credential, None, None)
             .await?;
 
         Ok(token)

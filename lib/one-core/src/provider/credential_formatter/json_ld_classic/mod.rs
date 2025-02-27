@@ -16,7 +16,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
-use super::model::CredentialData;
+use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -160,6 +160,8 @@ impl CredentialFormatter for JsonLdClassic {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         Ok(credential.token)
     }

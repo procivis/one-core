@@ -34,7 +34,7 @@ use self::mdoc::{
     MobileSecurityObjectVersion, Namespace, Namespaces, OID4VPHandover, SessionTranscript,
     ValidityInfo, ValueDigests,
 };
-use super::model::CredentialData;
+use super::model::{CredentialData, HolderBindingCtx};
 use super::nest_claims;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
@@ -436,6 +436,8 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let mut issuer_signed: IssuerSigned = decode_cbor_base64(&credential.token)?;
 

@@ -16,6 +16,8 @@ pub mod error;
 mod common;
 pub use common::nest_claims;
 
+use crate::provider::credential_formatter::model::HolderBindingCtx;
+
 // Implementation
 pub mod json_ld;
 pub mod json_ld_bbsplus;
@@ -75,6 +77,8 @@ pub trait CredentialFormatter: Send + Sync {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        holder_binding_ctx: Option<HolderBindingCtx>,
+        holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError>;
 
     /// Parses a received credential without verifying the signature.

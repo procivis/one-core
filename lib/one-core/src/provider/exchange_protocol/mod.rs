@@ -32,7 +32,7 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::iso_mdl::IsoMdl;
@@ -342,7 +342,7 @@ pub type HandleInvitationOperationsAccess = dyn HandleInvitationOperations;
 #[allow(clippy::too_many_arguments)]
 pub trait ExchangeProtocolImpl: Send + Sync {
     type VCInteractionContext;
-    type VPInteractionContext;
+    type VPInteractionContext: Clone;
 
     // Holder methods:
     /// Check if the holder can handle the necessary URLs.
@@ -408,6 +408,15 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError>;
+
+    /// Takes the VP interaction context and returns a holder binding context, if any.
+    fn holder_get_holder_binding_context(
+        &self,
+        _proof: &Proof,
+        _context: Self::VPInteractionContext,
+    ) -> Result<Option<HolderBindingCtx>, ExchangeProtocolError> {
+        Ok(None)
+    }
 
     // Issuer methods:
     /// Generates QR-code content to start the credential issuance flow.

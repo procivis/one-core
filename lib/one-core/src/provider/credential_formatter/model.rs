@@ -183,6 +183,12 @@ pub struct CredentialStatus {
     pub additional_fields: HashMap<String, serde_json::Value>,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct HolderBindingCtx {
+    pub nonce: Option<String>,
+    pub aud: String,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct FormatPresentationCtx {

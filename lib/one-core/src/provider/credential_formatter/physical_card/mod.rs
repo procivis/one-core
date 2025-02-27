@@ -7,7 +7,7 @@ use one_crypto::CryptoProvider;
 use shared_types::{CredentialSchemaId, DidValue};
 
 use super::json_ld_classic::verify_credential_signature;
-use super::model::CredentialData;
+use super::model::{CredentialData, HolderBindingCtx};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
@@ -108,6 +108,8 @@ impl CredentialFormatter for PhysicalCardFormatter {
     async fn format_credential_presentation(
         &self,
         _credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         todo!()
     }

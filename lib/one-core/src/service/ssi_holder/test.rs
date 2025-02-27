@@ -248,7 +248,7 @@ async fn test_submit_proof_succeeds() {
     formatter
         .expect_format_credential_presentation()
         .once()
-        .returning(|presentation| Ok(presentation.token));
+        .returning(|presentation, _, _| Ok(presentation.token));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -422,7 +422,7 @@ async fn test_submit_proof_repeating_claims() {
     let mut formatter = MockCredentialFormatter::new();
     formatter
         .expect_format_credential_presentation()
-        .returning(|presentation| Ok(presentation.token));
+        .returning(|presentation, _, _| Ok(presentation.token));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);

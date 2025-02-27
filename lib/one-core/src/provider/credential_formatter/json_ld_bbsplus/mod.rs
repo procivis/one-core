@@ -14,7 +14,7 @@ use url::Url;
 
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::jsonld_forbidden_claim_names;
-use super::model::CredentialData;
+use super::model::{CredentialData, HolderBindingCtx};
 use super::CredentialFormatter;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -143,6 +143,8 @@ impl CredentialFormatter for JsonLdBbsplus {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         self.derive_proof(credential).await
     }

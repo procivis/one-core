@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
-use super::model::{CredentialData, Features, Issuer};
+use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -227,6 +227,8 @@ impl CredentialFormatter for JWTFormatter {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
+        _holder_binding_ctx: Option<HolderBindingCtx>,
+        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         Ok(credential.token)
     }

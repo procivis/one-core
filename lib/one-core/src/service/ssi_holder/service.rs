@@ -280,7 +280,7 @@ impl SSIHolderService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
-        let interaction_data = proof
+        let interaction_data: serde_json::Value = proof
             .interaction
             .as_ref()
             .and_then(|interaction| interaction.data.as_ref())
@@ -298,7 +298,7 @@ impl SSIHolderService {
         let presentation_definition = exchange_protocol
             .holder_get_presentation_definition(
                 &proof,
-                interaction_data,
+                interaction_data.clone(),
                 &storage_access,
                 create_oicd_to_core_format_map(),
             )
@@ -312,6 +312,8 @@ impl SSIHolderService {
 
         let mut submitted_claims: Vec<Claim> = vec![];
         let mut credential_presentations: Vec<PresentedCredential> = vec![];
+        let holder_binding_ctx =
+            exchange_protocol.holder_get_holder_binding_context(&proof, interaction_data)?;
         for (requested_credential_id, credential_request) in submission.submit_credentials {
             let requested_credential = requested_credentials
                 .iter()
@@ -413,8 +415,24 @@ impl SSIHolderService {
                 disclosed_keys: submitted_keys.to_owned(),
             };
 
+            let authn_fn = credential
+                .key
+                .as_ref()
+                .map(|key| {
+                    self.key_provider.get_signature_provider(
+                        key,
+                        Some(holder_jwk_key_id.clone()),
+                        self.key_algorithm_provider.clone(),
+                    )
+                })
+                .transpose()?;
+
             let formatted_credential_presentation = formatter
-                .format_credential_presentation(credential_presentation)
+                .format_credential_presentation(
+                    credential_presentation,
+                    holder_binding_ctx.clone(),
+                    authn_fn,
+                )
                 .await?;
 
             credential_presentations.push(PresentedCredential {
@@ -467,7 +485,7 @@ impl SSIHolderService {
                 };
 
                 let formatted_lvvc_presentation = formatter
-                    .format_credential_presentation(lvvc_presentation)
+                    .format_credential_presentation(lvvc_presentation, None, None)
                     .await?;
 
                 credential_presentations.push(PresentedCredential {

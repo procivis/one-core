@@ -35,7 +35,7 @@ use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::exchange_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
@@ -548,6 +548,38 @@ impl ExchangeProtocolImpl for OpenID4VC {
             convert_inner(credential_groups),
             &self.config,
         )
+    }
+
+    fn holder_get_holder_binding_context(
+        &self,
+        proof: &Proof,
+        context: Self::VPInteractionContext,
+    ) -> Result<Option<HolderBindingCtx>, ExchangeProtocolError> {
+        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
+            ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
+        })?;
+
+        let (aud, nonce) = match transport {
+            TransportType::Ble => {
+                let interaction_data: BLEOpenID4VPInteractionData =
+                    serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
+
+                (interaction_data.client_id, Some(interaction_data.nonce))
+            }
+            TransportType::Http => {
+                let interaction_data: OpenID4VPHolderInteractionData =
+                    serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
+
+                (interaction_data.client_id, interaction_data.nonce)
+            }
+            TransportType::Mqtt => {
+                let interaction_data: MQTTOpenID4VPInteractionDataHolder =
+                    serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
+
+                (interaction_data.client_id, Some(interaction_data.nonce))
+            }
+        };
+        Ok(Some(HolderBindingCtx { nonce, aud }))
     }
 
     async fn verifier_handle_proof(
