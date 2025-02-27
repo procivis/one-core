@@ -8,31 +8,50 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, Issuer,
-    PublishedClaim,
+    CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, HolderBindingCtx,
+    Issuer, MockSignatureProvider, PublishedClaim,
 };
 use crate::provider::credential_formatter::nest_claims;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     compute_object_disclosures, parse_disclosure, select_disclosures, DisclosureArray,
 };
-use crate::provider::credential_formatter::sdjwt::model::Disclosure;
+use crate::provider::credential_formatter::sdjwt::model::{Disclosure, KeyBindingPayload};
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
 
-#[test]
-fn test_prepare_sd_presentation() {
+#[tokio::test]
+async fn test_prepare_sd_presentation() {
     let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.ewogICJpYXQiOiAxNjk5MjcwMjY2LAogICJleHAiOiAxNzYyMzQyMjY2LAogICJuYmYiOiAxNjk5MjcwMjIxLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICJ2YyI6IHsKICAgICJAY29udGV4dCI6IFsKICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgImh0dHBzOi8vd3d3LnRlc3Rjb250ZXh0LmNvbS92MSIKICAgIF0sCiAgICAidHlwZSI6IFsKICAgICAgIlZlcmlmaWFibGVDcmVkZW50aWFsIiwKICAgICAgIlR5cGUxIgogICAgXSwKICAgICJjcmVkZW50aWFsU3ViamVjdCI6IHsKICAgICAgIl9zZCI6IFsKICAgICAgICAiWVdKak1USXoiLAogICAgICAgICJZV0pqTVRJeiIKICAgICAgXQogICAgfSwKICAgICJjcmVkZW50aWFsU3RhdHVzIjogewogICAgICAiaWQiOiAiZGlkOnN0YXR1czppZCIsCiAgICAgICJ0eXBlIjogIlRZUEUiLAogICAgICAic3RhdHVzUHVycG9zZSI6ICJQVVJQT1NFIiwKICAgICAgIkZpZWxkMSI6ICJWYWwxIgogICAgfQogIH0sCiAgIl9zZF9hbGciOiAic2hhLTI1NiIKfQ";
     let key_name = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
     let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
+    let key_id = "key-id";
+    let key_alg = "ES256";
     let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
+    let aud = "some-aud";
+    let nonce = "nonce";
+    let hash = "test-hash";
+    let holder_binding_ctx = HolderBindingCtx {
+        nonce: Some(nonce.to_string()),
+        aud: aud.to_string(),
+    };
 
     let mut hasher = MockHasher::default();
     hasher
         .expect_hash_base64()
-        .returning(|_| Ok("".to_string()));
+        .returning(|_| Ok(hash.to_string()));
+
+    let mut signer = MockSignatureProvider::default();
+    signer
+        .expect_get_key_id()
+        .returning(|| Some(key_id.to_string()));
+    signer
+        .expect_jose_alg()
+        .returning(|| Some(key_alg.to_string()));
+    signer.expect_sign().returning(|_| Ok(vec![0; 32]));
 
     // Take name and age
     let presentation = CredentialPresentation {
@@ -40,8 +59,26 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
 
-    let result = prepare_sd_presentation(presentation, &hasher);
-    assert!(result.is_ok_and(|token| token.contains(key_name) && token.contains(key_age)));
+    let result = prepare_sd_presentation(
+        presentation,
+        &hasher,
+        Some(holder_binding_ctx),
+        Some(Box::new(signer)),
+    )
+    .await
+    .unwrap();
+    assert!(result.contains(key_name) && result.contains(key_age));
+    let (_, kb_token) = result.rsplit_once('~').unwrap();
+    assert!(!kb_token.is_empty());
+    assert!(kb_token.ends_with(".AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")); // fake sig: vec![0;32]
+    let kb_jwt = Jwt::<KeyBindingPayload>::build_from_token(kb_token, None)
+        .await
+        .unwrap();
+    assert_eq!(kb_jwt.header.key_id, Some(key_id.to_string()));
+    assert_eq!(kb_jwt.header.algorithm, key_alg);
+    assert_eq!(kb_jwt.payload.custom.aud, aud);
+    assert_eq!(kb_jwt.payload.custom.nonce, nonce);
+    assert_eq!(kb_jwt.payload.custom.sd_hash, hash);
 
     // Take name
     let presentation = CredentialPresentation {
@@ -49,8 +86,11 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec!["name".to_string()],
     };
 
-    let result = prepare_sd_presentation(presentation, &hasher);
-    assert!(result.is_ok_and(|token| token.contains(key_name) && !token.contains(key_age)));
+    let result = prepare_sd_presentation(presentation, &hasher, None, None)
+        .await
+        .unwrap();
+    assert!(result.contains(key_name) && !result.contains(key_age));
+    assert!(result.ends_with('~')); // no key binding token appended, if context / authn_fn is missing
 
     // Take age
     let presentation = CredentialPresentation {
@@ -58,7 +98,7 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec!["age".to_string()],
     };
 
-    let result = prepare_sd_presentation(presentation, &hasher);
+    let result = prepare_sd_presentation(presentation, &hasher, None, None).await;
     assert!(result.is_ok_and(|token| !token.contains(key_name) && token.contains(key_age)));
 
     // Take none
@@ -67,7 +107,7 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec![],
     };
 
-    let result = prepare_sd_presentation(presentation, &hasher);
+    let result = prepare_sd_presentation(presentation, &hasher, None, None).await;
     assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
 }
 

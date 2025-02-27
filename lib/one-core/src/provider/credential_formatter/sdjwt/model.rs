@@ -96,3 +96,10 @@ pub struct SdJwtFormattingInputs {
     pub token_type: String,
     pub vc_type: Option<String>,
 }
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct KeyBindingPayload {
+    pub aud: String,
+    pub nonce: String,
+    pub sd_hash: String,
+}

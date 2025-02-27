@@ -5,10 +5,10 @@ use one_crypto::{CryptoProvider, Hasher};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 
 use super::jwt::model::{JWTPayload, ProofOfPossessionKey};
-use super::model::{AuthenticationFn, TokenVerifier};
+use super::model::{AuthenticationFn, HolderBindingCtx, TokenVerifier};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
@@ -17,7 +17,9 @@ use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     compute_object_disclosures, parse_token, select_disclosures,
 };
-use crate::provider::credential_formatter::sdjwt::model::SdJwtFormattingInputs;
+use crate::provider::credential_formatter::sdjwt::model::{
+    KeyBindingPayload, SdJwtFormattingInputs,
+};
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -95,9 +97,9 @@ pub async fn format_credential<T: Serialize>(
         payload,
     );
 
-    let jwt_token = jwt.tokenize(Some(auth_fn)).await?;
-    let sdjwt = serialize(jwt_token, disclosures);
-    Ok(sdjwt)
+    let mut token = jwt.tokenize(Some(auth_fn)).await?;
+    append_disclosures(&mut token, disclosures);
+    Ok(token)
 }
 
 fn format_hashed_credential<T>(
@@ -126,17 +128,26 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
     }
 }
 
-pub(crate) fn prepare_sd_presentation(
+pub(crate) async fn prepare_sd_presentation(
     presentation: CredentialPresentation,
     hasher: &dyn Hasher,
+    holder_binding_ctx: Option<HolderBindingCtx>,
+    holder_binding_fn: Option<AuthenticationFn>,
 ) -> Result<String, FormatterError> {
     let model::DecomposedToken { jwt, disclosures } = parse_token(&presentation.token)?;
     let disclosures = select_disclosures(presentation.disclosed_keys, disclosures, hasher)?;
-    Ok(serialize(jwt.to_owned(), disclosures))
+    let mut token = jwt.to_owned();
+    append_disclosures(&mut token, disclosures);
+    if let Some(holder_binding_ctx) = holder_binding_ctx {
+        if let Some(holder_binding_fn) = holder_binding_fn {
+            append_key_binding_token(hasher, holder_binding_ctx, holder_binding_fn, &mut token)
+                .await?;
+        }
+    }
+    Ok(token)
 }
 
-pub(crate) fn serialize(jwt: String, disclosures: Vec<String>) -> String {
-    let mut token = jwt;
+fn append_disclosures(token: &mut String, disclosures: Vec<String>) {
     token.push('~');
 
     let disclosures = disclosures.join("~");
@@ -144,8 +155,49 @@ pub(crate) fn serialize(jwt: String, disclosures: Vec<String>) -> String {
         token.push_str(&disclosures);
         token.push('~');
     }
+}
 
-    token
+async fn append_key_binding_token(
+    hasher: &dyn Hasher,
+    holder_binding_ctx: HolderBindingCtx,
+    holder_binding_fn: AuthenticationFn,
+    token: &mut String,
+) -> Result<(), FormatterError> {
+    const KEY_BINDING_TYPE: &str = "kb+jwt";
+    let alg = holder_binding_fn
+        .jose_alg()
+        .ok_or(FormatterError::CouldNotFormat(
+            "Invalid key algorithm".to_string(),
+        ))?;
+    let nonce = holder_binding_ctx
+        .nonce
+        .ok_or(FormatterError::CouldNotFormat("Missing nonce".to_string()))?;
+    let sd_hash = hasher
+        .hash_base64(token.as_bytes())
+        .map_err(|err| FormatterError::CouldNotFormat(format!("failed to hash token: {err}")))?;
+    let payload = JWTPayload {
+        issued_at: Some(OffsetDateTime::now_utc()),
+        custom: KeyBindingPayload {
+            aud: holder_binding_ctx.aud,
+            nonce,
+            sd_hash,
+        },
+        ..Default::default()
+    };
+    let kb_token = Jwt::new(
+        KEY_BINDING_TYPE.to_string(),
+        alg,
+        holder_binding_fn.get_key_id(),
+        None,
+        payload,
+    )
+    .tokenize(Some(holder_binding_fn))
+    .await
+    .map_err(|err| {
+        FormatterError::CouldNotFormat(format!("failed to tokenize key binding token: {err}"))
+    })?;
+    token.push_str(&kb_token);
+    Ok(())
 }
 
 impl<Payload: DeserializeOwned> Jwt<Payload> {

@@ -122,8 +122,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
     async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
-        _holder_binding_fn: Option<AuthenticationFn>,
+        holder_binding_ctx: Option<HolderBindingCtx>,
+        holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
         let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None).await?;
@@ -131,7 +131,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
 
-        prepare_sd_presentation(credential, &*hasher)
+        prepare_sd_presentation(credential, &*hasher, holder_binding_ctx, holder_binding_fn).await
     }
 
     async fn extract_credentials_unverified(
