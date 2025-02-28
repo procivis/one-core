@@ -462,7 +462,10 @@ pub fn validate_interaction_data(
                 "client_metadata is None".to_string(),
             ))?;
 
-    if client_metadata.client_id_scheme != interaction_data.client_id_scheme {
+    if client_metadata
+        .client_id_scheme
+        .is_some_and(|scheme| scheme != interaction_data.client_id_scheme)
+    {
         return Err(ExchangeProtocolError::InvalidRequest(
             "client_metadata.client_id_scheme must match client_scheme".to_string(),
         ));

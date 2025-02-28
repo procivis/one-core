@@ -1398,7 +1398,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -1455,7 +1455,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })

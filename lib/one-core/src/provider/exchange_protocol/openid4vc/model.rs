@@ -303,7 +303,7 @@ pub struct OpenID4VPClientMetadata {
     #[serde(default)]
     pub jwks: OpenID4VPClientMetadataJwks,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
-    pub client_id_scheme: ClientIdSchemaType,
+    pub client_id_scheme: Option<ClientIdSchemaType>,
     #[serde(default)]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default)]

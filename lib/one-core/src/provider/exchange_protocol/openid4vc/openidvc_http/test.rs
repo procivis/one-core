@@ -263,7 +263,6 @@ fn test_client_request_response(
                 ]
               }
             },
-            "client_id_scheme": client_id_scheme,
             "authorization_encrypted_response_alg": "ECDH-ES",
             "authorization_encrypted_response_enc": "A256GCM"
           },
@@ -1043,7 +1042,7 @@ async fn test_handle_invitation_proof_success() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -1278,7 +1277,7 @@ async fn test_handle_invitation_proof_failed() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -1364,7 +1363,7 @@ async fn test_handle_invitation_proof_failed() {
     let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
         jwks: Default::default(),
         vp_formats: Default::default(),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -1469,7 +1468,7 @@ fn test_serialize_and_deserialize_interaction_data() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })

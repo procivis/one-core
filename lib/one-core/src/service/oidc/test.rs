@@ -1823,7 +1823,7 @@ async fn test_get_client_metadata_success() {
                     }
                 ),
             ]),
-            client_id_scheme: ClientIdSchemaType::RedirectUri,
+            client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
             authorization_encrypted_response_alg: Some(
                 AuthorizationEncryptedResponseAlgorithm::EcdhEs
             ),

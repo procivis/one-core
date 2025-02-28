@@ -136,8 +136,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
                         "vc+sd-jwt":{
                             "alg":["EdDSA"]
                         }
-                    },
-                    "client_id_scheme":"redirect_uri"
+                    }
                 },
                 "response_mode":"direct_post",
                 "response_uri": format!("{verifier_url}/ssi/oidc-verifier/v1/response"),

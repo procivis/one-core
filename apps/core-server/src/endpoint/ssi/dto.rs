@@ -663,7 +663,8 @@ pub struct OpenID4VPClientMetadataResponseRestDTO {
     pub jwks: OpenID4VPClientMetadataJwksRestDTO,
     #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
-    pub client_id_scheme: ClientIdSchemaTypeRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub client_id_scheme: Option<ClientIdSchemaTypeRestDTO>,
     #[from(with_fn = convert_inner)]
     pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
     #[from(with_fn = convert_inner)]

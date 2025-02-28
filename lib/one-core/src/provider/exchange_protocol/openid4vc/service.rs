@@ -183,7 +183,7 @@ pub fn create_open_id_for_vp_client_metadata(
             }],
         },
         vp_formats,
-        client_id_scheme,
+        client_id_scheme: Some(client_id_scheme),
         authorization_encrypted_response_alg: Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs),
         authorization_encrypted_response_enc: Some(
             AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
