@@ -18,8 +18,8 @@ use super::model::{
     OpenID4VCIGrants, OpenID4VCIInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCITokenRequestDTO, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, PresentationSubmissionMappingDTO,
-    ValidatedProofClaimDTO,
+    OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO, OpenID4VPFormat,
+    PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -176,7 +176,9 @@ pub fn create_open_id_for_vp_client_metadata(
     client_id_scheme: ClientIdSchemaType,
 ) -> OpenID4VPClientMetadata {
     OpenID4VPClientMetadata {
-        jwks: vec![OpenID4VPClientMetadataJwkDTO { key_id, jwk }],
+        jwks: OpenID4VPClientMetadataJwks {
+            keys: vec![OpenID4VPClientMetadataJwkDTO { key_id, jwk }],
+        },
         vp_formats,
         client_id_scheme,
         authorization_encrypted_response_alg: Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs),

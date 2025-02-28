@@ -85,7 +85,7 @@ fn key_from_verifier_metadata(
     metadata: &OpenID4VPClientMetadata,
 ) -> anyhow::Result<OpenID4VPClientMetadataJwkDTO> {
     metadata
-        .jwks
+        .jwks.keys
         .iter()
         .find(|key| {
             matches!(&key.jwk,

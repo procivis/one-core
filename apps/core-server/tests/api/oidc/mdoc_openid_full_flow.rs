@@ -324,16 +324,16 @@ async fn test_openid4vc_mdoc_flow(
         "client_id_scheme": "redirect_uri",
         "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "client_metadata": {
-            "jwks": [
-                {
+            "jwks": {
+                "keys": [{
                     "crv": key_data.crv,
                     "kid": server_local_key.id.to_string(),
                     "kty": key_data.kty,
                     "x": key_data.x,
                     "y": key_data.y,
                     "use": "enc"
-                }
-            ],
+                }]
+            },
             "vp_formats": {
                 "vc+sd-jwt": {
                     "alg": [
@@ -729,16 +729,16 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         "client_id_scheme": "redirect_uri",
         "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "client_metadata": {
-            "jwks": [
-                {
+            "jwks": {
+                "keys": [{
                     "crv": key_data.crv,
                     "kid": server_local_key.id.to_string(),
                     "kty": key_data.kty,
                     "x": key_data.x,
                     "y": key_data.y,
                     "use": "enc"
-                }
-            ],
+                }]
+            },
             "vp_formats": {
                 "vc+sd-jwt": {
                     "alg": [
@@ -1162,16 +1162,16 @@ async fn test_openid4vc_mdoc_flow_array(
         "client_id_scheme": "redirect_uri",
         "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "client_metadata": {
-            "jwks": [
-                {
+            "jwks": {
+                "keys": [{
                     "crv": key_data.crv,
                     "kid": server_local_key.id.to_string(),
                     "kty": key_data.kty,
                     "x": key_data.x,
                     "y": key_data.y,
                     "use": "enc"
-                }
-            ],
+                }]
+            },
             "vp_formats": {
                 "vc+sd-jwt": {
                     "alg": [

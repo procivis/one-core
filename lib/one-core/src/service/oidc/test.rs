@@ -1766,19 +1766,21 @@ async fn test_get_client_metadata_success() {
         .unwrap();
     assert_eq!(
         OpenID4VPClientMetadata {
-            jwks: vec![OpenID4VPClientMetadataJwkDTO {
-                key_id: "c322aa7f-9803-410d-b891-939b279fb965"
-                    .parse::<Uuid>()
-                    .unwrap()
-                    .into(),
-                jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-                    r#use: Some("enc".to_string()),
-                    kid: None,
-                    crv: "123".to_string(),
-                    x: "456".to_string(),
-                    y: None,
-                }),
-            }],
+            jwks: OpenID4VPClientMetadataJwks {
+                keys: vec![OpenID4VPClientMetadataJwkDTO {
+                    key_id: "c322aa7f-9803-410d-b891-939b279fb965"
+                        .parse::<Uuid>()
+                        .unwrap()
+                        .into(),
+                    jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                        r#use: Some("enc".to_string()),
+                        kid: None,
+                        crv: "123".to_string(),
+                        x: "456".to_string(),
+                        y: None,
+                    }),
+                }]
+            },
             vp_formats: HashMap::from([
                 (
                     "jwt_vp_json".to_string(),

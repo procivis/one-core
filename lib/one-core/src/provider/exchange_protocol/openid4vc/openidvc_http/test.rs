@@ -245,16 +245,16 @@ fn test_client_request_response(
           "client_id_scheme": client_id_scheme,
           "client_id": client_id,
           "client_metadata": {
-            "jwks": [
-              {
+            "jwks": {
+              "keys": [{
                 "kid": "e8745b9f-337a-4584-b8a3-3697e56512b5",
                 "kty": "EC",
                 "use": "enc",
                 "crv": "P-256",
                 "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
                 "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA"
-              }
-            ],
+              }]
+            },
             "vp_formats": {
               "jwt_vp_json": {
                 "alg": [
@@ -1036,7 +1036,7 @@ async fn test_handle_invitation_proof_success() {
     let protocol = setup_protocol(Default::default());
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
-        jwks: vec![],
+        jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {
@@ -1271,7 +1271,7 @@ async fn test_handle_invitation_proof_failed() {
 
     let client_metadata_uri = "https://127.0.0.1/client_metadata_uri";
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
-        jwks: vec![],
+        jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {
@@ -1362,7 +1362,7 @@ async fn test_handle_invitation_proof_failed() {
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
-        jwks: vec![],
+        jwks: Default::default(),
         vp_formats: Default::default(),
         client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
@@ -1462,7 +1462,7 @@ async fn test_handle_invitation_proof_failed() {
 #[test]
 fn test_serialize_and_deserialize_interaction_data() {
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
-        jwks: vec![],
+        jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {

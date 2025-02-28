@@ -301,7 +301,7 @@ pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPClientMetadata {
     #[serde(default)]
-    pub jwks: Vec<OpenID4VPClientMetadataJwkDTO>,
+    pub jwks: OpenID4VPClientMetadataJwks,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: ClientIdSchemaType,
     #[serde(default)]
@@ -309,6 +309,11 @@ pub struct OpenID4VPClientMetadata {
     #[serde(default)]
     pub authorization_encrypted_response_enc:
         Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct OpenID4VPClientMetadataJwks {
+    pub keys: Vec<OpenID4VPClientMetadataJwkDTO>,
 }
 
 #[skip_serializing_none]

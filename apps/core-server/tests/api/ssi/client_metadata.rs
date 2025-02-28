@@ -61,16 +61,16 @@ async fn test_get_client_metadata() {
     assert_eq!(
         resp,
         serde_json::json!({
-            "jwks": [
-                {
+            "jwks": {
+                "keys": [{
                     "crv": "P-256",
                     "kid": key.id.to_string(),
                     "kty": "EC",
                     "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
                     "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
                     "use": "enc"
-                }
-            ],
+                }]
+            },
             "client_id_scheme": "redirect_uri",
             "vp_formats": {
                 "jwt_vc_json": {

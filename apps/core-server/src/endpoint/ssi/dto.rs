@@ -13,9 +13,9 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPFormat, OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
@@ -660,8 +660,7 @@ pub struct OpenID4VPFormatRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPClientMetadata)]
 pub struct OpenID4VPClientMetadataResponseRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub jwks: Vec<OpenID4VPClientMetadataJwkRestDTO>,
+    pub jwks: OpenID4VPClientMetadataJwksRestDTO,
     #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
     pub client_id_scheme: ClientIdSchemaTypeRestDTO,
@@ -670,6 +669,13 @@ pub struct OpenID4VPClientMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub authorization_encrypted_response_enc:
         Option<OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPClientMetadataJwks)]
+pub struct OpenID4VPClientMetadataJwksRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub keys: Vec<OpenID4VPClientMetadataJwkRestDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
