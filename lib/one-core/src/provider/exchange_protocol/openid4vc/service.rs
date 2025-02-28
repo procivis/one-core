@@ -177,7 +177,10 @@ pub fn create_open_id_for_vp_client_metadata(
 ) -> OpenID4VPClientMetadata {
     OpenID4VPClientMetadata {
         jwks: OpenID4VPClientMetadataJwks {
-            keys: vec![OpenID4VPClientMetadataJwkDTO { key_id, jwk }],
+            keys: vec![OpenID4VPClientMetadataJwkDTO {
+                key_id: key_id.to_string(),
+                jwk,
+            }],
         },
         vp_formats,
         client_id_scheme,

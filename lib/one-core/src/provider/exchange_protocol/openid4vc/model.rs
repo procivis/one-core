@@ -491,7 +491,7 @@ pub struct OpenID4VPPresentationDefinitionConstraintFieldFilter {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPClientMetadataJwkDTO {
     #[serde(rename = "kid")]
-    pub key_id: KeyId,
+    pub key_id: String,
     #[serde(flatten)]
     pub jwk: PublicKeyJwkDTO,
 }

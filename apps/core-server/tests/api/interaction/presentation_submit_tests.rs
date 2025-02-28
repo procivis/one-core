@@ -108,7 +108,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
                     "jwks": {
                         "keys": [{
                             "crv": "P-256",
-                            "kid": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                            "kid": "not-a-uuid",
                             "kty": "EC",
                             "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
                             "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",

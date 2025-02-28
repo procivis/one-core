@@ -49,7 +49,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::json::JsonString;
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
+use shared_types::{CredentialId, DidValue, ProofId, TrustAnchorId, TrustEntityId};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
@@ -682,7 +682,7 @@ pub struct OpenID4VPClientMetadataJwksRestDTO {
 #[from(OpenID4VPClientMetadataJwkDTO)]
 pub struct OpenID4VPClientMetadataJwkRestDTO {
     #[serde(rename = "kid")]
-    pub key_id: KeyId,
+    pub key_id: String,
     #[serde(flatten)]
     pub jwk: PublicKeyJwkRestDTO,
 }

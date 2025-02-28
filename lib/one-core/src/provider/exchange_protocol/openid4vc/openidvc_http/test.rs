@@ -247,7 +247,7 @@ fn test_client_request_response(
           "client_metadata": {
             "jwks": {
               "keys": [{
-                "kid": "e8745b9f-337a-4584-b8a3-3697e56512b5",
+                "kid": "not-a-uuid",
                 "kty": "EC",
                 "use": "enc",
                 "crv": "P-256",
