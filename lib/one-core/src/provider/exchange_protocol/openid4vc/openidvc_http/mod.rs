@@ -705,9 +705,10 @@ impl OpenID4VCHTTP {
                     jwk if jwk.starts_with("did:jwk") => "JWK",
                     ion if ion.starts_with("did:ion") => "ION",
                     x509 if x509.starts_with("did:x509") => "X509",
-                    _other => {
-                        //tracing::warn!("Unmapped did-method for issuer did: {other}");
-                        "UNKNOWN"
+                    other => {
+                        return Err(ExchangeProtocolError::Failed(format!(
+                            "Unknown DID method: {other}"
+                        )))
                     }
                 };
 
