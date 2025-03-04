@@ -111,6 +111,7 @@ impl DidMethod for WebDidMethod {
                 "BBS_PLUS".to_string(),
                 "DILITHIUM".to_string(),
             ],
+            method_names: vec!["web".to_string()],
         }
     }
 

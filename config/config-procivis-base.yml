@@ -199,6 +199,8 @@ did:
     params:
       public:
         resolverUrl: https://dev.uniresolver.io
+        supportedMethodNames:
+          - "ion"
   MDL:
     type: "MDL"
     display: "did.mdl"

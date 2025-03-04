@@ -227,6 +227,7 @@ impl DidMethod for DidMdl {
         DidCapabilities {
             operations: vec![Operation::CREATE, Operation::RESOLVE],
             key_algorithms: ["ES256", "EDDSA"].map(str::to_string).to_vec(),
+            method_names: vec!["mdl".to_string()],
         }
     }
 

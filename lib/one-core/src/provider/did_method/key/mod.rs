@@ -102,6 +102,7 @@ impl DidMethod for KeyDidMethod {
                 "EDDSA".to_string(),
                 "BBS_PLUS".to_string(),
             ],
+            method_names: vec!["key".to_string()],
         }
     }
 

@@ -18,6 +18,7 @@ pub struct DidMdlParams {
 #[serde(rename_all = "camelCase")]
 pub struct DidUniversalParams {
     pub resolver_url: String,
+    pub supported_method_names: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Into)]
@@ -132,4 +133,5 @@ pub struct DidCapabilities {
     #[into(with_fn = convert_inner)]
     pub operations: Vec<Operation>,
     pub key_algorithms: Vec<String>,
+    pub method_names: Vec<String>,
 }

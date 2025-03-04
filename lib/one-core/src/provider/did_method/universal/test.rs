@@ -10,6 +10,7 @@ fn test_get_capabilities() {
     let provider = UniversalDidMethod::new(
         Params {
             resolver_url: "".into(),
+            supported_method_names: vec!["ion".to_string()],
         },
         Arc::new(MockHttpClient::new()),
     );
@@ -18,4 +19,5 @@ fn test_get_capabilities() {
         vec![Operation::RESOLVE],
         provider.get_capabilities().operations
     );
+    assert_eq!(provider.get_capabilities().method_names, vec!["ion"]);
 }

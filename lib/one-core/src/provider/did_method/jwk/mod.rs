@@ -83,6 +83,7 @@ impl DidMethod for JWKDidMethod {
                 "BBS_PLUS".to_string(),
                 "DILITHIUM".to_string(),
             ],
+            method_names: vec!["jwk".to_string()],
         }
     }
 

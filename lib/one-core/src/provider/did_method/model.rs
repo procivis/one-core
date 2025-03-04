@@ -17,6 +17,8 @@ pub enum Operation {
 pub struct DidCapabilities {
     pub operations: Vec<Operation>,
     pub key_algorithms: Vec<String>,
+    /// Did method names that this did method is able to handle
+    pub method_names: Vec<String>,
 }
 
 #[derive(Clone, Default)]

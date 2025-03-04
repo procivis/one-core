@@ -24,6 +24,7 @@ struct ResolutionResponse {
 #[derive(Debug)]
 pub struct Params {
     pub resolver_url: String,
+    pub supported_method_names: Vec<String>,
 }
 
 pub struct UniversalDidMethod {
@@ -82,6 +83,7 @@ impl DidMethod for UniversalDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE],
             key_algorithms: vec![],
+            method_names: self.params.supported_method_names.clone(),
         }
     }
 

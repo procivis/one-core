@@ -282,6 +282,7 @@ async fn test_create_did_success() {
         .returning(|| DidCapabilities {
             operations: vec![],
             key_algorithms: vec!["".to_owned()],
+            method_names: vec!["example".to_string()],
         });
 
     let mut did_repository = MockDidRepository::default();
@@ -363,6 +364,7 @@ async fn test_create_did_value_already_exists() {
         .returning(|| DidCapabilities {
             operations: vec![],
             key_algorithms: vec!["".to_owned()],
+            method_names: vec!["example".to_string()],
         });
 
     let mut organisation_repository = MockOrganisationRepository::default();

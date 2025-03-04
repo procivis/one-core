@@ -67,6 +67,7 @@ async fn main() -> Result<(), DidMethodError> {
     let universal_resolver = UniversalDidMethod::new(
         UniversalDidMethodParams {
             resolver_url: "https://dev.uniresolver.io".to_string(),
+            supported_method_names: vec!["key".to_string()],
         },
         client,
     );

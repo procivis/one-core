@@ -141,6 +141,7 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE],
             key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            method_names: vec!["sd_jwt_vc_issuer_metadata".to_string()],
         }
     }
 

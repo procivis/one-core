@@ -203,6 +203,7 @@ impl OneDevCore {
         let universal_resolver = Arc::new(UniversalDidMethod::new(
             UniversalDidMethodParams {
                 resolver_url: config.did_method_config.universal_resolver_url,
+                supported_method_names: vec!["ion".to_string()],
             },
             client.clone(),
         ));

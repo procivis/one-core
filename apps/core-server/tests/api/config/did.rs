@@ -19,6 +19,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({
             "keyAlgorithms": ["ES256", "EDDSA", "BBS_PLUS"],
             "operations": ["RESOLVE", "CREATE"],
+            "methodNames": ["key"],
         })
     );
     assert_eq!(
@@ -26,6 +27,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({
             "keyAlgorithms": ["ES256", "EDDSA", "BBS_PLUS", "DILITHIUM"],
             "operations": ["RESOLVE", "CREATE", "DEACTIVATE"],
+            "methodNames": ["web"],
         })
     );
     assert_eq!(
@@ -33,6 +35,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({
             "keyAlgorithms": ["ES256", "EDDSA", "BBS_PLUS", "DILITHIUM"],
             "operations": ["RESOLVE", "CREATE"],
+            "methodNames": ["jwk"],
         })
     );
     assert_eq!(
@@ -40,6 +43,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({
             "keyAlgorithms": ["ES256", "EDDSA"],
             "operations": ["RESOLVE", "CREATE"],
+            "methodNames": ["x509"],
         })
     );
     assert_eq!(
@@ -47,6 +51,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({
             "keyAlgorithms": [],
             "operations": ["RESOLVE"],
+            "methodNames": ["ion"],
         })
     );
 }
