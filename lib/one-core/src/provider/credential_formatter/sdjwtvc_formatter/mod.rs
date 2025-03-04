@@ -19,6 +19,7 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use shared_types::{CredentialSchemaId, DidValue};
+use time::Duration;
 use url::Url;
 
 use super::model::{CredentialData, HolderBindingCtx};
@@ -116,9 +117,16 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
+        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, Some(verification), &*self.crypto).await
+        extract_credentials_internal(
+            token,
+            Some(verification),
+            &*self.crypto,
+            holder_binding_ctx,
+            Duration::seconds(self.get_leeway() as i64),
+        )
+        .await
     }
 
     async fn format_credential_presentation(
@@ -140,7 +148,14 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, None, &*self.crypto).await
+        extract_credentials_internal(
+            token,
+            None,
+            &*self.crypto,
+            None,
+            Duration::seconds(self.get_leeway() as i64),
+        )
+        .await
     }
 
     async fn format_presentation(
@@ -283,9 +298,17 @@ pub(super) async fn extract_credentials_internal(
     token: &str,
     verification: Option<VerificationFn>,
     crypto: &dyn CryptoProvider,
+    holder_binding_ctx: Option<HolderBindingCtx>,
+    leeway: Duration,
 ) -> Result<DetailCredential, FormatterError> {
-    let jwt: Jwt<SdJwtVc> =
-        Jwt::build_from_token_with_disclosures(token, crypto, verification).await?;
+    let jwt: Jwt<SdJwtVc> = Jwt::build_from_token_with_disclosures(
+        token,
+        crypto,
+        verification,
+        holder_binding_ctx,
+        leeway,
+    )
+    .await?;
 
     // EUDIW issuer uses a disclosure called "verified_claims" to store the disclosed claims
     // this does not seem to be a standard, see point 3 in https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78

@@ -221,7 +221,7 @@ pub struct Presentation {
     pub credentials: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CredentialPresentation {
     pub token: String,
     pub disclosed_keys: Vec<String>,

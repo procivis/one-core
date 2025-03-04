@@ -33,7 +33,9 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
-use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
+use crate::provider::credential_formatter::model::{
+    DetailCredential, ExtractPresentationCtx, HolderBindingCtx,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
@@ -362,6 +364,7 @@ async fn process_proof_submission(
     }
 
     let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+
     // Unpack presentations and credentials
     for presentation_submitted in &presentation_submission.descriptor_map {
         let input_descriptor = interaction_data
@@ -446,6 +449,11 @@ async fn process_proof_submission(
                 "Missing proof input schema for credential schema".to_owned(),
             ))?;
 
+        let holder_binding_ctx = HolderBindingCtx {
+            nonce: interaction_data.nonce.clone(),
+            audience: interaction_data.client_id.clone(),
+        };
+
         let (credential, mso) = validate_credential(
             presentation,
             path_nested,
@@ -460,6 +468,7 @@ async fn process_proof_submission(
             did_method_provider,
             revocation_method_provider,
             map_oidc_format_to_external,
+            holder_binding_ctx,
         )
         .await?;
 

@@ -11,6 +11,7 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
 use shared_types::DidValue;
+use time::Duration;
 
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -104,9 +105,16 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
+        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, Some(verification), &*self.crypto).await
+        extract_credentials_internal(
+            token,
+            Some(verification),
+            &*self.crypto,
+            holder_binding_ctx,
+            Duration::seconds(self.get_leeway() as i64),
+        )
+        .await
     }
 
     async fn format_credential_presentation(
@@ -128,7 +136,14 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, None, &*self.crypto).await
+        extract_credentials_internal(
+            token,
+            None,
+            &*self.crypto,
+            None,
+            Duration::seconds(self.get_leeway() as i64),
+        )
+        .await
     }
 
     async fn format_presentation(
@@ -245,9 +260,17 @@ pub(super) async fn extract_credentials_internal(
     token: &str,
     verification: Option<VerificationFn>,
     crypto: &dyn CryptoProvider,
+    holder_binding_ctx: Option<HolderBindingCtx>,
+    leeway: Duration,
 ) -> Result<DetailCredential, FormatterError> {
-    let jwt: Jwt<VcClaim> =
-        Jwt::build_from_token_with_disclosures(token, crypto, verification).await?;
+    let jwt: Jwt<VcClaim> = Jwt::build_from_token_with_disclosures(
+        token,
+        crypto,
+        verification,
+        holder_binding_ctx,
+        leeway,
+    )
+    .await?;
     let credential_subject = jwt
         .payload
         .custom

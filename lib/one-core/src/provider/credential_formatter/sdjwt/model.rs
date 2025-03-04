@@ -87,6 +87,7 @@ pub struct SDCredentialSubject {
 pub struct DecomposedToken<'a> {
     pub jwt: &'a str,
     pub disclosures: Vec<Disclosure>,
+    pub key_binding_token: Option<&'a str>,
 }
 
 pub struct SdJwtFormattingInputs {

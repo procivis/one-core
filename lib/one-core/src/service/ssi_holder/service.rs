@@ -354,6 +354,7 @@ impl SSIHolderService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
+                        key: Some(KeyRelations::default()),
                         schema: Some(CredentialSchemaRelations::default()),
                         ..Default::default()
                     },
@@ -421,7 +422,7 @@ impl SSIHolderService {
                 .map(|key| {
                     self.key_provider.get_signature_provider(
                         key,
-                        Some(holder_jwk_key_id.clone()),
+                        None,
                         self.key_algorithm_provider.clone(),
                     )
                 })

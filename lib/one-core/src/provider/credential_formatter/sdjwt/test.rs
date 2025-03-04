@@ -8,6 +8,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, HolderBindingCtx,
@@ -30,7 +31,7 @@ async fn test_prepare_sd_presentation() {
     let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
     let key_id = "key-id";
     let key_alg = "ES256";
-    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
+    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}~");
     let audience = "some-aud";
     let nonce = "nonce";
     let hash = "test-hash";
@@ -69,16 +70,7 @@ async fn test_prepare_sd_presentation() {
     .unwrap();
     assert!(result.contains(key_name) && result.contains(key_age));
     let (_, kb_token) = result.rsplit_once('~').unwrap();
-    assert!(!kb_token.is_empty());
-    assert!(kb_token.ends_with(".AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")); // fake sig: vec![0;32]
-    let kb_jwt = Jwt::<KeyBindingPayload>::build_from_token(kb_token, None)
-        .await
-        .unwrap();
-    assert_eq!(kb_jwt.header.key_id, Some(key_id.to_string()));
-    assert_eq!(kb_jwt.header.algorithm, key_alg);
-    assert_eq!(kb_jwt.payload.audience, Some(vec![audience.to_string()]));
-    assert_eq!(kb_jwt.payload.custom.nonce, nonce);
-    assert_eq!(kb_jwt.payload.custom.sd_hash, hash);
+    assert!(kb_token.is_empty());
 
     // Take name
     let presentation = CredentialPresentation {
@@ -109,6 +101,88 @@ async fn test_prepare_sd_presentation() {
 
     let result = prepare_sd_presentation(presentation, &hasher, None, None).await;
     assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
+}
+
+#[tokio::test]
+async fn test_prepare_sd_presentation_with_kb() {
+    let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5MjcwMjIxLCJpc3MiOiJkaWQ6aXNzdWVyOnRlc3QiLCJzdWIiOiJkaWQ6aG9sZGVyOnRlc3QiLCJqdGkiOiI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwidXNlIjoic2lnIiwiY3J2IjoiUC0yNTYiLCJ4IjoiMTh3SExlSWdXOXdWTjZWRDFUeGdwcXkyTHN6WWtNZjZKOG5qVkFpYnZoTSIsInkiOiItVjRkUzRVYUxNZ1BfNGZZNGo4aXI3Y2wxVFhsRmRBZ2N4NTVvN1RrY1NBIn19LCJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vd3d3LnRlc3Rjb250ZXh0LmNvbS92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVHlwZTEiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsiX3NkIjpbIllXSmpNVEl6IiwiWVdKak1USXoiXX0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJkaWQ6c3RhdHVzOmlkIiwidHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
+    let key_name = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
+    let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
+    let key_id = "key-id";
+    let key_alg = "ES256";
+    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}~");
+    let audience = "some-aud";
+    let nonce = "nonce";
+    let hash = "test-hash";
+    let holder_binding_ctx = HolderBindingCtx {
+        nonce: nonce.to_string(),
+        audience: audience.to_string(),
+    };
+
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .returning(|_| Ok(hash.to_string()));
+
+    let mut signer = MockSignatureProvider::default();
+    signer
+        .expect_get_key_id()
+        .returning(|| Some(key_id.to_string()));
+    signer
+        .expect_jose_alg()
+        .returning(|| Some(key_alg.to_string()));
+    signer.expect_sign().returning(|_| Ok(vec![0; 32]));
+
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["name".to_string(), "age".to_string()],
+    };
+
+    // With holder binding context and signer
+    let result = prepare_sd_presentation(
+        presentation.clone(),
+        &hasher,
+        Some(holder_binding_ctx.clone()),
+        Some(Box::new(signer)),
+    )
+    .await
+    .unwrap();
+    assert!(result.contains(key_name) && result.contains(key_age));
+    let (_, kb_token) = result.rsplit_once('~').unwrap();
+    println!("{kb_token}");
+    assert!(!kb_token.is_empty());
+    assert!(kb_token.ends_with(".AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")); // fake sig: vec![0;32]
+    let kb_jwt = Jwt::<KeyBindingPayload>::build_from_token(kb_token, None)
+        .await
+        .unwrap();
+    assert_eq!(kb_jwt.header.key_id, Some(key_id.to_string()));
+    assert_eq!(kb_jwt.header.algorithm, key_alg);
+    assert_eq!(kb_jwt.payload.audience.unwrap().first().unwrap(), audience);
+    assert_eq!(kb_jwt.payload.custom.nonce, nonce);
+    assert_eq!(kb_jwt.payload.custom.sd_hash, hash);
+
+    // Without holder binding context and signer
+    let result = prepare_sd_presentation(
+        presentation.clone(),
+        &hasher,
+        None,
+        Some(Box::new(MockSignatureProvider::default())),
+    )
+    .await;
+    assert!(matches!(result, Err(FormatterError::Failed(_))));
+
+    // With holder binding context and no signer
+    let result = prepare_sd_presentation(
+        presentation.clone(),
+        &hasher,
+        Some(holder_binding_ctx),
+        None,
+    )
+    .await;
+    assert!(matches!(result, Err(FormatterError::Failed(_))));
+    // Without holder binding context and no signer
+    let result = prepare_sd_presentation(presentation.clone(), &hasher, None, None).await;
+    assert!(matches!(result, Err(FormatterError::Failed(_))));
 }
 
 #[test]

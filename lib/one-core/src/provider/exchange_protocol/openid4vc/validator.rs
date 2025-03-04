@@ -13,7 +13,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, Presentation, TokenVerifier,
+    DetailCredential, ExtractPresentationCtx, HolderBindingCtx, Presentation, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -114,6 +114,7 @@ pub(super) async fn validate_credential(
     did_method_provider: &Arc<dyn DidMethodProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     map_from_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
+    holder_binding_ctx: HolderBindingCtx,
 ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
     let holder_did = presentation
         .issuer_did
@@ -139,7 +140,7 @@ pub(super) async fn validate_credential(
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let credential = formatter
-        .extract_credentials(credential_token, key_verification, None)
+        .extract_credentials(credential_token, key_verification, Some(holder_binding_ctx))
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {

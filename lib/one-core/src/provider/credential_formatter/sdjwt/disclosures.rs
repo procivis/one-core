@@ -150,19 +150,34 @@ fn compute_disclosure_for(key: &str, value: &serde_json::Value) -> Result<String
 }
 
 pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken, FormatterError> {
-    let mut token_parts = token.trim_end_matches('~').split("~");
+    let (token_with_disclosures, key_binding_token) = token
+        .rsplit_once('~')
+        .map(|(token, kb_token)| (token, (!kb_token.is_empty()).then_some(kb_token)))
+        .unwrap_or((token, None));
+
+    let mut token_parts = token_with_disclosures.split("~");
     let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
 
-    let disclosures: Vec<Disclosure> = token_parts
-        .filter_map(|disclosure| {
-            let bytes = Base64UrlSafeNoPadding::decode_to_vec(disclosure, None).ok()?;
-            let disclosure_array = String::from_utf8(bytes).ok()?;
+    let disclosures = token_parts
+        .map(|disclosure| {
+            let bytes = Base64UrlSafeNoPadding::decode_to_vec(disclosure, None).map_err(|err| {
+                FormatterError::Failed(format!("failed to decode base64 disclosure: {err}"))
+            })?;
+            let disclosure_array = String::from_utf8(bytes).map_err(|err| {
+                FormatterError::Failed(format!(
+                    "failed to parse UTF-8 disclosure array from bytes: {err}"
+                ))
+            })?;
 
-            parse_disclosure(disclosure_array, disclosure.to_string()).ok()
+            parse_disclosure(disclosure_array, disclosure.to_string())
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(DecomposedToken { jwt, disclosures })
+    Ok(DecomposedToken {
+        jwt,
+        disclosures,
+        key_binding_token,
+    })
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -170,7 +185,7 @@ pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken, FormatterError
 pub(crate) struct DisclosureArray {
     pub salt: String,
     pub key: String,
-    pub value: serde_json::Value,
+    pub value: Value,
 }
 
 pub(crate) fn parse_disclosure(
