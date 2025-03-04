@@ -1,5 +1,6 @@
 use one_core::model::did::{KeyRole, RelatedKey};
 use serde_json::Value;
+use uuid::Uuid;
 
 use crate::fixtures::{self, TestingDidParams};
 use crate::utils;
@@ -15,10 +16,13 @@ async fn test_get_did_web_document_es256_success() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let key = fixtures::create_es256_key(&db_conn, &organisation).await;
+    let id = Uuid::new_v4();
     let did = fixtures::create_did(
         &db_conn,
         &organisation,
         Some(TestingDidParams {
+            did: Some(format!("did:web:{id}").parse().unwrap()),
+            id: Some(id.into()),
             did_method: Some("WEB".to_string()),
             keys: Some(vec![
                 RelatedKey {
@@ -83,7 +87,7 @@ async fn test_get_did_web_document_es256_success() {
     let parts: Vec<&str> = assertion_method.split(':').collect();
     assert_eq!(3, parts.len());
     assert_eq!("did", parts[0]);
-    assert_eq!("test", parts[1]);
+    assert_eq!("web", parts[1]);
 
     let parts: Vec<&str> = parts[2].split('#').collect();
     assert_eq!(2, parts.len());
@@ -110,6 +114,7 @@ async fn test_get_did_web_document_eddsa_success() {
         &db_conn,
         &organisation,
         Some(TestingDidParams {
+            did: Some("did:web:test".parse().unwrap()),
             did_method: Some("WEB".to_string()),
             keys: Some(vec![
                 RelatedKey {
