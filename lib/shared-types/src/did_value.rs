@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
@@ -6,8 +7,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
-
-use crate::macros::impl_display;
 
 static DID_ALLOWLIST_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9:._%-]+$").expect("Failed to compile regex"));
@@ -27,17 +26,23 @@ pub enum DidValueError {
 /// https://www.w3.org/TR/did-core/#did-syntax
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(transparent)]
-#[repr(transparent)]
-pub struct DidValue(Url);
+#[serde(try_from = "String", into = "String")]
+pub struct DidValue {
+    url: Url,
+    method: String,
+}
 
 impl DidValue {
     pub fn into_url(self) -> Url {
-        self.0
+        self.url
     }
 
     pub fn as_str(&self) -> &str {
-        self.0.as_str()
+        self.url.as_str()
+    }
+
+    pub fn method(&self) -> &str {
+        self.method.as_str()
     }
 }
 
@@ -92,17 +97,98 @@ impl FromStr for DidValue {
             return Err(DidValueError::IncorrectDiDValue).context("did parsing error");
         }
 
-        Ok(DidValue(url))
+        let method = method.to_owned();
+        Ok(DidValue { url, method })
     }
 }
 
-impl_display!(DidValue);
+impl From<DidValue> for String {
+    fn from(did: DidValue) -> Self {
+        did.url.to_string()
+    }
+}
 
-#[cfg(feature = "sea-orm")]
-use crate::macros::impls_for_seaorm_newtype;
+impl TryFrom<String> for DidValue {
+    type Error = anyhow::Error;
 
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        DidValue::from_str(&value)
+    }
+}
+
+impl Display for DidValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.url, f)
+    }
+}
+
+// needed for sea-orm `find_by_id` to work
+impl From<&DidValue> for DidValue {
+    fn from(source: &DidValue) -> Self {
+        source.clone()
+    }
+}
+
+// needed if we want to put the type inside and Option
 #[cfg(feature = "sea-orm")]
-impls_for_seaorm_newtype!(DidValue);
+mod seaorm {
+    use super::*;
+    impl sea_orm::sea_query::value::Nullable for DidValue {
+        fn null() -> sea_orm::Value {
+            sea_orm::Value::String(None)
+        }
+    }
+
+    impl From<DidValue> for sea_orm::Value {
+        fn from(source: DidValue) -> Self {
+            source.to_string().into()
+        }
+    }
+
+    impl sea_orm::sea_query::ValueType for DidValue {
+        fn try_from(v: sea_orm::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+            let s = <String as sea_orm::sea_query::ValueType>::try_from(v)?;
+            let s = s.parse().map_err(|_| sea_orm::sea_query::ValueTypeErr)?;
+            Ok(s)
+        }
+
+        fn type_name() -> String {
+            "DidValue".to_owned()
+        }
+
+        fn array_type() -> sea_orm::sea_query::ArrayType {
+            sea_orm::sea_query::ArrayType::String
+        }
+
+        fn column_type() -> sea_orm::sea_query::ColumnType {
+            sea_orm::sea_query::ColumnType::string(None)
+        }
+    }
+
+    impl sea_orm::TryGetable for DidValue {
+        fn try_get_by<I: sea_orm::ColIdx>(
+            res: &sea_orm::QueryResult,
+            idx: I,
+        ) -> Result<Self, sea_orm::TryGetError> {
+            let s: String = <String as sea_orm::TryGetable>::try_get_by(res, idx)?;
+
+            let newtype_str = stringify!($newtype);
+            let s = s.parse().map_err(|error| {
+                sea_orm::TryGetError::DbErr(sea_orm::error::DbErr::Type(format!(
+                    "Failed to parse {newtype_str}: {error}"
+                )))
+            })?;
+
+            Ok(s)
+        }
+    }
+
+    impl From<&DidValue> for sea_orm::Value {
+        fn from(source: &DidValue) -> Self {
+            source.to_string().into()
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -150,12 +236,9 @@ mod tests {
 
     #[test]
     fn test_conversion_did_value_from_did_url() {
-        assert_eq!(
-            DidValue::from_did_url("did:example:12345")
-                .unwrap()
-                .as_str(),
-            "did:example:12345"
-        );
+        let did = DidValue::from_did_url("did:example:12345").unwrap();
+        assert_eq!(did.as_str(), "did:example:12345");
+        assert_eq!(did.method(), "example");
 
         assert_eq!(
             DidValue::from_did_url("did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6#zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6")
