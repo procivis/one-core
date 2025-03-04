@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{serde_as, skip_serializing_none, OneOrMany};
 use time::OffsetDateTime;
 
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -29,6 +29,7 @@ pub struct JWTHeader {
 }
 
 #[skip_serializing_none]
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct JWTPayload<CustomPayload> {
     #[serde(rename = "iat", default, with = "time::serde::timestamp::option")]
@@ -45,6 +46,11 @@ pub struct JWTPayload<CustomPayload> {
 
     #[serde(rename = "sub", default)]
     pub subject: Option<String>,
+
+    /// <https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3>
+    #[serde(rename = "aud", default)]
+    #[serde_as(as = "Option<OneOrMany<_>>")]
+    pub audience: Option<Vec<String>>,
 
     #[serde(rename = "jti", default)]
     pub jwt_id: Option<String>,

@@ -186,7 +186,7 @@ pub struct CredentialStatus {
 #[derive(Debug, Default, Clone)]
 pub struct HolderBindingCtx {
     pub nonce: String,
-    pub aud: String,
+    pub audience: String,
 }
 
 #[allow(dead_code)]

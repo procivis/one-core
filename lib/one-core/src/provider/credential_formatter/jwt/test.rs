@@ -72,6 +72,7 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         invalid_before: Some(now),
         issuer: Some("did:issuer:123".to_owned()),
         subject: Some("did:subject:123".to_owned()),
+        audience: None,
         jwt_id: Some("ID".to_owned()),
         custom: custom_payload,
         vc_type: None,

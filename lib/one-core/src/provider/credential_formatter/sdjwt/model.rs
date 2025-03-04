@@ -99,7 +99,6 @@ pub struct SdJwtFormattingInputs {
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct KeyBindingPayload {
-    pub aud: String,
     pub nonce: String,
     pub sd_hash: String,
 }

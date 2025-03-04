@@ -556,7 +556,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        let (aud, nonce) = match transport {
+        let (audience, nonce) = match transport {
             TransportType::Ble => {
                 let interaction_data: BLEOpenID4VPInteractionData =
                     serde_json::from_value(context).map_err(ExchangeProtocolError::JsonError)?;
@@ -581,7 +581,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 (interaction_data.client_id, interaction_data.nonce)
             }
         };
-        Ok(Some(HolderBindingCtx { nonce, aud }))
+        Ok(Some(HolderBindingCtx { nonce, audience }))
     }
 
     async fn verifier_handle_proof(

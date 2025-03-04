@@ -1794,6 +1794,7 @@ impl OpenID4VPAuthorizationRequestParams {
                 invalid_before: None,
                 issuer: Some(did.to_string()),
                 subject: None,
+                audience: None,
                 jwt_id: None,
                 custom: self,
                 proof_of_possession_key: None,

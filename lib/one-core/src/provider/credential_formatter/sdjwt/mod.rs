@@ -79,6 +79,7 @@ pub async fn format_credential<T: Serialize>(
         invalid_before: issued_at
             .and_then(|iat| iat.checked_sub(Duration::seconds(additional_inputs.leeway as i64))),
         subject: additional_inputs.holder_did.map(|did| did.to_string()),
+        audience: None,
         issuer: Some(issuer),
         jwt_id: id.map(|id| id.to_string()),
         custom: payload,
@@ -174,8 +175,8 @@ async fn append_key_binding_token(
         .map_err(|err| FormatterError::CouldNotFormat(format!("failed to hash token: {err}")))?;
     let payload = JWTPayload {
         issued_at: Some(OffsetDateTime::now_utc()),
+        audience: Some(vec![holder_binding_ctx.audience]),
         custom: KeyBindingPayload {
-            aud: holder_binding_ctx.aud,
             nonce: holder_binding_ctx.nonce,
             sd_hash,
         },
@@ -265,6 +266,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             expires_at: decomposed_token.payload.expires_at,
             issuer,
             subject: decomposed_token.payload.subject,
+            audience: None,
             jwt_id: decomposed_token.payload.jwt_id,
             vc_type: decomposed_token.payload.vc_type,
             proof_of_possession_key: decomposed_token.payload.proof_of_possession_key,

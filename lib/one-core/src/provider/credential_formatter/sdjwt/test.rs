@@ -31,12 +31,12 @@ async fn test_prepare_sd_presentation() {
     let key_id = "key-id";
     let key_alg = "ES256";
     let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
-    let aud = "some-aud";
+    let audience = "some-aud";
     let nonce = "nonce";
     let hash = "test-hash";
     let holder_binding_ctx = HolderBindingCtx {
         nonce: nonce.to_string(),
-        aud: aud.to_string(),
+        audience: audience.to_string(),
     };
 
     let mut hasher = MockHasher::default();
@@ -76,7 +76,7 @@ async fn test_prepare_sd_presentation() {
         .unwrap();
     assert_eq!(kb_jwt.header.key_id, Some(key_id.to_string()));
     assert_eq!(kb_jwt.header.algorithm, key_alg);
-    assert_eq!(kb_jwt.payload.custom.aud, aud);
+    assert_eq!(kb_jwt.payload.audience, Some(vec![audience.to_string()]));
     assert_eq!(kb_jwt.payload.custom.nonce, nonce);
     assert_eq!(kb_jwt.payload.custom.sd_hash, hash);
 
