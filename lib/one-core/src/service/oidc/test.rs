@@ -29,7 +29,7 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
-use crate::provider::exchange_protocol::openid4vc::model::{ClientIdSchemaType, *};
+use crate::provider::exchange_protocol::openid4vc::model::*;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -1784,52 +1784,52 @@ async fn test_get_client_metadata_success() {
             vp_formats: HashMap::from([
                 (
                     "jwt_vp_json".to_string(),
-                    OpenID4VPFormat {
+                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    }
+                    })
                 ),
                 (
                     "ldp_vc".to_string(),
-                    OpenID4VPFormat {
+                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                         alg: vec![
                             "EdDSA".to_string(),
                             "ES256".to_string(),
                             "BLS12-381G1-SHA256".to_string()
                         ]
-                    }
+                    })
                 ),
                 (
                     "vc+sd-jwt".to_string(),
-                    OpenID4VPFormat {
+                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    }
+                    })
                 ),
                 (
                     "jwt_vc_json".to_string(),
-                    OpenID4VPFormat {
+                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    }
+                    })
                 ),
                 (
                     "mso_mdoc".to_string(),
-                    OpenID4VPFormat {
+                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    }
+                    })
                 ),
                 (
                     "ldp_vp".to_string(),
-                    OpenID4VPFormat {
+                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    }
+                    })
                 ),
             ]),
-            client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
             authorization_encrypted_response_alg: Some(
                 AuthorizationEncryptedResponseAlgorithm::EcdhEs
             ),
             authorization_encrypted_response_enc: Some(
                 AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
             ),
+            ..Default::default()
         },
         result
     );

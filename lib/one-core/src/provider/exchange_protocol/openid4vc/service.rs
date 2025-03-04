@@ -41,8 +41,8 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     parse_interaction_content, vec_last_position_from_token_path,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    AcceptProofResult, ClientIdSchemaType, OpenID4VCICredentialConfigurationData,
-    OpenID4VPPresentationDefinition, RequestData,
+    AcceptProofResult, OpenID4VCICredentialConfigurationData, OpenID4VPPresentationDefinition,
+    RequestData,
 };
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
@@ -173,7 +173,6 @@ pub fn create_open_id_for_vp_client_metadata(
     key_id: KeyId,
     jwk: PublicKeyJwkDTO,
     vp_formats: HashMap<String, OpenID4VPFormat>,
-    client_id_scheme: ClientIdSchemaType,
 ) -> OpenID4VPClientMetadata {
     OpenID4VPClientMetadata {
         jwks: OpenID4VPClientMetadataJwks {
@@ -183,7 +182,10 @@ pub fn create_open_id_for_vp_client_metadata(
             }],
         },
         vp_formats,
-        client_id_scheme: Some(client_id_scheme),
+        id_token_ecrypted_response_enc: None,
+        id_token_encrypted_response_alg: None,
+        subject_syntax_types_supported: vec![],
+        jwks_uri: None,
         authorization_encrypted_response_alg: Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs),
         authorization_encrypted_response_enc: Some(
             AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,

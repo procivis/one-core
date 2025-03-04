@@ -4,7 +4,7 @@ use std::str::FromStr;
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::did::DidType;
 use one_core::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPJwtVpJson, OpenID4VPPresentationDefinition,
 };
 use serde_json::json;
 use url::Url;
@@ -1394,13 +1394,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat {
+            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                 alg: vec!["EdDSA".to_string()],
-            },
+            }),
         )]),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
-        authorization_encrypted_response_alg: None,
-        authorization_encrypted_response_enc: None,
+        ..Default::default()
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
@@ -1451,13 +1449,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat {
+            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                 alg: vec!["EdDSA".to_string()],
-            },
+            }),
         )]),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
-        authorization_encrypted_response_alg: None,
-        authorization_encrypted_response_enc: None,
+        ..Default::default()
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {

@@ -19,7 +19,7 @@ use super::model::{
     DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
     OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
+    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData, OpenID4VPJwtVpJson,
     OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
     OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
@@ -187,21 +187,22 @@ pub(crate) fn get_claim_name_by_json_path(
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method
 pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat> {
     let mut formats = HashMap::new();
-    let algorithms = OpenID4VPFormat {
+    let algorithms = OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
         alg: vec!["EdDSA".to_owned(), "ES256".to_owned()],
-    };
+    });
+
     formats.insert("jwt_vp_json".to_owned(), algorithms.clone());
     formats.insert("jwt_vc_json".to_owned(), algorithms.clone());
     formats.insert("ldp_vp".to_owned(), algorithms.clone());
     formats.insert(
         "ldp_vc".to_owned(),
-        OpenID4VPFormat {
+        OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
             alg: vec![
                 "EdDSA".to_owned(),
                 "ES256".to_owned(),
                 "BLS12-381G1-SHA256".to_owned(),
             ],
-        },
+        }),
     );
     formats.insert("vc+sd-jwt".to_owned(), algorithms.clone());
     formats.insert("mso_mdoc".to_owned(), algorithms);
@@ -1364,7 +1365,6 @@ fn get_params_for_redirect_uri(
             key_id,
             encryption_key_jwk,
             vp_formats,
-            ClientIdSchemaType::RedirectUri,
         ))
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 

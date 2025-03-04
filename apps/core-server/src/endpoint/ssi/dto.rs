@@ -13,9 +13,10 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDcSdJwt,
+    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPFormat,
+    OpenID4VPJwtVpJson, OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
@@ -59,7 +60,6 @@ use uuid::Uuid;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
-use crate::endpoint::proof::dto::ClientIdSchemaTypeRestDTO;
 use crate::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityStateRest};
 use crate::serialize::{front_time, front_time_option};
 
@@ -652,8 +652,28 @@ pub struct OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO {
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPFormat)]
-pub struct OpenID4VPFormatRestDTO {
+#[serde(untagged)]
+pub enum OpenID4VPFormatRestDTO {
+    #[serde(rename = "jwt_vp_json")]
+    JwtVpJson(OpenID4VPJwtVpJsonRestDTO),
+    #[serde(rename = "dc+sd-jwt")]
+    DcSdJwt(OpenID4VPDcSdJwtRestDTO),
+    Other(serde_json::Value),
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPJwtVpJson)]
+pub struct OpenID4VPJwtVpJsonRestDTO {
     pub alg: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPDcSdJwt)]
+pub struct OpenID4VPDcSdJwtRestDTO {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sd_jwt_algorithms: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub kb_jwt_algorithms: Vec<String>,
 }
 
 #[skip_serializing_none]
@@ -661,10 +681,13 @@ pub struct OpenID4VPFormatRestDTO {
 #[from(OpenID4VPClientMetadata)]
 pub struct OpenID4VPClientMetadataResponseRestDTO {
     pub jwks: OpenID4VPClientMetadataJwksRestDTO,
+    pub jwks_uri: Option<String>,
+    pub id_token_ecrypted_response_enc: Option<String>,
+    pub id_token_encrypted_response_alg: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub subject_syntax_types_supported: Vec<String>,
     #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub client_id_scheme: Option<ClientIdSchemaTypeRestDTO>,
     #[from(with_fn = convert_inner)]
     pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
     #[from(with_fn = convert_inner)]

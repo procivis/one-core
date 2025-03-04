@@ -71,7 +71,6 @@ async fn test_get_client_metadata() {
                     "use": "enc"
                 }]
             },
-            "client_id_scheme": "redirect_uri",
             "vp_formats": {
                 "jwt_vc_json": {
                     "alg": ["EdDSA", "ES256"]

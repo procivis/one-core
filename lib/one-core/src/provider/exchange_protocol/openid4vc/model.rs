@@ -298,17 +298,25 @@ pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct OpenID4VPClientMetadata {
     #[serde(default)]
     pub jwks: OpenID4VPClientMetadataJwks,
+    #[serde(default)]
+    pub jwks_uri: Option<String>,
+    #[serde(default)]
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
-    pub client_id_scheme: Option<ClientIdSchemaType>,
     #[serde(default)]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default)]
     pub authorization_encrypted_response_enc:
         Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    #[serde(default)]
+    pub id_token_ecrypted_response_enc: Option<String>,
+    #[serde(default)]
+    pub id_token_encrypted_response_alg: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub subject_syntax_types_supported: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
@@ -497,7 +505,21 @@ pub struct OpenID4VPClientMetadataJwkDTO {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct OpenID4VPFormat {
+#[serde(untagged)]
+pub enum OpenID4VPFormat {
+    JwtVpJson(OpenID4VPJwtVpJson),
+    DcSdJwt(OpenID4VPDcSdJwt),
+    Other(serde_json::Value),
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct OpenID4VPDcSdJwt {
+    pub sd_jwt_algorithms: Vec<String>,
+    pub kb_jwt_algorithms: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct OpenID4VPJwtVpJson {
     pub alg: Vec<String>,
 }
 

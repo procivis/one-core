@@ -42,8 +42,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialValueDetails, OpenID4VCIssuanceParams,
     OpenID4VCParams, OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
     OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPFormat, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
-    ShareResponse,
+    OpenID4VPFormat, OpenID4VPHolderInteractionData, OpenID4VPJwtVpJson,
+    OpenID4VPPresentationDefinition, ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -1038,13 +1038,11 @@ async fn test_handle_invitation_proof_success() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat {
+            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                 alg: vec!["EdDSA".to_string()],
-            },
+            }),
         )]),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
-        authorization_encrypted_response_alg: None,
-        authorization_encrypted_response_enc: None,
+        ..Default::default()
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
@@ -1273,13 +1271,11 @@ async fn test_handle_invitation_proof_failed() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat {
+            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                 alg: vec!["EdDSA".to_string()],
-            },
+            }),
         )]),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
-        authorization_encrypted_response_alg: None,
-        authorization_encrypted_response_enc: None,
+        ..Default::default()
     })
     .unwrap();
     let presentation_definition_uri = "https://127.0.0.1/presentation_definition_uri";
@@ -1360,14 +1356,8 @@ async fn test_handle_invitation_proof_failed() {
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
-    let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
-        jwks: Default::default(),
-        vp_formats: Default::default(),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
-        authorization_encrypted_response_alg: None,
-        authorization_encrypted_response_enc: None,
-    })
-    .unwrap();
+    let metadata_missing_jwt_vp_json =
+        serde_json::to_string(&OpenID4VPClientMetadata::default()).unwrap();
     let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}", nonce, callback_url, metadata_missing_jwt_vp_json, callback_url, presentation_definition)).unwrap();
     let result = protocol
         .holder_handle_invitation(
@@ -1464,13 +1454,11 @@ fn test_serialize_and_deserialize_interaction_data() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat {
+            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
                 alg: vec!["EdDSA".to_string()],
-            },
+            }),
         )]),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
-        authorization_encrypted_response_alg: None,
-        authorization_encrypted_response_enc: None,
+        ..Default::default()
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {

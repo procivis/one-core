@@ -11,7 +11,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
+    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPFormat, OpenID4VPHolderInteractionData,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::x509::extract_x5c_san_dns;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -462,30 +462,35 @@ pub fn validate_interaction_data(
                 "client_metadata is None".to_string(),
             ))?;
 
-    if client_metadata
-        .client_id_scheme
-        .is_some_and(|scheme| scheme != interaction_data.client_id_scheme)
-    {
-        return Err(ExchangeProtocolError::InvalidRequest(
-            "client_metadata.client_id_scheme must match client_scheme".to_string(),
-        ));
-    }
-
-    match client_metadata.vp_formats.get("jwt_vp_json") {
-        None => Err(ExchangeProtocolError::InvalidRequest(
-            "client_metadata.vp_formats must contain 'jwt_vp_json'".to_string(),
-        )),
-        Some(jwt_vp_json) => {
-            if jwt_vp_json.alg.contains(&"EdDSA".to_string()) {
-                Ok(())
-            } else {
-                Err(ExchangeProtocolError::InvalidRequest(
-                    "client_metadata.vp_formats[\"jwt_vp_json\"] must contain 'EdDSA' algorithm"
-                        .to_string(),
-                ))
+    match (
+        client_metadata.vp_formats.get("jwt_vp_json"),
+        client_metadata.vp_formats.get("dc+sd_jwt"),
+    ) {
+        (None, None) => Err(ExchangeProtocolError::InvalidRequest(
+            "client_metadata.vp_formats must contain 'jwt_vp_json' or 'dc_sd_jwt'".to_string(),
+        ))?,
+        (jwt_vp_json, dc_sd_jwt) => {
+            if let Some(OpenID4VPFormat::JwtVpJson(jwt_vp_json)) = jwt_vp_json {
+                if !jwt_vp_json.alg.contains(&"EdDSA".to_string()) {
+                    Err(ExchangeProtocolError::InvalidRequest(
+                        "client_metadata.vp_formats[\"jwt_vp_json\"] must contain 'EdDSA' algorithm"
+                            .to_string(),
+                    ))?;
+                }
+            }
+            if let Some(OpenID4VPFormat::DcSdJwt(dc_sd_jwt)) = dc_sd_jwt {
+                let algorithms = &dc_sd_jwt.sd_jwt_algorithms;
+                if !algorithms.contains(&"EdDSA".to_string())
+                    && !algorithms.contains(&"ES256".to_string())
+                {
+                    Err(ExchangeProtocolError::InvalidRequest(
+                        "client_metadata.vp_formats[\"dc_sd_jwt\"] must contain 'ES256' or 'EdDSA' algorithms"
+                            .to_string(),
+                    ))?;
+                }
             }
         }
-    }?;
+    }
 
     if interaction_data.response_uri.is_none() {
         return Err(ExchangeProtocolError::InvalidRequest(

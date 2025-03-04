@@ -492,15 +492,12 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 purpose: input_descriptor.purpose,
                 claims: fields
                     .iter()
-                    .filter(|requested| requested.id.is_some())
                     .map(|requested_claim| {
                         Ok(CredentialGroupItem {
                             id: requested_claim
                                 .id
-                                .ok_or(ExchangeProtocolError::Failed(
-                                    "requested_claim id is None".to_string(),
-                                ))?
-                                .to_string(),
+                                .map(|id| id.to_string())
+                                .unwrap_or(requested_claim.path.join(".")),
                             key: get_claim_name_by_json_path(&requested_claim.path)?,
                             required: !requested_claim.optional.is_some_and(|optional| optional),
                         })

@@ -310,8 +310,7 @@ fn generate_authorization_request_params(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     client_id_scheme: ClientIdSchemaType,
 ) -> Result<OpenID4VPAuthorizationRequestParams, ExchangeProtocolError> {
-    let client_metadata =
-        generate_client_metadata(proof, key_algorithm_provider, client_id_scheme)?;
+    let client_metadata = generate_client_metadata(proof, key_algorithm_provider)?;
 
     let OpenID4VPVerifierInteractionContent {
         nonce,
@@ -351,7 +350,6 @@ fn generate_authorization_request_params(
 fn generate_client_metadata(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    client_id_scheme: ClientIdSchemaType,
 ) -> Result<OpenID4VPClientMetadata, ExchangeProtocolError> {
     let vp_formats = create_open_id_for_vp_formats();
     let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider)
@@ -361,7 +359,6 @@ fn generate_client_metadata(
         jwk.key_id,
         jwk.jwk.into(),
         vp_formats,
-        client_id_scheme,
     ))
 }
 

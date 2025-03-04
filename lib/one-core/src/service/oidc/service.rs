@@ -239,7 +239,6 @@ impl OIDCService {
             jwk.key_id,
             jwk.jwk.into(),
             formats,
-            ClientIdSchemaType::RedirectUri,
         ))
     }
 

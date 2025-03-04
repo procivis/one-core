@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use model::SdJwtVcStatus;
 use one_crypto::CryptoProvider;
 use sdjwt::format_credential;
 use serde::Deserialize;
@@ -36,7 +37,7 @@ use crate::provider::credential_formatter::sdjwt::model::{
     DecomposedToken, SdJwtFormattingInputs, Sdvp,
 };
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcStatus};
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
