@@ -161,6 +161,7 @@ async fn test_get_client_request() {
     assert_eq!("direct_post", payload["response_mode"]);
     assert_eq!("vp_token", payload["response_type"]);
     assert_eq!("client_id", payload["client_id"]);
+    assert_eq!("https://self-issued.me/v2", payload["aud"]);
     assert_eq!("https://response.uri/", payload["response_uri"]);
     assert_eq!(interaction.id.to_string(), payload["state"]);
     assert!(payload["client_metadata"].is_object());

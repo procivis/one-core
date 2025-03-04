@@ -315,6 +315,21 @@ pub(crate) async fn interaction_data_from_query(
             }
         }
 
+        // accept non-conformant audience with a warning
+        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
+        if let Some(audience) = &request_token.payload.audience {
+            if audience.len() != 1 {
+                tracing::warn!("Invalid `aud` claim, {} items", audience.len());
+            } else {
+                let aud = audience.first();
+                if aud != Some(&"https://self-issued.me/v2".to_string()) {
+                    tracing::warn!("Invalid `aud` claim: {aud:?}");
+                }
+            }
+        } else {
+            tracing::warn!("`aud` claim missing in request JWT payload");
+        }
+
         let referenced_params = match &interaction_data.client_id_scheme {
             ClientIdSchemaType::VerifierAttestation => {
                 parse_referenced_data_from_verifier_attestation_token(
