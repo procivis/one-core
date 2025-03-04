@@ -106,7 +106,7 @@ fn is_revocation_credential(credential: &DetailCredential) -> bool {
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
     presentation: Presentation,
-    path_nested: &NestedPresentationSubmissionDescriptorDTO,
+    path_nested: Option<&NestedPresentationSubmissionDescriptorDTO>,
     extracted_lvvcs: &[DetailCredential],
     proof_schema_input: &ProofInputSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
@@ -122,13 +122,17 @@ pub(super) async fn validate_credential(
             "Missing holder id".to_string(),
         ))?;
 
-    let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
+    let credential_index = path_nested
+        .map(|p| vec_last_position_from_token_path(&p.path))
+        .transpose()?
+        .unwrap_or(0);
+
     let credential_token = presentation
         .credentials
         .get(credential_index)
         .ok_or(OpenID4VCIError::InvalidRequest)?;
 
-    let oidc_format = &path_nested.format;
+    let oidc_format = path_nested.map(|p| p.format.as_str()).unwrap_or("mso_mdoc");
     let format = map_from_oidc_format_to_external(oidc_format, Some(credential_token))?;
     let formatter = formatter_provider
         .get_formatter(&format)

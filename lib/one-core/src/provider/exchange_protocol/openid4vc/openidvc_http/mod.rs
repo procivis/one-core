@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use indexmap::IndexMap;
-pub use mappers::create_presentation_submission;
 use mappers::map_credential_formats_to_presentation_format;
 use one_crypto::utilities;
 use serde::de::DeserializeOwned;
@@ -19,8 +18,8 @@ use uuid::Uuid;
 
 use super::mapper::{
     create_credential, create_open_id_for_vp_presentation_definition,
-    create_open_id_for_vp_sharing_url_encoded, get_credential_offer_url,
-    map_offered_claims_to_credential_schema,
+    create_open_id_for_vp_sharing_url_encoded, create_presentation_submission,
+    get_credential_offer_url, map_offered_claims_to_credential_schema,
 };
 use super::model::{
     ClientIdSchemaType, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,

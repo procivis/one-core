@@ -402,17 +402,22 @@ async fn process_proof_submission(
         )
         .await?;
 
-        let path_nested = presentation_submitted
-            .path_nested
-            .as_ref()
-            .ok_or(OpenID4VCIError::InvalidRequest)?;
-
-        if !input_descriptor
-            .format
-            .keys()
-            .any(|format| *format == path_nested.format)
+        let path_nested = presentation_submitted.path_nested.as_ref();
+        if path_nested.is_none()
+            && (presentation_submission.descriptor_map.len() > 1
+                || presentation_submitted.format != "mso_mdoc")
         {
             return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest));
+        }
+
+        if let Some(path_nested) = path_nested {
+            if !input_descriptor
+                .format
+                .keys()
+                .any(|format| *format == path_nested.format)
+            {
+                return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest));
+            }
         }
 
         // ONE-1924: there must be a specific schemaId filter
@@ -494,10 +499,10 @@ async fn extract_lvvcs(
         )
         .await?;
 
-        let path_nested = presentation_submitted
-            .path_nested
-            .as_ref()
-            .ok_or(OpenID4VCIError::InvalidRequest)?;
+        let Some(ref path_nested) = presentation_submitted.path_nested else {
+            // no path_nested means mso_mdoc so there is no LVVC
+            continue;
+        };
 
         let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
         let credential = presentation

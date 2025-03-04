@@ -14,9 +14,8 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::get_parent_claim_paths;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
-    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, PresentedCredential,
+    DatatypeType, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialValueDetails,
 };
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::service::credential::dto::{
@@ -84,38 +83,6 @@ pub fn create_claims_from_credential_definition(
     }
 
     Ok((claim_schemas, claims))
-}
-
-pub fn create_presentation_submission(
-    presentation_definition_id: Uuid,
-    credential_presentations: Vec<PresentedCredential>,
-    format: &str,
-    format_map: HashMap<String, String>,
-) -> Result<PresentationSubmissionMappingDTO, ExchangeProtocolError> {
-    Ok(PresentationSubmissionMappingDTO {
-        id: Uuid::new_v4().to_string(),
-        definition_id: presentation_definition_id.to_string(),
-        descriptor_map: credential_presentations
-            .into_iter()
-            .enumerate()
-            .map(|(index, presented_credential)| {
-                Ok(PresentationSubmissionDescriptorDTO {
-                    id: presented_credential.request.id,
-                    format: format.to_owned(),
-                    path: "$".to_string(),
-                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                        format: format_map
-                            .get(&presented_credential.credential_schema.format)
-                            .ok_or_else(|| {
-                                ExchangeProtocolError::Failed("format not found".to_string())
-                            })?
-                            .to_owned(),
-                        path: format!("$.vp.verifiableCredential[{index}]"),
-                    }),
-                })
-            })
-            .collect::<Result<_, _>>()?,
-    })
 }
 
 pub fn create_presentation_definition_field(

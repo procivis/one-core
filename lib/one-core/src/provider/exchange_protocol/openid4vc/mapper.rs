@@ -1173,12 +1173,13 @@ fn format_path(claim_key: &str, format_type: &str) -> Result<String, ExchangePro
     }
 }
 
-pub fn create_presentation_submission(
+pub(crate) fn create_presentation_submission(
     presentation_definition_id: Uuid,
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
     format_map: HashMap<String, String>,
 ) -> Result<PresentationSubmissionMappingDTO, ExchangeProtocolError> {
+    let path_nested = format != "mso_mdoc" || credential_presentations.len() > 1;
     Ok(PresentationSubmissionMappingDTO {
         id: Uuid::new_v4().to_string(),
         definition_id: presentation_definition_id.to_string(),
@@ -1190,15 +1191,19 @@ pub fn create_presentation_submission(
                     id: presented_credential.request.id,
                     format: format.to_owned(),
                     path: "$".to_string(),
-                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                        format: format_map
-                            .get(&presented_credential.credential_schema.format)
-                            .ok_or_else(|| {
-                                ExchangeProtocolError::Failed("format not found".to_string())
-                            })?
-                            .to_owned(),
-                        path: format!("$.vp.verifiableCredential[{index}]"),
-                    }),
+                    path_nested: if path_nested {
+                        Some(NestedPresentationSubmissionDescriptorDTO {
+                            format: format_map
+                                .get(&presented_credential.credential_schema.format)
+                                .ok_or_else(|| {
+                                    ExchangeProtocolError::Failed("format not found".to_string())
+                                })?
+                                .to_owned(),
+                            path: format!("$.vp.verifiableCredential[{index}]"),
+                        })
+                    } else {
+                        None
+                    },
                 })
             })
             .collect::<Result<_, _>>()?,
