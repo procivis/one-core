@@ -291,6 +291,7 @@ pub async fn accept_proof(
     proved_claims: Vec<ValidatedProofClaimDTO>,
     holder_did: DidValue,
     did_repository: &dyn DidRepository,
+    did_method_provider: &dyn DidMethodProvider,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
 ) -> Result<(), ServiceError> {
@@ -370,6 +371,7 @@ pub async fn accept_proof(
     }
 
     let holder_did = get_or_create_did(
+        did_method_provider,
         did_repository,
         &proof_schema.organisation,
         &holder_did,
@@ -396,6 +398,7 @@ pub async fn accept_proof(
                     "issuer_did is missing".to_string(),
                 ))?;
         let issuer_did = get_or_create_did(
+            did_method_provider,
             did_repository,
             &proof_schema.organisation,
             issuer_did,

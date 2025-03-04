@@ -1,8 +1,8 @@
 //! DID method provider.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use shared_types::DidValue;
 
 use super::dto::DidDocumentDTO;
@@ -18,6 +18,8 @@ use crate::provider::did_method::DidMethod;
 pub trait DidMethodProvider: Send + Sync {
     fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>>;
 
+    fn get_did_method_id(&self, did: &DidValue) -> Option<String>;
+
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError>;
 
     async fn get_verification_method_id_from_did_and_key(
@@ -29,14 +31,14 @@ pub trait DidMethodProvider: Send + Sync {
 
 pub struct DidMethodProviderImpl {
     caching_loader: DidCachingLoader,
-    did_methods: HashMap<String, Arc<dyn DidMethod>>,
+    did_methods: IndexMap<String, Arc<dyn DidMethod>>,
     resolver: Arc<DidResolver>,
 }
 
 impl DidMethodProviderImpl {
     pub fn new(
         caching_loader: DidCachingLoader,
-        did_methods: HashMap<String, Arc<dyn DidMethod>>,
+        did_methods: IndexMap<String, Arc<dyn DidMethod>>,
     ) -> Self {
         let resolver = DidResolver {
             did_methods: did_methods.clone(),
@@ -54,6 +56,19 @@ impl DidMethodProviderImpl {
 impl DidMethodProvider for DidMethodProviderImpl {
     fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>> {
         self.did_methods.get(did_method_id).cloned()
+    }
+
+    fn get_did_method_id(&self, did: &DidValue) -> Option<String> {
+        self.did_methods
+            .iter()
+            .find(|(_, method)| {
+                method
+                    .get_capabilities()
+                    .method_names
+                    .iter()
+                    .any(|v| v == did.method())
+            })
+            .map(|(id, _)| id.clone())
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
@@ -112,6 +127,7 @@ impl DidMethodProvider for DidMethodProviderImpl {
 mod tests {
     use std::str::FromStr;
 
+    use indexmap::indexmap;
     use maplit::hashmap;
     use serde_json::json;
     use time::{Duration, OffsetDateTime};
@@ -121,7 +137,7 @@ mod tests {
     use crate::model::did::{DidType, KeyRole, RelatedKey};
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkOctData};
     use crate::provider::caching_loader::CachingLoader;
-    use crate::provider::did_method::model::DidVerificationMethod;
+    use crate::provider::did_method::model::{DidCapabilities, DidVerificationMethod};
     use crate::provider::did_method::MockDidMethod;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
     use crate::provider::remote_entity_storage::RemoteEntityType;
@@ -218,6 +234,13 @@ mod tests {
         did_method
             .expect_resolve()
             .return_once(|_| Ok(did_document));
+        did_method
+            .expect_get_capabilities()
+            .returning(|| DidCapabilities {
+                operations: vec![],
+                key_algorithms: vec![],
+                method_names: vec!["test".to_string()],
+            });
         let did_method_arc: Arc<dyn DidMethod> = Arc::new(did_method);
         let caching_loader = CachingLoader::new(
             RemoteEntityType::DidDocument,
@@ -228,7 +251,7 @@ mod tests {
         );
         DidMethodProviderImpl::new(
             caching_loader,
-            hashmap! {"TEST".to_string() => did_method_arc},
+            indexmap! {"TEST".to_string() => did_method_arc},
         )
     }
 

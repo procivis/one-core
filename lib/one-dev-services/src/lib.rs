@@ -92,6 +92,7 @@ use std::error::Error;
 use std::sync::Arc;
 
 use config::OneCoreConfig;
+use indexmap::IndexMap;
 use model::{CredentialFormat, DidMethodType, KeyAlgorithmType, StorageType};
 use one_core::provider::caching_loader::CachingLoader;
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
@@ -207,7 +208,7 @@ impl OneDevCore {
             },
             client.clone(),
         ));
-        let did_methods = HashMap::from_iter(vec![
+        let did_methods = IndexMap::from_iter(vec![
             (
                 DidMethodType::Jwk.to_string(),
                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _,

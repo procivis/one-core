@@ -46,7 +46,7 @@ impl DidService {
             return Err(EntityNotFoundError::Did(*id).into());
         };
 
-        if !did.did.as_str().starts_with("did:web:") {
+        if did.did.method() != "web" {
             return Err(BusinessLogicError::InvalidDidMethod {
                 method: did.did_method,
             }

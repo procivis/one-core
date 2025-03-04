@@ -698,18 +698,12 @@ impl OpenID4VCHTTP {
             Some(did) => (did.id, None),
             None => {
                 let id = Uuid::new_v4().into();
-                let did_method = match issuer_did_value.as_str() {
-                    mdl if mdl.starts_with("did:mdl") => "MDL",
-                    key if key.starts_with("did:key") => "KEY",
-                    jwk if jwk.starts_with("did:jwk") => "JWK",
-                    ion if ion.starts_with("did:ion") => "ION",
-                    x509 if x509.starts_with("did:x509") => "X509",
-                    other => {
-                        return Err(ExchangeProtocolError::Failed(format!(
-                            "Unknown DID method: {other}"
-                        )))
-                    }
-                };
+                let did_method = self
+                    .did_method_provider
+                    .get_did_method_id(&issuer_did_value)
+                    .ok_or(ExchangeProtocolError::Failed(format!(
+                        "unsupported issuer did method: {issuer_did_value}"
+                    )))?;
 
                 (
                     id,
@@ -720,7 +714,7 @@ impl OpenID4VCHTTP {
                         last_modified: now,
                         did: issuer_did_value,
                         did_type: DidType::Remote,
-                        did_method: did_method.to_string(),
+                        did_method,
                         keys: None,
                         deactivated: false,
                         organisation: schema.organisation.clone(),

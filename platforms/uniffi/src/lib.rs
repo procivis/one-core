@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
+use indexmap::IndexMap;
 use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, InputFormat,
     KeyStorageType, RevocationType,
@@ -292,10 +293,14 @@ async fn initialize(
             let did_method_creator: DidMethodCreator = {
                 let client = client.clone();
                 Box::new(move |config, providers| {
+                    let mut did_configs = config.iter().collect::<Vec<_>>();
+                    // sort by `order`
+                    did_configs
+                        .sort_by(|(_, fields1), (_, fields2)| fields1.order.cmp(&fields2.order));
                     let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
-                    let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
+                    let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
 
-                    for (name, field) in config.iter() {
+                    for (name, field) in did_configs {
                         let did_method: Arc<dyn DidMethod> = match field.r#type.to_string().as_str()
                         {
                             "KEY" => {

@@ -5,6 +5,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCIInteractionDataDTO, OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
@@ -45,8 +46,10 @@ pub(super) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,
     did_repository: &dyn DidRepository,
+    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<Credential, ServiceError> {
     let issuer_did = get_or_create_did(
+        did_method_provider,
         did_repository,
         &Some(organisation.to_owned()),
         &proved_credential.issuer_did_value,
@@ -54,6 +57,7 @@ pub(super) async fn credential_from_proved(
     )
     .await?;
     let holder_did = get_or_create_did(
+        did_method_provider,
         did_repository,
         &Some(organisation.to_owned()),
         &proved_credential.holder_did_value,

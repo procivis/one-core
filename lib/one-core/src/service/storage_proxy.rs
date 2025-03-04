@@ -12,6 +12,7 @@ use crate::model::credential_schema::{
 use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::StorageProxy;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -23,6 +24,7 @@ pub struct StorageProxyImpl {
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub credentials: Arc<dyn CredentialRepository>,
     pub dids: Arc<dyn DidRepository>,
+    pub did_method_provider: Arc<dyn DidMethodProvider>,
 }
 
 impl StorageProxyImpl {
@@ -31,12 +33,14 @@ impl StorageProxyImpl {
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
         dids: Arc<dyn DidRepository>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
     ) -> Self {
         Self {
             interactions,
             credential_schemas,
             credentials,
             dids,
+            did_method_provider,
         }
     }
 }
@@ -143,8 +147,14 @@ impl StorageProxy for StorageProxyImpl {
         did_value: &DidValue,
         did_role: DidRole,
     ) -> anyhow::Result<Did> {
-        get_or_create_did(&*self.dids, organisation, did_value, did_role)
-            .await
-            .context("get or create did")
+        get_or_create_did(
+            &*self.did_method_provider,
+            &*self.dids,
+            organisation,
+            did_value,
+            did_role,
+        )
+        .await
+        .context("get or create did")
     }
 }

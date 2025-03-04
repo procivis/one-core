@@ -101,8 +101,14 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorIsDisabled.into());
         }
 
-        let did =
-            get_or_create_did(&*self.did_repository, &None, &did_value, DidRole::Verifier).await?;
+        let did = get_or_create_did(
+            &*self.did_method_provider,
+            &*self.did_repository,
+            &None,
+            &did_value,
+            DidRole::Verifier,
+        )
+        .await?;
 
         if self
             .trust_entity_repository

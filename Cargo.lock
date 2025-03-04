@@ -3489,6 +3489,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "futures",
+ "indexmap 2.6.0",
  "one-core",
  "one-crypto",
  "one-dto-mapper",
@@ -3539,6 +3540,7 @@ dependencies = [
 name = "one-dev-services"
 version = "0.1.0"
 dependencies = [
+ "indexmap 2.6.0",
  "one-core",
  "one-crypto",
  "secrecy",

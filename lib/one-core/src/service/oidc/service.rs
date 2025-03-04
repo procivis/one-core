@@ -433,6 +433,7 @@ impl OIDCService {
             })?;
 
             let did = get_or_create_did(
+                &*self.did_method_provider,
                 &*self.did_repository,
                 &schema.organisation,
                 &holder_did_value,
@@ -784,6 +785,7 @@ impl OIDCService {
                         proved_credential,
                         organisation,
                         &*self.did_repository,
+                        &*self.did_method_provider,
                     )
                     .await?;
 

@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use indexmap::IndexMap;
 use maplit::hashmap;
 use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
@@ -475,7 +476,7 @@ async fn test_format_extract_round_trip() {
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
         caching_loader,
-        HashMap::from_iter(vec![
+        IndexMap::from_iter(vec![
             (
                 "JWK".to_owned(),
                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,

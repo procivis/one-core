@@ -13,6 +13,7 @@ doctest = false
 one-core     = { version = "0.1.0", path = "../one-core" }
 one-crypto   = { version = "0.1.0", path = "../one-crypto" }
 shared-types = { version = "0.1.0", path = "../shared-types" }
+indexmap     = { workspace = true }
 strum        = { workspace = true }
 thiserror    = { workspace = true }
 time         = { workspace = true }

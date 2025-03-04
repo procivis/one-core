@@ -244,7 +244,8 @@ impl OpenId4VcMqtt {
                     })?;
 
             get_or_create_did(
-                self.did_repository.as_ref(),
+                &*self.did_method_provider,
+                &*self.did_repository,
                 &organisation,
                 &did_value,
                 DidRole::Verifier,

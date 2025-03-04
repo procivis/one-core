@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use indexmap::IndexMap;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
@@ -12,7 +12,7 @@ use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::did_method::DidMethod;
 
 pub struct DidResolver {
-    pub did_methods: HashMap<String, Arc<dyn DidMethod>>,
+    pub did_methods: IndexMap<String, Arc<dyn DidMethod>>,
 }
 
 pub type DidCachingLoader = CachingLoader<DidMethodProviderError>;
@@ -26,11 +26,11 @@ impl Resolver for DidResolver {
         did_value: &str,
         _previous: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let method = self.did_method_from_value(did_value)?;
         let did_value: DidValue = did_value
             .parse()
             .context("did parsing error")
             .map_err(|e| Self::Error::Other(e.to_string()))?;
+        let method = self.did_method_from_value(&did_value)?;
         let document = method.resolve(&did_value).await?;
         let dto: DidDocumentDTO = document.into();
 
@@ -44,42 +44,19 @@ impl Resolver for DidResolver {
 impl DidResolver {
     fn did_method_from_value(
         &self,
-        did_value: &str,
+        did_value: &DidValue,
     ) -> Result<&Arc<dyn DidMethod>, DidMethodProviderError> {
-        let did_method_id = did_method_id_from_value(did_value)?;
-
         self.did_methods
-            .get(&did_method_id)
-            .ok_or(DidMethodProviderError::MissingProvider(did_method_id))
-    }
-}
-
-pub fn did_method_id_from_value(did_value: &str) -> Result<String, DidMethodProviderError> {
-    let mut parts = did_value.splitn(3, ':');
-
-    let did_domain = parts
-        .next()
-        .ok_or(DidMethodProviderError::MissingDidMethodNameInDidValue)?;
-
-    if did_domain != "did" {
-        return Err(DidMethodProviderError::DidValueValidationError);
-    }
-
-    let did_method = parts
-        .next()
-        .ok_or(DidMethodProviderError::MissingDidMethodNameInDidValue)?;
-
-    Ok(did_method.to_uppercase())
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::provider::did_method::resolver::did_method_id_from_value;
-
-    #[test]
-    fn test_did_method_id_from_value() {
-        assert!(did_method_id_from_value("did:test:q123").is_ok());
-        assert!(did_method_id_from_value("sdid:test:q123").is_err());
-        assert!(did_method_id_from_value(":test:q123").is_err());
+            .values()
+            .find(|method| {
+                method
+                    .get_capabilities()
+                    .method_names
+                    .iter()
+                    .any(|val| val == did_value.method())
+            })
+            .ok_or(DidMethodProviderError::MissingProvider(
+                did_value.method().to_string(),
+            ))
     }
 }

@@ -25,12 +25,12 @@ use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::did_method::resolver::did_method_id_from_value;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;
-use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 pub const NESTED_CLAIM_MARKER_STR: &str = "/";
@@ -97,6 +97,7 @@ pub enum DidRole {
 }
 
 pub(crate) async fn get_or_create_did(
+    did_method_provider: &dyn DidMethodProvider,
     did_repository: &dyn DidRepository,
     organisation: &Option<Organisation>,
     did_value: &DidValue,
@@ -110,7 +111,11 @@ pub(crate) async fn get_or_create_did(
             Some(did) => did,
             None => {
                 let id = Uuid::new_v4();
-                let did_method = did_method_id_from_value(did_value.as_str())?;
+                let did_method = did_method_provider.get_did_method_id(did_value).ok_or(
+                    ServiceError::MissingProvider(MissingProviderError::DidMethod(
+                        did_value.method().to_string(),
+                    )),
+                )?;
                 let did = Did {
                     id: DidId::from(id),
                     created_date: OffsetDateTime::now_utc(),

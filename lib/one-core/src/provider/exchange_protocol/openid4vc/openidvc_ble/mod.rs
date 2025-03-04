@@ -264,6 +264,7 @@ impl OpenID4VCBLE {
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
             self.did_repository.clone(),
+            self.did_method_provider.clone(),
             ble,
         );
 
@@ -330,6 +331,7 @@ impl OpenID4VCBLE {
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
             self.did_repository.clone(),
+            self.did_method_provider.clone(),
             self.ble.clone().ok_or_else(|| {
                 ExchangeProtocolError::Failed("Missing BLE central for reject proof".to_string())
             })?,
@@ -371,6 +373,7 @@ impl OpenID4VCBLE {
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
             self.did_repository.clone(),
+            self.did_method_provider.clone(),
             ble,
         );
 

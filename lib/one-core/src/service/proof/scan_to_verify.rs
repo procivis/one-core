@@ -204,6 +204,7 @@ impl ProofService {
         }
 
         let issuer_did = get_or_create_did(
+            &*self.did_method_provider,
             &*self.did_repository,
             &proof_schema.organisation,
             issuer_did,

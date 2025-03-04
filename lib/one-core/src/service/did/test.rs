@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use mockall::predicate::*;
 use serde_json::Value;
 use shared_types::DidId;
@@ -40,7 +41,7 @@ fn setup_service(
     key_algorithm_provider: MockKeyAlgorithmProvider,
     did_config: DidConfig,
 ) -> DidService {
-    let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
+    let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
     did_methods.insert("KEY".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);

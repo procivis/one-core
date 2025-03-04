@@ -417,7 +417,7 @@ async fn fill_proof_claims_and_credentials(
         session_transcript,
         &*credential_formatter_provider,
         key_algorithm_provider,
-        did_method_provider,
+        did_method_provider.clone(),
     )
     .await?;
 
@@ -426,6 +426,7 @@ async fn fill_proof_claims_and_credentials(
         proved_claims,
         holder_did,
         &*did_repository,
+        &*did_method_provider,
         &*credential_repository,
         &*proof_repository,
     )

@@ -73,6 +73,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.did_method_provider.clone(),
         );
 
         let handle_operations = HandleInvitationOperationsImpl::new(
@@ -293,6 +294,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.did_method_provider.clone(),
         );
 
         let presentation_definition = exchange_protocol
@@ -634,6 +636,7 @@ impl SSIHolderService {
                 self.credential_schema_repository.clone(),
                 self.credential_repository.clone(),
                 self.did_repository.clone(),
+                self.did_method_provider.clone(),
             );
 
             let schema = credential
@@ -832,6 +835,7 @@ impl SSIHolderService {
                         ServiceError::MappingError("failed to parse did value".to_string())
                     })?;
                     let did = get_or_create_did(
+                        &*self.did_method_provider,
                         &*self.did_repository,
                         &None,
                         &did_value,

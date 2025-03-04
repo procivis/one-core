@@ -26,7 +26,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
         mock_server.uri()
     );
-    let issuer_did = "did:test:123abc";
+    let issuer_did = "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb";
     let credential_offer = json!({
         "credential_issuer": credential_issuer,
         "issuer_did": issuer_did,

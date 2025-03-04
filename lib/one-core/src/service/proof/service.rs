@@ -222,6 +222,7 @@ impl ProofService {
             self.credential_schema.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.did_method_provider.clone(),
         );
 
         exchange

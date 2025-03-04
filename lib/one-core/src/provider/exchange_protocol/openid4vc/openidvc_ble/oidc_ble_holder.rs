@@ -27,6 +27,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteT
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -46,6 +47,7 @@ use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 pub struct OpenID4VCBLEHolder {
     pub proof_repository: Arc<dyn ProofRepository>,
     pub did_repository: Arc<dyn DidRepository>,
+    pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub ble: BleWaiter,
 }
@@ -55,12 +57,14 @@ impl OpenID4VCBLEHolder {
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         did_repository: Arc<dyn DidRepository>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         ble: BleWaiter,
     ) -> Self {
         Self {
             proof_repository,
             interaction_repository,
             did_repository,
+            did_method_provider,
             ble,
         }
     }
@@ -86,6 +90,7 @@ impl OpenID4VCBLEHolder {
     ) -> Result<Did, ExchangeProtocolError> {
         let interaction_repository = self.interaction_repository.clone();
         let did_repository = self.did_repository.clone();
+        let did_method_provider = self.did_method_provider.clone();
 
         let result = self
             .ble
@@ -148,7 +153,7 @@ impl OpenID4VCBLEHolder {
                                         ))
                                     })?;
 
-                                get_or_create_did(&*did_repository, &organisation, &did_value, DidRole::Verifier)
+                                get_or_create_did(&*did_method_provider, &*did_repository, &organisation, &did_value, DidRole::Verifier)
                                     .await
                                     .map_err(|_| {
                                         ExchangeProtocolError::Failed(format!(
