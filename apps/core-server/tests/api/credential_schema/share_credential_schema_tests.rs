@@ -23,7 +23,7 @@ async fn test_share_credential_schema_success() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     assert_eq!(resp.json_value().await["url"], "CORE_URL");
 }

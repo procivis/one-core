@@ -118,7 +118,7 @@ pub(crate) async fn delete_proof_schema(
 #[utoipa::path(
     post,
     path = "/api/proof-schema/v1/{id}/share",
-    responses(OkOrErrorResponse<ProofSchemaShareResponseRestDTO>),
+    responses(CreatedOrErrorResponse<ProofSchemaShareResponseRestDTO>),
     params(
         ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
@@ -132,9 +132,9 @@ pub(crate) async fn delete_proof_schema(
 pub(crate) async fn share_proof_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<ProofSchemaShareResponseRestDTO> {
+) -> CreatedOrErrorResponse<ProofSchemaShareResponseRestDTO> {
     let result = state.core.proof_schema_service.share_proof_schema(id).await;
-    OkOrErrorResponse::from_result(result, state, "sharing proof schema")
+    CreatedOrErrorResponse::from_result(result, state, "sharing proof schema")
 }
 
 #[utoipa::path(

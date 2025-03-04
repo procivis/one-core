@@ -284,7 +284,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -471,7 +471,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -674,7 +674,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -878,7 +878,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1033,7 +1033,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1216,7 +1216,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1370,7 +1370,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1436,7 +1436,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
         .handle_invitation(organistion.id, &query)
         .await;
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1475,7 +1475,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1603,7 +1603,7 @@ async fn test_handle_invitation_mdoc() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -1826,7 +1826,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_t
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -2089,7 +2089,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
@@ -2263,7 +2263,7 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());

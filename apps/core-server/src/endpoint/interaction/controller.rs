@@ -8,7 +8,7 @@ use super::dto::{
     PresentationSubmitRequestRestDTO, ProposeProofRequestRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse};
 use crate::endpoint::interaction::dto::ProposeProofResponseRestDTO;
 use crate::router::AppState;
 
@@ -16,7 +16,7 @@ use crate::router::AppState;
     post,
     path = "/api/interaction/v1/handle-invitation",
     request_body = HandleInvitationRequestRestDTO,
-    responses(OkOrErrorResponse<HandleInvitationResponseRestDTO>),
+    responses(CreatedOrErrorResponse<HandleInvitationResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -33,13 +33,13 @@ pub(crate) async fn handle_invitation(
         Json<HandleInvitationRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<HandleInvitationResponseRestDTO> {
+) -> CreatedOrErrorResponse<HandleInvitationResponseRestDTO> {
     let result = state
         .core
         .ssi_holder_service
         .handle_invitation(request.url, request.organisation_id, request.transport)
         .await;
-    OkOrErrorResponse::from_result(result, state, "handling invitation")
+    CreatedOrErrorResponse::from_result(result, state, "handling invitation")
 }
 
 #[utoipa::path(

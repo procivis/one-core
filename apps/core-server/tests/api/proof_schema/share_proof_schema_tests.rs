@@ -48,7 +48,7 @@ async fn test_share_proof_schema() {
     let resp = context.api.proof_schemas.share(proof_schema.id).await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
     assert!(resp["url"].as_str().unwrap().eq("CORE_URL"));

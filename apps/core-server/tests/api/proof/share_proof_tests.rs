@@ -67,7 +67,7 @@ async fn test_share_proof_success() {
         .unwrap();
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
     let resp: Value = resp.json().await.unwrap();
     let url = resp["url"].as_str().unwrap();
     assert!(url.starts_with("openid4vp"));
@@ -152,7 +152,7 @@ async fn test_share_proof_success_mdoc() {
         )
         .await;
 
-    assert_eq!(200, context.api.proofs.share(proof.id).await.status());
+    assert_eq!(201, context.api.proofs.share(proof.id).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.unwrap();
@@ -286,7 +286,7 @@ async fn test_share_proof_success_jsonld() {
         )
         .await;
 
-    assert_eq!(200, context.api.proofs.share(proof.id).await.status());
+    assert_eq!(201, context.api.proofs.share(proof.id).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.unwrap();

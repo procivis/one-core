@@ -157,7 +157,7 @@ pub(crate) async fn post_proof(
         content((Option<ShareProofRequestRestDTO>)),
         example = json!({ "params": { "clientIdSchema": "redirect_uri" } }),
     ),
-    responses(OkOrErrorResponse<EntityShareResponseRestDTO>),
+    responses(CreatedOrErrorResponse<EntityShareResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -179,9 +179,9 @@ pub(crate) async fn share_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
     request: Result<Json<ShareProofRequestRestDTO>, JsonRejection>,
-) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
+) -> CreatedOrErrorResponse<EntityShareResponseRestDTO> {
     if let Err(JsonRejection::JsonDataError(error)) = &request {
-        return OkOrErrorResponse::from_result(
+        return CreatedOrErrorResponse::from_result(
             Err::<EntityShareResponseRestDTO, ServiceError>(
                 ValidationError::DeserializationError(error.body_text()).into(),
             ),
@@ -203,7 +203,7 @@ pub(crate) async fn share_proof(
         .proof_service
         .share_proof(&id, request.unwrap_or_default().0.into(), callback)
         .await;
-    OkOrErrorResponse::from_result(result, state, "sharing proof")
+    CreatedOrErrorResponse::from_result(result, state, "sharing proof")
 }
 
 #[utoipa::path(

@@ -157,7 +157,7 @@ pub(crate) async fn check_certificate(
     post,
     path = "/api/key/v1/{id}/generate-csr",
     request_body = KeyGenerateCSRRequestRestDTO,
-    responses(OkOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
+    responses(CreatedOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
         ("id" = KeyId, Path, description = "Key id. Must be either `ES256` or `EDDSA`.")
     ),
@@ -178,7 +178,7 @@ pub(crate) async fn generate_csr(
         Json<KeyGenerateCSRRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<KeyGenerateCSRResponseRestDTO> {
+) -> CreatedOrErrorResponse<KeyGenerateCSRResponseRestDTO> {
     let result = state
         .core
         .key_service
@@ -186,10 +186,13 @@ pub(crate) async fn generate_csr(
         .await;
 
     match result {
-        Ok(value) => OkOrErrorResponse::ok(KeyGenerateCSRResponseRestDTO::from(value)),
+        Ok(value) => CreatedOrErrorResponse::created(KeyGenerateCSRResponseRestDTO::from(value)),
         Err(error) => {
             tracing::error!("Error while getting key: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+            CreatedOrErrorResponse::from_service_error(
+                error,
+                state.config.hide_error_response_cause,
+            )
         }
     }
 }

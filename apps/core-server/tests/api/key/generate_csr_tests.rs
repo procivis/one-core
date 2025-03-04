@@ -12,7 +12,7 @@ async fn test_generate_csr_for_eddsa_success() {
         .await;
 
     let resp = context.api.keys.generate_csr(&key.id.to_string()).await;
-    assert_eq!(200, resp.status());
+    assert_eq!(201, resp.status());
 
     let value = resp.json_value().await;
 
@@ -39,7 +39,7 @@ async fn test_generate_csr_for_es256_success() {
         .await;
 
     let resp = context.api.keys.generate_csr(&key.id.to_string()).await;
-    assert_eq!(200, resp.status());
+    assert_eq!(201, resp.status());
 
     let value = resp.json_value().await;
 

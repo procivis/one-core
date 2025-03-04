@@ -30,7 +30,7 @@ async fn test_share_credential_success() {
     let resp = context.api.credentials.share(&credential.id).await;
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
 
     assert!(resp.get("url").is_some());

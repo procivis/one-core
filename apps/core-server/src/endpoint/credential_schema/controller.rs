@@ -200,11 +200,11 @@ pub(crate) async fn post_credential_schema(
 pub(crate) async fn share_credential_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<CredentialSchemaShareResponseRestDTO> {
+) -> CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO> {
     let result = state
         .core
         .credential_schema_service
         .share_credential_schema(&id)
         .await;
-    OkOrErrorResponse::from_result(result, state, "sharing credential schema")
+    CreatedOrErrorResponse::from_result(result, state, "sharing credential schema")
 }

@@ -254,7 +254,7 @@ pub(crate) async fn suspend_credential(
 #[utoipa::path(
     post,
     path = "/api/credential/v1/{id}/share",
-    responses(OkOrErrorResponse<EntityShareResponseRestDTO>),
+    responses(CreatedOrErrorResponse<EntityShareResponseRestDTO>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -268,9 +268,9 @@ pub(crate) async fn suspend_credential(
 pub(crate) async fn share_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
+) -> CreatedOrErrorResponse<EntityShareResponseRestDTO> {
     let result = state.core.credential_service.share_credential(&id).await;
-    OkOrErrorResponse::from_result(result, state, "sharing credential")
+    CreatedOrErrorResponse::from_result(result, state, "sharing credential")
 }
 
 #[utoipa::path(
