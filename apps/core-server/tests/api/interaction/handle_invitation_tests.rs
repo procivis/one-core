@@ -2271,11 +2271,13 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
         .api
         .credentials
         .get(&resp["credentialIds"][0].as_str().unwrap())
-        .await
-        .json_value()
         .await;
 
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
     assert_eq!("SD_JWT_VC", resp["schema"]["format"]);
+
     assert_eq!(
         "#12107c",
         resp["schema"]["layoutProperties"]["background"]["color"]

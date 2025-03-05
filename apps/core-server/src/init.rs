@@ -228,10 +228,20 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         let params: DidSdJwtVCIssuerMetadataParams = config
                             .get(name)
                             .expect("failed to deserialize did SdJwtVCIssuerMetadata params");
-                        Arc::new(SdJwtVcIssuerMetadataDidMethod::new(
+
+                        let key_algorithm_provider = providers
+                            .key_algorithm_provider
+                            .to_owned()
+                            .expect("key algorithm provider is required");
+
+                        let did_resolver = SdJwtVcIssuerMetadataDidMethod::new(
                             client.clone(),
+                            key_algorithm_provider.clone(),
                             params.into(),
-                        )) as _
+                        )
+                        .expect("failed to create SD JWT VC did method");
+
+                        Arc::new(did_resolver) as _
                     }
                     other => panic!("Unexpected did method: {other}"),
                 };

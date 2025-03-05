@@ -4,12 +4,11 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use ouroboros::self_referencing;
 use shared_types::{DidId, DidValue};
 pub use validator::{DidMdlValidationError, DidMdlValidator};
 use x509_parser::certificate::X509Certificate;
-use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
 use x509_parser::pem::Pem;
 
 use crate::model::key::Key;
@@ -22,6 +21,7 @@ use crate::provider::did_method::model::{
 };
 use crate::provider::did_method::DidMethod;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::util::x509::extract_jwk_from_der;
 
 #[cfg(test)]
 mod test;
@@ -111,58 +111,17 @@ impl DidMethod for DidMdl {
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {
         if let Some(certificate) = did.as_str().strip_prefix("did:mdl:certificate:") {
-            let certificate = Base64UrlSafeNoPadding::decode_to_vec(certificate, None)
-                .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
-            let x509 = parse_x509_from_der(&certificate)
-                .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
-
-            let key_algorithm = match &x509.subject_pki.algorithm.algorithm {
-                alg if alg == &OID_SIG_ED25519 => self
-                    .key_algorithm_provider
-                    .key_algorithm_from_name("EDDSA")
-                    .ok_or_else(|| DidMethodError::KeyAlgorithmNotFound)?,
-                alg if alg == &OID_KEY_TYPE_EC_PUBLIC_KEY => {
-                    let curve_oid = x509
-                        .subject_pki
-                        .algorithm
-                        .parameters
-                        .as_ref()
-                        .and_then(|p| p.as_oid().ok())
-                        .ok_or_else(|| {
-                            DidMethodError::ResolutionError(
-                                "Invalid did:mdl:certificate: EC algorithm missing curve information".to_owned()
-                            )
-                        })?;
-                    if curve_oid != OID_EC_P256 {
-                        return Err(DidMethodError::ResolutionError(format!(
-                            "did:mdl:certificate EC algorithm with unsupported curve. oid: {curve_oid}"
-                        )));
-                    }
-
-                    self.key_algorithm_provider
-                        .key_algorithm_from_name("ES256")
-                        .ok_or_else(|| DidMethodError::KeyAlgorithmNotFound)?
-                }
-                other => {
-                    return Err(DidMethodError::ResolutionError(format!(
-                        "did:mdl:certificate with unsupported algorithm. oid: {other}"
-                    )))
-                }
-            };
-
             let id = format!("{did}#key-0");
-
-            let public_key_jwk = key_algorithm
-                .parse_raw(x509.subject_pki.raw)
-                .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?
-                .public_key_as_jwk()
-                .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
 
             let verification_method = DidVerificationMethod {
                 id: id.clone(),
                 r#type: "JsonWebKey2020".into(),
                 controller: did.to_string(),
-                public_key_jwk,
+                public_key_jwk: extract_jwk_from_der(
+                    certificate,
+                    self.key_algorithm_provider.clone(),
+                )
+                .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?,
             };
 
             Ok(DidDocument {

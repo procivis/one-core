@@ -246,19 +246,39 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             )
             .await?;
         };
+        let issuer = decomposed_token
+            .payload
+            .issuer
+            .as_ref()
+            .ok_or(FormatterError::Failed(
+                "Missing issuer in sd-jwt".to_string(),
+            ))?;
 
-        let issuer = decomposed_token.payload.issuer.as_ref().map(|issuer| {
-            if issuer.starts_with("did:") {
-                issuer.to_owned()
-            } else {
-                format!(
-                    "did:sd_jwt_vc_issuer_metadata:{}",
-                    urlencoding::encode(issuer)
-                )
-            }
-        });
+        let issuer_did = if issuer.starts_with("did:") {
+            issuer.clone()
+        } else {
+            let url = match decomposed_token.header.x5c.as_ref() {
+                None => issuer.clone(),
+                Some(x5c) => {
+                    let mut url = url::Url::parse(issuer)
+                        .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
-        if let (Some(verification), Some(issuer)) = (verification, &issuer) {
+                    for cert in x5c {
+                        let mut query_pairs = url.query_pairs_mut();
+                        query_pairs.append_pair("x5c", cert);
+                    }
+
+                    url.into()
+                }
+            };
+
+            format!(
+                "did:sd_jwt_vc_issuer_metadata:{}",
+                urlencoding::encode(&url)
+            )
+        };
+
+        if let Some(verification) = verification {
             Self::verify_token_signature(&decomposed_token, issuer, &verification).await?;
         };
 
@@ -291,7 +311,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             invalid_before: decomposed_token.payload.invalid_before,
             issued_at: decomposed_token.payload.issued_at,
             expires_at: decomposed_token.payload.expires_at,
-            issuer,
+            issuer: Some(issuer_did),
             subject: decomposed_token.payload.subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,

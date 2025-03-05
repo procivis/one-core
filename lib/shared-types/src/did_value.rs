@@ -11,6 +11,8 @@ use url::Url;
 static DID_ALLOWLIST_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9:._%-]+$").expect("Failed to compile regex"));
 
+const QUERY_PARAM_DID_METHODS_EXCEPTIONS: &[&str] = &["sd_jwt_vc_issuer_metadata"];
+
 #[derive(Debug, Error)]
 pub enum DidValueError {
     #[error("Incorrect did schema")]
@@ -73,18 +75,18 @@ impl FromStr for DidValue {
             return Err(DidValueError::IncorrectSchema).context("did parsing error");
         }
 
-        if url.query().is_some() {
+        let (method, rest) = url
+            .path()
+            .split_once(":")
+            .ok_or(DidValueError::DidMethodNotFound)?;
+
+        if url.query().is_some() && !QUERY_PARAM_DID_METHODS_EXCEPTIONS.contains(&method) {
             return Err(DidValueError::IncorrectDiDValue).context("did value with query");
         }
 
         if url.fragment().is_some() {
             return Err(DidValueError::IncorrectDiDValue).context("did value with fragment");
         }
-
-        let (method, rest) = url
-            .path()
-            .split_once(":")
-            .ok_or(DidValueError::DidMethodNotFound)?;
 
         if !method
             .chars()

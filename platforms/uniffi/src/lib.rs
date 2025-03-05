@@ -368,14 +368,23 @@ async fn initialize(
                                 did_mdl as _
                             }
                             "SD_JWT_VC_ISSUER_METADATA" => {
+                                let key_algorithm_provider = providers
+                                    .key_algorithm_provider
+                                    .to_owned()
+                                    .expect("key algorithm provider is required");
+
                                 let params: DidSdJwtVCIssuerMetadataParams =
                                     config.get(name).expect(
                                         "failed to deserialize did SdJwtVCIssuerMetadata params",
                                     );
-                                Arc::new(SdJwtVcIssuerMetadataDidMethod::new(
-                                    client.clone(),
-                                    params.into(),
-                                )) as _
+                                Arc::new(
+                                    SdJwtVcIssuerMetadataDidMethod::new(
+                                        client.clone(),
+                                        key_algorithm_provider.clone(),
+                                        params.into(),
+                                    )
+                                    .expect("failed to create SdJwtVCIssuerMetadataDidMethod"),
+                                )
                             }
                             other => panic!("Unexpected did method: {other}"),
                         };

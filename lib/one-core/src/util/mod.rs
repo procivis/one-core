@@ -8,6 +8,7 @@ pub mod params;
 pub mod revocation_update;
 pub mod timestamp;
 pub mod vcdm_jsonld_contexts;
+pub mod x509;
 
 #[cfg(test)]
 pub mod test_utilities;
