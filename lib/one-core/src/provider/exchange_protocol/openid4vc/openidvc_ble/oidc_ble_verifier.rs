@@ -8,6 +8,7 @@ use futures::future::{BoxFuture, Shared};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::utilities;
+use time::OffsetDateTime;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -19,7 +20,7 @@ use super::{
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::interaction::InteractionId;
+use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
@@ -44,7 +45,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
-use crate::util::interactions::{add_new_interaction, update_proof_interaction};
 
 type ConnectionEventStream = Pin<Box<dyn Stream<Item = Vec<ConnectionEvent>> + Send>>;
 
@@ -239,29 +239,19 @@ impl OpenID4VCBLEVerifier {
                             .and_then(|schema| schema.organisation.as_ref())
                             .ok_or_else(|| ExchangeProtocolError::Failed("Missing organisation".to_string()))?;
 
-                        let new_interaction = uuid::Uuid::new_v4();
-                        add_new_interaction(
-                            new_interaction,
-                            &None,
-                            &*self.interaction_repository,
-                            serde_json::to_vec(&new_data).ok(),
-                            Some(organisation.to_owned()),
-                        )
-                        .await
-                        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
-                        update_proof_interaction(
-                            proof.id,
-                            new_interaction,
-                            &*self.proof_repository,
-                        )
-                        .await
-                        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
+                        let now = OffsetDateTime::now_utc();
                         self.interaction_repository
-                            .delete_interaction(&interaction_id)
-                            .await
-                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+                            .update_interaction(Interaction {
+                                id: interaction_id,
+                                created_date: now,
+                                last_modified: now,
+                                host: None,
+                                data: Some(
+                                    serde_json::to_vec(&new_data).map_err(|err| ExchangeProtocolError::Failed(format!("failed to serialize presentation_submission: {err}")))?,
+                                ),
+                                organisation: Some(organisation.clone()),
+                            })
+                            .await.map_err(|err| ExchangeProtocolError::Failed(format!("failed to update interaction: {err}")))?;
 
                         let _ = wallet_disconnect_event(&mut connection_event_stream, &wallet.address).await;
                         let _ = peripheral.stop_server().await;
