@@ -347,7 +347,7 @@ pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
 pub(crate) struct OpenID4VPAuthorizationRequestParams {
     pub client_id: String,
     #[serde(default)]

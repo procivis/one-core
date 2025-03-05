@@ -48,6 +48,7 @@ use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatT
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
 
+mod async_verifier_flow;
 pub mod dto;
 pub mod error;
 pub mod handle_invitation_operations;

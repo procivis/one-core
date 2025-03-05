@@ -26,11 +26,10 @@ use super::model::{
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::model::did::{Did, KeyRole};
-use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
@@ -89,7 +88,7 @@ pub struct ConfigParams {
 }
 
 struct SubscriptionHandle {
-    task_handle: tokio::task::JoinHandle<anyhow::Result<()>>,
+    task_handle: tokio::task::JoinHandle<Result<(), ExchangeProtocolError>>,
 }
 
 impl OpenId4VcMqtt {
@@ -642,10 +641,10 @@ impl OpenId4VcMqtt {
         )?;
 
         let topics = Topics {
-            identify,
-            presentation_definition: presentation_definition_topic,
-            accept,
-            reject,
+            identify: Mutex::from(identify),
+            presentation_definition: Mutex::from(presentation_definition_topic),
+            accept: Mutex::from(accept),
+            reject: Mutex::from(reject),
         };
 
         let proof_id = proof.id;
@@ -713,29 +712,4 @@ fn extract_host_and_port(url: &Url) -> Result<(String, u16), ExchangeProtocolErr
         .ok_or_else(|| {
             ExchangeProtocolError::Failed(format!("Invalid URL `{url}`. Missing host or port"))
         })
-}
-
-async fn set_proof_state(
-    proof: &Proof,
-    state: ProofStateEnum,
-    error_metadata: Option<HistoryErrorMetadata>,
-    proof_repository: &dyn ProofRepository,
-) -> Result<(), ExchangeProtocolError> {
-    if let Err(error) = proof_repository
-        .update_proof(
-            &proof.id,
-            UpdateProofRequest {
-                state: Some(state.clone()),
-                ..Default::default()
-            },
-            error_metadata,
-        )
-        .await
-    {
-        tracing::error!(%error, proof_id=%proof.id, ?state, "Failed setting proof state");
-
-        return Err(ExchangeProtocolError::Failed(error.to_string()));
-    }
-
-    Ok(())
 }
