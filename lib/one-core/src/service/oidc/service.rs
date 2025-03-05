@@ -575,7 +575,7 @@ impl OIDCService {
         interaction.data = Some(data);
 
         self.interaction_repository
-            .update_interaction(interaction)
+            .update_interaction(interaction.into())
             .await?;
 
         interaction_data.try_into().map_err(Into::into)

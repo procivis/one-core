@@ -28,7 +28,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -252,7 +252,7 @@ pub trait StorageProxy: Send + Sync {
     async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId>;
 
     /// Store an interaction with a chosen storage layer.
-    async fn update_interaction(&self, interaction: Interaction) -> anyhow::Result<()>;
+    async fn update_interaction(&self, request: UpdateInteractionRequest) -> anyhow::Result<()>;
 
     /// Get a credential schema from a chosen storage layer.
     async fn get_schema(

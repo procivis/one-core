@@ -1,5 +1,7 @@
 use super::error::DataLayerError;
-use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use crate::model::interaction::{
+    Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
+};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -9,7 +11,10 @@ pub trait InteractionRepository: Send + Sync {
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError>;
 
-    async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError>;
+    async fn update_interaction(
+        &self,
+        request: UpdateInteractionRequest,
+    ) -> Result<(), DataLayerError>;
 
     async fn get_interaction(
         &self,

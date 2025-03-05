@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use autometrics::autometrics;
-use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use one_core::model::interaction::{
+    Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::{ActiveModelTrait, EntityTrait};
@@ -26,7 +28,10 @@ impl InteractionRepository for InteractionProvider {
         Ok(Uuid::from_str(&interaction.id)?)
     }
 
-    async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError> {
+    async fn update_interaction(
+        &self,
+        request: UpdateInteractionRequest,
+    ) -> Result<(), DataLayerError> {
         let model: interaction::ActiveModel = request.try_into()?;
         model
             .update(&self.db)

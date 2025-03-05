@@ -244,7 +244,7 @@ impl OpenID4VCBLEHolder {
         match result {
             Ok((verifier_did, interaction)) => {
                 self.interaction_repository
-                    .update_interaction(interaction)
+                    .update_interaction(interaction.into())
                     .await
                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
                 Ok(verifier_did)

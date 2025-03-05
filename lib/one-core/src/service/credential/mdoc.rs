@@ -279,7 +279,7 @@ async fn check_access_token(
             .map_err(|e| ServiceError::MappingError(e.to_string()))?,
     );
     // Update in database
-    interactions.update_interaction(interaction).await?;
+    interactions.update_interaction(interaction.into()).await?;
 
     Ok(TokenCheckResult {
         mso_refresh_possible: true,

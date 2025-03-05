@@ -524,7 +524,7 @@ impl OpenID4VCHTTP {
         interaction.data = Some(data);
 
         storage_access
-            .update_interaction(interaction)
+            .update_interaction(interaction.into())
             .await
             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 

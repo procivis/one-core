@@ -8,7 +8,6 @@ use futures::future::{BoxFuture, Shared};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::utilities;
-use time::OffsetDateTime;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -20,7 +19,7 @@ use super::{
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
@@ -239,12 +238,9 @@ impl OpenID4VCBLEVerifier {
                             .and_then(|schema| schema.organisation.as_ref())
                             .ok_or_else(|| ExchangeProtocolError::Failed("Missing organisation".to_string()))?;
 
-                        let now = OffsetDateTime::now_utc();
                         self.interaction_repository
-                            .update_interaction(Interaction {
+                            .update_interaction(UpdateInteractionRequest {
                                 id: interaction_id,
-                                created_date: now,
-                                last_modified: now,
                                 host: None,
                                 data: Some(
                                     serde_json::to_vec(&new_data).map_err(|err| ExchangeProtocolError::Failed(format!("failed to serialize presentation_submission: {err}")))?,

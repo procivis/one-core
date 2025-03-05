@@ -10,7 +10,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
 };
 use crate::model::did::Did;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::StorageProxy;
@@ -54,9 +54,9 @@ impl StorageProxy for StorageProxyImpl {
             .context("Create interaction error")
     }
 
-    async fn update_interaction(&self, interaction: Interaction) -> anyhow::Result<()> {
+    async fn update_interaction(&self, request: UpdateInteractionRequest) -> anyhow::Result<()> {
         self.interactions
-            .update_interaction(interaction)
+            .update_interaction(request)
             .await
             .context("failed to update interaction")
     }

@@ -10,7 +10,7 @@ use super::set_proof_state;
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
@@ -152,12 +152,9 @@ pub(super) async fn mqtt_verifier_flow(
                     .decrypt(&credential)
                     .context("Failed to decrypt presentation request")?;
 
-                let now = OffsetDateTime::now_utc();
                 interaction_repository
-                    .update_interaction(Interaction {
+                    .update_interaction(UpdateInteractionRequest {
                         id: interaction_id,
-                        created_date: now,
-                        last_modified: now,
                         host: None,
                         data: Some(
                             serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
