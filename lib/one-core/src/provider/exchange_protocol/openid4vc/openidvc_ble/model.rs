@@ -63,7 +63,7 @@ mod tests {
             },
             presentation_submission: None,
             presentation_definition: OpenID4VPPresentationDefinition {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().to_string(),
                 input_descriptors: vec![],
             },
         };

@@ -438,7 +438,7 @@ pub struct OpenID4VPVerifierInteractionContent {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinition {
-    pub id: Uuid,
+    pub id: String,
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptor>,
 }
 

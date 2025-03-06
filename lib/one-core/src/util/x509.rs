@@ -149,12 +149,12 @@ fn parse_x509(certificate: &Certificate) -> anyhow::Result<X509Certificate> {
     .context("failed to parse x509 certificate")
 }
 
-fn is_dns_name_matching(dns_name: &str, client_id: &str) -> bool {
+pub(crate) fn is_dns_name_matching(dns_def: &str, target_domain: &str) -> bool {
     // https://datatracker.ietf.org/doc/html/rfc1034#section-4.3.3
-    if let Some(wildcard_domain) = dns_name.strip_prefix("*") {
-        client_id.ends_with(wildcard_domain)
+    if let Some(wildcard_domain) = dns_def.strip_prefix("*") {
+        target_domain.ends_with(wildcard_domain)
     } else {
         // simple case
-        dns_name == client_id
+        dns_def == target_domain
     }
 }

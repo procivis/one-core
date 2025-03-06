@@ -593,7 +593,7 @@ pub struct JsonLDInlineEntityRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinition)]
 pub struct OpenID4VPPresentationDefinitionResponseRestDTO {
-    pub id: Uuid,
+    pub id: String,
     #[from(with_fn = convert_inner)]
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptorRestDTO>,
 }

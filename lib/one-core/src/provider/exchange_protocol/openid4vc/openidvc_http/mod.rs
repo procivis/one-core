@@ -81,6 +81,7 @@ const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
 const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
+const REQUEST_QUERY_PARAM_KEY: &str = "request";
 
 pub struct OpenID4VCHTTP {
     client: Arc<dyn HttpClient>,
@@ -137,7 +138,8 @@ impl OpenID4VCHTTP {
             && self.params.presentation.url_scheme == url.scheme()
             && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
-                || query_has_key(REQUEST_URI_QUERY_PARAM_KEY))
+                || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
+                || query_has_key(REQUEST_QUERY_PARAM_KEY))
         {
             return Some(InvitationType::ProofRequest);
         }
@@ -267,7 +269,8 @@ impl OpenID4VCHTTP {
             .ok_or(ExchangeProtocolError::Failed(
                 "presentation_definition is None".to_string(),
             ))?
-            .id;
+            .id
+            .to_owned();
 
         let token_formats: Vec<_> = credential_presentations
             .iter()

@@ -1065,7 +1065,7 @@ pub fn create_open_id_for_vp_presentation_definition(
         };
 
     Ok(OpenID4VPPresentationDefinition {
-        id: interaction_id,
+        id: interaction_id.to_string(),
         input_descriptors: requested_credentials
             .into_iter()
             .enumerate()
@@ -1174,7 +1174,7 @@ fn format_path(claim_key: &str, format_type: &str) -> Result<String, ExchangePro
 }
 
 pub(crate) fn create_presentation_submission(
-    presentation_definition_id: Uuid,
+    presentation_definition_id: String,
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
     format_map: HashMap<String, String>,
@@ -1182,7 +1182,7 @@ pub(crate) fn create_presentation_submission(
     let path_nested = format != "mso_mdoc" || credential_presentations.len() > 1;
     Ok(PresentationSubmissionMappingDTO {
         id: Uuid::new_v4().to_string(),
-        definition_id: presentation_definition_id.to_string(),
+        definition_id: presentation_definition_id,
         descriptor_map: credential_presentations
             .into_iter()
             .enumerate()

@@ -18,6 +18,7 @@ use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::util::key_verification::KeyVerification;
+use crate::util::x509::is_dns_name_matching;
 
 pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<Vec<u8>>,
@@ -99,7 +100,14 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     if response_content
         .response_uri
         .as_ref()
-        .is_none_or(|uri| uri.domain() != Some(&response_content.client_id))
+        .is_none_or(|response_uri| {
+            !response_uri.domain().is_some_and(|response_domain| {
+                is_dns_name_matching(
+                    &format!("*.{}", response_content.client_id),
+                    response_domain,
+                )
+            })
+        })
     {
         return Err(ExchangeProtocolError::Failed(
             "response_uri client_id mismatch".to_string(),

@@ -3289,7 +3289,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                 nonce: "nonce".to_string(),
                 task_id: Uuid::new_v4(),
                 presentation_definition: OpenID4VPPresentationDefinition {
-                    id: interaction_id,
+                    id: interaction_id.to_string(),
                     input_descriptors: vec![],
                 },
                 peer: BLEPeer::new(
@@ -3308,7 +3308,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     state: None,
                     nonce: Some("nonce".to_string()),
                     presentation_definition: Some(OpenID4VPPresentationDefinition {
-                        id: interaction_id,
+                        id: interaction_id.to_string(),
                         input_descriptors: vec![],
                     }),
                     client_metadata_uri: None,

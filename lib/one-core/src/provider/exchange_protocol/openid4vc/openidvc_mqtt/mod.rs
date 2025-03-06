@@ -424,7 +424,8 @@ impl OpenId4VcMqtt {
             .ok_or(ExchangeProtocolError::Failed(
                 "Missing presentation definition".into(),
             ))?
-            .id;
+            .id
+            .to_owned();
 
         let presentation_submission = create_presentation_submission(
             presentation_definition_id,

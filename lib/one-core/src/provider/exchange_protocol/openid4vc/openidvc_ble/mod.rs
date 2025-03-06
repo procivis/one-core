@@ -434,7 +434,8 @@ impl OpenID4VCBLE {
             .ok_or_else(|| {
                 ExchangeProtocolError::Failed("presentation_definition not found".to_string())
             })?
-            .id;
+            .id
+            .to_owned();
 
         let presentation_submission = create_presentation_submission(
             presentation_definition_id,

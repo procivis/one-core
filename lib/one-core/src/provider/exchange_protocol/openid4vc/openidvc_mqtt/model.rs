@@ -69,7 +69,7 @@ mod tests {
                 },
             },
             presentation_definition: OpenID4VPPresentationDefinition {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().to_string(),
                 input_descriptors: vec![],
             },
             client_id: "client_id".to_string(),
