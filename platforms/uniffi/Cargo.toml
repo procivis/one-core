@@ -30,13 +30,16 @@ strum.workspace          = true
 thiserror.workspace      = true
 time.workspace           = true
 tokio                    = { workspace = true, features = ['rt-multi-thread'] }
+tracing-subscriber       = { workspace = true }
 uniffi                   = { workspace = true, features = ["tokio"] }
 url.workspace            = true
 uuid.workspace           = true
 
 [target.'cfg(target_os = "android")'.dependencies]
-tracing-android    = { version = "0.2" }
-tracing-subscriber = { version = "0.3" }
+tracing-android = { version = "0.2" }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+tracing-oslog = { version = "0.2.0" }
 
 [lints]
 workspace = true

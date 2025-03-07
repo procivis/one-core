@@ -97,6 +97,7 @@ uniffi::setup_scaffolding!();
 #[serde(rename_all = "camelCase")]
 struct MobileConfig {
     pub allow_insecure_http_transport: bool,
+    pub trace_level: Option<String>,
 }
 
 #[uniffi::export]
@@ -140,19 +141,6 @@ async fn initialize(
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
-    #[cfg(target_os = "android")]
-    {
-        use tracing_subscriber::layer::SubscriberExt;
-        use tracing_subscriber::util::SubscriberInitExt;
-
-        _ = tracing_subscriber::registry()
-            .with(tracing_subscriber::EnvFilter::new(
-                "info,sea_orm=warn,sqlx::query=error",
-            ))
-            .with(tracing_android::layer("ProcivisOneCore").unwrap())
-            .try_init();
-    }
-
     let native_secure_element: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
     > = native_secure_element.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
@@ -166,6 +154,30 @@ async fn initialize(
         ble_peripheral.map(|peripheral| Arc::new(BlePeripheralWrapper(peripheral)) as _);
 
     let cfg = build_config(&config_json)?;
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        use tracing_subscriber::layer::SubscriberExt;
+        use tracing_subscriber::util::SubscriberInitExt;
+
+        let default_trace_level = "info,sea_orm=warn,sqlx::query=error".to_string();
+        let trace_level = cfg.app.trace_level.as_ref().unwrap_or(&default_trace_level);
+
+        let subscriber =
+            tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::new(trace_level));
+
+        #[cfg(target_os = "android")]
+        let subscriber = subscriber.with(
+            tracing_android::layer("ProcivisOneCore")
+                .expect("Failed to create tracing_android layer"),
+        );
+
+        #[cfg(target_os = "ios")]
+        let subscriber =
+            subscriber.with(tracing_oslog::OsLogger::new("ProcivisOneCore", "default"));
+
+        let _ = subscriber.try_init();
+    }
 
     let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
     let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");

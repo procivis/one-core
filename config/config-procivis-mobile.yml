@@ -1,5 +1,6 @@
 app:
   allowInsecureHttpTransport: false
+  traceLevel: "info,sea_orm=warn,sqlx::query=error"
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheSize: 100
