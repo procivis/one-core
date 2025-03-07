@@ -4,18 +4,18 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_crypto::jwe::RemoteJwk;
+use one_crypto::encryption::EncryptionError;
+use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
-use secrecy::{SecretSlice, SecretString};
+use secrecy::SecretSlice;
 use serde::Deserialize;
 
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
-    KeyAgreementHandle, KeyHandle, KeyHandleError, PrivateKeyAgreementHandle,
-    PublicKeyAgreementHandle, SignatureKeyHandle, SignaturePrivateKeyHandle,
-    SignaturePublicKeyHandle,
+    KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
+    SignaturePrivateKeyHandle, SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -207,11 +207,6 @@ impl SignaturePrivateKeyHandle for Es256PrivateKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         ES256Signer {}.sign(message, &self.public_key, &self.private_key)
     }
-
-    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        ES256Signer::private_key_as_jwk(&self.private_key)
-            .map_err(|e| KeyHandleError::EncodingPrivateJwk(e.to_string()))
-    }
 }
 
 impl PublicKeyAgreementHandle for Es256PublicKeyHandle {
@@ -233,8 +228,7 @@ impl PrivateKeyAgreementHandle for Es256PrivateKeyHandle {
     async fn shared_secret(
         &self,
         remote_jwk: &RemoteJwk,
-    ) -> Result<SecretSlice<u8>, KeyHandleError> {
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
         ES256Signer::shared_secret_p256(&self.private_key, remote_jwk)
-            .map_err(KeyHandleError::Encryption)
     }
 }

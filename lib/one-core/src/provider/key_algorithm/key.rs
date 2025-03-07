@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use one_crypto::encryption::EncryptionError;
-use one_crypto::jwe::RemoteJwk;
+use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::bbs::parse_bbs_input;
 use one_crypto::SignerError;
-use secrecy::{SecretSlice, SecretString};
+use secrecy::SecretString;
 use thiserror::Error;
 
 use crate::model::key::PublicKeyJwk;
@@ -86,23 +86,6 @@ impl KeyHandle {
             Self::MultiMessageSignature(multi_message_signature) => {
                 multi_message_signature.public().as_multibase()
             }
-        }
-    }
-
-    pub fn private_key_as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        match &self {
-            KeyHandle::SignatureOnly(value) => value
-                .private()
-                .ok_or(KeyHandleError::MissingPrivateKey)?
-                .as_jwk(),
-            KeyHandle::SignatureAndKeyAgreement { signature, .. } => signature
-                .private()
-                .ok_or(KeyHandleError::MissingPrivateKey)?
-                .as_jwk(),
-            KeyHandle::MultiMessageSignature(multi_message_signature) => multi_message_signature
-                .private()
-                .ok_or(KeyHandleError::MissingPrivateKey)?
-                .as_jwk(),
         }
     }
 
@@ -196,7 +179,6 @@ pub trait SignaturePublicKeyHandle: Send + Sync {
 #[async_trait::async_trait]
 pub trait SignaturePrivateKeyHandle: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
-    fn as_jwk(&self) -> Result<SecretString, KeyHandleError>;
 }
 
 #[derive(Clone)]
@@ -231,16 +213,6 @@ pub trait PublicKeyAgreementHandle: Send + Sync {
     fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError>;
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
     fn as_raw(&self) -> Vec<u8>;
-}
-
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-#[async_trait::async_trait]
-pub trait PrivateKeyAgreementHandle: Send + Sync {
-    /// Diffie-Hellman key exchange
-    async fn shared_secret(
-        &self,
-        remote_jwk: &RemoteJwk,
-    ) -> Result<SecretSlice<u8>, KeyHandleError>;
 }
 
 #[derive(Clone)]

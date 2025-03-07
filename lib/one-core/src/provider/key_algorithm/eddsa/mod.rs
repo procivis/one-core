@@ -3,19 +3,19 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::jwe::RemoteJwk;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_crypto::encryption::EncryptionError;
+use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
-use secrecy::{ExposeSecret, SecretSlice, SecretString};
+use secrecy::SecretSlice;
 use serde::Deserialize;
 
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
-    KeyAgreementHandle, KeyHandle, KeyHandleError, PrivateKeyAgreementHandle,
-    PublicKeyAgreementHandle, SignatureKeyHandle, SignaturePrivateKeyHandle,
-    SignaturePublicKeyHandle,
+    KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
+    SignaturePrivateKeyHandle, SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -218,28 +218,6 @@ impl SignaturePrivateKeyHandle for EddsaPrivateKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         EDDSASigner {}.sign(message, &self.public_key, &self.private_key)
     }
-
-    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        let key_pair = EDDSASigner::parse_private_key(&self.private_key)
-            .map_err(|e| KeyHandleError::EncodingPrivateJwk(e.to_string()))?;
-
-        let x = Base64UrlSafeNoPadding::encode_to_string(key_pair.public.as_slice())
-            .map_err(|err| KeyHandleError::EncodingPrivateJwk(err.to_string()))?;
-
-        let d = Base64UrlSafeNoPadding::encode_to_string(key_pair.private.expose_secret())
-            .map(SecretString::from)
-            .map_err(|err| KeyHandleError::EncodingPrivateJwk(err.to_string()))?;
-
-        let jwk = serde_json::json!({
-            "kty": "OKP",
-            "crv": "Ed25519",
-            "x": x,
-            "d": d.expose_secret(),
-        })
-        .to_string();
-
-        Ok(SecretString::from(jwk))
-    }
 }
 
 #[async_trait]
@@ -247,9 +225,8 @@ impl PrivateKeyAgreementHandle for EddsaPrivateKeyHandle {
     async fn shared_secret(
         &self,
         remote_jwk: &RemoteJwk,
-    ) -> Result<SecretSlice<u8>, KeyHandleError> {
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
         EDDSASigner::shared_secret_x25519(&self.private_key, remote_jwk)
-            .map_err(KeyHandleError::Encryption)
     }
 }
 

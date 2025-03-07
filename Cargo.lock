@@ -3566,6 +3566,7 @@ name = "one-crypto"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "async-trait",
  "blstrs 0.7.1",
  "chacha20poly1305",
  "concat-kdf",
@@ -3585,6 +3586,7 @@ dependencies = [
  "serde_with",
  "sha2 0.10.8",
  "thiserror 2.0.0",
+ "tokio",
 ]
 
 [[package]]

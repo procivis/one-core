@@ -944,12 +944,20 @@ impl OIDCService {
 
                 let key = key_storage
                     .key_handle(&key)
-                    .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?
-                    .private_key_as_jwk()?;
+                    .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
 
-                let payload = decrypt_jwe_payload(&jwe, key).map_err(|err| {
-                    ServiceError::Other(format!("Failed decrypting JWE payload: {err}"))
-                })?;
+                let key = key
+                    .key_agreement()
+                    .and_then(|k| k.private())
+                    .ok_or_else(|| {
+                        ServiceError::ValidationError("Unsupported JWE key".to_string())
+                    })?;
+
+                let payload = decrypt_jwe_payload(&jwe, key.as_ref())
+                    .await
+                    .map_err(|err| {
+                        ServiceError::Other(format!("Failed decrypting JWE payload: {err}"))
+                    })?;
 
                 let payload = JwePayload::try_from_json_base64_decode(&payload).map_err(|err| {
                     ServiceError::Other(format!("Failed deserializing JWE payload: {err}"))

@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::{Signer, SignerError};
-use secrecy::{SecretSlice, SecretString};
+use secrecy::SecretSlice;
 use serde::Deserialize;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
@@ -186,9 +186,5 @@ impl SignaturePublicKeyHandle for MlDsaPublicKeyHandle {
 impl SignaturePrivateKeyHandle for MlDsaPrivateKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         CRYDI3Signer {}.sign(message, &self.public_key, &self.private_key)
-    }
-
-    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        todo!()
     }
 }

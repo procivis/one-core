@@ -65,15 +65,15 @@ serde_json.workspace = true
 shadow-rs.workspace  = true
 
 [dev-dependencies]
-async-trait        = { version = "0.1" }
-hex-literal        = { version = "0.4" }
-indoc              = { version = "2.0" }
-rand.workspace     = true
-reqwest            = { version = "0.12", features = ["json"] }
-sea-orm.workspace  = true
-secrecy.workspace  = true
-sql-data-provider  = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
-wiremock.workspace = true
+async-trait.workspace = true
+hex-literal           = { version = "0.4" }
+indoc                 = { version = "2.0" }
+rand.workspace        = true
+reqwest               = { version = "0.12", features = ["json"] }
+sea-orm.workspace     = true
+secrecy.workspace     = true
+sql-data-provider     = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
+wiremock.workspace    = true
 
 [lints]
 workspace = true

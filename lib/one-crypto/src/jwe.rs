@@ -3,13 +3,9 @@ use std::str::FromStr;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use ed25519_compact::x25519;
-use p256::ecdh::diffie_hellman;
-use p256::elliptic_curve::JwkEcKey;
-use p256::NistP256;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice, SecretString};
+use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::skip_serializing_none;
@@ -48,41 +44,6 @@ pub struct RemoteJwk {
     pub crv: String,
     pub x: String,
     pub y: Option<String>,
-}
-
-impl TryFrom<JwkEcKey> for RemoteJwk {
-    type Error = EncryptionError;
-
-    fn try_from(value: JwkEcKey) -> Result<Self, Self::Error> {
-        let point = value.to_encoded_point::<NistP256>().map_err(|e| {
-            EncryptionError::Crypto(format!("failed to convert JWK to encoded point: {}", e))
-        })?;
-        let x = Base64UrlSafeNoPadding::encode_to_string(
-            point
-                .x()
-                .ok_or(EncryptionError::Crypto("missing x coordinate".to_string()))?,
-        )
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
-        let y = Base64UrlSafeNoPadding::encode_to_string(
-            point
-                .y()
-                .ok_or(EncryptionError::Crypto("missing y coordinate".to_string()))?,
-        )
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
-        Ok(Self {
-            kty: "EC".to_string(),
-            crv: value.crv().to_string(),
-            x,
-            y: Some(y),
-        })
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PrivateJwk {
-    pub kty: String,
-    pub crv: String,
-    pub d: SecretString,
 }
 
 /// Construct JWE using AES256GCM encryption
@@ -167,12 +128,22 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
     })
 }
 
-pub fn decrypt_jwe_payload(
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait::async_trait]
+pub trait PrivateKeyAgreementHandle: Send + Sync {
+    /// Diffie-Hellman key exchange
+    async fn shared_secret(
+        &self,
+        remote_jwk: &RemoteJwk,
+    ) -> Result<SecretSlice<u8>, EncryptionError>;
+}
+
+pub async fn decrypt_jwe_payload(
     jwe: &str,
-    private_jwk: SecretString,
+    private_key_handle: &dyn PrivateKeyAgreementHandle,
 ) -> Result<Vec<u8>, EncryptionError> {
     let encrypted_jwe = EncryptedJWE::from_str(jwe)?;
-    encrypted_jwe.decrypt(private_jwk)
+    encrypted_jwe.decrypt(private_key_handle).await
 }
 
 struct EncryptedJWE {
@@ -184,21 +155,11 @@ struct EncryptedJWE {
 }
 
 impl EncryptedJWE {
-    fn decrypt(&self, private_key_jwk: SecretString) -> Result<Vec<u8>, EncryptionError> {
-        let private_jwk: PrivateJwk = serde_json::from_str(private_key_jwk.expose_secret())
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse private JWK: {}", e)))?;
-
-        let shared_secret = match (private_jwk.kty.as_str(), private_jwk.crv.as_str()) {
-            ("EC", "P-256") => self.derive_shared_secret_p256(&private_key_jwk)?,
-            ("OKP", "Ed25519") | ("OKP", "X25519") => {
-                self.derive_shared_secret_x25519(&private_jwk)?
-            }
-            (kty, crv) => {
-                return Err(EncryptionError::Crypto(format!(
-                    "Unsupported JWK kty \"{kty}\" and crv \"{crv}\" combination"
-                )))
-            }
-        };
+    async fn decrypt(
+        &self,
+        private_key_handle: &dyn PrivateKeyAgreementHandle,
+    ) -> Result<Vec<u8>, EncryptionError> {
+        let shared_secret = self.derive_shared_secret(private_key_handle).await?;
 
         let encryption_key = self.derive_encryption_key(&shared_secret)?;
 
@@ -215,47 +176,18 @@ impl EncryptedJWE {
         Ok(plaintext)
     }
 
-    fn derive_shared_secret_p256(
+    async fn derive_shared_secret(
         &self,
-        jwk: &SecretString,
-    ) -> Result<SecretSlice<u8>, EncryptionError> {
-        let private_key_jwk: JwkEcKey = serde_json::from_str(jwk.expose_secret())
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWK: {}", e)))?;
-        let secret_key = private_key_jwk.to_secret_key::<NistP256>().map_err(|e| {
-            EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
-        })?;
-        let header: JweHeader<JwkEcKey> = serde_json::from_slice(&self.protected_header)
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
-        let peer_pub_key: p256::PublicKey =
-            header.ephemeral_public_key.to_public_key().map_err(|e| {
-                EncryptionError::Crypto(format!("Failed to decode JWK to public key: {}", e))
-            })?;
-
-        let shared_secret =
-            diffie_hellman(&secret_key.to_nonzero_scalar(), peer_pub_key.as_affine())
-                .raw_secret_bytes()
-                .to_vec();
-        Ok(SecretSlice::from(shared_secret))
-    }
-
-    fn derive_shared_secret_x25519(
-        &self,
-        private_key_jwk: &PrivateJwk,
+        private_key_handle: &dyn PrivateKeyAgreementHandle,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         let header: JweHeader<RemoteJwk> =
             serde_json::from_slice(&self.protected_header).map_err(|e| {
                 EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
             })?;
-        let x = decode_b64(header.ephemeral_public_key.x.as_str(), "x coordinate")?;
-        let peer_pub_key = x25519::PublicKey::from_slice(&x).map_err(|e| {
-            EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e))
-        })?;
 
-        let secret_key = x25519_secret_key_from_jwk(private_key_jwk)?;
-        let shared_secret = peer_pub_key.dh(&secret_key).map_err(|e| {
-            EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e))
-        })?;
-        Ok(SecretSlice::from(shared_secret.to_vec()))
+        private_key_handle
+            .shared_secret(&header.ephemeral_public_key)
+            .await
     }
 
     fn derive_encryption_key(
@@ -299,30 +231,6 @@ fn derive_encryption_key_aes256gcm(
     Ok(encryption_key)
 }
 
-fn x25519_secret_key_from_jwk(jwk: &PrivateJwk) -> Result<x25519::SecretKey, EncryptionError> {
-    let d = SecretSlice::from(decode_b64(jwk.d.expose_secret(), "private key value d")?);
-
-    match jwk.crv.as_str() {
-        "Ed25519" => {
-            let ed25519_key =
-                ed25519_compact::SecretKey::from_slice(d.expose_secret()).map_err(|e| {
-                    EncryptionError::Crypto(format!("Failed to create ed25519 key: {}", e))
-                })?;
-            x25519::SecretKey::from_ed25519(&ed25519_key).map_err(|e| {
-                EncryptionError::Crypto(format!(
-                    "Failed to convert ed25519 key to x25519 key: {}",
-                    e
-                ))
-            })
-        }
-        "X25519" => x25519::SecretKey::from_slice(d.expose_secret())
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to create x25519 key: {}", e))),
-        crv => Err(EncryptionError::Crypto(format!(
-            "unsupported crv \"{crv}\""
-        ))),
-    }
-}
-
 impl FromStr for EncryptedJWE {
     type Err = EncryptionError;
 
@@ -361,12 +269,62 @@ pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, Encr
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::signer::eddsa::EDDSASigner;
+    use crate::signer::es256::ES256Signer;
 
     const PRIVATE_JWK_EC: &str = r#"{"kty":"EC","crv":"P-256","x":"KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo","y":"d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU","d":"81vofgUlDnb6OUF-WPhH8p1T_mo_F2H9XZvaTvtEZHk"}"#;
     const PRIVATE_JWK_ED25519: &str = r#"{"kty":"OKP","crv":"Ed25519","x":"0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM","d":"IM92LwWowNDr7OHXEYwuZ1uVm71ihELJda3i50doJ53TISuUpwwLHkMbrOaChSecW8sERC65hZBJggvBXY71Mw"}"#;
 
-    #[test]
-    fn test_decrypt_jwe_ec() {
+    fn wrap_p256_private_key(jwk: &str) -> impl PrivateKeyAgreementHandle {
+        pub struct Wrapper {
+            pub key: p256::SecretKey,
+        }
+
+        #[async_trait::async_trait]
+        impl PrivateKeyAgreementHandle for Wrapper {
+            async fn shared_secret(
+                &self,
+                remote_jwk: &RemoteJwk,
+            ) -> Result<SecretSlice<u8>, EncryptionError> {
+                ES256Signer::shared_secret_p256(&self.key.to_bytes().to_vec().into(), remote_jwk)
+            }
+        }
+
+        let key = p256::SecretKey::from_jwk_str(jwk).unwrap();
+        Wrapper { key }
+    }
+
+    fn wrap_ed25519_private_key(jwk: &str) -> impl PrivateKeyAgreementHandle {
+        #[derive(Debug, Clone, Deserialize)]
+        struct PrivateJwk {
+            // pub kty: String,
+            // pub crv: String,
+            pub d: String,
+        }
+
+        let jwk: PrivateJwk = serde_json::from_str(jwk).unwrap();
+        let d = decode_b64(&jwk.d, "d").unwrap();
+        let key = ed25519_compact::SecretKey::from_slice(&d).unwrap();
+
+        pub struct Wrapper {
+            pub key: ed25519_compact::SecretKey,
+        }
+
+        #[async_trait::async_trait]
+        impl PrivateKeyAgreementHandle for Wrapper {
+            async fn shared_secret(
+                &self,
+                remote_jwk: &RemoteJwk,
+            ) -> Result<SecretSlice<u8>, EncryptionError> {
+                EDDSASigner::shared_secret_x25519(&self.key.to_vec().into(), remote_jwk)
+            }
+        }
+
+        Wrapper { key }
+    }
+
+    #[tokio::test]
+    async fn test_decrypt_jwe_ec() {
         let expected_payload = "eyJhdWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9vaWRjLXZlcmlmaWVyL3YxL3Jlc3BvbnNlIiwiZXhwIjoxNzMxNTA5NDY5LCJ2cF90b2tlbiI6Im8yZDJaWEp6YVc5dVl6RXVNR2xrYjJOMWJXVnVkSE9CbzJka2IyTlVlWEJsZFc5eVp5NXBjMjh1TVRnd01UTXVOUzR4TG0xRVRHeHBjM04xWlhKVGFXZHVaV1NpYW01aGJXVlRjR0ZqWlhPaFpIUmxjM1NCMkJoWVg2Um9aR2xuWlhOMFNVUUFabkpoYm1SdmJWZ2dBQnBqa1h3Q2RYdVJUdUlaU3RqWnRCZ0dhZ3FqcFlpeGMxSWFINUpRY1JweFpXeGxiV1Z1ZEVsa1pXNTBhV1pwWlhKbWRtRnNkV1V4YkdWc1pXMWxiblJXWVd4MVpXUjBaWE4wYW1semMzVmxja0YxZEdpRVE2RUJKcUVZSVZrRGx6Q0NBNU13Z2dNNG9BTUNBUUlDRkVQamdGUExNb1NmRk4xSVRPeDc0OUlKWWFtQ01Bb0dDQ3FHU000OUJBTUNNR0l4Q3pBSkJnTlZCQVlUQWtOSU1ROHdEUVlEVlFRSERBWmFkWEpwWTJneEVUQVBCZ05WQkFvTUNGQnliMk5wZG1sek1SRXdEd1lEVlFRTERBaFFjbTlqYVhacGN6RWNNQm9HQTFVRUF3d1RZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFlRncweU5ERXhNVE14TkRBMU1EQmFGdzB5TlRBeU1URXdNREF3TURCYU1Fb3hDekFKQmdOVkJBWVRBa05JTVE4d0RRWURWUVFIREFaYWRYSnBZMmd4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1SUXdFZ1lEVlFRRERBdHdjbTlqYVhacGN5NWphREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCQ2tTU0YxUHFjaEhCMUVVVVVPZUkwNGZUMDA1Z1dLSU9lNjBBOWJnckw4S2QzMURaY1JTcWF4QVVHQnQ3MEhCN3VDWmR1ZkE2dUtkTDZCdkF6VWhiSldqZ2dIaU1JSUIzakFPQmdOVkhROEJBZjhFQkFNQ0I0QXdGUVlEVlIwbEFRSF9CQXN3Q1FZSEtJR01YUVVCQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRk8wYXNKM2lZRVZRQUR2YVdqUXlHcGktTGJmRk1Gb0dBMVVkSHdSVE1GRXdUNkJOb0V1R1NXaDBkSEJ6T2k4dlkyRXVaR1YyTG0xa2JDMXdiSFZ6TG1OdmJTOWpjbXd2TkRCRFJESXlOVFEzUmpNNE16UkROVEkyUXpWRE1qSkZNVUV5TmtNM1JUSXdNek15TkRZMk9DOHdnY29HQ0NzR0FRVUZCd0VCQklHOU1JRzZNRnNHQ0NzR0FRVUZCekFDaGs5b2RIUndjem92TDJOaExtUmxkaTV0Wkd3dGNHeDFjeTVqYjIwdmFYTnpkV1Z5THpRd1EwUXlNalUwTjBZek9ETTBRelV5TmtNMVF6SXlSVEZCTWpaRE4wVXlNRE16TWpRMk5qZ3VaR1Z5TUZzR0NDc0dBUVVGQnpBQmhrOW9kSFJ3Y3pvdkwyTmhMbVJsZGk1dFpHd3RjR3gxY3k1amIyMHZiMk56Y0M4ME1FTkVNakkxTkRkR016Z3pORU0xTWpaRE5VTXlNa1V4UVRJMlF6ZEZNakF6TXpJME5qWTRMMk5sY25Rdk1DWUdBMVVkRWdRZk1CMkdHMmgwZEhCek9pOHZZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFXQmdOVkhSRUVEekFOZ2d0d2NtOWphWFpwY3k1amFEQWRCZ05WSFE0RUZnUVVoSVZ4XzRLOHVEU2dUTG4yZnhaT2VaaWxhSkV3Q2dZSUtvWkl6ajBFQXdJRFNRQXdSZ0loQUlNUlllcmhWNWYtdGRwbVpuZjRYRXRLVmQyMUQzVlpwcGNNbHNpcHBYNXdBaUVBMnJJV3FnQWpla1JMcWYxaGM5bjlSSFV3eklnVnF1OVplc2FCSDZkcWhieFpBVkhZR0ZrQlRLWm5kbVZ5YzJsdmJtTXhMakJ2WkdsblpYTjBRV3huYjNKcGRHaHRaMU5JUVMweU5UWnNkbUZzZFdWRWFXZGxjM1J6b1dSMFpYTjBvUUJZSUNPSVpMdlZTaUJCWnNVTHo0VTluQnZDZUxnV0FScVFZeE9RWTdCQkxIQWxiV1JsZG1salpVdGxlVWx1Wm0taGFXUmxkbWxqWlV0bGVhTUJBU0FHSVZnZ0dFMXZRVS13MDZmc1o4WVZpS3hrTnc3MXduY1BaUmpDdW9oTXJIVDBvdEpuWkc5alZIbHdaWFZ2Y21jdWFYTnZMakU0TURFekxqVXVNUzV0UkV4c2RtRnNhV1JwZEhsSmJtWnZwR1p6YVdkdVpXVEFkREl3TWpRdE1URXRNVE5VTVRRNk1qVTZNVEZhYVhaaGJHbGtSbkp2YmNCME1qQXlOQzB4TVMweE0xUXhORG95TlRveE1WcHFkbUZzYVdSVmJuUnBiTUIwTWpBeU5DMHhNUzB4TmxReE5Eb3lOVG94TVZwdVpYaHdaV04wWldSVmNHUmhkR1hBZERJd01qUXRNVEV0TVRSVU1UUTZNalU2TVRGYVdFQnpBc0tGNGVKZzdFNFJTdUx4RjJDQk5YZzdpWUREMklsN3dTN1dkLXJVa2VQbWRjS1Jld0VQX3ZVSjlmbVRlLV9SYmZUM0dkeTV1Yndtbl9qTDY4TmxiR1JsZG1salpWTnBaMjVsWktKcWJtRnRaVk53WVdObGM5Z1lRYUJxWkdWMmFXTmxRWFYwYUtGdlpHVjJhV05sVTJsbmJtRjBkWEpsaEVPaEFTZWc5bGhBV2Z6c00tOEI0SF9xLTRXdVJnZVlQbjNhNEMydUxjQkdKam1qV3FJSTFGeS1tb0JOcV9FU3FkTkcycFZGYlZoVkh1Nm9pTUxLU0FFRHh2WHNjRlJUQkdaemRHRjBkWE1BIiwicHJlc2VudGF0aW9uX3N1Ym1pc3Npb24iOnsiaWQiOiJiOTE0NWEyYS00MDY0LTRhZjMtODY5Yi0xYzhkMmZkOGUzYzciLCJkZWZpbml0aW9uX2lkIjoiYzQ2MzU1NTMtMjQ5Ni00ZGIwLTg5OWUtNTFkZDkyNDJiZjZiIiwiZGVzY3JpcHRvcl9tYXAiOlt7ImlkIjoiaW5wdXRfMCIsImZvcm1hdCI6Im1zb19tZG9jIiwicGF0aCI6IiQiLCJwYXRoX25lc3RlZCI6eyJmb3JtYXQiOiJtc29fbWRvYyIsInBhdGgiOiIkLnZwLnZlcmlmaWFibGVDcmVkZW50aWFsWzBdIn19XX0sInN0YXRlIjoiYzQ2MzU1NTMtMjQ5Ni00ZGIwLTg5OWUtNTFkZDkyNDJiZjZiIn0";
         let expected_header = Header {
             key_id: "eec37767-ad74-47c9-a349-d95a1bd241d4".to_string(),
@@ -381,15 +339,17 @@ mod test {
         assert_eq!(expected_header, extracted_header);
 
         let decrypted_payload_bytes =
-            decrypt_jwe_payload(jwe, PRIVATE_JWK_EC.to_string().into()).unwrap();
+            decrypt_jwe_payload(jwe, &wrap_p256_private_key(PRIVATE_JWK_EC))
+                .await
+                .unwrap();
         assert_eq!(
             Base64UrlSafeNoPadding::encode_to_string(decrypted_payload_bytes).unwrap(),
             expected_payload
         )
     }
 
-    #[test]
-    fn test_decrypt_jwe_eddsa() {
+    #[tokio::test]
+    async fn test_decrypt_jwe_eddsa() {
         let expected_payload = "eyJhdWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9vaWRjLXZlcmlmaWVyL3YxL3Jlc3BvbnNlIiwiZXhwIjoxNzMxNTEwNzg5LCJ2cF90b2tlbiI6Im8yZDJaWEp6YVc5dVl6RXVNR2xrYjJOMWJXVnVkSE9CbzJka2IyTlVlWEJsZFc5eVp5NXBjMjh1TVRnd01UTXVOUzR4TG0xRVRHeHBjM04xWlhKVGFXZHVaV1NpYW01aGJXVlRjR0ZqWlhPaFpIUmxjM1NCMkJoWVg2Um9aR2xuWlhOMFNVUUFabkpoYm1SdmJWZ2dBQnBqa1h3Q2RYdVJUdUlaU3RqWnRCZ0dhZ3FqcFlpeGMxSWFINUpRY1JweFpXeGxiV1Z1ZEVsa1pXNTBhV1pwWlhKbWRtRnNkV1V4YkdWc1pXMWxiblJXWVd4MVpXUjBaWE4wYW1semMzVmxja0YxZEdpRVE2RUJKcUVZSVZrRGx6Q0NBNU13Z2dNNG9BTUNBUUlDRkVQamdGUExNb1NmRk4xSVRPeDc0OUlKWWFtQ01Bb0dDQ3FHU000OUJBTUNNR0l4Q3pBSkJnTlZCQVlUQWtOSU1ROHdEUVlEVlFRSERBWmFkWEpwWTJneEVUQVBCZ05WQkFvTUNGQnliMk5wZG1sek1SRXdEd1lEVlFRTERBaFFjbTlqYVhacGN6RWNNQm9HQTFVRUF3d1RZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFlRncweU5ERXhNVE14TkRBMU1EQmFGdzB5TlRBeU1URXdNREF3TURCYU1Fb3hDekFKQmdOVkJBWVRBa05JTVE4d0RRWURWUVFIREFaYWRYSnBZMmd4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1SUXdFZ1lEVlFRRERBdHdjbTlqYVhacGN5NWphREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCQ2tTU0YxUHFjaEhCMUVVVVVPZUkwNGZUMDA1Z1dLSU9lNjBBOWJnckw4S2QzMURaY1JTcWF4QVVHQnQ3MEhCN3VDWmR1ZkE2dUtkTDZCdkF6VWhiSldqZ2dIaU1JSUIzakFPQmdOVkhROEJBZjhFQkFNQ0I0QXdGUVlEVlIwbEFRSF9CQXN3Q1FZSEtJR01YUVVCQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRk8wYXNKM2lZRVZRQUR2YVdqUXlHcGktTGJmRk1Gb0dBMVVkSHdSVE1GRXdUNkJOb0V1R1NXaDBkSEJ6T2k4dlkyRXVaR1YyTG0xa2JDMXdiSFZ6TG1OdmJTOWpjbXd2TkRCRFJESXlOVFEzUmpNNE16UkROVEkyUXpWRE1qSkZNVUV5TmtNM1JUSXdNek15TkRZMk9DOHdnY29HQ0NzR0FRVUZCd0VCQklHOU1JRzZNRnNHQ0NzR0FRVUZCekFDaGs5b2RIUndjem92TDJOaExtUmxkaTV0Wkd3dGNHeDFjeTVqYjIwdmFYTnpkV1Z5THpRd1EwUXlNalUwTjBZek9ETTBRelV5TmtNMVF6SXlSVEZCTWpaRE4wVXlNRE16TWpRMk5qZ3VaR1Z5TUZzR0NDc0dBUVVGQnpBQmhrOW9kSFJ3Y3pvdkwyTmhMbVJsZGk1dFpHd3RjR3gxY3k1amIyMHZiMk56Y0M4ME1FTkVNakkxTkRkR016Z3pORU0xTWpaRE5VTXlNa1V4UVRJMlF6ZEZNakF6TXpJME5qWTRMMk5sY25Rdk1DWUdBMVVkRWdRZk1CMkdHMmgwZEhCek9pOHZZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFXQmdOVkhSRUVEekFOZ2d0d2NtOWphWFpwY3k1amFEQWRCZ05WSFE0RUZnUVVoSVZ4XzRLOHVEU2dUTG4yZnhaT2VaaWxhSkV3Q2dZSUtvWkl6ajBFQXdJRFNRQXdSZ0loQUlNUlllcmhWNWYtdGRwbVpuZjRYRXRLVmQyMUQzVlpwcGNNbHNpcHBYNXdBaUVBMnJJV3FnQWpla1JMcWYxaGM5bjlSSFV3eklnVnF1OVplc2FCSDZkcWhieFpBVkhZR0ZrQlRLWm5kbVZ5YzJsdmJtTXhMakJ2WkdsblpYTjBRV3huYjNKcGRHaHRaMU5JUVMweU5UWnNkbUZzZFdWRWFXZGxjM1J6b1dSMFpYTjBvUUJZSUNPSVpMdlZTaUJCWnNVTHo0VTluQnZDZUxnV0FScVFZeE9RWTdCQkxIQWxiV1JsZG1salpVdGxlVWx1Wm0taGFXUmxkbWxqWlV0bGVhTUJBU0FHSVZnZ0dFMXZRVS13MDZmc1o4WVZpS3hrTnc3MXduY1BaUmpDdW9oTXJIVDBvdEpuWkc5alZIbHdaWFZ2Y21jdWFYTnZMakU0TURFekxqVXVNUzV0UkV4c2RtRnNhV1JwZEhsSmJtWnZwR1p6YVdkdVpXVEFkREl3TWpRdE1URXRNVE5VTVRRNk1qVTZNVEZhYVhaaGJHbGtSbkp2YmNCME1qQXlOQzB4TVMweE0xUXhORG95TlRveE1WcHFkbUZzYVdSVmJuUnBiTUIwTWpBeU5DMHhNUzB4TmxReE5Eb3lOVG94TVZwdVpYaHdaV04wWldSVmNHUmhkR1hBZERJd01qUXRNVEV0TVRSVU1UUTZNalU2TVRGYVdFQnpBc0tGNGVKZzdFNFJTdUx4RjJDQk5YZzdpWUREMklsN3dTN1dkLXJVa2VQbWRjS1Jld0VQX3ZVSjlmbVRlLV9SYmZUM0dkeTV1Yndtbl9qTDY4TmxiR1JsZG1salpWTnBaMjVsWktKcWJtRnRaVk53WVdObGM5Z1lRYUJxWkdWMmFXTmxRWFYwYUtGdlpHVjJhV05sVTJsbmJtRjBkWEpsaEVPaEFTZWc5bGhBdkd2MUUwanZOR05ZY21wbllqMWRKRUJ5MFZ2alJZWkNXWm1pdWRpRC1ETEdyQi1lc1JNUjhIRG9hWGx6R0xEcW5hbEVRQVQyNV82MzN5blpMcUVmQ21aemRHRjBkWE1BIiwicHJlc2VudGF0aW9uX3N1Ym1pc3Npb24iOnsiaWQiOiJkYmEwZTQ5MS1iNjk5LTRkM2UtYTQ0YS01MTg4OWE2MmQzNmIiLCJkZWZpbml0aW9uX2lkIjoiZGFkZTE1MmItYjg1NS00NWNiLWJkZjAtNTIyZmUxNWMwOWI3IiwiZGVzY3JpcHRvcl9tYXAiOlt7ImlkIjoiaW5wdXRfMCIsImZvcm1hdCI6Im1zb19tZG9jIiwicGF0aCI6IiQiLCJwYXRoX25lc3RlZCI6eyJmb3JtYXQiOiJtc29fbWRvYyIsInBhdGgiOiIkLnZwLnZlcmlmaWFibGVDcmVkZW50aWFsWzBdIn19XX0sInN0YXRlIjoiZGFkZTE1MmItYjg1NS00NWNiLWJkZjAtNTIyZmUxNWMwOWI3In0";
         let expected_header = Header {
             key_id: "9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string(),
@@ -403,15 +363,17 @@ mod test {
         assert_eq!(expected_header, extracted_header);
 
         let decrypted_payload_bytes =
-            decrypt_jwe_payload(jwe, PRIVATE_JWK_ED25519.to_string().into()).unwrap();
+            decrypt_jwe_payload(jwe, &wrap_ed25519_private_key(PRIVATE_JWK_ED25519))
+                .await
+                .unwrap();
         assert_eq!(
             Base64UrlSafeNoPadding::encode_to_string(decrypted_payload_bytes).unwrap(),
             expected_payload
         )
     }
 
-    #[test]
-    fn test_jwe_round_trip_ec() {
+    #[tokio::test]
+    async fn test_jwe_round_trip_ec() {
         let payload = b"test_payload";
         let header = Header {
             key_id: "eec37767-ad74-47c9-a349-d95a1bd241d4".to_string(),
@@ -445,12 +407,14 @@ mod test {
         assert_eq!(header, extracted_header);
 
         let decrypted_payload_bytes =
-            decrypt_jwe_payload(&jwe, PRIVATE_JWK_EC.to_string().into()).unwrap();
+            decrypt_jwe_payload(&jwe, &wrap_p256_private_key(PRIVATE_JWK_EC))
+                .await
+                .unwrap();
         assert_eq!(payload.as_slice(), decrypted_payload_bytes);
     }
 
-    #[test]
-    fn test_jwe_round_trip_eddsa() {
+    #[tokio::test]
+    async fn test_jwe_round_trip_eddsa() {
         let payload = b"test_payload";
         let header = Header {
             key_id: "9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string(),
@@ -483,7 +447,9 @@ mod test {
         assert_eq!(header, extracted_header);
 
         let decrypted_payload_bytes =
-            decrypt_jwe_payload(&jwe, PRIVATE_JWK_ED25519.to_string().into()).unwrap();
+            decrypt_jwe_payload(&jwe, &wrap_ed25519_private_key(PRIVATE_JWK_ED25519))
+                .await
+                .unwrap();
         assert_eq!(payload.as_slice(), decrypted_payload_bytes);
     }
 }

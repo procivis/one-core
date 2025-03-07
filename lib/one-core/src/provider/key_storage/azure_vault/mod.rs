@@ -313,10 +313,4 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
 
         Ok(decoded)
     }
-
-    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        Err(KeyHandleError::EncodingPrivateJwk(
-            "unsupported storage type".to_string(),
-        ))
-    }
 }

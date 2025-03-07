@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
-use secrecy::SecretString;
 use serde::Deserialize;
 use shared_types::KeyId;
 
@@ -116,13 +115,6 @@ impl SignaturePrivateKeyHandle for SecureElementKeyHandle {
         self.native_storage
             .sign(&self.key.key_reference, message)
             .await
-            .map_err(|error| SignerError::CouldNotSign(error.to_string()))
-    }
-
-    fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        Err(KeyHandleError::EncodingPrivateJwk(
-            "unsupported for remote secure element storage".to_string(),
-        ))
     }
 }
 

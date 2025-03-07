@@ -1,9 +1,10 @@
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use p256::ecdh::diffie_hellman;
 use p256::ecdsa::signature::{Signer as _, Verifier as _};
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use p256::elliptic_curve::generic_array::GenericArray;
 use p256::elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
-use p256::elliptic_curve::SecretKey;
+use p256::elliptic_curve::{JwkEcKey, SecretKey};
 use p256::pkcs8::DecodePublicKey;
 use p256::{AffinePoint, EncodedPoint, NistP256, PublicKey};
 use rand::thread_rng;
@@ -167,5 +168,33 @@ impl Signer for ES256Signer {
 
         vk.verify(input, &signature)
             .map_err(|err| SignerError::CouldNotVerify(format!("couldn't verify: {err}")))
+    }
+}
+
+impl TryFrom<JwkEcKey> for RemoteJwk {
+    type Error = EncryptionError;
+
+    fn try_from(value: JwkEcKey) -> Result<Self, Self::Error> {
+        let point = value.to_encoded_point::<NistP256>().map_err(|e| {
+            EncryptionError::Crypto(format!("failed to convert JWK to encoded point: {}", e))
+        })?;
+        let x = Base64UrlSafeNoPadding::encode_to_string(
+            point
+                .x()
+                .ok_or(EncryptionError::Crypto("missing x coordinate".to_string()))?,
+        )
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
+        let y = Base64UrlSafeNoPadding::encode_to_string(
+            point
+                .y()
+                .ok_or(EncryptionError::Crypto("missing y coordinate".to_string()))?,
+        )
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
+        Ok(Self {
+            kty: "EC".to_string(),
+            crv: value.crv().to_string(),
+            x,
+            y: Some(y),
+        })
     }
 }
