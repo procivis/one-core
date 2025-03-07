@@ -12,14 +12,14 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDcSdJwt,
-    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPFormat,
-    OpenID4VPJwtVpJson, OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPAlgs, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
+    OpenID4VPPresentationDefinitionInputDescriptorFormat, OpenID4VPVcSdJwtAlgs,
+    OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
@@ -651,25 +651,23 @@ pub struct OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO {
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VPFormat)]
+#[from(OpenID4VpPresentationFormat)]
 #[serde(untagged)]
 pub enum OpenID4VPFormatRestDTO {
-    #[serde(rename = "jwt_vp_json")]
-    JwtVpJson(OpenID4VPJwtVpJsonRestDTO),
-    #[serde(rename = "dc+sd-jwt")]
-    DcSdJwt(OpenID4VPDcSdJwtRestDTO),
+    GenericAlgList(OpenID4VPAlgsRestDTO),
+    SdJwtVcAlgs(OpenID4VPVcSdJwtAlgsRestDTO),
     Other(serde_json::Value),
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VPJwtVpJson)]
-pub struct OpenID4VPJwtVpJsonRestDTO {
+#[from(OpenID4VPAlgs)]
+pub struct OpenID4VPAlgsRestDTO {
     pub alg: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VPDcSdJwt)]
-pub struct OpenID4VPDcSdJwtRestDTO {
+#[from(OpenID4VPVcSdJwtAlgs)]
+pub struct OpenID4VPVcSdJwtAlgsRestDTO {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sd_jwt_algorithms: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

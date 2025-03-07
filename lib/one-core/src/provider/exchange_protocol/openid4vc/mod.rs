@@ -41,8 +41,8 @@ use crate::provider::exchange_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VCParams, OpenID4VPFormat, PresentedCredential, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCParams, OpenID4VpPresentationFormat, PresentedCredential,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -282,7 +282,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         format_to_type_mapper: FormatMapper,
         key_id: KeyId,
         encryption_key_jwk: PublicKeyJwkDTO,
-        vp_formats: HashMap<String, OpenID4VPFormat>,
+        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         client_id_schema: ClientIdSchemaType,

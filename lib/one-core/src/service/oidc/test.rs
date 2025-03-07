@@ -1784,13 +1784,13 @@ async fn test_get_client_metadata_success() {
             vp_formats: HashMap::from([
                 (
                     "jwt_vp_json".to_string(),
-                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),
                 (
                     "ldp_vc".to_string(),
-                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                         alg: vec![
                             "EdDSA".to_string(),
                             "ES256".to_string(),
@@ -1800,25 +1800,25 @@ async fn test_get_client_metadata_success() {
                 ),
                 (
                     "vc+sd-jwt".to_string(),
-                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),
                 (
                     "jwt_vc_json".to_string(),
-                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),
                 (
                     "mso_mdoc".to_string(),
-                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),
                 (
                     "ldp_vp".to_string(),
-                    OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                         alg: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),

@@ -4,7 +4,8 @@ use std::str::FromStr;
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::did::DidType;
 use one_core::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPJwtVpJson, OpenID4VPPresentationDefinition,
+    OpenID4VPAlgs, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
+    OpenID4VpPresentationFormat,
 };
 use serde_json::json;
 use url::Url;
@@ -1394,7 +1395,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -1449,7 +1450,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),

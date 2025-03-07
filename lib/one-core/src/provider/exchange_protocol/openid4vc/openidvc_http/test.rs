@@ -41,9 +41,9 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, InvitationResponseDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialValueDetails, OpenID4VCIssuanceParams,
     OpenID4VCParams, OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
-    OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPFormat, OpenID4VPHolderInteractionData, OpenID4VPJwtVpJson,
-    OpenID4VPPresentationDefinition, ShareResponse,
+    OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPAlgs,
+    OpenID4VPClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
+    OpenID4VpPresentationFormat, ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -1038,7 +1038,7 @@ async fn test_handle_invitation_proof_success() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -1271,7 +1271,7 @@ async fn test_handle_invitation_proof_failed() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -1454,7 +1454,7 @@ fn test_serialize_and_deserialize_interaction_data() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),

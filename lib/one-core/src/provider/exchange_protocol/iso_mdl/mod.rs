@@ -37,8 +37,8 @@ use crate::provider::credential_formatter::model::{DetailCredential, FormatPrese
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    ClientIdSchemaType, InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -273,7 +273,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         _format_to_type_mapper: FormatMapper,
         _key_id: KeyId,
         _encryption_key_jwk: PublicKeyJwkDTO,
-        _vp_formats: HashMap<String, OpenID4VPFormat>,
+        _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _client_id_schema: ClientIdSchemaType,

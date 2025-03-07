@@ -8,8 +8,8 @@ use indexmap::IndexMap;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
     ClientIdSchemaType, OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VPFormat,
-    OpenID4VPPresentationDefinitionInputDescriptorFormat,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VPPresentationDefinitionInputDescriptorFormat,
+    OpenID4VpPresentationFormat,
 };
 use openid4vc::openidvc_ble::OpenID4VCBLE;
 use openid4vc::openidvc_http::OpenID4VCHTTP;
@@ -434,7 +434,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         format_to_type_mapper: FormatMapper,
         key_id: KeyId,
         encryption_key_jwk: PublicKeyJwkDTO,
-        vp_formats: HashMap<String, OpenID4VPFormat>,
+        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         client_id_schema: ClientIdSchemaType,
@@ -599,7 +599,7 @@ where
         format_to_type_mapper: FormatMapper,
         key_id: KeyId,
         encryption_key_jwk: PublicKeyJwkDTO,
-        vp_formats: HashMap<String, OpenID4VPFormat>,
+        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         client_id_schema: ClientIdSchemaType,

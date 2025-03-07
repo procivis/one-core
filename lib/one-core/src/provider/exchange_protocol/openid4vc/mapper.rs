@@ -18,10 +18,10 @@ use super::model::{
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
     OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData, OpenID4VPJwtVpJson,
-    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAlgs,
+    OpenID4VPAuthorizationRequestParams, OpenID4VPAuthorizationRequestQueryParams,
+    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
@@ -62,8 +62,8 @@ use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, NestedPresentationSubmissionDescriptorDTO,
-    OpenID4VCICredentialValueDetails, OpenID4VPFormat,
-    OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
+    OpenID4VCICredentialValueDetails, OpenID4VPPresentationDefinitionInputDescriptorFormat,
+    OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO, PresentedCredential,
 };
 use crate::provider::exchange_protocol::openid4vc::{
@@ -185,9 +185,9 @@ pub(crate) fn get_claim_name_by_json_path(
 }
 
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method
-pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat> {
+pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresentationFormat> {
     let mut formats = HashMap::new();
-    let algorithms = OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+    let algorithms = OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
         alg: vec!["EdDSA".to_owned(), "ES256".to_owned()],
     });
 
@@ -196,7 +196,7 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat
     formats.insert("ldp_vp".to_owned(), algorithms.clone());
     formats.insert(
         "ldp_vc".to_owned(),
-        OpenID4VPFormat::JwtVpJson(OpenID4VPJwtVpJson {
+        OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
             alg: vec![
                 "EdDSA".to_owned(),
                 "ES256".to_owned(),
@@ -1221,7 +1221,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
     proof: &Proof,
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
-    vp_formats: HashMap<String, OpenID4VPFormat>,
+    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     client_id_scheme: ClientIdSchemaType,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
@@ -1346,7 +1346,7 @@ fn get_params_for_redirect_uri(
     proof: &Proof,
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
-    vp_formats: HashMap<String, OpenID4VPFormat>,
+    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     interaction_data: &OpenID4VPVerifierInteractionContent,
 ) -> Result<OpenID4VPAuthorizationRequestQueryParams, ExchangeProtocolError> {
     let mut presentation_definition = None;

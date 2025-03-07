@@ -18,7 +18,7 @@ use super::model::{
     OpenID4VCIGrants, OpenID4VCIInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCITokenRequestDTO, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO, OpenID4VPFormat,
+    OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO, OpenID4VpPresentationFormat,
     PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
 use super::validator::throw_if_credential_state_not_eq;
@@ -174,7 +174,7 @@ fn sdjwt_configuration(
 pub fn create_open_id_for_vp_client_metadata(
     key_id: KeyId,
     jwk: PublicKeyJwkDTO,
-    vp_formats: HashMap<String, OpenID4VPFormat>,
+    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
 ) -> OpenID4VPClientMetadata {
     OpenID4VPClientMetadata {
         jwks: OpenID4VPClientMetadataJwks {

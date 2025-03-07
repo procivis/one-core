@@ -29,9 +29,9 @@ use super::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof, OpenID4VCITokenRequestDTO,
     OpenID4VCITokenResponseDTO, OpenID4VCInteractionContent, OpenID4VCParams,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, PresentedCredential, ShareResponse, SubmitIssuerResponse,
-    UpdateResponse,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PresentedCredential,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use super::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::service::{create_credential_offer, FnMapExternalFormatToExternalDetailed};
@@ -850,7 +850,7 @@ impl OpenID4VCHTTP {
         format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
         key_id: KeyId,
         encryption_key_jwk: PublicKeyJwkDTO,
-        vp_formats: HashMap<String, OpenID4VPFormat>,
+        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         client_id_scheme: ClientIdSchemaType,
     ) -> Result<ShareResponse<OpenID4VPVerifierInteractionContent>, ExchangeProtocolError> {
