@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use mockall::predicate;
 use mockall::predicate::{always, eq};
-use secrecy::{ExposeSecret, SecretSlice, SecretString};
+use secrecy::{ExposeSecret, SecretSlice};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::InternalKeyProvider;
+use super::{decrypt_key, InternalKeyProvider};
 use crate::model::key::Key;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -16,37 +16,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::internal::Params;
 use crate::provider::key_storage::KeyStorage;
-
-#[tokio::test]
-async fn test_internal_generate() {
-    let mut mock_key_algorithm = MockKeyAlgorithm::default();
-    mock_key_algorithm.expect_generate_key().return_once(|| {
-        Ok(GeneratedKey {
-            key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
-                private: Arc::new(MockSignaturePrivateKeyHandle::default()),
-                public: Arc::new(MockSignaturePublicKeyHandle::default()),
-            }),
-            public: vec![1],
-            private: SecretSlice::from(vec![1, 2, 3]),
-        })
-    });
-
-    let arc = Arc::new(mock_key_algorithm);
-
-    let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    mock_key_algorithm_provider
-        .expect_key_algorithm_from_name()
-        .times(1)
-        .returning(move |_| Some(arc.clone()));
-
-    let provider = InternalKeyProvider::new(
-        Arc::new(mock_key_algorithm_provider),
-        Params { encryption: None },
-    );
-
-    let result = provider.generate(Uuid::new_v4().into(), "").await.unwrap();
-    assert_eq!(3, result.key_reference.len());
-}
 
 #[tokio::test]
 async fn test_internal_generate_with_encryption() {
@@ -73,12 +42,14 @@ async fn test_internal_generate_with_encryption() {
     let provider = InternalKeyProvider::new(
         Arc::new(mock_key_algorithm_provider),
         Params {
-            encryption: Some(SecretString::from("password")),
+            encryption: SecretSlice::from(vec![0; 32]),
         },
     );
 
     let result = provider.generate(Uuid::new_v4().into(), "").await.unwrap();
     assert_eq!(result.key_reference.len(), 39);
+    let decrypted = decrypt_key(&result.key_reference, &SecretSlice::from(vec![0; 32])).unwrap();
+    assert_eq!(decrypted.expose_secret(), vec![1, 2, 3]);
 }
 
 #[tokio::test]
@@ -133,7 +104,7 @@ async fn test_internal_sign_with_encryption() {
     let provider = InternalKeyProvider::new(
         Arc::new(mock_key_algorithm_provider),
         Params {
-            encryption: Some(SecretString::from("password")),
+            encryption: SecretSlice::from(vec![0; 32]),
         },
     );
 

@@ -46,6 +46,12 @@ exchange:
         presentation:
           redirectUri:
             allowedSchemes: ["http", "https"]
+keyStorage:
+  INTERNAL:
+    params:
+      private:
+        # this is the SHA-256 of "my encryption key"
+        encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
 transport:
   MQTT:
     type: "MQTT"

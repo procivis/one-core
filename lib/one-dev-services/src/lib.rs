@@ -131,7 +131,9 @@ use one_crypto::signer::bbs::BBSSigner;
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::signer::es256::ES256Signer;
+use one_crypto::utilities::generate_random_seed_32;
 use one_crypto::CryptoProviderImpl;
+use secrecy::SecretSlice;
 use service::credential_service::CredentialService;
 use service::did_service::DidService;
 use service::signature_service::SignatureService;
@@ -195,7 +197,10 @@ impl OneDevCore {
             StorageType::Internal.to_string(),
             Arc::new(InternalKeyProvider::new(
                 key_algorithm_provider.clone(),
-                InternalKeyProviderParams { encryption: None },
+                InternalKeyProviderParams {
+                    // use a stable key in production scenarios, this is just good enough for examples
+                    encryption: SecretSlice::from(generate_random_seed_32().to_vec()),
+                },
             )) as _,
         )]);
         let key_storage_provider = Arc::new(KeyProviderImpl::new(key_storages));

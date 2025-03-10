@@ -334,9 +334,6 @@ keyStorage:
     display: "keyStorage.internal"
     type: "INTERNAL"
     order: 0
-    params:
-      private:
-        encryption: "my encryption key"
   PKCS11:
     display: "keyStorage.pkcs11"
     type: "PKCS11"

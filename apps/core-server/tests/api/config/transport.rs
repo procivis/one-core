@@ -24,11 +24,23 @@ async fn test_transport_params_are_filtered_in_config() {
 #[tokio::test]
 async fn test_server_starts_with_base_config() {
     let root = std::env!("CARGO_MANIFEST_DIR");
+
+    let set_encryption_key = Some(
+        indoc::indoc! {"
+        keyStorage:
+            INTERNAL:
+                params:
+                    private:
+                        encryption: \"93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e\"
+    "}.to_string(),
+    );
     let configs = [
         format!("{}/../../config/config.yml", root),
         format!("{}/../../config/config-procivis-base.yml", root),
     ]
-    .map(|path| std::fs::read_to_string(path).unwrap());
+    .map(|path| std::fs::read_to_string(path).unwrap())
+    .into_iter()
+    .chain(set_encryption_key);
 
     let mut app_config: AppConfig<ServerConfig> = AppConfig::from_yaml(configs).unwrap();
     app_config.app = ServerConfig {
