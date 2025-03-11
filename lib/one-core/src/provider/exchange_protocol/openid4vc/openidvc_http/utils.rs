@@ -537,20 +537,33 @@ pub fn validate_interaction_data(
         }
     };
 
-    if let Some(mso_vp) = mso_vp {
-        let OpenID4VpPresentationFormat::GenericAlgList(mso_mdoc) = mso_vp else {
+    match mso_vp {
+        Some(OpenID4VpPresentationFormat::GenericAlgList(mso_mdoc)) => {
+            if !mso_mdoc.alg.contains(&"ES256".to_string())
+                && !mso_mdoc.alg.contains(&"EdDSA".to_string())
+            {
+                Err(ExchangeProtocolError::InvalidRequest(
+                    "client_metadata.vp_formats[\"mso_mdoc\"] must contain 'ES256' or 'EdDSA' algorithms"
+                        .to_string(),
+                ))?;
+            }
+        }
+        // As per the spec ONE-4912 - the mso_mdoc may contain no algorithms / be an empty object
+        Some(OpenID4VpPresentationFormat::Other(serde_json::Value::Object(mso_mdoc))) => {
+            if mso_mdoc.is_empty() {
+                return Ok(());
+            } else {
+                return Err(ExchangeProtocolError::InvalidRequest(
+                    "client_metadata.vp_formats[\"mso_mdoc\"] must contain an 'alg' key or be an empty object".to_string(),
+                ));
+            }
+        }
+        Some(_) => {
             return Err(ExchangeProtocolError::InvalidRequest(
                 "invalid client_metadata.vp_formats[\"mso_mdoc\"] structure".to_string(),
-            ))?;
-        };
-        if !mso_mdoc.alg.contains(&"ES256".to_string())
-            && !mso_mdoc.alg.contains(&"EdDSA".to_string())
-        {
-            Err(ExchangeProtocolError::InvalidRequest(
-                "client_metadata.vp_formats[\"mso_mdoc\"] must contain 'ES256' or 'EdDSA' algorithms"
-                    .to_string(),
-            ))?;
+            ))
         }
+        None => {}
     };
 
     if interaction_data.response_uri.is_none() {
