@@ -103,10 +103,11 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .as_ref()
         .is_none_or(|response_uri| {
             !response_uri.domain().is_some_and(|response_domain| {
-                is_dns_name_matching(
-                    &format!("*.{}", response_content.client_id),
-                    response_domain,
-                )
+                response_content.client_id == response_domain
+                    || is_dns_name_matching(
+                        &format!("*.{}", response_content.client_id),
+                        response_domain,
+                    )
             })
         })
     {
