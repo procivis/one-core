@@ -515,13 +515,16 @@ impl OpenID4VCHTTP {
         }
         .await?;
 
-        interaction_data.access_token = Some(token_response.access_token.clone());
-        interaction_data.access_token_expires_at =
-            OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
-        interaction_data.refresh_token = token_response.refresh_token;
-        interaction_data.refresh_token_expires_at = token_response
-            .refresh_token_expires_in
-            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+        // only mdoc credentials support refreshing, do not store the tokens otherwise
+        if credential_format == "mso_mdoc" {
+            interaction_data.access_token = Some(token_response.access_token.clone());
+            interaction_data.access_token_expires_at =
+                OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
+            interaction_data.refresh_token = token_response.refresh_token;
+            interaction_data.refresh_token_expires_at = token_response
+                .refresh_token_expires_in
+                .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+        }
 
         let data = serialize_interaction_data(&interaction_data)?;
         interaction.data = Some(data);
@@ -530,8 +533,6 @@ impl OpenID4VCHTTP {
             .update_interaction(interaction.into())
             .await
             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
-        let access_token = token_response.access_token;
 
         let auth_fn = self
             .key_provider
@@ -609,7 +610,7 @@ impl OpenID4VCHTTP {
         let response = self
             .client
             .post(interaction_data.credential_endpoint.as_str())
-            .bearer_auth(&access_token)
+            .bearer_auth(&token_response.access_token)
             .json(&body)
             .context("json error")
             .map_err(ExchangeProtocolError::Transport)?
