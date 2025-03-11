@@ -135,13 +135,8 @@ pub struct LdPresentation {
     #[serde_as(as = "OneOrMany<_>")]
     pub r#type: Vec<String>,
 
-    #[serde(with = "time::serde::rfc3339")]
-    pub issuance_date: OffsetDateTime,
-
     pub verifiable_credential: VerifiableCredential,
     pub holder: Issuer,
-
-    pub nonce: Option<String>,
 
     pub proof: Option<VcdmProof>,
 }

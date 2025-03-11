@@ -226,9 +226,7 @@ impl CredentialFormatter for JsonLdClassic {
             holder: holder_did.as_str().parse().map(Issuer::Url).map_err(|_| {
                 FormatterError::CouldNotFormat("Holder DID is not a URL".to_string())
             })?,
-            nonce: ctx.nonce,
             proof: None,
-            issuance_date: OffsetDateTime::now_utc(),
         };
 
         let cryptosuite = match algorithm {
@@ -247,6 +245,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let mut proof = VcdmProof::builder()
             .context(context)
+            .maybe_nonce(ctx.nonce)
             .created(OffsetDateTime::now_utc())
             .proof_purpose("authentication")
             .cryptosuite(cryptosuite)
@@ -259,8 +258,7 @@ impl CredentialFormatter for JsonLdClassic {
             &*self.crypto,
             self.caching_loader.to_owned(),
             None,
-            // todo(ONE-5022): use json_ld_processor_options() once we have removed issuance_date from the VP
-            json_ld::Options::default(),
+            json_ld_processor_options(),
         )
         .await?;
 
@@ -464,12 +462,13 @@ impl JsonLdClassic {
             .collect::<Result<_, _>>()
             .map_err(|err| FormatterError::CouldNotExtractCredentials(err.to_string()))?;
 
+        let proof = presentation.proof.as_ref();
         Ok(Presentation {
             id: None,
-            issued_at: Some(presentation.issuance_date),
+            issued_at: proof.and_then(|p| p.created),
             expires_at: None,
             issuer_did: Some(presentation.holder.to_did_value()?),
-            nonce: presentation.nonce,
+            nonce: proof.and_then(|p| p.nonce.to_owned()),
             credentials,
         })
     }
@@ -602,8 +601,7 @@ pub(super) async fn verify_presentation_signature(
         crypto,
         caching_loader,
         None,
-        // todo(ONE-5022): use json_ld_processor_options() once we have removed issuance_date from the VP
-        json_ld::Options::default(),
+        json_ld_processor_options(),
     )
     .await?;
 

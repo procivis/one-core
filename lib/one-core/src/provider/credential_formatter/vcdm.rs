@@ -233,12 +233,12 @@ pub struct VcdmProof {
     pub context: Option<IndexSet<ContextType>>,
     r#type: String,
     #[serde(default, with = "time::serde::rfc3339::option")]
-    created: Option<OffsetDateTime>,
+    pub created: Option<OffsetDateTime>,
     pub cryptosuite: String,
     pub verification_method: String,
     pub proof_purpose: String,
     pub proof_value: Option<String>,
-    nonce: Option<String>,
+    pub nonce: Option<String>,
     challenge: Option<String>,
     domain: Option<String>,
 }
