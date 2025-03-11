@@ -3,6 +3,8 @@ use std::ops::{Add, Sub};
 use std::sync::Arc;
 use std::time::Duration;
 
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use time::OffsetDateTime;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -20,7 +22,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::vec_last_position_from_token_path;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VCIInteractionDataDTO,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCITokenRequestDTO, ValidatedProofClaimDTO,
 };
 use crate::provider::exchange_protocol::openid4vc::service::FnMapOidcFormatToExternalDetailed;
@@ -378,7 +380,7 @@ pub(crate) fn throw_if_interaction_created_date(
 }
 
 pub(crate) fn throw_if_interaction_pre_authorized_code_used(
-    interaction_data: &OpenID4VCIInteractionDataDTO,
+    interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
 ) -> Result<(), OpenID4VCError> {
     if interaction_data.pre_authorized_code_used {
         return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidGrant));
@@ -400,14 +402,18 @@ pub(crate) fn throw_if_credential_state_not_eq(
 }
 
 pub(super) fn validate_refresh_token(
-    interaction_data: &OpenID4VCIInteractionDataDTO,
+    interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
     refresh_token: &str,
 ) -> Result<(), OpenID4VCError> {
-    let Some(stored_refresh_token) = interaction_data.refresh_token.as_ref() else {
+    let Some(stored_refresh_token_hash) = interaction_data.refresh_token_hash.as_ref() else {
         return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest));
     };
 
-    if refresh_token != stored_refresh_token {
+    let refresh_token_hash = SHA256
+        .hash(refresh_token.as_bytes())
+        .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
+
+    if stored_refresh_token_hash != &refresh_token_hash {
         return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidToken));
     }
 

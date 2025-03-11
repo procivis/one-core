@@ -7,26 +7,22 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VCIInteractionDataDTO, OpenID4VPVerifierInteractionContent, ProvedCredential,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::ServiceError;
 
 pub(crate) fn interaction_data_to_dto(
     interaction: &Interaction,
-) -> Result<OpenID4VCIInteractionDataDTO, ServiceError> {
+) -> Result<OpenID4VCIIssuerInteractionDataDTO, ServiceError> {
     let interaction_data = interaction
         .data
         .to_owned()
         .ok_or(ServiceError::MappingError(
             "interaction data is missing".to_string(),
         ))?;
-    let json_data = String::from_utf8(interaction_data)
-        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-    let interaction_data_parsed: OpenID4VCIInteractionDataDTO =
-        serde_json::from_str(&json_data).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-    Ok(interaction_data_parsed)
+    serde_json::from_slice(&interaction_data).map_err(|e| ServiceError::MappingError(e.to_string()))
 }
 
 pub(super) fn parse_interaction_content(

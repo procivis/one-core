@@ -27,8 +27,8 @@ use super::model::{
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VCInteractionContent, OpenID4VCParams,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VCParams,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PresentedCredential,
     ShareResponse, SubmitIssuerResponse, UpdateResponse,
@@ -766,17 +766,13 @@ impl OpenID4VCHTTP {
         &self,
         credential: &Credential,
         _credential_format: &str,
-    ) -> Result<ShareResponse<OpenID4VCInteractionContent>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<OpenID4VCIIssuerInteractionDataDTO>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
-        let interaction_content = OpenID4VCInteractionContent {
+        let interaction_content = OpenID4VCIIssuerInteractionDataDTO {
             pre_authorized_code_used: false,
-            access_token: format!(
-                "{}.{}",
-                interaction_id,
-                utilities::generate_alphanumeric(32),
-            ),
+            access_token_hash: Default::default(),
             access_token_expires_at: None,
-            refresh_token: None,
+            refresh_token_hash: None,
             refresh_token_expires_at: None,
         };
 

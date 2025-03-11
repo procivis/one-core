@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 
 use crate::{Hasher, HasherError};
 
-pub struct SHA256 {}
+pub struct SHA256;
 
 impl SHA256 {
     pub fn hash_reader(reader: &mut impl Read) -> Result<Vec<u8>, HasherError> {

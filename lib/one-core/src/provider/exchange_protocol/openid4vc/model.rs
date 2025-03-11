@@ -39,19 +39,6 @@ pub struct BleOpenId4VpResponse {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct OpenID4VCInteractionContent {
-    pub pre_authorized_code_used: bool,
-    pub access_token: String,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub access_token_expires_at: Option<OffsetDateTime>,
-    #[serde(default)]
-    pub refresh_token: Option<String>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub refresh_token_expires_at: Option<OffsetDateTime>,
-}
-
-#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HolderInteractionData {
     pub issuer_url: String,
@@ -200,13 +187,13 @@ impl OpenID4VCITokenRequestDTO {
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OpenID4VCIInteractionDataDTO {
+pub struct OpenID4VCIIssuerInteractionDataDTO {
     pub pre_authorized_code_used: bool,
-    pub access_token: String,
+    pub access_token_hash: Vec<u8>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
-    pub refresh_token: Option<String>,
+    pub refresh_token_hash: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
 }

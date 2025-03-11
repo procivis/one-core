@@ -29,9 +29,7 @@ use crate::common_validator::{
 use crate::config::core_config::{ExchangeType, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{
-    Clearable, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
-};
+use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
@@ -49,10 +47,10 @@ use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
-    OpenID4VPVerifierInteractionContent, RequestData,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPPresentationDefinition, OpenID4VPVerifierInteractionContent, RequestData, Timestamp,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
@@ -70,7 +68,7 @@ use crate::service::error::{
 };
 use crate::service::oidc::mapper::{interaction_data_to_dto, parse_interaction_content};
 use crate::service::oidc::validator::{
-    throw_if_credential_request_invalid, throw_if_interaction_data_invalid,
+    throw_if_access_token_invalid, throw_if_credential_request_invalid,
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_exchange_type;
@@ -396,7 +394,7 @@ impl OIDCService {
             );
         };
 
-        throw_if_interaction_data_invalid(&interaction_data_to_dto(&interaction)?, access_token)?;
+        throw_if_access_token_invalid(&interaction_data_to_dto(&interaction)?, access_token)?;
 
         let credentials = self
             .credential_repository
@@ -537,9 +535,11 @@ impl OIDCService {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
 
-        let mut interaction_data =
+        let interaction_data = interaction_data_to_dto(&interaction)?;
+
+        let mut response =
             crate::provider::exchange_protocol::openid4vc::service::oidc_issuer_create_token(
-                interaction_data_to_dto(&interaction)?,
+                &interaction_data,
                 &convert_inner(credentials.to_owned()),
                 &interaction,
                 &request,
@@ -555,7 +555,6 @@ impl OIDCService {
                     .update_credential(UpdateCredentialRequest {
                         id: credential.id,
                         state: Some(CredentialStateEnum::Offered),
-                        suspend_end_date: Clearable::DontTouch,
                         ..Default::default()
                     })
                     .await?;
@@ -563,22 +562,22 @@ impl OIDCService {
 
             // we add refresh token for mdoc
             if credential_schema.format == "MDOC" {
-                interaction_data.refresh_token = Some(generate_new_token());
-
-                interaction_data.refresh_token_expires_at = Some(now + refresh_token_expires_in);
+                response.refresh_token = Some(generate_new_token());
+                response.refresh_token_expires_in =
+                    Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
             }
         }
 
+        let interaction_data: OpenID4VCIIssuerInteractionDataDTO = (&response).try_into()?;
         let data = serde_json::to_vec(&interaction_data)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
         interaction.data = Some(data);
 
         self.interaction_repository
             .update_interaction(interaction.into())
             .await?;
 
-        interaction_data.try_into().map_err(Into::into)
+        Ok(response)
     }
 
     // TODO (Eugeniu) - this method is used as part of the OIDC BLE flow

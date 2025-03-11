@@ -10,6 +10,8 @@ use one_core::model::revocation_list::{
     RevocationListPurpose, RevocationListRelations, StatusListType,
 };
 use one_core::model::validity_credential::ValidityCredentialType;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use serde_json::json;
 use shared_types::{CredentialId, DidValue};
 use time::macros::format_description;
@@ -192,7 +194,7 @@ async fn test_post_issuer_credential_with(
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let data = serde_json::to_vec(&json!({
         "pre_authorized_code_used": true,
-        "access_token": access_token,
+        "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     })).unwrap();
 
@@ -298,7 +300,7 @@ async fn test_post_issuer_credential_mdoc() {
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let data = serde_json::to_vec(&json!({
         "pre_authorized_code_used": true,
-        "access_token": access_token,
+        "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     })).unwrap();
 

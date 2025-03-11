@@ -2,6 +2,8 @@ use axum::http::StatusCode;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use serde_json::json;
 use time::macros::format_description;
 use time::OffsetDateTime;
@@ -144,7 +146,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
-        "access_token": format!("{}.test",interaction_id),
+        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),
@@ -593,7 +595,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
-        "access_token": format!("{}.test",interaction_id),
+        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),

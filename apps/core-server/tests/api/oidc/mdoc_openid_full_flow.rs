@@ -3,7 +3,9 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::key::Key;
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
+use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::es256::ES256Signer;
+use one_crypto::Hasher;
 use serde_json::json;
 use time::macros::format_description;
 use time::OffsetDateTime;
@@ -198,7 +200,7 @@ async fn test_openid4vc_mdoc_flow(
         },
         "nonce": nonce,
         "pre_authorized_code_used": true,
-        "access_token": format!("{}.test",interaction_id),
+        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     }))
     .unwrap();
@@ -603,7 +605,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         },
         "nonce": nonce,
         "pre_authorized_code_used": true,
-        "access_token": format!("{}.test",interaction_id),
+        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     }))
     .unwrap();
@@ -1014,7 +1016,7 @@ async fn test_openid4vc_mdoc_flow_array(
         },
         "nonce": nonce,
         "pre_authorized_code_used": true,
-        "access_token": format!("{}.test",interaction_id),
+        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     }))
     .unwrap();

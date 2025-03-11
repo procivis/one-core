@@ -1,6 +1,5 @@
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::json;
-use time::macros::format_description;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -15,11 +14,9 @@ async fn test_oidc_issuer_create_token() {
     let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let data = json!({
         "pre_authorized_code_used": false,
-        "access_token": "access_token",
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&format).unwrap(),
+        "access_token_hash": [],
     });
     let credential_schema = context
         .db
@@ -83,11 +80,9 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
     let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let data = json!({
         "pre_authorized_code_used": false,
-        "access_token": "access_token",
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&format).unwrap(),
+        "access_token_hash": [],
     });
     let credential_schema = context
         .db
@@ -154,20 +149,14 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
     let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
-    let refresh_token = format!("{interaction_id}.Hv6mLRzFn0XmMxbU95VDqJQlPessiTvu");
     let refresh_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(60);
 
-    let access_token = "access_token";
     let access_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(20);
 
     let data = json!({
         "pre_authorized_code_used": false,
-        "access_token": access_token,
-        "access_token_expires_at": access_token_expires_at.format(&format).unwrap(),
-        "refresh_token": refresh_token,
-        "refresh_token_expires_at": refresh_token_expires_at.format(&format).unwrap(),
+        "access_token_hash": [],
     });
     let credential_schema = context
         .db

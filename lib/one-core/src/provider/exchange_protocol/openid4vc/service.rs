@@ -15,11 +15,12 @@ use super::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ExtendedSubjectDTO,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
-    OpenID4VCIGrants, OpenID4VCIInteractionDataDTO,
+    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCITokenRequestDTO, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO, OpenID4VpPresentationFormat,
-    PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO,
+    OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO, Timestamp,
+    ValidatedProofClaimDTO,
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -705,14 +706,14 @@ pub fn create_credential_offer(
 }
 
 pub fn oidc_issuer_create_token(
-    mut interaction_data: OpenID4VCIInteractionDataDTO,
+    interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
     credentials: &[Credential],
     interaction: &Interaction,
     request: &OpenID4VCITokenRequestDTO,
     pre_authorization_expires_in: Duration,
     access_token_expires_in: Duration,
     refresh_token_expires_in: Duration,
-) -> Result<OpenID4VCIInteractionDataDTO, OpenID4VCError> {
+) -> Result<OpenID4VCITokenResponseDTO, OpenID4VCError> {
     throw_if_token_request_invalid(request)?;
 
     let generate_new_token = || {
@@ -724,31 +725,38 @@ pub fn oidc_issuer_create_token(
     };
 
     let now = OffsetDateTime::now_utc();
-    match request {
+    Ok(match request {
         OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } => {
             throw_if_interaction_created_date(pre_authorization_expires_in, interaction)?;
-            throw_if_interaction_pre_authorized_code_used(&interaction_data)?;
+            throw_if_interaction_pre_authorized_code_used(interaction_data)?;
 
             credentials.iter().try_for_each(|credential| {
                 throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)
             })?;
 
-            interaction_data.pre_authorized_code_used = true;
-            interaction_data.access_token_expires_at = Some(now + access_token_expires_in);
+            OpenID4VCITokenResponseDTO {
+                access_token: generate_new_token(),
+                token_type: "bearer".to_string(),
+                expires_in: Timestamp((now + access_token_expires_in).unix_timestamp()),
+                refresh_token: None,
+                refresh_token_expires_in: None,
+            }
         }
 
         OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } => {
-            validate_refresh_token(&interaction_data, refresh_token)?;
+            validate_refresh_token(interaction_data, refresh_token)?;
             // we update both the access token and the refresh token
-            interaction_data.access_token = generate_new_token();
-            interaction_data.access_token_expires_at = Some(now + access_token_expires_in);
-
-            interaction_data.refresh_token = Some(generate_new_token());
-            interaction_data.refresh_token_expires_at = Some(now + refresh_token_expires_in);
+            OpenID4VCITokenResponseDTO {
+                access_token: generate_new_token(),
+                token_type: "bearer".to_string(),
+                expires_in: Timestamp((now + access_token_expires_in).unix_timestamp()),
+                refresh_token: Some(generate_new_token()),
+                refresh_token_expires_in: Some(Timestamp(
+                    (now + refresh_token_expires_in).unix_timestamp(),
+                )),
+            }
         }
-    };
-
-    Ok(interaction_data)
+    })
 }
 
 pub fn parse_refresh_token(token: &str) -> Result<InteractionId, OpenID4VCIError> {
@@ -763,15 +771,4 @@ pub fn parse_access_token(access_token: &str) -> Result<InteractionId, OpenID4VC
 
     Uuid::from_str(splitted_token.next().ok_or(OpenID4VCIError::InvalidToken)?)
         .map_err(|_| OpenID4VCIError::RuntimeError("Could not parse UUID".to_owned()))
-}
-
-pub fn is_interaction_data_valid(
-    interaction_data: &OpenID4VCIInteractionDataDTO,
-    access_token: &str,
-) -> bool {
-    interaction_data.pre_authorized_code_used
-        && interaction_data.access_token == access_token
-        && interaction_data
-            .access_token_expires_at
-            .is_some_and(|expires_at| expires_at > OffsetDateTime::now_utc())
 }

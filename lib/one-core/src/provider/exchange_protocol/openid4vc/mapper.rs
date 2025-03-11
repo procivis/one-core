@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use indexmap::map::Entry;
 use indexmap::IndexMap;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
@@ -17,7 +19,7 @@ use super::model::{
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
-    OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAlgs,
     OpenID4VPAuthorizationRequestParams, OpenID4VPAuthorizationRequestQueryParams,
     OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
@@ -25,7 +27,7 @@ use super::model::{
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
-    ProvedCredential, Timestamp,
+    ProvedCredential,
 };
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::{value_to_model_claims, NESTED_CLAIM_MARKER};
@@ -1471,24 +1473,35 @@ where
     }
 }
 
-impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
+impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO {
     type Error = OpenID4VCIError;
-    fn try_from(value: OpenID4VCIInteractionDataDTO) -> Result<Self, Self::Error> {
+    fn try_from(value: &OpenID4VCITokenResponseDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            access_token: value.access_token.to_string(),
-            token_type: "bearer".to_string(),
-            expires_in: Timestamp(
-                value
-                    .access_token_expires_at
-                    .ok_or(OpenID4VCIError::RuntimeError(
-                        "access_token_expires_at missing".to_string(),
-                    ))?
-                    .unix_timestamp(),
+            pre_authorized_code_used: true,
+            access_token_hash: SHA256
+                .hash(value.access_token.as_bytes())
+                .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+            access_token_expires_at: Some(
+                OffsetDateTime::from_unix_timestamp(value.expires_in.0)
+                    .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
             ),
-            refresh_token: value.refresh_token,
-            refresh_token_expires_in: value
-                .refresh_token_expires_at
-                .map(|dt| Timestamp(dt.unix_timestamp())),
+            refresh_token_hash: value
+                .refresh_token
+                .as_ref()
+                .map(|refresh_token| {
+                    SHA256
+                        .hash(refresh_token.as_bytes())
+                        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
+                })
+                .transpose()?,
+            refresh_token_expires_at: value
+                .refresh_token_expires_in
+                .as_ref()
+                .map(|refresh_token_expires_in| {
+                    OffsetDateTime::from_unix_timestamp(refresh_token_expires_in.0)
+                        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
+                })
+                .transpose()?,
         })
     }
 }

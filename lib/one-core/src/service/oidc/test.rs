@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use serde_json::json;
 use shared_types::{DidId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -133,14 +135,15 @@ fn dummy_interaction(
 ) -> Interaction {
     let mut data = json!({
         "pre_authorized_code_used": pre_authorized_code,
-        "access_token": "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+        "access_token_hash": id.map(|id| SHA256.hash(format!("{id}.asdfasdfasdf").as_bytes()).unwrap()).unwrap_or_default(),
         "access_token_expires_at": access_token_expires_at.unwrap_or("2099-10-28T07:03:38.4404734Z"),
     });
 
     if let Some(refresh_token) = refresh_token {
-        data.as_object_mut()
-            .unwrap()
-            .insert("refresh_token".to_string(), json!(refresh_token));
+        data.as_object_mut().unwrap().insert(
+            "refresh_token_hash".to_string(),
+            json!(SHA256.hash(refresh_token.as_bytes()).unwrap()),
+        );
     }
 
     if let Some(refresh_token_expires_at) = refresh_token_expires_at {
@@ -163,7 +166,7 @@ fn dummy_interaction(
 fn dummy_credential(
     protocol: &str,
     state: CredentialStateEnum,
-    pre_authroized_code: bool,
+    pre_authorized_code: bool,
     schema: Option<CredentialSchema>,
 ) -> Credential {
     Credential {
@@ -184,7 +187,7 @@ fn dummy_credential(
         schema,
         interaction: Some(dummy_interaction(
             None,
-            pre_authroized_code,
+            pre_authorized_code,
             None,
             None,
             None,
@@ -401,40 +404,39 @@ async fn test_oidc_issuer_create_token() {
     let mut interaction_repository = MockInteractionRepository::default();
 
     let schema = generic_credential_schema();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(
-                eq(schema.id.to_owned()),
-                eq(CredentialSchemaRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(clone.clone())));
 
-        let clone = schema.clone();
-        credential_repository
-            .expect_get_credentials_by_interaction_id()
-            .once()
-            .return_once(move |_, _| {
-                Ok(vec![dummy_credential(
-                    "OPENID4VC",
-                    CredentialStateEnum::Pending,
-                    false,
-                    Some(clone),
-                )])
-            });
+    let clone = schema.clone();
+    repository
+        .expect_get_credential_schema()
+        .times(1)
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .returning(move |_, _| Ok(Some(clone.clone())));
 
-        credential_repository
-            .expect_update_credential()
-            .once()
-            .return_once(|_| Ok(()));
+    let credential = dummy_credential(
+        "OPENID4VC",
+        CredentialStateEnum::Pending,
+        false,
+        Some(schema.clone()),
+    );
+    let interaction_id = credential.interaction.as_ref().unwrap().id;
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![credential]));
 
-        interaction_repository
-            .expect_update_interaction()
-            .once()
-            .return_once(|_| Ok(()));
-    }
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .return_once(|_| Ok(()));
+
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .return_once(|_| Ok(()));
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
@@ -456,10 +458,10 @@ async fn test_oidc_issuer_create_token() {
 
     let result_content = result.unwrap();
     assert_eq!("bearer", result_content.token_type);
-    assert_eq!(
-        "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-        result_content.access_token
-    );
+    assert!(result_content
+        .access_token
+        .starts_with(&format!("{interaction_id}.")));
+
     assert!(result_content.refresh_token.is_none());
     assert!(result_content.refresh_token_expires_in.is_none());
 }
@@ -653,7 +655,15 @@ async fn test_oidc_issuer_create_credential_success() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
+            .return_once(|_, _| {
+                Ok(Some(dummy_interaction(
+                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    true,
+                    None,
+                    None,
+                    None,
+                )))
+            });
 
         exchange_provider
             .expect_issue_credential()
@@ -764,7 +774,15 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
+            .return_once(|_, _| {
+                Ok(Some(dummy_interaction(
+                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    true,
+                    None,
+                    None,
+                    None,
+                )))
+            });
 
         exchange_provider
             .expect_issue_credential()
@@ -1856,18 +1874,17 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
             move |_, _| Ok(Some(schema))
         });
 
-    let clone = schema.clone();
+    let credential = dummy_credential(
+        "OPENID4VC",
+        CredentialStateEnum::Pending,
+        false,
+        Some(schema.clone()),
+    );
+    let interaction_id = credential.interaction.as_ref().unwrap().id;
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
-        .return_once(move |_, _| {
-            Ok(vec![dummy_credential(
-                "OPENID4VC",
-                CredentialStateEnum::Pending,
-                false,
-                Some(clone),
-            )])
-        });
+        .return_once(move |_, _| Ok(vec![credential]));
 
     credential_repository
         .expect_update_credential()
@@ -1899,10 +1916,9 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
 
     let result = result.unwrap();
     assert_eq!("bearer", result.token_type);
-    assert_eq!(
-        "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-        result.access_token
-    );
+    assert!(result
+        .access_token
+        .starts_with(&format!("{interaction_id}.")));
 
     assert!(result
         .refresh_token
