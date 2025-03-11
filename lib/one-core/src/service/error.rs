@@ -500,6 +500,9 @@ pub enum ValidationError {
     #[error("Empty array value not allowed")]
     EmptyArrayValueNotAllowed,
 
+    #[error("Empty value not allowed")]
+    EmptyValueNotAllowed,
+
     #[error("Invalid image data: `{0}`")]
     InvalidImage(String),
 }
@@ -1022,6 +1025,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Key handle error")]
     BR_0201,
+
+    #[strum(to_string = "Empty value not allowed")]
+    BR_0204,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1225,6 +1231,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::EmptyObjectNotAllowed => ErrorCode::BR_0194,
             Self::EmptyArrayValueNotAllowed => ErrorCode::BR_0195,
             Self::InvalidImage(_) => ErrorCode::BR_0193,
+            Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
         }
     }
 }

@@ -569,6 +569,69 @@ async fn test_fail_to_create_credential_issuance_disabled() {
 }
 
 #[tokio::test]
+async fn test_fail_create_credential_with_empty_value() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+
+    let claim_id = Uuid::new_v4();
+
+    let new_claim_schema = (claim_id, "root", true, "STRING", false);
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "schema-1",
+            &organisation,
+            "NONE",
+            &[new_claim_schema],
+            "JWT",
+            "schema-id",
+        )
+        .await;
+
+    // WHEN
+    let resp_empty_value = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([{
+                "claimId": claim_id.to_string(),
+                "value": "",
+                "path": "root"
+            }]),
+            None,
+        )
+        .await;
+
+    let resp_absent_value = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([{
+                "claimId": claim_id.to_string(),
+                "path": "root"
+            }]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp_empty_value.status(), 400);
+    assert_eq!("BR_0204", resp_empty_value.error_code().await);
+
+    assert_eq!(resp_absent_value.status(), 400);
+    assert_eq!("BR_0204", resp_absent_value.error_code().await);
+}
+
+#[tokio::test]
 async fn test_fail_create_credential_with_empty_array_value() {
     // GIVEN
     let (context, organisation, did, _) = TestContext::new_with_did(None).await;
@@ -594,7 +657,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .await;
 
     // WHEN
-    let resp = context
+    let resp_empty_value = context
         .api
         .credentials
         .create(
@@ -617,9 +680,33 @@ async fn test_fail_create_credential_with_empty_array_value() {
         )
         .await;
 
+    let resp_absent_value = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": str_array_claim_id.to_string(),
+                    "path": "root/str_array/0"
+                },
+                {
+                    "claimId": str_array_claim_id.to_string(),
+                    "value": "present",
+                    "path": "root/str_array/1"
+                }
+            ]),
+            None,
+        )
+        .await;
     // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0195", resp.error_code().await);
+    assert_eq!(resp_empty_value.status(), 400);
+    assert_eq!("BR_0195", resp_empty_value.error_code().await);
+
+    assert_eq!(resp_absent_value.status(), 400);
+    assert_eq!("BR_0195", resp_absent_value.error_code().await);
 }
 
 #[tokio::test]
@@ -665,7 +752,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .await;
 
     // WHEN
-    let resp = context
+    let resp_empty_value = context
         .api
         .credentials
         .create(
@@ -683,7 +770,24 @@ async fn test_fail_create_credential_with_empty_object_value() {
         )
         .await;
 
-    let resp_nested = context
+    let resp_absent_value = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": name_claim_id.to_string(),
+                    "path": "root/name"
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    let resp_nested_empty_value = context
         .api
         .credentials
         .create(
@@ -701,10 +805,33 @@ async fn test_fail_create_credential_with_empty_object_value() {
         )
         .await;
 
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0194", resp.error_code().await);
+    let resp_nested_absent_value = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": nested_object_name_claim_id.to_string(),
+                    "path": "root/nested/name"
+                }
+            ]),
+            None,
+        )
+        .await;
 
-    assert_eq!(resp_nested.status(), 400);
-    assert_eq!("BR_0194", resp_nested.error_code().await);
+    // THEN
+    assert_eq!(resp_empty_value.status(), 400);
+    assert_eq!("BR_0194", resp_empty_value.error_code().await);
+
+    assert_eq!(resp_absent_value.status(), 400);
+    assert_eq!("BR_0194", resp_absent_value.error_code().await);
+
+    assert_eq!(resp_nested_empty_value.status(), 400);
+    assert_eq!("BR_0194", resp_nested_empty_value.error_code().await);
+
+    assert_eq!(resp_nested_absent_value.status(), 400);
+    assert_eq!("BR_0194", resp_nested_absent_value.error_code().await);
 }

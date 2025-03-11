@@ -288,6 +288,7 @@ pub struct CredentialRequestClaimRestDTO {
     #[into(rename = "claim_schema_id")]
     pub claim_id: Uuid,
     /// Claim being asserted in issuance.
+    #[serde(default)]
     pub value: String,
     /// Path to the particular claim key within the structure of the credential schema.
     pub path: String,

@@ -61,6 +61,7 @@ pub(crate) fn validate_create_request(
                 validate_path(claim, schema, claim_schemas)?;
                 validate_array_value_non_empty(claim, schema)?;
                 validate_object_value_non_empty(claim, schema)?;
+                validate_value_non_empty(claim)?;
 
                 validate_datatype_value(&claim.value, &schema.schema.data_type, &config.datatype)
                     .map_err(|err| ValidationError::InvalidDatatype {
@@ -268,6 +269,14 @@ fn validate_continuity(
     let array_claim_paths = array_paths_to_claim_paths_regex(&array_paths)?;
 
     tree.check_continuity(&array_claim_paths, None)?;
+
+    Ok(())
+}
+
+fn validate_value_non_empty(claim: &CredentialRequestClaimDTO) -> Result<(), ServiceError> {
+    if claim.value.is_empty() {
+        return Err(ValidationError::EmptyValueNotAllowed.into());
+    }
 
     Ok(())
 }
