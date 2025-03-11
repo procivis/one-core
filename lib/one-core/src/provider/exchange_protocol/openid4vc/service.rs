@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_crypto::utilities;
+use secrecy::SecretString;
 use shared_types::{CredentialSchemaId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -724,11 +725,11 @@ pub fn oidc_issuer_create_token(
     throw_if_token_request_invalid(request)?;
 
     let generate_new_token = || {
-        format!(
+        SecretString::from(format!(
             "{}.{}",
             interaction.id,
             utilities::generate_alphanumeric(32)
-        )
+        ))
     };
 
     let now = OffsetDateTime::now_utc();

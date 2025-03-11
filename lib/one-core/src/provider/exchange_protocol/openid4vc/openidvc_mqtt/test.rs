@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate::eq;
+use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::{DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
@@ -98,6 +99,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: inputs

@@ -3,10 +3,12 @@ use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 
 use chacha20poly1305::aead::{Aead, Nonce};
 use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit};
+use cocoon::MiniCocoon;
 use rand::rngs::OsRng;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use super::password::{derive_key, derive_key_with_salt};
+use crate::utilities;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EncryptionError {
@@ -71,4 +73,51 @@ pub fn decrypt_file<T: Write + Seek>(
     output_file.seek(SeekFrom::Start(0))?;
 
     Ok(())
+}
+
+pub fn encrypt_string(
+    data: &SecretString,
+    encryption_key: &SecretSlice<u8>,
+) -> Result<Vec<u8>, EncryptionError> {
+    encrypt_data(
+        &SecretSlice::from(data.expose_secret().as_bytes().to_vec()),
+        encryption_key,
+    )
+}
+
+pub fn encrypt_data(
+    data: &SecretSlice<u8>,
+    encryption_key: &SecretSlice<u8>,
+) -> Result<Vec<u8>, EncryptionError> {
+    let mut cocoon = MiniCocoon::from_key(
+        encryption_key.expose_secret(),
+        &utilities::generate_random_seed_32(),
+    );
+    cocoon
+        .wrap(data.expose_secret())
+        .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {:?}", err)))
+}
+
+pub fn decrypt_string(
+    data: &[u8],
+    encryption_key: &SecretSlice<u8>,
+) -> Result<SecretString, EncryptionError> {
+    let decrypted = decrypt_data(data, encryption_key)?;
+    Ok(SecretString::from(
+        String::from_utf8(decrypted.expose_secret().to_vec()).map_err(|err| {
+            EncryptionError::Crypto(format!("failed to decrypt string data: {:?}", err))
+        })?,
+    ))
+}
+
+pub fn decrypt_data(
+    data: &[u8],
+    encryption_key: &SecretSlice<u8>,
+) -> Result<SecretSlice<u8>, EncryptionError> {
+    // seed is not used for decryption, so passing dummy value
+    let cocoon = MiniCocoon::from_key(encryption_key.expose_secret(), &[0u8; 32]);
+    cocoon
+        .unwrap(data)
+        .map(SecretSlice::from)
+        .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {:?}", err)))
 }

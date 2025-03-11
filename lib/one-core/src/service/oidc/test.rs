@@ -6,6 +6,7 @@ use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use secrecy::ExposeSecret;
 use serde_json::json;
 use shared_types::{DidId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -462,6 +463,7 @@ async fn test_oidc_issuer_create_token() {
     assert_eq!("bearer", result_content.token_type);
     assert!(result_content
         .access_token
+        .expose_secret()
         .starts_with(&format!("{interaction_id}.")));
 
     assert!(result_content.refresh_token.is_none());
@@ -2030,11 +2032,13 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     assert_eq!("bearer", result.token_type);
     assert!(result
         .access_token
+        .expose_secret()
         .starts_with(&format!("{interaction_id}.")));
 
     assert!(result
         .refresh_token
         .unwrap()
+        .expose_secret()
         .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
 
     assert!(result.refresh_token_expires_in.is_some());
@@ -2111,11 +2115,13 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     assert_eq!("bearer", result.token_type);
     assert!(result
         .access_token
+        .expose_secret()
         .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
 
     assert!(result
         .refresh_token
         .unwrap()
+        .expose_secret()
         .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
 
     assert!(result.refresh_token_expires_in.is_some());

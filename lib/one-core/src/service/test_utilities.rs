@@ -101,6 +101,8 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                             redirectUri:
                                 disabled: false
                                 allowedSchemes: [ https ]
+                    private:
+                        encryption: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'
             ISO_MDL:
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'

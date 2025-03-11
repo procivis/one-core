@@ -16,7 +16,6 @@ bit-vec                  = { version = "0.8" }
 bon                      = { version = "3.3" }
 bs58                     = { version = "0.5" }
 ciborium                 = { version = "0.2" }
-cocoon                   = { version = "0.4" }
 convert_case             = { version = "0.6" }
 coset                    = { version = "0.3", features = ["std"] }
 crc                      = { version = "3.2.1" }

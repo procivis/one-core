@@ -16,7 +16,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{encrypted_token, TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
@@ -620,9 +620,9 @@ async fn test_revoke_check_mdoc_update() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": "123",
+        "refresh_token": encrypted_token("123"),
         "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
@@ -755,9 +755,9 @@ async fn test_revoke_check_mdoc_update_invalid() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": "123",
+        "refresh_token": encrypted_token("123"),
         "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
@@ -899,9 +899,9 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": "123",
+        "refresh_token": encrypted_token("123"),
         "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
@@ -1028,6 +1028,7 @@ async fn test_revoke_check_token_update() {
         context.server_mock.uri(),
         credential_schema.id,
     );
+
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
@@ -1037,9 +1038,9 @@ async fn test_revoke_check_token_update() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": "123",
+        "refresh_token": encrypted_token("123"),
         "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
@@ -1162,9 +1163,9 @@ async fn test_revoke_check_mdoc_tokens_expired() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "invalid",
+        "access_token": encrypted_token("invalid"),
         "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": "invalid",
+        "refresh_token": encrypted_token("invalid"),
         "refresh_token_expires_at": a_couple_of_seconds_ago,
     }))
     .unwrap();
@@ -1224,7 +1225,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
 }
 
 #[tokio::test]
-async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
+async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -1284,9 +1285,9 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "invalid",
+        "access_token": encrypted_token("invalid"),
         "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": "invalid",
+        "refresh_token": encrypted_token("invalid"),
         "refresh_token_expires_at": a_couple_of_seconds_ago,
     }))
     .unwrap();
@@ -1409,9 +1410,9 @@ async fn test_suspended_to_valid() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "invalid",
+        "access_token": encrypted_token("invalid"),
         "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": "valid",
+        "refresh_token": encrypted_token("valid"),
         "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
@@ -1550,9 +1551,9 @@ async fn test_suspended_to_suspended_update_failed() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
-        "access_token": "invalid",
+        "access_token": encrypted_token("invalid"),
         "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": "valid",
+        "refresh_token": encrypted_token("valid"),
         "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();

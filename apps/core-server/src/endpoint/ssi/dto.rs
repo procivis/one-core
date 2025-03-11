@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
+use one_core::common_mapper::{opt_secret_string, secret_string};
 use one_core::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use one_core::provider::exchange_protocol::openid4vc::model::{
@@ -46,6 +47,7 @@ use one_dto_mapper::{
     convert_inner, convert_inner_of_inner, try_convert_inner, try_convert_inner_of_inner, From,
     Into, TryInto,
 };
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::json::JsonString;
@@ -300,11 +302,15 @@ pub struct TimestampRest(pub i64);
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCITokenResponseDTO)]
 pub struct OpenID4VCITokenResponseRestDTO {
-    pub access_token: String,
+    #[serde(with = "secret_string")]
+    #[schema(value_type = String, example = "secret")]
+    pub access_token: SecretString,
     pub token_type: String,
     pub expires_in: TimestampRest,
     #[from(with_fn = convert_inner)]
-    pub refresh_token: Option<String>,
+    #[serde(with = "opt_secret_string")]
+    #[schema(value_type = String, example = "secret", nullable = false)]
+    pub refresh_token: Option<SecretString>,
     #[from(with_fn = convert_inner)]
     pub refresh_token_expires_in: Option<TimestampRest>,
 }

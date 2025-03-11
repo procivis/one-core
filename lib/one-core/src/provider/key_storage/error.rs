@@ -1,5 +1,6 @@
 //! Enumerates errors related to key storage provider.
 
+use one_crypto::encryption::EncryptionError;
 use one_crypto::SignerError;
 use thiserror::Error;
 
@@ -30,8 +31,8 @@ pub enum KeyStorageError {
     Transport(anyhow::Error),
     #[error("Key algorithm error: `{0}`")]
     KeyAlgorithmError(#[from] KeyAlgorithmError),
-    #[error("Password decryption failure")]
-    PasswordDecryptionFailure,
     #[error("Invalid key algorithm `{0}`")]
     InvalidKeyAlgorithm(String),
+    #[error("Encryption error: `{0}`")]
+    Encryption(EncryptionError),
 }

@@ -1,6 +1,9 @@
 use anyhow::Context;
+use one_crypto::encryption::{decrypt_string, encrypt_string};
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use time::OffsetDateTime;
 
+use crate::config::core_config;
 use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
@@ -10,6 +13,7 @@ use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::model::{
     HolderInteractionData, OpenID4VCICredential, OpenID4VCIProof, OpenID4VCITokenResponseDTO,
+    OpenID4VCParams,
 };
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::http_client::HttpClient;
@@ -33,7 +37,7 @@ impl CredentialService {
                 .and_then(|i| i.data.as_ref()),
         )?;
 
-        let mut new_state = if is_mso_expired(detail_credential) {
+        let new_state = if is_mso_expired(detail_credential) {
             CredentialStateEnum::Suspended
         } else {
             CredentialStateEnum::Accepted
@@ -44,30 +48,32 @@ impl CredentialService {
             &*self.interaction_repository,
             &mut interaction_data,
             &*self.client,
+            &encryption_key_from_config(&self.config, credential)?,
         )
         .await;
 
-        let Ok(TokenCheckResult {
-            mso_refresh_possible,
-        }) = result
-        else {
-            return Ok(new_state);
-        };
+        let new_state = match result {
+            Ok(TokenCheckResult::RefreshPossible { access_token })
+                if force_refresh || mso_requires_update(detail_credential) =>
+            {
+                let result = self
+                    .obtain_and_update_new_mso(credential, &interaction_data, &access_token)
+                    .await;
 
-        if !mso_refresh_possible && is_mso_expired(detail_credential) {
-            new_state = CredentialStateEnum::Revoked;
-        }
-
-        if mso_refresh_possible && (force_refresh || mso_requires_update(detail_credential)) {
-            let result = self
-                .obtain_and_update_new_mso(credential, &interaction_data)
-                .await;
-
-            // If we have managed to refresh mso
-            if result.is_ok() {
-                new_state = CredentialStateEnum::Accepted;
+                // If we have managed to refresh mso
+                if result.is_ok() {
+                    CredentialStateEnum::Accepted
+                } else {
+                    new_state
+                }
             }
-        }
+            Ok(TokenCheckResult::RefreshNotPossible) if is_mso_expired(detail_credential) => {
+                CredentialStateEnum::Revoked
+            }
+            Err(_)
+            | Ok(TokenCheckResult::RefreshNotPossible)
+            | Ok(TokenCheckResult::RefreshPossible { .. }) => new_state,
+        };
         Ok(new_state)
     }
 
@@ -75,6 +81,7 @@ impl CredentialService {
         &self,
         credential: &Credential,
         interaction_data: &HolderInteractionData,
+        access_token: &SecretString,
     ) -> Result<(), ServiceError> {
         let key = credential
             .key
@@ -122,18 +129,10 @@ impl CredentialService {
             doctype: Some(schema.schema_id.to_owned()),
         };
 
-        let access_token =
-            &interaction_data
-                .access_token
-                .as_ref()
-                .ok_or(ExchangeProtocolError::Failed(
-                    "Missing access token".to_string(),
-                ))?;
-
         let response = self
             .client
             .post(&interaction_data.credential_endpoint)
-            .bearer_auth(access_token)
+            .bearer_auth(access_token.expose_secret())
             .json(&body)
             .context("json error")
             .map_err(ExchangeProtocolError::Transport)?
@@ -187,15 +186,27 @@ impl CredentialService {
     }
 }
 
-struct TokenCheckResult {
-    pub mso_refresh_possible: bool,
+enum TokenCheckResult {
+    RefreshNotPossible,
+    RefreshPossible { access_token: SecretString },
 }
 
+fn encryption_key_from_config(
+    config: &core_config::CoreConfig,
+    credential: &Credential,
+) -> Result<SecretSlice<u8>, ServiceError> {
+    let params: OpenID4VCParams = config
+        .exchange
+        .get(&credential.exchange)
+        .map_err(ServiceError::ConfigValidationError)?;
+    Ok(params.encryption)
+}
 async fn check_access_token(
     credential: &Credential,
     interactions: &dyn InteractionRepository,
     interaction_data: &mut HolderInteractionData,
     client: &dyn HttpClient,
+    token_encryption_key: &SecretSlice<u8>,
 ) -> Result<TokenCheckResult, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let access_token_expires_at =
@@ -207,19 +218,24 @@ async fn check_access_token(
 
     if access_token_expires_at > now {
         // stored access token still valid
-        return Ok(TokenCheckResult {
-            mso_refresh_possible: true,
-        });
+        let access_token = decrypt_string(
+            interaction_data
+                .access_token
+                .as_ref()
+                .ok_or(ServiceError::Other("missing access_token".to_string()))?,
+            token_encryption_key,
+        )
+        .map_err(|err| ServiceError::Other(format!("failed to decrypt refresh token: {err}")))?;
+        return Ok(TokenCheckResult::RefreshPossible { access_token });
     }
 
     // Fetch a new one
     let refresh_token = if let Some(refresh_token) = interaction_data.refresh_token.as_ref() {
-        refresh_token
+        decrypt_string(refresh_token, token_encryption_key)
+            .map_err(|err| ServiceError::Other(format!("failed to decrypt refresh token: {err}")))?
     } else {
         // missing refresh token
-        return Ok(TokenCheckResult {
-            mso_refresh_possible: false,
-        });
+        return Ok(TokenCheckResult::RefreshNotPossible);
     };
 
     if interaction_data
@@ -227,9 +243,7 @@ async fn check_access_token(
         .is_some_and(|expires_at| expires_at <= now)
     {
         // Expired refresh token
-        return Ok(TokenCheckResult {
-            mso_refresh_possible: false,
-        });
+        return Ok(TokenCheckResult::RefreshNotPossible);
     }
 
     let token_endpoint =
@@ -243,7 +257,7 @@ async fn check_access_token(
     let token_response: OpenID4VCITokenResponseDTO = client
         .post(token_endpoint)
         .form(&[
-            ("refresh_token", refresh_token.to_string()),
+            ("refresh_token", refresh_token.expose_secret().to_string()),
             ("grant_type", "refresh_token".to_string()),
         ])
         .context("form error")
@@ -259,11 +273,21 @@ async fn check_access_token(
         .context("parsing error")
         .map_err(ExchangeProtocolError::Transport)?;
 
-    interaction_data.access_token = Some(token_response.access_token);
+    let encrypted_token = encrypt_string(&token_response.access_token, token_encryption_key)
+        .map_err(|err| {
+            ExchangeProtocolError::Failed(format!("failed to encrypt access token: {err}"))
+        })?;
+    interaction_data.access_token = Some(encrypted_token);
     interaction_data.access_token_expires_at =
         OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
 
-    interaction_data.refresh_token = token_response.refresh_token;
+    interaction_data.refresh_token = token_response
+        .refresh_token
+        .map(|token| encrypt_string(&token, token_encryption_key))
+        .transpose()
+        .map_err(|err| {
+            ExchangeProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
+        })?;
     interaction_data.refresh_token_expires_at = token_response
         .refresh_token_expires_in
         .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
@@ -281,8 +305,8 @@ async fn check_access_token(
     // Update in database
     interactions.update_interaction(interaction.into()).await?;
 
-    Ok(TokenCheckResult {
-        mso_refresh_possible: true,
+    Ok(TokenCheckResult::RefreshPossible {
+        access_token: token_response.access_token,
     })
 }
 

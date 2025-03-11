@@ -7,6 +7,7 @@ use indexmap::IndexMap;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
 use one_dto_mapper::convert_inner;
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Deserializer};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -1478,7 +1479,7 @@ impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO
         Ok(Self {
             pre_authorized_code_used: true,
             access_token_hash: SHA256
-                .hash(value.access_token.as_bytes())
+                .hash(value.access_token.expose_secret().as_bytes())
                 .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
             access_token_expires_at: Some(
                 OffsetDateTime::from_unix_timestamp(value.expires_in.0)
@@ -1489,7 +1490,7 @@ impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO
                 .as_ref()
                 .map(|refresh_token| {
                     SHA256
-                        .hash(refresh_token.as_bytes())
+                        .hash(refresh_token.expose_secret().as_bytes())
                         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
                 })
                 .transpose()?,

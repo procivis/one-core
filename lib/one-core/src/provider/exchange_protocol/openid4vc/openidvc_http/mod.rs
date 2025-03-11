@@ -4,7 +4,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use indexmap::IndexMap;
 use mappers::map_credential_formats_to_presentation_format;
+use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities;
+use secrecy::ExposeSecret;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use shared_types::{CredentialId, KeyId};
@@ -517,10 +519,23 @@ impl OpenID4VCHTTP {
 
         // only mdoc credentials support refreshing, do not store the tokens otherwise
         if credential_format == "mso_mdoc" {
-            interaction_data.access_token = Some(token_response.access_token.clone());
+            let encrypted_access_token = encrypt_string(
+                &token_response.access_token,
+                &self.params.encryption,
+            )
+            .map_err(|err| {
+                ExchangeProtocolError::Failed(format!("failed to encrypt access token: {err}"))
+            })?;
+            interaction_data.access_token = Some(encrypted_access_token);
             interaction_data.access_token_expires_at =
                 OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
-            interaction_data.refresh_token = token_response.refresh_token;
+            interaction_data.refresh_token = token_response
+                .refresh_token
+                .map(|token| encrypt_string(&token, &self.params.encryption))
+                .transpose()
+                .map_err(|err| {
+                    ExchangeProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
+                })?;
             interaction_data.refresh_token_expires_at = token_response
                 .refresh_token_expires_in
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
@@ -610,7 +625,7 @@ impl OpenID4VCHTTP {
         let response = self
             .client
             .post(interaction_data.credential_endpoint.as_str())
-            .bearer_auth(&token_response.access_token)
+            .bearer_auth(token_response.access_token.expose_secret())
             .json(&body)
             .context("json error")
             .map_err(ExchangeProtocolError::Transport)?

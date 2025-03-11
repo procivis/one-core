@@ -9,7 +9,9 @@ use shared_types::DidValue;
 use time::macros::datetime;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingKeyParams};
+use crate::fixtures::{
+    encrypted_token, TestingCredentialParams, TestingDidParams, TestingKeyParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::es256_testing_params;
@@ -90,7 +92,7 @@ async fn test_issuance_accept_openid4vc() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -221,7 +223,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -353,7 +355,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -485,7 +487,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -572,7 +574,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -664,7 +666,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -761,7 +763,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/credential", context.server_mock.uri()),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
     }))
     .unwrap();
@@ -869,7 +871,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/credential", context.server_mock.uri()),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
     }))
     .unwrap();
@@ -955,7 +957,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/credential", context.server_mock.uri()),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
     }))
     .unwrap();
@@ -1053,7 +1055,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/credential", context.server_mock.uri()),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
     }))
     .unwrap();
@@ -1168,7 +1170,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -1307,7 +1309,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
@@ -1493,7 +1495,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
         "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": "123",
+        "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
         "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{

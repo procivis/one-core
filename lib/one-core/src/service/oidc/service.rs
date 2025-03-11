@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
+use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -531,11 +532,11 @@ impl OIDCService {
 
         // both refresh and access token have the same structure
         let generate_new_token = || {
-            format!(
+            SecretString::from(format!(
                 "{}.{}",
                 interaction_id,
                 utilities::generate_alphanumeric(32)
-            )
+            ))
         };
 
         let pre_authorization_expires_in =

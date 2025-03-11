@@ -4,6 +4,7 @@ use std::fmt;
 use anyhow::Context;
 use indexmap::IndexMap;
 use one_dto_mapper::{convert_inner, Into};
+use secrecy::{SecretSlice, SecretString};
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
@@ -15,6 +16,7 @@ use uuid::Uuid;
 
 use super::error::OpenID4VCIError;
 use super::mapper::deserialize_with_serde_json;
+use crate::common_mapper::opt_secret_string;
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
@@ -31,6 +33,7 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionRequestedCredentialResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::util::params::deserialize_encryption_key;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BleOpenId4VpResponse {
@@ -48,11 +51,11 @@ pub struct HolderInteractionData {
     #[serde(default)]
     pub grants: Option<OpenID4VCIGrants>,
     #[serde(default)]
-    pub access_token: Option<String>,
+    pub access_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
-    pub refresh_token: Option<String>,
+    pub refresh_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
@@ -147,11 +150,11 @@ pub struct Timestamp(pub i64);
 
 #[derive(Debug, Deserialize)]
 pub struct OpenID4VCITokenResponseDTO {
-    pub access_token: String,
+    pub access_token: SecretString,
     pub token_type: String,
     pub expires_in: Timestamp,
-    #[serde(default)]
-    pub refresh_token: Option<String>,
+    #[serde(default, with = "opt_secret_string")]
+    pub refresh_token: Option<SecretString>,
     #[serde(default)]
     pub refresh_token_expires_in: Option<Timestamp>,
 }
@@ -1043,6 +1046,8 @@ pub struct OpenID4VCParams {
     pub allow_insecure_http_transport: bool,
     #[serde(default)]
     pub use_request_uri: bool,
+    #[serde(deserialize_with = "deserialize_encryption_key")]
+    pub encryption: SecretSlice<u8>,
 
     pub issuance: OpenID4VCIssuanceParams,
     pub presentation: OpenID4VCPresentationParams,

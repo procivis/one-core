@@ -6,7 +6,7 @@ use secrecy::{ExposeSecret, SecretSlice};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{decrypt_key, InternalKeyProvider};
+use super::{decrypt_data, InternalKeyProvider};
 use crate::model::key::Key;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -48,7 +48,7 @@ async fn test_internal_generate_with_encryption() {
 
     let result = provider.generate(Uuid::new_v4().into(), "").await.unwrap();
     assert_eq!(result.key_reference.len(), 39);
-    let decrypted = decrypt_key(&result.key_reference, &SecretSlice::from(vec![0; 32])).unwrap();
+    let decrypted = decrypt_data(&result.key_reference, &SecretSlice::from(vec![0; 32])).unwrap();
     assert_eq!(decrypted.expose_secret(), vec![1, 2, 3]);
 }
 

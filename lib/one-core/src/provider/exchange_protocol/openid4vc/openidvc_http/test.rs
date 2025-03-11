@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::{indexmap, IndexMap};
+use secrecy::SecretSlice;
 use serde_json::{json, Value};
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -91,6 +92,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -380,6 +382,7 @@ async fn test_generate_share_credentials_offer_by_value() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -626,6 +629,7 @@ async fn test_share_proof_with_use_request_uri() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: true,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -754,6 +758,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: true,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -1121,6 +1126,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
             presentation_definition_by_value: false,
             allow_insecure_http_transport: true,
             use_request_uri: true,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -1202,6 +1208,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
             presentation_definition_by_value: false,
             allow_insecure_http_transport: true,
             use_request_uri: true,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -1406,6 +1413,7 @@ async fn test_handle_invitation_proof_failed() {
             allow_insecure_http_transport: false,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
@@ -2394,6 +2402,7 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
         allow_insecure_http_transport: true,
         refresh_expires_in: 1000,
         use_request_uri: false,
+        encryption: SecretSlice::from(vec![0; 32]),
         issuance: OpenID4VCIssuanceParams {
             disabled: false,
             url_scheme: issuance_url_scheme.to_string(),

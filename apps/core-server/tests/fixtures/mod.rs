@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use core_server::ServerConfig;
+use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -25,9 +26,11 @@ use one_core::model::revocation_list::{
     RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use one_core::repository::DataRepository;
+use one_crypto::encryption::encrypt_string;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sea_orm::ConnectionTrait;
+use secrecy::{SecretSlice, SecretString};
 use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
@@ -749,4 +752,14 @@ pub async fn assert_history_count(
         .filter(|entry| entry.action == action)
         .count();
     assert_eq!(num_entries, expected_count, "expected {expected_count} entries with action {:?} for entity {entity_id}, but found {num_entries}", action);
+}
+
+pub fn encrypted_token(token: &str) -> Vec<u8> {
+    encrypt_string(
+        &SecretString::from(token),
+        &SecretSlice::from(
+            hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e").to_vec(),
+        ),
+    )
+    .unwrap()
 }

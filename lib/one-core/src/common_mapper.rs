@@ -501,6 +501,28 @@ pub mod secret_string {
     }
 }
 
+pub mod opt_secret_string {
+    use secrecy::{ExposeSecret, SecretString};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    pub fn serialize<S: Serializer>(
+        secret: &Option<SecretString>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        secret
+            .as_ref()
+            .map(|secret| secret.expose_secret())
+            .serialize(s)
+    }
+
+    pub fn deserialize<'de, D>(d: D) -> Result<Option<SecretString>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: Option<String> = Option::deserialize(d)?;
+        Ok(data.map(SecretString::from))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
