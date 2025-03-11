@@ -115,6 +115,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
         "presentation_definition": {
             "id": interaction_id,
             "input_descriptors": [{
+                "id": "input_0",
                 "format": {
                     "jwt_vc_json": {
                         "proof_type": [
@@ -122,7 +123,6 @@ async fn test_openid4vc_jwt_mdoc_flow() {
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
                         {
@@ -142,25 +142,18 @@ async fn test_openid4vc_jwt_mdoc_flow() {
                 }
             },
             {
+                "id": mdoc_credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA"
                         ]
                     }
                 },
-                "id": "input_1",
                 "constraints": {
                     "fields": [
                         {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": mdoc_credential_schema.schema_id
-                            }
-                        },
-                        {
-                            "id": jwt_new_claim_schemas[1].0,
+                            "id": mdoc_new_claim_schemas[1].0,
                             "path": ["$['obj']['name']"],
                             "optional": false,
                             "intent_to_retain": true
@@ -410,6 +403,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
+                "id": "input_0",
                 "format": {
                     "jwt_vc_json": {
                         "proof_type": [
@@ -417,7 +411,6 @@ async fn test_openid4vc_jwt_mdoc_flow() {
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
                         {
@@ -437,23 +430,16 @@ async fn test_openid4vc_jwt_mdoc_flow() {
                 }
             },
             {
+                "id": mdoc_credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA"
                         ]
                     }
                 },
-                "id": "input_1",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": mdoc_credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": mdoc_new_claim_schemas[1].0,
                             "path": ["$['obj']['name']"],
@@ -506,7 +492,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
                     claims_ids: vec![jwt_new_claim_schemas[0].0],
                 },
                 SubmittedCredential {
-                    proof_input_id: "input_1".to_string(),
+                    proof_input_id: mdoc_credential_schema.schema_id,
                     credential_id: holder_mdoc_credential.id,
                     claims_ids: vec![mdoc_new_claim_schemas[1].0],
                 },

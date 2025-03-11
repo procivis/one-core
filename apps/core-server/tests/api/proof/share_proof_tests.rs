@@ -163,15 +163,6 @@ async fn test_share_proof_success_mdoc() {
         "constraints": {
           "fields": [
             {
-              "filter": {
-                "const": "org.iso.18013.5.1.mDL",
-                "type": "string"
-              },
-              "path": [
-                "$.credentialSchema.id"
-              ]
-            },
-            {
               "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
               "path": [
                   "$['namespace']"

@@ -1026,7 +1026,7 @@ fn get_url(base_url: Option<String>) -> Result<String, ExchangeProtocolError> {
     base_url.ok_or(ExchangeProtocolError::Failed("Missing base_url".to_owned()))
 }
 
-pub fn create_open_id_for_vp_presentation_definition(
+pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
     proof: &Proof,
     format_type_to_input_descriptor_format: TypeToDescriptorMapper,
@@ -1078,7 +1078,7 @@ pub fn create_open_id_for_vp_presentation_definition(
                     credential_schema,
                     claim_schemas.unwrap_or_default(),
                     &format_type,
-                    format_type_to_input_descriptor_format.clone(),
+                    &format_type_to_input_descriptor_format,
                     formatter_provider,
                 )
             })
@@ -1086,36 +1086,38 @@ pub fn create_open_id_for_vp_presentation_definition(
     })
 }
 
-pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
+fn create_open_id_for_vp_presentation_definition_input_descriptor(
     index: usize,
     credential_schema: CredentialSchema,
     claim_schemas: Vec<ProofInputClaimSchema>,
     presentation_format_type: &str,
-    format_to_type_mapper: TypeToDescriptorMapper,
+    format_to_type_mapper: &TypeToDescriptorMapper,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, ExchangeProtocolError> {
-    let path = match credential_schema.schema_type {
-        CredentialSchemaType::SdJwtVc => ["$.vct".to_string()],
-        _ => ["$.credentialSchema.id".to_string()],
-    }
-    .to_vec();
+    let (id, schema_fields, intent_to_retain) = match presentation_format_type {
+        "MDOC" => (credential_schema.schema_id, vec![], Some(true)),
+        _ => {
+            let path = match credential_schema.schema_type {
+                CredentialSchemaType::SdJwtVc => ["$.vct".to_string()],
+                _ => ["$.credentialSchema.id".to_string()],
+            }
+            .to_vec();
 
-    let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
-        id: None,
-        name: None,
-        purpose: None,
-        path,
-        optional: None,
-        filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
-            r#type: "string".to_string(),
-            r#const: credential_schema.schema_id.clone(),
-        }),
-        intent_to_retain: None,
-    };
+            let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
+                id: None,
+                name: None,
+                purpose: None,
+                path,
+                optional: None,
+                filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
+                    r#type: "string".to_string(),
+                    r#const: credential_schema.schema_id.clone(),
+                }),
+                intent_to_retain: None,
+            };
 
-    let (id, intent_to_retain) = match presentation_format_type {
-        "MDOC" => (credential_schema.schema_id, Some(true)),
-        _ => (format!("input_{index}"), None),
+            (format!("input_{index}"), vec![schema_id_field], None)
+        }
     };
 
     let selectively_disclosable = !formatter_provider
@@ -1133,7 +1135,7 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
         None
     };
 
-    let constraint_fields = claim_schemas
+    let claim_fields = claim_schemas
         .iter()
         .map(|claim| {
             Ok(OpenID4VPPresentationDefinitionConstraintField {
@@ -1148,16 +1150,13 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut fields = vec![schema_id_field];
-    fields.extend(constraint_fields);
-
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
         id,
         name: Some(credential_schema.name),
         purpose: None,
         format: format_to_type_mapper(presentation_format_type)?,
         constraints: OpenID4VPPresentationDefinitionConstraint {
-            fields,
+            fields: [schema_fields, claim_fields].concat(),
             validity_credential_nbf: None,
             limit_disclosure,
         },

@@ -471,22 +471,28 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
             let mut fields = input_descriptor.constraints.fields;
 
-            let schema_id_filter_index = fields
-                .iter()
-                .position(|field| {
-                    field.filter.is_some()
-                        && field.path.contains(&"$.credentialSchema.id".to_string())
-                        || field.path.contains(&"$.vct".to_string())
-                })
-                .ok_or(ExchangeProtocolError::Failed(
-                    "schema_id filter not found".to_string(),
-                ))?;
+            let target_schema_id = if input_descriptor.format.contains_key("mso_mdoc") {
+                input_descriptor.id.to_owned()
+            } else {
+                let schema_id_filter_index = fields
+                    .iter()
+                    .position(|field| {
+                        field.filter.is_some()
+                            && field.path.contains(&"$.credentialSchema.id".to_string())
+                            || field.path.contains(&"$.vct".to_string())
+                    })
+                    .ok_or(ExchangeProtocolError::Failed(
+                        "schema_id filter not found".to_string(),
+                    ))?;
 
-            let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
-                ExchangeProtocolError::Failed("schema_id filter not found".to_string()),
-            )?;
+                let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
+                    ExchangeProtocolError::Failed("schema_id filter not found".to_string()),
+                )?;
 
-            group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
+                schema_id_filter.r#const
+            };
+
+            group_id_to_schema_id.insert(input_descriptor.id.clone(), target_schema_id);
             credential_groups.push(CredentialGroup {
                 id: input_descriptor.id,
                 name: input_descriptor.name,

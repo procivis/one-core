@@ -424,19 +424,26 @@ async fn process_proof_submission(
             }
         }
 
-        // ONE-1924: there must be a specific schemaId filter
-        let schema_id_filter = input_descriptor
-            .constraints
-            .fields
-            .iter()
-            .find(|field| {
-                field.filter.is_some() && field.path.contains(&"$.credentialSchema.id".to_string())
-                    || field.path.contains(&"$.vct".to_string())
-            })
-            .ok_or(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest))?
-            .filter
-            .as_ref()
-            .ok_or(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest))?;
+        let target_schema_id = if input_descriptor.format.contains_key("mso_mdoc") {
+            input_descriptor.id.to_owned()
+        } else {
+            // ONE-1924: there must be a specific schemaId filter
+            let schema_id_filter = input_descriptor
+                .constraints
+                .fields
+                .iter()
+                .find(|field| {
+                    field.filter.is_some()
+                        && field.path.contains(&"$.credentialSchema.id".to_string())
+                        || field.path.contains(&"$.vct".to_string())
+                })
+                .ok_or(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest))?
+                .filter
+                .as_ref()
+                .ok_or(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest))?;
+
+            schema_id_filter.r#const.to_owned()
+        };
 
         let proof_schema_input = proof_schema_inputs
             .iter()
@@ -444,7 +451,7 @@ async fn process_proof_submission(
                 input
                     .credential_schema
                     .as_ref()
-                    .is_some_and(|schema| schema.schema_id == schema_id_filter.r#const)
+                    .is_some_and(|schema| schema.schema_id == target_schema_id)
             })
             .ok_or(OpenID4VCError::Other(
                 "Missing proof input schema for credential schema".to_owned(),

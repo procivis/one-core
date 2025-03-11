@@ -857,8 +857,8 @@ impl OpenID4VCHTTP {
         let presentation_definition = create_open_id_for_vp_presentation_definition(
             interaction_id,
             proof,
-            type_to_descriptor.clone(),
-            format_to_type_mapper.clone(),
+            type_to_descriptor,
+            format_to_type_mapper,
             &*self.formatter_provider,
         )?;
 

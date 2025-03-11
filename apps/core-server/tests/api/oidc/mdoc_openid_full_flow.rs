@@ -171,23 +171,17 @@ async fn test_openid4vc_mdoc_flow(
         "presentation_definition": {
             "id": interaction_id,
             "input_descriptors": [{
+                "id": credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA",
+                            "ES256"
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": new_claim_schemas[1].0,
                             "path": [format!("$['root']['Key']")],
@@ -377,23 +371,17 @@ async fn test_openid4vc_mdoc_flow(
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
+                "id": credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA",
+                            "ES256"
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": new_claim_schemas[1].0,
                             "path": [format!("$['root']['Key']")],
@@ -440,7 +428,7 @@ async fn test_openid4vc_mdoc_flow(
             holder_interaction.id,
             holder_did.id,
             vec![SubmittedCredential {
-                proof_input_id: "input_0".to_string(),
+                proof_input_id: credential_schema.schema_id,
                 credential_id: holder_credential.id,
                 claims_ids: vec![new_claim_schemas[1].0],
             }],
@@ -558,23 +546,17 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         "presentation_definition": {
             "id": interaction_id,
             "input_descriptors": [{
+                "id": credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA",
+                            "ES256"
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": new_claim_schemas[1].0,
                             "path": [format!("$['root']['KeyDisclosed']")],
@@ -782,23 +764,17 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
+                "id": credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA",
+                            "ES256"
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": new_claim_schemas[1].0,
                             "path": [format!("$['root']['KeyDisclosed']")],
@@ -857,7 +833,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
             holder_interaction.id,
             holder_did.id,
             vec![SubmittedCredential {
-                proof_input_id: "input_0".to_string(),
+                proof_input_id: credential_schema.schema_id,
                 credential_id: holder_credential.id,
                 claims_ids: vec![
                     new_claim_schemas[1].0,
@@ -981,23 +957,17 @@ async fn test_openid4vc_mdoc_flow_array(
         "presentation_definition": {
             "id": interaction_id,
             "input_descriptors": [{
+                "id": credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA",
+                            "ES256"
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": new_claim_schemas[1].0,
                             "path": [format!("$['root']['array']")],
@@ -1215,23 +1185,17 @@ async fn test_openid4vc_mdoc_flow_array(
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
+                "id": credential_schema.schema_id,
                 "format": {
                     "mso_mdoc": {
-                        "proof_type": [
-                            "DataIntegrityProof"
+                        "alg": [
+                            "EdDSA",
+                            "ES256"
                         ]
                     }
                 },
-                "id": "input_0",
                 "constraints": {
                     "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id
-                            }
-                        },
                         {
                             "id": new_claim_schemas[1].0,
                             "path": [format!("$['root']['array']")],
@@ -1284,7 +1248,7 @@ async fn test_openid4vc_mdoc_flow_array(
             holder_interaction.id,
             holder_did.id,
             vec![SubmittedCredential {
-                proof_input_id: "input_0".to_string(),
+                proof_input_id: credential_schema.schema_id,
                 credential_id: holder_credential.id,
                 claims_ids: vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
             }],
