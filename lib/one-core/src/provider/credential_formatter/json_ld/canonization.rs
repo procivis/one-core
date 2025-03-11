@@ -1,9 +1,8 @@
 use std::collections::HashSet;
-use std::str::FromStr;
 use std::string::FromUtf8Error;
 
-use json_ld::{rdf_types, IriBuf, Loader};
-use json_ld_syntax::Parse;
+use json_ld::{rdf_types, Loader};
+use serde::Serialize;
 use sophia_api::quad::Spog;
 use sophia_api::term::{Term, TermKind};
 use sophia_api::MownStr;
@@ -12,7 +11,7 @@ use sophia_c14n::rdfc10;
 #[derive(Debug, thiserror::Error)]
 pub enum CanonizationError {
     #[error("Document is not a valid JSON: {0}")]
-    DocumentParsing(#[from] json_ld_syntax::parse::Error),
+    DocumentParsing(#[from] json_syntax::SerializeError),
     #[error("Document expansion failed: {0}")]
     DocumentExpansion(#[from] json_ld::ToRdfError),
     #[error("c14n normalization failed: {0}")]
@@ -22,17 +21,16 @@ pub enum CanonizationError {
 }
 
 pub(super) async fn canonize(
-    content: &str,
+    document: impl Serialize,
     loader: &impl Loader,
+    options: json_ld::Options,
 ) -> Result<String, CanonizationError> {
     let generator = rdf_types::generator::Blank::new();
-    let (document, _) = json_ld_syntax::Value::parse_str(content)?;
+    let document = json_syntax::to_value(document)?;
 
-    // todo: try to remove this once we enable strict json-ld validation, as then there shouldn't be any "type"s not present in the context
-    // This is a valid IRI
-    let base = IriBuf::from_str("x-string://").unwrap();
-    let document = json_ld::RemoteDocument::new(Some(base), None, document);
-    let mut rdf = json_ld::JsonLdProcessor::to_rdf(&document, generator, loader).await?;
+    let document = json_ld::RemoteDocument::new(None, None, document);
+    let mut rdf =
+        json_ld::JsonLdProcessor::to_rdf_using(&document, generator, loader, options).await?;
 
     let quads: HashSet<Spog<TermAdapter>> = rdf
         .cloned_quads()
@@ -52,7 +50,7 @@ pub(super) async fn canonize(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct TermAdapter(rdf_types::Term);
+pub(crate) struct TermAdapter(pub rdf_types::Term);
 
 impl Term for TermAdapter {
     type BorrowTerm<'x> = &'x Self;
@@ -128,11 +126,11 @@ mod test {
     use json_ld::{IriBuf, RemoteDocument};
 
     use super::canonize;
+    use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
 
     #[tokio::test]
     async fn test_json_ld_canonization_ok() {
-        let doc = r#"
-        {
+        let doc = json_syntax::json!({
             "@context": [
                 "https://www.w3.org/ns/credentials/v2",
                 "https://www.w3.org/ns/credentials/examples/v2"
@@ -142,20 +140,20 @@ mod test {
             "issuer": "https://university.example/issuers/14",
             "validFrom": "2010-01-01T19:23:24Z",
             "credentialSubject": {
-                "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-                "degree": {
-                "type": "ExampleBachelorDegree",
-                "name": "Bachelor of Science and Arts"
+                    "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+                    "degree": {
+                    "type": "ExampleBachelorDegree",
+                    "name": "Bachelor of Science and Arts"
                 },
                 "alumniOf": {
-                "name": "Example University"
+                    "name": "Example University"
                 }
             },
             "credentialSchema": [{
                 "id": "https://example.org/examples/degree.json",
                 "type": "JsonSchema"
             }]
-        }"#;
+        });
 
         let mut loader: HashMap<IriBuf, RemoteDocument> = HashMap::new();
         loader.insert(
@@ -183,12 +181,44 @@ _:c14n1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/ns
 _:c14n1 <https://schema.org/name> "Bachelor of Science and Arts" .
 "#;
 
-        let canonical_doc = canonize(doc, &loader).await.unwrap();
+        let canonical_doc = canonize(doc, &loader, json_ld_processor_options())
+            .await
+            .unwrap();
         assert_eq!(canonical_doc, expected)
     }
 
-    fn v2_context() -> json_ld_syntax::Value {
-        json_ld_syntax::Value::from_str(
+    #[tokio::test]
+    async fn test_proof_canonization_ok() {
+        let proof = json_syntax::json!({
+            "@context": [
+                "https://www.w3.org/ns/credentials/v2"
+            ],
+            "type": "DataIntegrityProof",
+            "verificationMethod": "did:key:zUC76eySqgji6uNDaCrsWnmQnwq8pj1MZUDrRGc2BGRu61baZPKPFB7YpHawussp2YohcEMAeMVGHQ9JtKvjxgGTkYSMN53ZfCH4pZ6TGYLawvzy1wE54dS6PQcut9fxdHH32gi#zUC76eySqgji6uNDaCrsWnmQnwq8pj1MZUDrRGc2BGRu61baZPKPFB7YpHawussp2YohcEMAeMVGHQ9JtKvjxgGTkYSMN53ZfCH4pZ6TGYLawvzy1wE54dS6PQcut9fxdHH32gi",
+            "cryptosuite": "bbs-2023",
+            "proofPurpose": "assertionMethod"
+        });
+
+        let mut loader: HashMap<IriBuf, RemoteDocument> = HashMap::new();
+        loader.insert(
+            IriBuf::from_str("https://www.w3.org/ns/credentials/v2").unwrap(),
+            RemoteDocument::new(None, None, v2_context()),
+        );
+
+        let canonical_doc = canonize(proof, &loader, json_ld_processor_options())
+            .await
+            .unwrap();
+
+        assert_eq!(canonical_doc,
+        "_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#DataIntegrityProof> .\n\
+        _:c14n0 <https://w3id.org/security#cryptosuite> \"bbs-2023\"^^<https://w3id.org/security#cryptosuiteString> .\n\
+        _:c14n0 <https://w3id.org/security#proofPurpose> <https://w3id.org/security#assertionMethod> .\n\
+        _:c14n0 <https://w3id.org/security#verificationMethod> <did:key:zUC76eySqgji6uNDaCrsWnmQnwq8pj1MZUDrRGc2BGRu61baZPKPFB7YpHawussp2YohcEMAeMVGHQ9JtKvjxgGTkYSMN53ZfCH4pZ6TGYLawvzy1wE54dS6PQcut9fxdHH32gi#zUC76eySqgji6uNDaCrsWnmQnwq8pj1MZUDrRGc2BGRu61baZPKPFB7YpHawussp2YohcEMAeMVGHQ9JtKvjxgGTkYSMN53ZfCH4pZ6TGYLawvzy1wE54dS6PQcut9fxdHH32gi> .\n"
+        );
+    }
+
+    fn v2_context() -> json_syntax::Value {
+        json_syntax::Value::from_str(
             r#"
             {
                 "@context": {
@@ -534,8 +564,8 @@ _:c14n1 <https://schema.org/name> "Bachelor of Science and Arts" .
         .unwrap()
     }
 
-    fn example_context() -> json_ld_syntax::Value {
-        json_ld_syntax::Value::from_str(
+    fn example_context() -> json_syntax::Value {
+        json_syntax::Value::from_str(
             r#"{
                 "@context": {
                     "@vocab": "https://www.w3.org/ns/credentials/examples#"

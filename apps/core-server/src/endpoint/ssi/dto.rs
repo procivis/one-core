@@ -544,8 +544,8 @@ pub struct JsonLDContextResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(JsonLDContextDTO)]
 pub struct JsonLDContextRestDTO {
-    #[serde(rename = "@version")]
-    pub version: f64,
+    #[serde(rename = "@version", skip_serializing_if = "Option::is_none")]
+    pub version: Option<f64>,
     #[serde(rename = "@protected")]
     pub protected: bool,
     pub id: String,
@@ -559,7 +559,6 @@ pub struct JsonLDContextRestDTO {
 #[from(JsonLDEntityDTO)]
 #[serde(untagged)]
 pub enum JsonLDEntityRestDTO {
-    Reference(String),
     Inline(JsonLDInlineEntityRestDTO),
     NestedObject(JsonLDNestedEntityRestDTO),
 }
@@ -576,18 +575,27 @@ pub struct JsonLDNestedEntityRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(JsonLDNestedContextDTO)]
 pub struct JsonLDNestedContextRestDTO {
+    #[serde(rename = "@protected")]
+    pub protected: bool,
+    pub id: String,
+    pub r#type: String,
     #[serde(flatten)]
     #[from(with_fn = convert_inner)]
     pub entities: HashMap<String, JsonLDEntityRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(JsonLDInlineEntityDTO)]
 pub struct JsonLDInlineEntityRestDTO {
     #[serde(rename = "@context")]
-    pub context: JsonLDContextRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub context: Option<JsonLDContextRestDTO>,
     #[serde(rename = "@id")]
     pub id: String,
+    #[serde(rename = "@type")]
+    #[from(with_fn = convert_inner)]
+    pub r#type: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

@@ -187,9 +187,10 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
             header,
             messages,
             signature,
+            presentation_header: None,
         };
 
-        BBSSigner::derive_proof(&derive_input, &self.public_key)
+        BBSSigner::derive_proof(derive_input, &self.public_key)
     }
 
     fn verify_proof(

@@ -1,7 +1,7 @@
 //! Implementation of JSON-LD credential format.
 
-use context::caching_loader::ContextCache;
 use indexmap::IndexSet;
+use json_ld::Loader;
 use serde::Serialize;
 use url::Url;
 
@@ -9,7 +9,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialSchema;
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredential};
 
-mod canonization;
+pub mod canonization;
 pub mod context;
 pub mod model;
 
@@ -113,14 +113,23 @@ pub fn is_context_list_valid(
     true
 }
 
-pub async fn canonize_any(
-    json_ld: impl Serialize,
-    caching_loader: ContextCache,
+pub async fn rdf_canonize(
+    document: impl Serialize,
+    loader: &impl Loader,
+    options: json_ld::Options,
 ) -> Result<String, FormatterError> {
-    let content_str = serde_json::to_string(&json_ld)
-        .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
-    canonization::canonize(&content_str, &caching_loader)
+    canonization::canonize(&document, loader, options)
         .await
         .map_err(|err| FormatterError::Failed(format!("Canonization failed: {err}")))
+}
+
+pub fn json_ld_processor_options() -> json_ld::Options {
+    json_ld::Options {
+        expansion_policy: json_ld::expansion::Policy {
+            invalid: json_ld::expansion::Action::Reject,
+            allow_undefined: false,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
 }

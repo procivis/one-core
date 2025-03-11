@@ -322,9 +322,13 @@ async fn test_mrz_normalization() {
 
 const W3_ORG_NS_CREDENTIALS_V2: &str = r#"{
   "@context": {
+    "@protected": true,
+    "id": "@id",
+    "type": "@type",
     "credentialStatus": "https://www.w3.org/2018/credentials#credentialStatus",
     "credentialSubject": "https://www.w3.org/2018/credentials#credentialSubject",
     "issuer": "https://www.w3.org/2018/credentials#issuer",
+    "VerifiableCredential": "https://www.w3.org/2018/credentials#VerifiableCredential",
     "DataIntegrityProof": "https://w3id.org/security#DataIntegrityProof",
     "proofPurpose":"https://w3id.org/security#proofPurpose",
     "assertionMethod": "https://w3id.org/security#assertionMethod",
@@ -335,19 +339,38 @@ const W3_ORG_NS_CREDENTIALS_V2: &str = r#"{
 }"#;
 
 const BARCODE_CONTEXT: &str = r#"{
-    "@context": {
-      "MachineReadableZone": "https://w3id.org/vc-barcodes#MachineReadableZone",
-      "AamvaDriversLicenseScannableInformation": "https://w3id.org/vc-barcodes#AamvaDriversLicenseScannableInformation",
-      "protectedComponentIndex": "https://w3id.org/vc-barcodes#protectedComponentIndex",
-      "OpticalBarcodeCredential": "https://w3id.org/vc-barcodes#OpticalBarcodeCredential",
-      "TerseBitstringStatusListEntry": "https://w3id.org/vc-barcodes#TerseBitstringStatusListEntry",
-      "terseStatusListBaseUrl":"https://w3id.org/vc-barcodes#terseStatusListBaseUrl",
-      "terseStatusListIndex": "https://w3id.org/vc-barcodes#terseStatusListIndex"
+  "@context": {
+    "@protected": true,
+    "id": "@id",
+    "type": "@type",
+    "MachineReadableZone": "https://w3id.org/vc-barcodes#MachineReadableZone",
+    "AamvaDriversLicenseScannableInformation": "https://w3id.org/vc-barcodes#AamvaDriversLicenseScannableInformation",
+    "protectedComponentIndex": {
+      "@id": "https://w3id.org/vc-barcodes#protectedComponentIndex",
+      "@type": "https://w3id.org/security#multibase"
+    },
+    "OpticalBarcodeCredential": "https://w3id.org/vc-barcodes#OpticalBarcodeCredential",
+    "TerseBitstringStatusListEntry": {
+      "@id": "https://w3id.org/vc-barcodes#TerseBitstringStatusListEntry",
+      "@context": {
+        "@protected": true,
+        "id": "@id",
+        "type": "@type",
+        "terseStatusListBaseUrl": {
+          "@type": "@id",
+          "@id": "https://w3id.org/vc-barcodes#terseStatusListBaseUrl"
+        },
+        "terseStatusListIndex": "https://w3id.org/vc-barcodes#terseStatusListIndex"
+      }
     }
+  }
 }"#;
 
 const UTOPIA_CONTEXT: &str = r#"{
   "@context": {
+    "@protected": true,
+    "id": "@id",
+    "type": "@type",
     "did:key:zDnaeZSD9XcuULaS8qmgDUa6TMg2QjF9xABnZK42awDH3BEzj": "did:key:zDnaeZSD9XcuULaS8qmgDUa6TMg2QjF9xABnZK42awDH3BEzj",
     "did:key:zDnaeZSD9XcuULaS8qmgDUa6TMg2QjF9xABnZK42awDH3BEzj#zDnaeZSD9XcuULaS8qmgDUa6TMg2QjF9xABnZK42awDH3BEzj": "did:key:zDnaeZSD9XcuULaS8qmgDUa6TMg2QjF9xABnZK42awDH3BEzj#zDnaeZSD9XcuULaS8qmgDUa6TMg2QjF9xABnZK42awDH3BEzj",
     "did:key:zDnaeWjKfs1ob9QcgasjYSPEMkwq31hmvSAWPVAgnrt1e9GKj": "did:key:zDnaeWjKfs1ob9QcgasjYSPEMkwq31hmvSAWPVAgnrt1e9GKj",

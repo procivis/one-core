@@ -16,6 +16,9 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
+use super::json_ld::{
+    is_context_list_valid, json_ld_processor_options, jsonld_forbidden_claim_names,
+};
 use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::model::did::Did;
@@ -25,13 +28,14 @@ use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
 use crate::provider::credential_formatter::json_ld::model::{LdPresentation, VerifiableCredential};
+use crate::provider::credential_formatter::json_ld::rdf_canonize;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Issuer,
     Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::ContextType;
-use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -175,8 +179,7 @@ impl CredentialFormatter for JsonLdClassic {
         auth_fn: AuthenticationFn,
         ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        // TODO Move out
-        let context = indexset![ContextType::Url(Context::CredentialsV2.to_url(),)];
+        let context = indexset![ContextType::Url(Context::CredentialsV2.to_url())];
 
         let formats = ctx.token_formats.map(|formats| {
             formats
@@ -256,6 +259,8 @@ impl CredentialFormatter for JsonLdClassic {
             &*self.crypto,
             self.caching_loader.to_owned(),
             None,
+            // todo(ONE-5022): use json_ld_processor_options() once we have removed issuance_date from the VP
+            json_ld::Options::default(),
         )
         .await?;
 
@@ -323,11 +328,7 @@ impl CredentialFormatter for JsonLdClassic {
                 "AZURE_VAULT".to_string(),
                 "SECURE_ELEMENT".to_string(),
             ],
-            forbidden_claim_names: [
-                json_ld::jsonld_forbidden_claim_names(),
-                vec!["0".to_string()],
-            ]
-            .concat(),
+            forbidden_claim_names: [jsonld_forbidden_claim_names(), vec!["0".to_string()]].concat(),
         }
     }
 
@@ -377,7 +378,7 @@ impl JsonLdClassic {
             .await?;
         }
 
-        if !json_ld::is_context_list_valid(
+        if !is_context_list_valid(
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
             &DEFAULT_ALLOWED_CONTEXTS,
@@ -435,7 +436,7 @@ impl JsonLdClassic {
             .await?;
         }
 
-        if !json_ld::is_context_list_valid(
+        if !is_context_list_valid(
             &presentation.context,
             self.params.allowed_contexts.as_ref(),
             &DEFAULT_ALLOWED_CONTEXTS,
@@ -507,6 +508,7 @@ impl JsonLdClassic {
             &*self.crypto,
             self.caching_loader.to_owned(),
             None,
+            json_ld_processor_options(),
         )
         .await?;
 
@@ -548,8 +550,15 @@ pub(super) async fn verify_credential_signature(
         proof.context = Some(vcdm.context.to_owned());
     }
 
-    let proof_hash =
-        prepare_proof_hash(&vcdm, &proof, crypto, caching_loader, extra_information).await?;
+    let proof_hash = prepare_proof_hash(
+        &vcdm,
+        &proof,
+        crypto,
+        caching_loader,
+        extra_information,
+        json_ld_processor_options(),
+    )
+    .await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,
@@ -587,8 +596,17 @@ pub(super) async fn verify_presentation_signature(
     // Remove proof value for canonicalization
     proof.proof_value = None;
 
-    let proof_hash =
-        prepare_proof_hash(&presentation, &proof, crypto, caching_loader, None).await?;
+    let proof_hash = prepare_proof_hash(
+        &presentation,
+        &proof,
+        crypto,
+        caching_loader,
+        None,
+        // todo(ONE-5022): use json_ld_processor_options() once we have removed issuance_date from the VP
+        json_ld::Options::default(),
+    )
+    .await?;
+
     verify_proof_signature(
         &proof_hash,
         &proof_value,
@@ -665,6 +683,7 @@ pub(super) async fn prepare_proof_hash(
     crypto: &dyn CryptoProvider,
     caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
+    options: json_ld::Options,
 ) -> Result<Vec<u8>, FormatterError> {
     fn proof_hash(
         hasher: &dyn Hasher,
@@ -689,8 +708,8 @@ pub(super) async fn prepare_proof_hash(
         FormatterError::CouldNotFormat(format!("Hasher {hashing_function} unavailable"))
     })?;
 
-    let transformed_document = json_ld::canonize_any(document, caching_loader.clone()).await?;
-    let transformed_proof_config = json_ld::canonize_any(proof, caching_loader).await?;
+    let transformed_document = rdf_canonize(document, &caching_loader, options.clone()).await?;
+    let transformed_proof_config = rdf_canonize(proof, &caching_loader, options).await?;
 
     proof_hash(
         &*hasher,

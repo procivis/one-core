@@ -5,8 +5,8 @@ use serde_json::Value;
 use url::Url;
 
 use super::dto::{
-    JsonLDContextDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO, SdJwtVcClaimSd,
-    SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
+    JsonLDContextDTO, JsonLDInlineEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
+    SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -23,7 +23,7 @@ use crate::service::ssi_issuer::dto::{
 impl Default for JsonLDContextDTO {
     fn default() -> Self {
         Self {
-            version: 1.1,
+            version: Some(1.1),
             protected: true,
             id: "@id".to_string(),
             r#type: "@type".to_string(),
@@ -64,6 +64,9 @@ fn insert_claim(
             entry.insert(JsonLDEntityDTO::NestedObject(JsonLDNestedEntityDTO {
                 id: get_url_with_fragment(base_url, &part)?,
                 context: JsonLDNestedContextDTO {
+                    protected: true,
+                    id: "@id".to_string(),
+                    r#type: "@type".to_string(),
                     entities: HashMap::new(),
                 },
             }))
@@ -75,7 +78,11 @@ fn insert_claim(
     }
 
     if index == key_parts.len() - 1 {
-        let reference_claim = JsonLDEntityDTO::Reference(get_url_with_fragment(base_url, &part)?);
+        let reference_claim = JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+            id: get_url_with_fragment(base_url, &part)?,
+            r#type: None,
+            context: None,
+        });
         current_claim.insert(part, reference_claim);
     }
 

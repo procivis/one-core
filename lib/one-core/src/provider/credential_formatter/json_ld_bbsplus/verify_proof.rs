@@ -1,21 +1,9 @@
-use std::collections::HashMap;
-
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use sha2::{Digest, Sha256};
-
-use super::JsonLdBbsplus;
+use super::{data_integrity, JsonLdBbsplus};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld;
+use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
 use crate::provider::credential_formatter::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
-use crate::provider::credential_formatter::json_ld_bbsplus::base_proof::prepare_signature_input;
-use crate::provider::credential_formatter::json_ld_bbsplus::model::{
-    BbsDerivedProofComponents, BbsProofComponents, BbsProofType, CBOR_PREFIX_BASE,
-    CBOR_PREFIX_DERIVED,
-};
-use crate::provider::credential_formatter::model::{
-    DetailCredential, TokenVerifier, VerificationFn,
-};
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
+use crate::provider::credential_formatter::model::{DetailCredential, VerificationFn};
+use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::key_algorithm::key::MultiMessageSignatureKeyHandle;
 
 impl JsonLdBbsplus {
@@ -28,7 +16,7 @@ impl JsonLdBbsplus {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
-        if !json_ld::is_context_list_valid(
+        if !crate::provider::credential_formatter::json_ld::is_context_list_valid(
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
             &DEFAULT_ALLOWED_CONTEXTS,
@@ -45,7 +33,7 @@ impl JsonLdBbsplus {
         };
         proof.context = Some(vcdm.context.clone());
 
-        let Some(proof_value) = proof.proof_value.take() else {
+        let Some(proof_value) = &proof.proof_value else {
             return Err(FormatterError::CouldNotVerify(
                 "Missing proof value".to_string(),
             ));
@@ -57,135 +45,44 @@ impl JsonLdBbsplus {
             ));
         }
 
-        let canonical_proof_config =
-            json_ld::canonize_any(&proof, self.caching_loader.to_owned()).await?;
-        let proof_components = extract_proof_value_components(&proof_value)?;
+        let hasher = self
+            .crypto
+            .get_hasher("sha-256")
+            .map_err(|_| FormatterError::CouldNotVerify("SHA256 hasher unavailable".to_string()))?;
 
-        match proof_components {
-            BbsProofType::BaseProof(proof_components) => {
-                self.verify_base_proof(
-                    vcdm,
+        match proof_type(proof_value)? {
+            ProofType::Base => {
+                data_integrity::verify_base_proof(
+                    &vcdm,
                     proof,
-                    proof_components,
-                    canonical_proof_config,
-                    verification,
+                    &self.caching_loader,
+                    &*hasher,
+                    &*verification,
+                    json_ld_processor_options(),
                 )
-                .await
+                .await?;
+
+                DetailCredential::try_from(vcdm)
             }
-            BbsProofType::DerivedProof(proof_components) => {
-                self.verify_derived_proof(vcdm, proof_components, &proof, canonical_proof_config)
-                    .await
+            ProofType::Derived => {
+                let handle = self
+                    .get_public_signature_handle(&vcdm, &proof.verification_method)
+                    .await?;
+                let public_key = handle.public().as_raw();
+
+                data_integrity::verify_derived_proof(
+                    &vcdm,
+                    proof,
+                    &public_key,
+                    &self.caching_loader,
+                    &*hasher,
+                    json_ld_processor_options(),
+                )
+                .await?;
+
+                DetailCredential::try_from(vcdm)
             }
         }
-    }
-
-    async fn verify_base_proof(
-        &self,
-        vcdm: VcdmCredential,
-        proof: VcdmProof,
-        proof_components: BbsProofComponents,
-        canonical_proof_config: String,
-        verification: VerificationFn,
-    ) -> Result<DetailCredential, FormatterError> {
-        let canonical = json_ld::canonize_any(&vcdm, self.caching_loader.to_owned()).await?;
-        let identifier_map = self.create_label_map(&canonical, &proof_components.hmac_key)?;
-
-        let transformed = self.transform_canonical(&identifier_map, &canonical)?;
-        let grouped = self.create_grouped_transformation(&transformed)?;
-        let hash_data = self.prepare_proof_hashes(&canonical_proof_config, &grouped)?;
-
-        let bbs_header = [
-            hash_data.proof_config_hash.as_slice(),
-            hash_data.mandatory_hash.as_slice(),
-        ]
-        .concat();
-
-        if proof_components.bbs_header != bbs_header {
-            return Err(FormatterError::CouldNotVerify(
-                "Invalid bbs header".to_string(),
-            ));
-        }
-
-        let signature_input = prepare_signature_input(bbs_header, &hash_data)?;
-        let credential: DetailCredential = vcdm.try_into()?;
-        verification
-            .verify(
-                credential.issuer_did.clone(),
-                Some(&proof.verification_method),
-                "BBS",
-                &signature_input,
-                &proof_components.bbs_signature,
-            )
-            .await
-            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
-        Ok(credential)
-    }
-
-    async fn verify_derived_proof(
-        &self,
-        vcdm: VcdmCredential,
-        proof_components: BbsDerivedProofComponents,
-        proof: &VcdmProof,
-        canonical_proof_config: String,
-    ) -> Result<DetailCredential, FormatterError> {
-        let hashing_function = "sha-256";
-        let hasher = self.crypto.get_hasher(hashing_function).map_err(|_| {
-            FormatterError::CouldNotVerify(format!("Hasher {} unavailable", hashing_function))
-        })?;
-
-        let transformed_proof_config_hash = hasher
-            .hash(canonical_proof_config.as_bytes())
-            .map_err(|e| FormatterError::CouldNotVerify(format!("Hasher error: `{}`", e)))?;
-
-        let label_map: HashMap<String, String> =
-            decompress_label_map(&proof_components.compressed_label_map);
-
-        // We are getting a string from normalization so we operate on it.
-        let canonical_vcdm = json_ld::canonize_any(&vcdm, self.caching_loader.to_owned()).await?;
-
-        let transformed = self.transform_canonical(&label_map, &canonical_vcdm)?;
-
-        let mut mandatory_nquads: Vec<String> = Vec::new();
-        let mut non_mandatory_nquads: Vec<String> = Vec::new();
-
-        transformed
-            .into_iter()
-            .enumerate()
-            .for_each(|(index, item)| {
-                if proof_components.mandatory_indices.contains(&(index)) {
-                    mandatory_nquads.push(item)
-                } else {
-                    non_mandatory_nquads.push(item)
-                }
-            });
-
-        let mandatory_nquads_hash = mandatory_nquads
-            .iter()
-            .fold(Sha256::new(), |hasher, nquad| hasher.chain_update(nquad))
-            .finalize()
-            .to_vec();
-
-        let bbs_header = [transformed_proof_config_hash, mandatory_nquads_hash].concat();
-
-        let handle = self
-            .get_public_signature_handle(&vcdm, &proof.verification_method)
-            .await?;
-        if let Err(error) = handle.public().verify_proof(
-            bbs_header,
-            non_mandatory_nquads
-                .into_iter()
-                .enumerate()
-                .map(|(i, value)| (proof_components.selective_indices[i], value.into_bytes()))
-                .collect(),
-            Some(proof_components.presentation_header),
-            &proof_components.bbs_proof,
-        ) {
-            return Err(FormatterError::CouldNotVerify(format!(
-                "Could not verify proof: {error}"
-            )));
-        }
-
-        vcdm.try_into()
     }
 
     async fn get_public_signature_handle(
@@ -231,38 +128,17 @@ impl JsonLdBbsplus {
     }
 }
 
-fn decompress_label_map(compressed_label_map: &HashMap<usize, usize>) -> HashMap<String, String> {
-    compressed_label_map
-        .iter()
-        .map(|(k, v)| (format!("_:c14n{k}"), format!("_:b{v}")))
-        .collect()
+enum ProofType {
+    Base,
+    Derived,
 }
 
-fn extract_proof_value_components(proof_value: &str) -> Result<BbsProofType, FormatterError> {
-    let Some(proof_value) = proof_value.strip_prefix('u') else {
-        return Err(FormatterError::CouldNotVerify(
-            "Only base64url multibase encoding is supported for proof".to_string(),
-        ));
-    };
-
-    let proof_decoded = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
-        .map_err(|e| FormatterError::CouldNotVerify(format!("Base64url decoding failed: {}", e)))?;
-
-    if let Some(proof_decoded) = proof_decoded.strip_prefix(&CBOR_PREFIX_BASE) {
-        let components = ciborium::de::from_reader(proof_decoded).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {e}"))
-        })?;
-        return Ok(BbsProofType::BaseProof(components));
-    };
-
-    if let Some(proof_decoded) = proof_decoded.strip_prefix(&CBOR_PREFIX_DERIVED) {
-        let components = ciborium::de::from_reader(proof_decoded).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {e}"))
-        })?;
-        return Ok(BbsProofType::DerivedProof(components));
-    };
-
-    Err(FormatterError::CouldNotVerify(
-        "Expected proof prefix".to_string(),
-    ))
+fn proof_type(proof_value: &str) -> Result<ProofType, FormatterError> {
+    match proof_value {
+        v if v.starts_with("u2V0C") => Ok(ProofType::Base),
+        v if v.starts_with("u2V0D") => Ok(ProofType::Derived),
+        _ => Err(FormatterError::CouldNotVerify(
+            "Invalid proof value prefix or unsupported proof feature".to_string(),
+        )),
+    }
 }

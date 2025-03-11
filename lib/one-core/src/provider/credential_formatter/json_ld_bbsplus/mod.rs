@@ -13,7 +13,7 @@ use time::Duration;
 use url::Url;
 
 use super::json_ld::context::caching_loader::ContextCache;
-use super::json_ld::jsonld_forbidden_claim_names;
+use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
 use super::model::{CredentialData, HolderBindingCtx};
 use super::CredentialFormatter;
 use crate::model::did::Did;
@@ -31,11 +31,8 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
-mod base_proof;
-mod derived_proof;
-mod mapper;
+mod data_integrity;
 pub mod model;
-mod remove_undisclosed_keys;
 mod verify_proof;
 
 #[cfg(test)]
@@ -90,6 +87,14 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
+        if auth_fn.get_key_type() != "BBS_PLUS" {
+            return Err(FormatterError::BBSOnly);
+        }
+
+        let verification_method = auth_fn
+            .get_key_id()
+            .ok_or_else(|| FormatterError::CouldNotFormat("Missing jwk key id".to_string()))?;
+
         let mut vcdm = credential_data.vcdm;
         if let Some(cs) = vcdm
             .credential_subject
@@ -99,11 +104,21 @@ impl CredentialFormatter for JsonLdBbsplus {
             cs.id = credential_data.holder_did.map(|did| did.into_url());
         }
 
-        if !self.params.embed_layout_properties {
-            vcdm.remove_layout_properties();
-        }
+        let mandatory_pointers = generate_mandatory_pointers(&vcdm);
+        let proof = data_integrity::create_base_proof(
+            &vcdm,
+            mandatory_pointers,
+            verification_method,
+            &self.caching_loader,
+            &*self.crypto.get_hasher("sha-256")?,
+            &*auth_fn,
+            json_ld_processor_options(),
+        )
+        .await?;
 
-        self.format(vcdm, auth_fn).await
+        vcdm.proof = Some(proof);
+
+        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
     }
 
     async fn format_status_list(
@@ -147,7 +162,45 @@ impl CredentialFormatter for JsonLdBbsplus {
         _holder_binding_ctx: Option<HolderBindingCtx>,
         _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
-        self.derive_proof(credential).await
+        let mut vcdm: VcdmCredential = serde_json::from_str(&credential.token).map_err(|e| {
+            FormatterError::CouldNotFormat(format!("Could not deserialize base proof: {e}"))
+        })?;
+
+        let Some(proof) = vcdm.proof.take() else {
+            return Err(FormatterError::CouldNotFormat("Missing proof".to_string()));
+        };
+
+        if proof.cryptosuite != "bbs-2023" {
+            return Err(FormatterError::CouldNotFormat(
+                "Incorrect cryptosuite".to_string(),
+            ));
+        }
+
+        let disclosed_keys = credential
+            .disclosed_keys
+            .into_iter()
+            .map(|key| {
+                if key.starts_with("/") {
+                    format!("/credentialSubject{key}")
+                } else {
+                    format!("/credentialSubject/{key}")
+                }
+            })
+            .collect();
+        let revealed_document = data_integrity::add_derived_proof(
+            &vcdm,
+            &proof,
+            disclosed_keys,
+            None,
+            &self.caching_loader,
+            json_ld_processor_options(),
+        )
+        .await?;
+
+        let resp = serde_json::to_string(&revealed_document)
+            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+
+        Ok(resp)
     }
 
     async fn format_presentation(
@@ -230,4 +283,58 @@ impl CredentialFormatter for JsonLdBbsplus {
     ) -> Result<Presentation, FormatterError> {
         unimplemented!()
     }
+}
+
+fn generate_mandatory_pointers(vcdm: &VcdmCredential) -> Vec<String> {
+    let mut pointers = vec!["/issuer", "/type"];
+
+    if !vcdm.credential_status.is_empty() {
+        pointers.push("/credentialStatus");
+    }
+
+    if vcdm.id.is_some() {
+        pointers.push("/id");
+    }
+
+    if vcdm.valid_from.is_some() {
+        pointers.push("/validFrom");
+    }
+
+    if vcdm.valid_until.is_some() {
+        pointers.push("/validUntil");
+    }
+
+    if vcdm.issuance_date.is_some() {
+        pointers.push("/issuanceDate");
+    }
+
+    if vcdm.expiration_date.is_some() {
+        pointers.push("/expirationDate");
+    }
+
+    if vcdm.credential_schema.is_some() {
+        pointers.push("/credentialSchema");
+    }
+
+    if vcdm.name.is_some() {
+        pointers.push("/name");
+    }
+
+    if vcdm.description.is_some() {
+        pointers.push("/description");
+    }
+
+    if vcdm.evidence.is_some() {
+        pointers.push("/evidence");
+    }
+
+    if vcdm.terms_of_use.is_some() {
+        pointers.push("/termsOfUse");
+    }
+
+    if vcdm.refresh_service.is_some() {
+        pointers.push("/refreshService");
+    }
+
+    pointers.iter().map(ToString::to_string).collect()
 }

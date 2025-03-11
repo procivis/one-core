@@ -218,7 +218,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(revocation_list_repository),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(generic_config().core),
-        Some("base_url".to_string()),
+        Some("http://example.com/".to_string()),
     );
 
     let result = service
@@ -791,7 +791,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
         Arc::new(dummy_config()),
-        Some("base_url".to_string()),
+        Some("https://example.com/test/".to_string()),
     );
 
     service
@@ -964,7 +964,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
         Arc::new(config),
-        Some("base_url".to_string()),
+        Some("https://example.com/test/".to_string()),
     );
 
     service

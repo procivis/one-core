@@ -280,25 +280,36 @@ pub(super) fn get_simple_context(
                 "@protected": true,
                 "id": "@id",
                 "type": "@type",
-                format!("{schema_name_pascal}Credential"): {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential"),
+                "ProcivisOneSchema2024": {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#ProcivisOneSchema2024"),
                     "@context": {
-                        "@version": 1.1,
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type"
-                    }
-                },
-                format!("{schema_name_pascal}Subject"): {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject"),
-                    "@context": {
-                        "@version": 1.1,
                         "@protected": true,
                         "id": "@id",
                         "type": "@type",
-                        "Key": format!("{base_url}/ssi/context/v1/{schema_id}#Key"),
-                        "Name": format!("{base_url}/ssi/context/v1/{schema_id}#Name"),
-                        "Address": format!("{base_url}/ssi/context/v1/{schema_id}#Address")
+                        "metadata": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#metadata"),
+                            "@type": "@json"
+                        }
+                    }
+                },
+                schema_name_pascal: {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}")
+                },
+                "TestSubject": {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#TestSubject"),
+                    "@context": {
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        "Key": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Key")
+                        },
+                        "Name": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Name")
+                        },
+                        "Address": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Address")
+                        }
                     }
                 }
             }
@@ -321,36 +332,53 @@ pub(super) fn get_simple_context_bbsplus(
                 "@protected": true,
                 "id": "@id",
                 "type": "@type",
-                format!("{schema_name_pascal}Credential"): {
-                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", base_url),
+                "ProcivisOneSchema2024": {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#ProcivisOneSchema2024"),
                     "@context": {
-                        "@version": 1.1,
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type"
-                    }
-                },
-                format!("{schema_name_pascal}Subject"): {
-                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", base_url),
-                    "@context": {
-                        "@version": 1.1,
                         "@protected": true,
                         "id": "@id",
                         "type": "@type",
-                        "Key 1": format!("{}/ssi/context/v1/{schema_id}#Key%201", base_url),
-                        "USCIS#": format!("{}/ssi/context/v1/{schema_id}#USCIS%23", base_url),
+                        "metadata": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#metadata"),
+                            "@type": "@json"
+                        }
+                    }
+                },
+                schema_name_pascal: {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}", ),
+                },
+                "TestSubject": {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#TestSubject"),
+                    "@context": {
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        "Key 1": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Key%201"),
+                        },
+                        "USCIS#": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#USCIS%23"),
+                        },
                         "Address root": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Address%20root"),
                             "@context": {
-                                "Address1": format!("{}/ssi/context/v1/{schema_id}#Address1", base_url),
-                                "Address2": format!("{}/ssi/context/v1/{schema_id}#Address2", base_url),
+                                "@protected": true,
+                                "id": "@id",
+                                "type": "@type",
+                                "Address1": {
+                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Address1"),
+                                },
+                                "Address2": {
+                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Address2"),
+                                },
                             },
-                            "@id": format!("{}/ssi/context/v1/{schema_id}#Address%20root", base_url),
                         },
                     }
                 }
             }
         }
     ).to_string();
+
     (url, context)
 }
 
@@ -367,38 +395,44 @@ pub(super) fn get_array_context(
                 "@protected": true,
                 "id": "@id",
                 "type": "@type",
-                format!("{schema_name_pascal}Credential"): {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential"),
+                "ProcivisOneSchema2024": {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#ProcivisOneSchema2024"),
                     "@context": {
-                        "@version": 1.1,
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type"
-                    }
-                },
-                format!("{schema_name_pascal}Subject"): {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject"),
-                    "@context": {
-                        "@version": 1.1,
                         "@protected": true,
                         "id": "@id",
                         "type": "@type",
-                        "root": {
-                            "@context": {
-                                "array": {
-                                    //"@container": "@list",
-                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#array"),
-                                },
-                                "object_array": {
-                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#object_array"),
-                                    "@context": {
-                                        "field1": format!("{base_url}/ssi/context/v1/{schema_id}#field1"),
-                                        "field2": format!("{base_url}/ssi/context/v1/{schema_id}#field2"),
-                                    }
-                                },
-                            },
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#root"),
+                        "metadata": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#metadata"),
+                            "@type": "@json"
+                        }
+                    }
+                },
+                schema_name_pascal: {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential")
+                },
+                "root": {
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#root"),
+                    "@context": {
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        "array": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#array"),
                         },
+                        "object_array": {
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#object_array"),
+                            "@context": {
+                                "@protected": true,
+                                "id": "@id",
+                                "type": "@type",
+                                "field1": {
+                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#field1")
+                                },
+                                "field2": {
+                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#field2")
+                                }
+                            }
+                        }
                     }
                 }
             }

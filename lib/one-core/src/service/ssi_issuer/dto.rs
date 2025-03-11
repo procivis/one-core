@@ -19,7 +19,8 @@ pub struct JsonLDContextResponseDTO {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsonLDContextDTO {
-    pub version: f64,
+    // this is needed just for the root context
+    pub version: Option<f64>,
     pub protected: bool,
     pub id: String,
     pub r#type: String,
@@ -28,10 +29,8 @@ pub struct JsonLDContextDTO {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum JsonLDEntityDTO {
-    Reference(String),
     Inline(JsonLDInlineEntityDTO),
     NestedObject(JsonLDNestedEntityDTO),
-    // TODO: nested claims (ONE-1317)
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsonLDNestedEntityDTO {
@@ -41,13 +40,17 @@ pub struct JsonLDNestedEntityDTO {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsonLDNestedContextDTO {
+    pub protected: bool,
+    pub id: String,
+    pub r#type: String,
     pub entities: HashMap<String, JsonLDEntityDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsonLDInlineEntityDTO {
     pub id: String,
-    pub context: JsonLDContextDTO,
+    pub r#type: Option<String>,
+    pub context: Option<JsonLDContextDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::CredentialSchemaId;
 use strum::Display;
 use time::OffsetDateTime;
@@ -125,6 +126,7 @@ pub enum WalletStorageTypeEnum {
     RemoteSecureElement,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutProperties {

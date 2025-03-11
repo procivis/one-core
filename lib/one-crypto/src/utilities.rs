@@ -26,6 +26,14 @@ pub fn create_hmac(key: &[u8], message: &[u8]) -> Option<Vec<u8>> {
     Some(result.into_bytes().to_vec())
 }
 
+pub fn build_hmac_sha256(key: &[u8]) -> Option<impl FnMut(&[u8]) -> Vec<u8>> {
+    let mut mac = HmacSha256::new_from_slice(key).ok()?;
+    Some(move |message: &[u8]| {
+        mac.update(message);
+        mac.finalize_reset().into_bytes().to_vec()
+    })
+}
+
 pub fn generate_random_seed_32() -> [u8; 32] {
     let mut rng = ChaCha20Rng::from_entropy();
     let mut seed = [0u8; 32];

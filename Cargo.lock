@@ -2802,6 +2802,8 @@ checksum = "66994b2bac615128d07a1e4527ad29e98b004dd1a1769e7b8fbc1173ccf43006"
 dependencies = [
  "lexical",
  "ryu-js",
+ "serde",
+ "serde_json",
  "smallvec",
 ]
 
@@ -2819,6 +2821,8 @@ dependencies = [
  "locspan",
  "locspan-derive",
  "ryu-js",
+ "serde",
+ "serde_json",
  "smallstr",
  "smallvec",
  "utf8-decode",
@@ -3485,7 +3489,6 @@ dependencies = [
  "indoc",
  "itertools 0.13.0",
  "json-ld",
- "json-ld-syntax",
  "json-syntax",
  "jsonptr",
  "jsonschema",
@@ -5356,6 +5359,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63b1aefdf380735ff8ded0b15f31aab05daf1f70216c01c02a12926badd1df9d"
 dependencies = [
+ "serde",
  "smallvec",
 ]
 

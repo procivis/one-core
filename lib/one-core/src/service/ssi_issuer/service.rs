@@ -59,11 +59,6 @@ impl SSIIssuerService {
     }
 
     async fn get_json_ld_context_for_lvvc(&self) -> Result<JsonLDContextResponseDTO, ServiceError> {
-        let version = 1.1;
-        let protected = true;
-        let id = "@id";
-        let r#type = "@type";
-
         let base_url = format!(
             "{}/ssi/context/v1/lvvc.json",
             self.core_base_url
@@ -73,41 +68,46 @@ impl SSIIssuerService {
                 ))?,
         );
 
-        Ok(JsonLDContextResponseDTO {
-            context: JsonLDContextDTO {
-                version,
-                protected,
-                id: id.to_owned(),
-                r#type: r#type.to_owned(),
-                entities: HashMap::from([(
+        let context = JsonLDContextDTO {
+            entities: HashMap::from([
+                (
                     "LvvcCredential".to_string(),
                     JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
                         id: get_url_with_fragment(&base_url, "LvvcCredential")?,
-                        context: JsonLDContextDTO {
-                            version,
-                            protected,
-                            id: id.to_owned(),
-                            r#type: r#type.to_owned(),
-                            entities: HashMap::from([
-                                (
-                                    "status".to_string(),
-                                    JsonLDEntityDTO::Reference(get_url_with_fragment(
-                                        &base_url, "status",
-                                    )?),
-                                ),
-                                (
-                                    "suspendEndDate".to_string(),
-                                    JsonLDEntityDTO::Reference(get_url_with_fragment(
-                                        &base_url,
-                                        "suspendEndDate",
-                                    )?),
-                                ),
-                            ]),
-                        },
+                        r#type: None,
+                        context: None,
                     }),
-                )]),
-            },
-        })
+                ),
+                (
+                    "status".to_string(),
+                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                        id: get_url_with_fragment(&base_url, "status")?,
+                        r#type: None,
+                        context: None,
+                    }),
+                ),
+                (
+                    "suspendEndDate".to_string(),
+                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                        id: get_url_with_fragment(&base_url, "suspendEndDate")?,
+                        r#type: None,
+                        context: None,
+                    }),
+                ),
+                // needed since we set credentialStatus.type to LVVC
+                (
+                    "LVVC".to_string(),
+                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                        id: get_url_with_fragment(&base_url, "LVVC")?,
+                        r#type: None,
+                        context: None,
+                    }),
+                ),
+            ]),
+            ..Default::default()
+        };
+
+        Ok(JsonLDContextResponseDTO { context })
     }
 
     async fn get_json_ld_context_for_credential_schema(
@@ -147,31 +147,44 @@ impl SSIIssuerService {
         );
 
         let schema_name = credential_schema.name.to_case(Case::Pascal);
-        let credential_name = format!("{schema_name}Credential");
-        let subject_name = format!("{schema_name}Subject");
-        let claims = generate_jsonld_context_response(claim_schemas, &base_url)?;
+        let schema_type = credential_schema.schema_type.to_string();
+
+        let mut entities = HashMap::from([
+            (
+                schema_type.to_owned(),
+                JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                    id: get_url_with_fragment(&base_url, &schema_type)?,
+                    r#type: None,
+                    context: Some(JsonLDContextDTO {
+                        version: None,
+                        protected: true,
+                        id: "@id".to_string(),
+                        r#type: "@type".to_string(),
+                        entities: HashMap::from_iter([(
+                            "metadata".to_string(),
+                            JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                                id: get_url_with_fragment(&base_url, "metadata")?,
+                                r#type: Some("@json".to_string()),
+                                context: None,
+                            }),
+                        )]),
+                    }),
+                }),
+            ),
+            (
+                schema_name.to_owned(),
+                JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                    id: get_url_with_fragment(&base_url, &schema_name)?,
+                    r#type: None,
+                    context: None,
+                }),
+            ),
+        ]);
+        entities.extend(generate_jsonld_context_response(claim_schemas, &base_url)?);
 
         Ok(JsonLDContextResponseDTO {
             context: JsonLDContextDTO {
-                entities: HashMap::from([
-                    (
-                        credential_name.to_owned(),
-                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                            id: get_url_with_fragment(&base_url, &credential_name)?,
-                            context: JsonLDContextDTO::default(),
-                        }),
-                    ),
-                    (
-                        subject_name.to_owned(),
-                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                            id: get_url_with_fragment(&base_url, &subject_name)?,
-                            context: JsonLDContextDTO {
-                                entities: claims,
-                                ..Default::default()
-                            },
-                        }),
-                    ),
-                ]),
+                entities,
                 ..Default::default()
             },
         })

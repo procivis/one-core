@@ -1,6 +1,8 @@
+use convert_case::{Case, Casing};
 use indexmap::IndexSet;
 use shared_types::DidValue;
 use time::OffsetDateTime;
+use url::Url;
 use uuid::fmt::Urn;
 
 use super::common::map_claims;
@@ -18,7 +20,7 @@ pub fn credential_data_from_credential_detail_response(
     credential: CredentialDetailResponseDTO,
     holder_did: DidValue,
     holder_key_id: String,
-    _core_base_url: &str,
+    core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
     context: IndexSet<ContextType>,
 ) -> Result<CredentialData, ServiceError> {
@@ -72,16 +74,16 @@ pub fn credential_data_from_credential_detail_response(
         metadata: layout_metadata,
     };
 
-    // todo: Uncomment this to add the credential context after bbs+ is fixed in https://procivis.atlassian.net/browse/ONE-4764
-    // let mut context = context;
-    // let credential_schema_context: Url =
-    //     format!("{core_base_url}/ssi/context/v1/{}", credential.schema.id)
-    //         .parse()
-    //         .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
-    // context.insert(ContextType::Url(credential_schema_context));
+    let mut context = context;
+    let credential_schema_context: Url =
+        format!("{core_base_url}/ssi/context/v1/{}", credential.schema.id)
+            .parse()
+            .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
+    context.insert(ContextType::Url(credential_schema_context));
 
     let issuer = Issuer::Url(issuer_did.into_url());
     let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+        .add_type(credential.schema.name.to_case(Case::Pascal))
         .add_credential_schema(credential_schema)
         .with_valid_from(valid_from)
         .with_valid_until(valid_until);

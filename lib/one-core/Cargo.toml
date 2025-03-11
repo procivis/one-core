@@ -30,8 +30,7 @@ human-sort               = { version = "0.2" }
 indexmap.workspace       = true
 itertools                = { version = "0.13" }
 json-ld                  = { version = "0.21" }
-json-ld-syntax           = { version = "0.21" }
-json-syntax              = { version = "0.12" }
+json-syntax              = { version = "0.12", features = ["serde", "serde_json"] }
 jsonptr                  = { version = "0.6" }
 mime                     = { version = "0.3" }
 mockall                  = { workspace = true, optional = true }

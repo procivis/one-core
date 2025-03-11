@@ -1,7 +1,6 @@
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
-use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_json_ld_context_success() {
@@ -26,18 +25,34 @@ async fn test_get_json_ld_context_success() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp["@context"]["TestSchemaCredential"]["@id"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#TestSchemaCredential",
-        core_base_url, credential_schema.id
-    ));
-    resp["@context"]["TestSchemaSubject"]["@id"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#TestSchemaSubject",
-        core_base_url, credential_schema.id
-    ));
-    resp["@context"]["TestSchemaSubject"]["@context"]["firstName"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#firstName",
-        core_base_url, credential_schema.id
-    ));
+    assert_eq!(
+        resp["@context"]["ProcivisOneSchema2024"]["@id"],
+        format!(
+            "{core_base_url}/ssi/context/v1/{}#ProcivisOneSchema2024",
+            credential_schema.id
+        )
+    );
+    assert_eq!(
+        resp["@context"]["TestSchema"]["@id"],
+        format!(
+            "{core_base_url}/ssi/context/v1/{}#TestSchema",
+            credential_schema.id
+        )
+    );
+    assert_eq!(
+        resp["@context"]["firstName"]["@id"],
+        format!(
+            "{core_base_url}/ssi/context/v1/{}#firstName",
+            credential_schema.id
+        )
+    );
+    assert_eq!(
+        resp["@context"]["isOver18"]["@id"],
+        format!(
+            "{core_base_url}/ssi/context/v1/{}#isOver18",
+            credential_schema.id
+        )
+    );
 }
 
 #[tokio::test]
@@ -75,41 +90,39 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp["@context"]["TestSchemaCredential"]["@id"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#TestSchemaCredential",
-        core_base_url, credential_schema.id
-    ));
-    resp["@context"]["TestSchemaSubject"]["@id"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#TestSchemaSubject",
-        core_base_url, credential_schema.id
-    ));
-    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@id"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#address",
-        core_base_url, credential_schema.id
-    ));
-    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["street"].assert_eq(
-        &format!(
-            "{}/ssi/context/v1/{}#street",
-            core_base_url, credential_schema.id
-        ),
+    let credential_schema_id = credential_schema.id;
+    assert_eq!(
+        resp["@context"]["ProcivisOneSchema2024"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#ProcivisOneSchema2024",)
     );
-    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["coordinates"]["@id"]
-        .assert_eq(&format!(
-            "{}/ssi/context/v1/{}#coordinates",
-            core_base_url, credential_schema.id
-        ));
-    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["coordinates"]
-        ["@context"]["x"]
-        .assert_eq(&format!(
-            "{}/ssi/context/v1/{}#x",
-            core_base_url, credential_schema.id
-        ));
-    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["coordinates"]
-        ["@context"]["y"]
-        .assert_eq(&format!(
-            "{}/ssi/context/v1/{}#y",
-            core_base_url, credential_schema.id
-        ));
+    assert_eq!(
+        resp["@context"]["ProcivisOneSchema2024"]["@context"]["metadata"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#metadata",)
+    );
+    assert_eq!(
+        resp["@context"]["TestSchema"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#TestSchema",)
+    );
+    assert_eq!(
+        resp["@context"]["address"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#address",)
+    );
+    assert_eq!(
+        resp["@context"]["address"]["@context"]["street"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#street",)
+    );
+    assert_eq!(
+        resp["@context"]["address"]["@context"]["coordinates"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#coordinates",)
+    );
+    assert_eq!(
+        resp["@context"]["address"]["@context"]["coordinates"]["@context"]["x"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#x",)
+    );
+    assert_eq!(
+        resp["@context"]["address"]["@context"]["coordinates"]["@context"]["y"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#y",)
+    );
 }
 
 #[tokio::test]
@@ -135,12 +148,13 @@ async fn test_get_json_ld_context_special_chars_success() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp["@context"]["TestSchemaCredential"]["@id"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#TestSchemaCredential",
-        core_base_url, credential_schema.id
-    ));
-    resp["@context"]["TestSchemaSubject"]["@context"]["first name#"].assert_eq(&format!(
-        "{}/ssi/context/v1/{}#first%20name%23",
-        core_base_url, credential_schema.id
-    ));
+    let credential_schema_id = credential_schema.id;
+    assert_eq!(
+        resp["@context"]["ProcivisOneSchema2024"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#ProcivisOneSchema2024",)
+    );
+    assert_eq!(
+        resp["@context"]["first name#"]["@id"],
+        format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#first%20name%23",)
+    );
 }

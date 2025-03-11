@@ -1,40 +1,23 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
-pub(super) static CBOR_PREFIX_BASE: [u8; 3] = [0xd9, 0x5d, 0x02];
-pub(super) static CBOR_PREFIX_DERIVED: [u8; 3] = [0xd9, 0x5d, 0x03];
+pub(super) const CBOR_PREFIX_BASE: [u8; 3] = [0xd9, 0x5d, 0x02];
+pub(super) const CBOR_PREFIX_DERIVED: [u8; 3] = [0xd9, 0x5d, 0x03];
 
-#[derive(Debug, Clone)]
-pub struct GroupedFormatDataDocument {
-    pub mandatory: TransformedEntry,
-    pub non_mandatory: TransformedEntry,
-}
-
-#[derive(Debug, Clone)]
-pub struct TransformedEntry {
-    pub data_type: String,
-    pub value: Vec<GroupEntry>,
-}
-
-#[derive(Debug, Clone)]
-pub struct GroupEntry {
-    pub index: usize,
-    pub entry: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct HashData {
-    pub transformed_document: GroupedFormatDataDocument,
-    pub proof_config_hash: Vec<u8>,
-    pub mandatory_hash: Vec<u8>,
+pub struct ParsedBbsDerivedProofComponents {
+    pub bbs_proof: Vec<u8>,
+    pub decompressed_label_map: BTreeMap<String, String>,
+    pub mandatory_indexes: Vec<usize>,
+    pub selective_indexes: Vec<usize>,
+    pub presentation_header: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(into = "ciborium::Value")]
 #[serde(try_from = "ciborium::Value")]
-pub struct BbsProofComponents {
+pub struct BbsBaseProofComponents {
     pub bbs_signature: Vec<u8>,
     pub bbs_header: Vec<u8>,
     pub public_key: Vec<u8>,
@@ -42,8 +25,8 @@ pub struct BbsProofComponents {
     pub mandatory_pointers: Vec<String>,
 }
 
-impl From<BbsProofComponents> for ciborium::Value {
-    fn from(value: BbsProofComponents) -> Self {
+impl From<BbsBaseProofComponents> for ciborium::Value {
+    fn from(value: BbsBaseProofComponents) -> Self {
         ciborium::Value::Array(vec![
             ciborium::Value::Bytes(value.bbs_signature),
             ciborium::Value::Bytes(value.bbs_header),
@@ -60,7 +43,7 @@ impl From<BbsProofComponents> for ciborium::Value {
     }
 }
 
-impl TryFrom<ciborium::Value> for BbsProofComponents {
+impl TryFrom<ciborium::Value> for BbsBaseProofComponents {
     type Error = anyhow::Error;
 
     fn try_from(value: ciborium::Value) -> anyhow::Result<Self> {
@@ -103,7 +86,7 @@ impl TryFrom<ciborium::Value> for BbsProofComponents {
             None => bail!("Missing `mandatory_pointers` property"),
         };
 
-        Ok(BbsProofComponents {
+        Ok(BbsBaseProofComponents {
             bbs_signature,
             bbs_header,
             public_key,
@@ -113,19 +96,14 @@ impl TryFrom<ciborium::Value> for BbsProofComponents {
     }
 }
 
-pub enum BbsProofType {
-    BaseProof(BbsProofComponents),
-    DerivedProof(BbsDerivedProofComponents),
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(into = "ciborium::Value")]
 #[serde(try_from = "ciborium::Value")]
 pub struct BbsDerivedProofComponents {
     pub bbs_proof: Vec<u8>,
-    pub compressed_label_map: HashMap<usize, usize>,
-    pub mandatory_indices: Vec<usize>,
-    pub selective_indices: Vec<usize>,
+    pub compressed_label_map: BTreeMap<usize, usize>,
+    pub mandatory_indexes: Vec<usize>,
+    pub selective_indexes: Vec<usize>,
     pub presentation_header: Vec<u8>,
 }
 
@@ -147,14 +125,14 @@ impl From<BbsDerivedProofComponents> for ciborium::Value {
             ciborium::Value::Map(compressed_label_map),
             ciborium::Value::Array(
                 value
-                    .mandatory_indices
+                    .mandatory_indexes
                     .into_iter()
                     .map(|i| ciborium::Value::Integer(i.into()))
                     .collect(),
             ),
             ciborium::Value::Array(
                 value
-                    .selective_indices
+                    .selective_indexes
                     .into_iter()
                     .map(|i| ciborium::Value::Integer(i.into()))
                     .collect(),
@@ -179,7 +157,7 @@ impl TryFrom<ciborium::Value> for BbsDerivedProofComponents {
             None => bail!("Missing `bbs_proof` property"),
         };
 
-        let compressed_label_map: HashMap<usize, usize> =
+        let compressed_label_map: BTreeMap<usize, usize> =
             match array.next().map(|v| v.deserialized()) {
                 Some(Ok(map)) => map,
                 Some(Err(err)) => bail!("Invalid value for `compressed_label_map` property: {err}"),
@@ -209,8 +187,8 @@ impl TryFrom<ciborium::Value> for BbsDerivedProofComponents {
         Ok(BbsDerivedProofComponents {
             bbs_proof,
             compressed_label_map,
-            mandatory_indices,
-            selective_indices,
+            mandatory_indexes: mandatory_indices,
+            selective_indexes: selective_indices,
             presentation_header,
         })
     }

@@ -16,7 +16,6 @@ use crate::utils::db_clients::keys::es256_testing_params;
 
 static RANDOM_DOCUMENT: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCg";
 static DOCUMENT_INVALID_SIG: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCw";
-static COMPLEX_DOCUMENT: &str = r#"{"@context":["https://www.w3.org/ns/credentials/v2"],"type":["VerifiableCredential"],"issuer":"did:key:zDnaeZZZ4m4DH68sGiTsZPCa3KY3m5nf5NBxdKdKEgMfguYeg","validFrom":"2024-11-05T09:44:22.98107543Z","credentialSubject":{"id":"did:key:zDnaeiNjkFSqKcWLqnhpHS7mGv3a7yP8PxFQ95fk9jttpzZN3","root array":["item 1","item 2","item 3"],"root obj array":"Wrong type :facepalm:","root obj":{"nested array":["11","12","13"],"nested item":"nested item","nested obj array":[{"Field 1":"f11","Field 2":"f12"},{"Field 1":"f21","Field 2":"f22"}]},"root string":"rot string"},"proof":{"type":"DataIntegrityProof","created":"2024-11-05T09:44:22.981107696Z","cryptosuite":"ecdsa-rdfc-2019","verificationMethod":"did:key:zDnaeZZZ4m4DH68sGiTsZPCa3KY3m5nf5NBxdKdKEgMfguYeg#zDnaeZZZ4m4DH68sGiTsZPCa3KY3m5nf5NBxdKdKEgMfguYeg","proofPurpose":"assertionMethod","proofValue":"z3pEWQyKK45zK7Kx5MUFPute79Q3xKEkPXVyFnH9Hi2BxhLz6FBMgT3cmnaR961VaF6rys9CnEHynLbDmNRtaWSoF"},"credentialSchema":{"id":"https://core.dev.procivis-one.com/ssi/schema/v1/d0f956bc-9e44-4d95-bf47-427da3a63ce3","type":"ProcivisOneSchema2024"}}"#;
 
 #[tokio::test]
 async fn test_issuance_accept_openid4vc() {
@@ -1387,7 +1386,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
-                    "did:key:zDnaeZZZ4m4DH68sGiTsZPCa3KY3m5nf5NBxdKdKEgMfguYeg"
+                    "did:key:z6MkmbnkXaAsQrxgo9uGVrKSsm5w6jezSr52MwV7RayDWjxL"
                         .parse()
                         .unwrap(),
                 ),
@@ -1395,6 +1394,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             },
         )
         .await;
+
     let key = context
         .db
         .keys
@@ -1411,7 +1411,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                     key,
                 }]),
                 did: Some(
-                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                    DidValue::from_str("did:key:z6MkviStFZjsFT9KP8R8vaXZJj5i4ouvmHxh7CpGrptzfMHD")
                         .unwrap(),
                 ),
                 ..Default::default()
@@ -1419,7 +1419,6 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         )
         .await;
 
-    let root_string_id = Uuid::new_v4().into();
     let credential_schema = context
         .db
         .credential_schemas
@@ -1433,7 +1432,29 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                     CredentialSchemaClaim {
                         schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
-                            key: "root obj".to_string(),
+                            key: "first name".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: datetime!(2024-10-20 12:00 +1),
+                            last_modified: datetime!(2024-10-20 12:00 +1),
+                            array: false,
+                        },
+                        required: true,
+                    },
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            key: "last name".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: datetime!(2024-10-20 12:00 +1),
+                            last_modified: datetime!(2024-10-20 12:00 +1),
+                            array: false,
+                        },
+                        required: true,
+                    },
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            key: "address".to_string(),
                             data_type: "OBJECT".to_string(),
                             created_date: datetime!(2024-10-20 12:00 +1),
                             last_modified: datetime!(2024-10-20 12:00 +1),
@@ -1444,51 +1465,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                     CredentialSchemaClaim {
                         schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
-                            key: "root obj/nested array".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: true,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root obj/nested item".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: true,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root obj/nested array".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: true,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root obj/nested obj array".to_string(),
-                            data_type: "OBJECT".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: true,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root obj/nested obj array/Field 1".to_string(),
+                            key: "address/postal code".to_string(),
                             data_type: "STRING".to_string(),
                             created_date: datetime!(2024-10-20 12:00 +1),
                             last_modified: datetime!(2024-10-20 12:00 +1),
@@ -1499,40 +1476,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                     CredentialSchemaClaim {
                         schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
-                            key: "root obj/nested obj array/Field 2".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root array".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: true,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: root_string_id,
-                            key: "root string".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                        },
-                        required: true,
-                    },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root obj array".to_string(),
+                            key: "address/street".to_string(),
                             data_type: "STRING".to_string(),
                             created_date: datetime!(2024-10-20 12:00 +1),
                             last_modified: datetime!(2024-10-20 12:00 +1),
@@ -1581,11 +1525,40 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             "OPENID4VC",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
-                claims_data: Some(vec![(
-                    root_string_id.into(),
-                    "root string",
-                    "removed_value",
-                )]),
+                claims_data: Some(vec![
+                    (
+                        credential_schema.claim_schemas.as_ref().unwrap()[0]
+                            .schema
+                            .id
+                            .into(),
+                        "first name",
+                        "John",
+                    ),
+                    (
+                        credential_schema.claim_schemas.as_ref().unwrap()[1]
+                            .schema
+                            .id
+                            .into(),
+                        "last name",
+                        "Doe",
+                    ),
+                    (
+                        credential_schema.claim_schemas.as_ref().unwrap()[3]
+                            .schema
+                            .id
+                            .into(),
+                        "address/postal code",
+                        "1234",
+                    ),
+                    (
+                        credential_schema.claim_schemas.as_ref().unwrap()[4]
+                            .schema
+                            .id
+                            .into(),
+                        "address/street",
+                        "Via Torino",
+                    ),
+                ]),
                 ..Default::default()
             },
         )
@@ -1593,7 +1566,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", COMPLEX_DOCUMENT, "JWT", 1)
+        .ssi_credential_endpoint(credential_schema.id, "123", complex_document(), "JWT", 1)
         .await;
 
     context
@@ -1616,41 +1589,92 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
 
     let claim = claims
         .iter()
-        .find(|claim| claim.path == "root obj/nested array/0")
+        .find(|claim| claim.path == "first name")
         .unwrap();
-
-    assert_eq!(claim.value, "11");
-    assert_eq!(claim.schema.as_ref().unwrap().key, "root obj/nested array");
+    assert_eq!(claim.value, "John");
+    assert_eq!(claim.schema.as_ref().unwrap().key, "first name");
 
     let claim = claims
         .iter()
-        .find(|claim| claim.path == "root obj/nested item")
+        .find(|claim| claim.path == "last name")
         .unwrap();
-
-    assert_eq!(claim.value, "nested item");
-    assert_eq!(claim.schema.as_ref().unwrap().key, "root obj/nested item");
+    assert_eq!(claim.value, "Doe");
+    assert_eq!(claim.schema.as_ref().unwrap().key, "last name");
 
     let claim = claims
         .iter()
-        .find(|claim| claim.path == "root obj/nested obj array/1/Field 2")
+        .find(|claim| claim.path == "address/postal code")
         .unwrap();
+    assert_eq!(claim.value, "1234");
+    assert_eq!(claim.schema.as_ref().unwrap().key, "address/postal code");
 
-    assert_eq!(claim.value, "f22");
-    assert_eq!(
-        claim.schema.as_ref().unwrap().key,
-        "root obj/nested obj array/Field 2"
-    );
-
-    let claims_that_existed: Vec<_> = claims
+    let claim = claims
         .iter()
-        .filter(|claim| claim.path == "root string")
-        .collect();
+        .find(|claim| claim.path == "address/street")
+        .unwrap();
+    assert_eq!(claim.value, "Via Torino");
+    assert_eq!(claim.schema.as_ref().unwrap().key, "address/street");
+}
 
-    assert_eq!(claims_that_existed.len(), 1);
-
-    assert_ne!(claims_that_existed[0].value, "removed_value");
-    assert_eq!(
-        claims_that_existed[0].schema.as_ref().unwrap().key,
-        "root string"
-    );
+fn complex_document() -> &'static str {
+    r#"{
+            "@context": [
+                "https://www.w3.org/ns/credentials/v2",
+                {
+                    "ProcivisOneSchema2024": {
+                        "@context": {
+                            "@protected": true,
+                            "id": "@id",
+                            "type": "@type",
+                            "metadata": {
+                                "@id": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#metadata",
+                                "@type": "@json"
+                            }
+                        },
+                        "@id": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#ProcivisOneSchema2024"
+                    },
+                    "SimpleTest": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#SimpleTest",
+                    "last name": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#last%20name",
+                    "first name": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#first%20name",
+                    "address": {
+                        "@context": {
+                            "@protected": true,
+                            "id": "@id",
+                            "type": "@type",
+                            "postal code": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#postal%20code",
+                            "street": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#street"
+                        },
+                        "@id": "http://0.0.0.0:3000/ssi/context/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f#address"
+                    }
+                }
+            ],
+            "type": [
+                "VerifiableCredential",
+                "SimpleTest"
+            ],
+            "issuer": "did:key:z6MkmbnkXaAsQrxgo9uGVrKSsm5w6jezSr52MwV7RayDWjxL",
+            "validFrom": "2025-03-10T22:13:36.652829Z",
+            "validUntil": "2027-03-10T22:13:36.652829Z",
+            "credentialSubject": {
+                "id": "did:key:z6MkviStFZjsFT9KP8R8vaXZJj5i4ouvmHxh7CpGrptzfMHD",
+                "first name": "John",
+                "last name": "Doe",
+                "address": {
+                    "postal code": "1234",
+                    "street": "Via Torino"
+                }
+            },
+            "proof": {
+                "type": "DataIntegrityProof",
+                "created": "2025-03-10T22:13:36.653229Z",
+                "cryptosuite": "eddsa-rdfc-2022",
+                "verificationMethod": "did:key:z6MkmbnkXaAsQrxgo9uGVrKSsm5w6jezSr52MwV7RayDWjxL#z6MkmbnkXaAsQrxgo9uGVrKSsm5w6jezSr52MwV7RayDWjxL",
+                "proofPurpose": "assertionMethod",
+                "proofValue": "z3VzJfDiE21cCnhVufh6C9uGHibe7gsn5v2D4DN8w9FZaSTUMqq8wPEtiaCEPKkpSxXAvpjvPj5QMKZJCLtpZGBf7"
+            },
+            "credentialSchema": {
+                "id": "http://0.0.0.0:3000/ssi/schema/v1/88f2e231-cead-4034-b28e-c02c29e8eb3f",
+                "type": "ProcivisOneSchema2024"
+            }
+        }"#
 }

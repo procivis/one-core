@@ -3,7 +3,6 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_crypto::SignerError;
 use shared_types::DidValue;
-use tracing::info;
 
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::TokenVerifier;
@@ -51,16 +50,15 @@ impl TokenVerifier for KeyVerification {
             key_id_list.first().ok_or(SignerError::MissingKey)?
         };
 
-        info!("Verification method_id: {method_id}");
+        tracing::debug!("Verification method_id: {method_id}");
         let method = did_document
             .verification_method
             .iter()
             .find(|method| method.id == method_id)
             .ok_or(SignerError::MissingKey)?;
 
-        info!("Verification method: {:#?}", method);
-
-        info!("Verification algorithm: {algorithm}");
+        tracing::debug!("Verification method: {:#?}", method);
+        tracing::debug!("Verification algorithm: {algorithm}");
         let alg = self
             .key_algorithm_provider
             .key_algorithm_from_id(algorithm)

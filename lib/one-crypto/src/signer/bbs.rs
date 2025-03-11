@@ -70,6 +70,7 @@ pub struct BbsDeriveInput {
     pub header: Vec<u8>,
     pub messages: Vec<(Vec<u8>, bool)>,
     pub signature: Vec<u8>,
+    pub presentation_header: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -94,11 +95,11 @@ impl BBSSigner {
         GeneratedKey { public, private }
     }
 
-    pub fn derive_proof(input: &BbsDeriveInput, public_key: &[u8]) -> Result<Vec<u8>, SignerError> {
+    pub fn derive_proof(input: BbsDeriveInput, public_key: &[u8]) -> Result<Vec<u8>, SignerError> {
         let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
-        let header = input.header.clone();
+        let header = input.header;
 
         let messages: Vec<BbsProofGenRevealMessageRequest<Vec<u8>>> = input
             .messages
@@ -121,12 +122,12 @@ impl BBSSigner {
             header: Some(header),
             messages: Some(messages.as_slice()),
             signature: &signature,
-            presentation_header: None,
+            presentation_header: input.presentation_header,
             verify_signature: Some(true),
         })
         .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
 
-        Ok(signature.to_vec())
+        Ok(signature)
     }
 
     pub fn verify_proof(input: &BbsProofInput, public_key: &[u8]) -> Result<(), SignerError> {
