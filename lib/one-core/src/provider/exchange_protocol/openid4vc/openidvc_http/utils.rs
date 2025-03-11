@@ -10,9 +10,9 @@ use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
-    OpenID4VpPresentationFormat,
+    ClientIdSchemaType, OpenID4VCParams, OpenID4VCVerifierAttestationPayload,
+    OpenID4VPAuthorizationRequestParams, OpenID4VPAuthorizationRequestQueryParams,
+    OpenID4VPHolderInteractionData, OpenID4VpPresentationFormat,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::x509::extract_x5c_san_dns;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -202,9 +202,16 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         key_role: KeyRole::AssertionMethod,
     });
 
-    let attestation_jwt = Jwt::<()>::build_from_token(&attestation_jwt, Some(key_verification))
-        .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+    /*
+     * TODO(ONE-3846): this should be created by some trusted entity, not by current verifier.
+     *     Key verification function should only allow trusted entity keys
+     */
+    let attestation_jwt = Jwt::<OpenID4VCVerifierAttestationPayload>::build_from_token(
+        &attestation_jwt,
+        Some(key_verification),
+    )
+    .await
+    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let (_alg_id, alg) = key_algorithm_provider
         .key_algorithm_from_jose_alg(&request_token.header.algorithm)
@@ -236,6 +243,17 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
+    validate_against_redirect_uris(
+        &attestation_jwt.payload.custom.redirect_uris,
+        response_content.redirect_uri.as_deref(),
+    )?;
+    validate_against_redirect_uris(
+        &attestation_jwt.payload.custom.redirect_uris,
+        response_content
+            .response_uri
+            .as_ref()
+            .map(|url| url.as_str()),
+    )?;
 
     let client_id = attestation_jwt
         .payload
@@ -252,6 +270,22 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         verifier_did,
         ..response_content
     })
+}
+
+fn validate_against_redirect_uris(
+    redirect_uris: &[String],
+    uri: Option<&str>,
+) -> Result<(), ExchangeProtocolError> {
+    if let Some(uri) = uri {
+        if !redirect_uris.iter().any(|v| v == uri) {
+            return Err(ExchangeProtocolError::Failed(
+                "redirect_uri or response_uri is not allowed by verifier_attestation token"
+                    .to_string(),
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 pub(crate) async fn interaction_data_from_query(
@@ -376,7 +410,7 @@ pub(crate) async fn interaction_data_from_query(
         // client_id from the query params must match client_id inisde the token
         if referenced_params.client_id != interaction_data.client_id {
             return Err(ExchangeProtocolError::InvalidRequest(
-                "cliet_id mismatch with the request token".to_string(),
+                "client_id mismatch with the request token".to_string(),
             ));
         }
 

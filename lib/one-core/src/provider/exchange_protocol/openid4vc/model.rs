@@ -1116,3 +1116,8 @@ pub struct OpenID4VCRedirectUriParams {
     pub disabled: bool,
     pub allowed_schemes: Vec<String>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenID4VCVerifierAttestationPayload {
+    pub redirect_uris: Vec<String>,
+}

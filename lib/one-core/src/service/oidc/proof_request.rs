@@ -18,8 +18,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams, OpenID4VPClientMetadata,
-    OpenID4VPVerifierInteractionContent,
+    ClientIdSchemaType, OpenID4VCVerifierAttestationPayload, OpenID4VPAuthorizationRequestParams,
+    OpenID4VPClientMetadata, OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_presentation_definition,
@@ -118,6 +118,19 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
 
     let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
 
+    /*
+     * TODO(ONE-3846): this needs to be issued and obtained from external authority,
+     *     holder needs to know the authority and should check if it's signed by it
+     */
+    let response_uri = client_response
+        .response_uri
+        .as_ref()
+        .map(|url| url.to_string())
+        .unwrap_or_default();
+    let custom = OpenID4VCVerifierAttestationPayload {
+        redirect_uris: vec![response_uri],
+    };
+
     let attestation_jwt = Jwt {
         header: JWTHeader {
             algorithm: jose_algorithm.to_owned(),
@@ -135,7 +148,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
             subject: Some(client_response.client_id.to_owned()),
             audience: None,
             jwt_id: None,
-            custom: (),
+            custom,
             proof_of_possession_key,
             vc_type: None,
         },
