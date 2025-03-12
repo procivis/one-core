@@ -184,6 +184,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
             let revocation_list_id = Uuid::new_v4();
             let list_credential = format_status_list_credential(
                 &revocation_list_id,
+                status_list_type.clone(),
                 issuer_did,
                 encoded_list,
                 purpose.to_owned(),

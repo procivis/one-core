@@ -403,6 +403,7 @@ impl BitstringStatusList {
 
         let list_credential = format_status_list_credential(
             &list_id,
+            StatusListType::BitstringStatusList,
             &issuer_did,
             encoded_list,
             purpose,
@@ -478,6 +479,7 @@ pub fn purpose_to_bitstring_status_purpose(purpose: RevocationListPurpose) -> St
 #[allow(clippy::too_many_arguments)]
 pub async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
+    status_list_type: StatusListType,
     issuer_did: &Did,
     encoded_list: String,
     purpose: RevocationListPurpose,
@@ -504,7 +506,7 @@ pub async fn format_status_list_credential(
             key.key_type.to_owned(),
             auth_fn,
             purpose_to_bitstring_status_purpose(purpose),
-            StatusListType::BitstringStatusList,
+            status_list_type,
         )
         .await?;
 
