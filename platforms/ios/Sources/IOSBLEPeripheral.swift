@@ -24,16 +24,16 @@ class IOSBLEPeripheral: NSObject {
     private var readyToUpdateSubscribersCallbacks: [() async -> Void] = []
     
     private let readLock = NSLock()
-    private var getCharacteristicReadResultCallbacks: [CharacteristicKey: BLEResultCallback<Void>] = [:]
+    private var getCharacteristicReadResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
     private var characteristicReadsQueue: [String: Set<String>] = [:]
     private var characteristicValues: [String: Data] = [:]
     
     private let writeLock = NSLock()
-    private var getCharacteristicWritesResultCallbacks: [CharacteristicKey: BLEResultCallback<[Data]>] = [:]
+    private var getCharacteristicWritesResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<[Data]>] = [:]
     private var characteristicWritesQueue: [CharacteristicKey: [Data]] = [:]
     
     private let connectionLock = NSLock()
-    private var getConnectionChangeEventsResultCallback: BLEResultCallback<[ConnectionEventBindingEnum]>?
+    private var getConnectionChangeEventsResultCallback: BLEThrowingResultCallback<[ConnectionEventBindingEnum]>?
     private var connectedCentrals: [CBCentral: [CBCharacteristic]] = [:]
     private var connectionChangeEventsQueue: [ConnectionEventBindingEnum] = []
 }
@@ -119,16 +119,24 @@ extension IOSBLEPeripheral: BlePeripheral {
             readyToUpdateSubscribersCallbacks = []
         }
         readLock.withLock {
+            getCharacteristicReadResultCallbacks.values.forEach { callback in
+                callback(Result.failure(BleError.ServerNotRunning))
+            }
             getCharacteristicReadResultCallbacks = [:]
             characteristicValues = [:]
             characteristicReadsQueue = [:]
         }
         writeLock.withLock {
+            getCharacteristicWritesResultCallbacks.values.forEach { callback in
+                callback(Result.failure(BleError.ServerNotRunning))
+            }
             getCharacteristicWritesResultCallbacks = [:]
             characteristicWritesQueue = [:]
         }
         connectionLock.withLock {
-            getConnectionChangeEventsResultCallback = nil
+            if let callback = getConnectionChangeEventsResultCallback {
+                callback(Result.failure(BleError.ServerNotRunning))
+            }
             connectedCentrals = [:]
             connectionChangeEventsQueue = []
         }
@@ -175,7 +183,7 @@ extension IOSBLEPeripheral: BlePeripheral {
                     guard let self = self else {
                         continuation.resume(throwing: BleError.InvalidCharacteristicOperation(service: service.uuidString,
                                                                                               characteristic: characteristic.uuidString,
-                                                                                                                         operation: "notify"))
+                                                                                              operation: "notify"))
                         return
                     }
                     
@@ -194,7 +202,7 @@ extension IOSBLEPeripheral: BlePeripheral {
     }
     
     func getConnectionChangeEvents() async throws -> [ConnectionEventBindingEnum] {
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             connectionLock.withLock {
                 guard connectionChangeEventsQueue.isEmpty else {
                     let events = connectionChangeEventsQueue
@@ -217,7 +225,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         let serviceUuid = CBUUID(string: service)
         let characteristicUuid = CBUUID(string: characteristic)
         let characteristicKey = characteristicKey(central: centralUuid, service: serviceUuid, characteristic: characteristicUuid)
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             writeLock.withLock {
                 if let writes = characteristicWritesQueue[characteristicKey], !writes.isEmpty {
                     characteristicWritesQueue[characteristicKey] = nil
@@ -239,7 +247,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         let serviceUuid = CBUUID(string: service)
         let characteristicUuid = CBUUID(string: characteristic)
         let characteristicValueKey = characteristicValueKey(service: serviceUuid, characteristic: characteristicUuid)
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             readLock.withLock {
                 if let reads = characteristicReadsQueue[characteristicValueKey], reads.contains(device) {
                     characteristicReadsQueue[characteristicValueKey]?.remove(device)
