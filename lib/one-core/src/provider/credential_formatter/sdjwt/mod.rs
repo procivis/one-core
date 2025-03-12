@@ -278,8 +278,21 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             )
         };
 
+        let subject = match (
+            decomposed_token.payload.subject.as_ref(),
+            decomposed_token.payload.proof_of_possession_key.as_ref(),
+        ) {
+            (Some(subject), _) => Some(subject.to_string()),
+            (None, Some(cnf)) => Some(
+                encode_to_did(&cnf.jwk)
+                    .map(|did| did.to_string())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+            ),
+            (None, None) => None,
+        };
+
         if let Some(verification) = verification {
-            Self::verify_token_signature(&decomposed_token, issuer, &verification).await?;
+            Self::verify_token_signature(&decomposed_token, &issuer_did, &verification).await?;
         };
 
         let disclosures_with_hashes = disclosures
@@ -312,7 +325,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             issued_at: decomposed_token.payload.issued_at,
             expires_at: decomposed_token.payload.expires_at,
             issuer: Some(issuer_did),
-            subject: decomposed_token.payload.subject,
+            subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,
             vc_type: decomposed_token.payload.vc_type,

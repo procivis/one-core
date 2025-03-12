@@ -122,7 +122,7 @@ pub(super) async fn validate_credential(
         .issuer_did
         .as_ref()
         .ok_or(OpenID4VCError::ValidationError(
-            "Missing holder id".to_string(),
+            "Presentation missing holder id".to_string(),
         ))?;
 
     let credential_index = path_nested
@@ -205,20 +205,49 @@ pub(super) async fn validate_credential(
         Some(did) => did,
     };
 
-    let claim_subject_did = did_method_provider
+    let claim_subject_did_document = did_method_provider
         .resolve(claim_subject)
         .await
         .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 
-    let holder_did = did_method_provider
+    let holder_did_document = did_method_provider
         .resolve(holder_did)
         .await
         .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 
-    if claim_subject_did != holder_did {
-        return Err(OpenID4VCError::ValidationError(
-            "Holder DID doesn't match.".to_owned(),
-        ));
+    // Simplest case, the DIDs (and resolved documents) are exactly the same
+    let same_did_document = claim_subject_did_document == holder_did_document;
+
+    // If did documents / DIDs are different, validate that holder has matching key in claim subject
+    if !same_did_document {
+        match holder_did.method() {
+            // Only JWK and Key DID methods are supported for key matching
+            "jwk" | "key" => {
+                // Get the holder's verification key
+                let holder_key = holder_did_document
+                    .find_verification_method(None, None)
+                    .ok_or(OpenID4VCError::ValidationError(
+                        "Presentation signer DID document contains no verification methods"
+                            .to_owned(),
+                    ))?;
+
+                // Find matching key in claim subject's verification methods
+                claim_subject_did_document
+                    .verification_method
+                    .iter()
+                    .find(|vm| vm.public_key_jwk == holder_key.public_key_jwk)
+                    .ok_or(OpenID4VCError::ValidationError(
+                        "Presentation signer key not found in claim subject DID document"
+                            .to_owned(),
+                    ))?;
+            }
+            unsupported_method => {
+                // We restrict this key matching logic to DID methods with one verification method
+                return Err(OpenID4VCError::ValidationError(format!(
+                    "Unsupported holder DID method: {unsupported_method}"
+                )));
+            }
+        };
     }
 
     let mut mso = None;

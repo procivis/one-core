@@ -228,7 +228,9 @@ async fn test_extract_credentials() {
                 .unwrap()
         )
     );
-    assert_eq!(credentials.subject, None);
+
+    let expected_subject = "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifQ";
+    assert_eq!(credentials.subject, Some(expected_subject.parse().unwrap()));
 
     let expected_result = json!(
         {
@@ -256,6 +258,84 @@ async fn test_extract_credentials() {
         .collect::<serde_json::Map<String, serde_json::Value>>();
 
     assert_eq!(claim_values_as_json, *expected_result.as_object().unwrap());
+}
+
+#[tokio::test]
+async fn test_extract_credentials_with_cnf_no_subject() {
+    // https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-4.2
+    let jwt_token = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNpZ25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9CVkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9kYXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9pZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNONndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAiamRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxlLmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJjbmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJaeGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ";
+    let token_signature =
+        "2CyX0v3AAFG9y-A_Z46uz9hHsNbr0yWTbDQaajLCrsxo-JxVh4a9dAMFVYZ8GFG2wgj2jKnA42wSgv7xVM64PA";
+    let disclosures=
+        "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
+
+    let expected_holder_did = DidValue::from_str("did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCJ5IjoiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9").unwrap();
+    let expected_issuer_did = "did:sd_jwt_vc_issuer_metadata:https%3A%2F%2Fexample.com%2Fissuer";
+
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_get_hasher()
+        .with(eq("sha-256"))
+        .returning(|_| Ok(Arc::new(SHA256 {})));
+
+    let sd_formatter = SDJWTVCFormatter::new(
+        Params {
+            leeway: 45u64,
+            embed_layout_properties: false,
+        },
+        Arc::new(crypto),
+        Arc::new(MockDidMethodProvider::new()),
+    );
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("ES256"))
+        .once()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "algorithm".to_string());
+
+            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+        });
+
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+
+    verify_mock
+        .expect_verify()
+        .once()
+        .withf(
+            move |issuer_did_value, _key_id, algorithm, token, received_signature| {
+                assert_eq!(
+                    expected_issuer_did,
+                    issuer_did_value.as_ref().unwrap().as_str()
+                );
+                assert_eq!("algorithm", algorithm);
+                assert_eq!(jwt_token.as_bytes(), token);
+                assert_eq!(
+                    received_signature,
+                    Base64UrlSafeNoPadding::decode_to_vec(token_signature, None).unwrap()
+                );
+                true
+            },
+        )
+        .return_once(|_, _, _, _, _| Ok(()));
+
+    let credentials = sd_formatter
+        .extract_credentials(
+            &format!("{jwt_token}.{token_signature}.{disclosures}"),
+            Box::new(verify_mock),
+            None,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(credentials.subject, Some(expected_holder_did));
 }
 
 #[tokio::test]
