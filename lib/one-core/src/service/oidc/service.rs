@@ -31,7 +31,7 @@ use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
-use crate::model::did::DidRelations;
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
@@ -72,6 +72,7 @@ use crate::service::oidc::validator::{
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_exchange_type;
+use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core_detailed};
 
 impl OIDCService {
@@ -422,7 +423,16 @@ impl OIDCService {
         validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &credential.exchange)?;
 
         let (holder_did, holder_key_id) = if request.proof.proof_type == "jwt" {
-            let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
+            let jwt = OpenID4VCIProofJWTFormatter::verify_proof(
+                &request.proof.jwt,
+                Box::new(KeyVerification {
+                    key_algorithm_provider: self.key_algorithm_provider.clone(),
+                    did_method_provider: self.did_method_provider.clone(),
+                    key_role: KeyRole::Authentication,
+                }),
+            )
+            .await?;
+            // TODO: this works only when kid is DID but not when it's JWK
             let key_id = jwt.header.key_id.ok_or(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidOrMissingProof,
             ))?;

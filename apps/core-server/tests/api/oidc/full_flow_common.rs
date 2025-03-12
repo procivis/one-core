@@ -1,11 +1,23 @@
 use core::panic;
+use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use hex_literal::hex;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
+use one_core::provider::key_algorithm::eddsa::{self, Eddsa, EddsaParams};
+use one_core::provider::key_algorithm::es256::{self, Es256, Es256Params};
+use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
+use one_core::provider::key_storage::KeyStorage;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue};
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingKeyParams};
 use crate::utils::context::TestContext;
@@ -439,4 +451,79 @@ pub(super) fn get_array_context(
         }
     ).to_string();
     (url, context)
+}
+
+pub(super) async fn proof_jwt() -> String {
+    let holder_key = eddsa_key_2();
+    let holder_key_id = format!("did:key:{}", holder_key.multibase);
+    proof_jwt_for(&holder_key, &holder_key_id).await
+}
+
+pub(super) async fn proof_jwt_for(key: &TestKey, holder_key_id: &str) -> String {
+    let mut header = json!({
+        "typ": "openid4vci-proof+jwt",
+        "kid": holder_key_id
+    });
+
+    let payload = json!({
+        "aud": "test123"
+    });
+
+    match key.params.key_type.as_deref() {
+        Some("EDDSA") => {
+            header["alg"] = "EdDSA".into();
+        }
+        Some("ES256") => {
+            header["alg"] = "ES256".into();
+        }
+        kty => {
+            panic!("Unsupported key type: {kty:?}");
+        }
+    };
+
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([
+        (
+            "EDDSA".to_string(),
+            Arc::new(Eddsa::new(EddsaParams {
+                algorithm: eddsa::Algorithm::Ed25519,
+            })) as Arc<dyn KeyAlgorithm>,
+        ),
+        (
+            "ES256".to_string(),
+            Arc::new(Es256::new(Es256Params {
+                algorithm: es256::Algorithm::Es256,
+            })) as Arc<dyn KeyAlgorithm>,
+        ),
+    ])));
+    let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");
+    let key_provider = InternalKeyProvider::new(
+        key_algorithm_provider,
+        Params {
+            encryption: encryption_key.to_vec().into(),
+        },
+    );
+
+    let params = key.params.clone();
+    let key = Key {
+        id: params.id.unwrap_or(Uuid::new_v4().into()),
+        created_date: params.created_date.unwrap_or(OffsetDateTime::now_utc()),
+        last_modified: params.last_modified.unwrap_or(OffsetDateTime::now_utc()),
+        public_key: params.public_key.unwrap_or_default(),
+        name: "test-key".to_string(),
+        key_reference: params.key_reference.unwrap_or_default(),
+        storage_type: params.storage_type.unwrap_or_default(),
+        key_type: params.key_type.unwrap_or_default(),
+        organisation: None,
+    };
+
+    let jwt = [header.to_string(), payload.to_string()]
+        .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+        .join(".");
+
+    let key_handle = key_provider.key_handle(&key).unwrap();
+
+    let signature = key_handle.sign(jwt.as_bytes()).await.unwrap();
+    let signature = Base64UrlSafeNoPadding::encode_to_string(&signature).unwrap();
+
+    [jwt, signature].join(".")
 }

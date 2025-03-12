@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::api_oidc_tests::full_flow_common::{
     bbs_key_1, ecdsa_key_1, eddsa_key_1, eddsa_key_2, get_array_context,
-    get_simple_context_bbsplus, prepare_dids,
+    get_simple_context_bbsplus, prepare_dids, proof_jwt_for,
 };
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
@@ -228,18 +228,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         )
         .await;
 
-    let jwt = [
-        &json!(
-            {
-            "alg": "EdDSA",
-            "kid": server_remote_holder_did.did
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
+    let jwt = proof_jwt_for(&holder_key, &server_remote_holder_did.did.to_string()).await;
 
     let resp = server_context
         .api
@@ -689,20 +678,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         )
         .await;
 
-    let jwt = [
-        &json!(
-            {
-            "alg": "BBS_PLUS",
-            "typ": "JSON-LD",
-            "kid": server_remote_holder_did.did
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
-
+    let jwt = proof_jwt_for(&holder_key, &server_remote_holder_did.did.to_string()).await;
     let resp = server_context
         .api
         .ssi

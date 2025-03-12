@@ -1,5 +1,4 @@
 use axum::http::StatusCode;
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::proof::ProofStateEnum;
 use one_crypto::hasher::sha256::SHA256;
@@ -10,7 +9,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::full_flow_common::{eddsa_key_1, eddsa_key_for_did_mdl, prepare_dids_for_mdoc};
-use crate::api_oidc_tests::full_flow_common::{ecdsa_key_1, eddsa_key_2, prepare_dids};
+use crate::api_oidc_tests::full_flow_common::{
+    ecdsa_key_1, eddsa_key_2, prepare_dids, proof_jwt_for,
+};
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
 use crate::utils::context::TestContext;
@@ -229,34 +230,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
         .await;
 
     let holder_did_value = holder_did.did;
-
-    let jwt = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JWT",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
-
-    let jwt_mdoc = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JWT",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test456"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
+    let jwt = proof_jwt_for(&holder_key, &holder_did_value.to_string()).await;
 
     let resp = server_context
         .api
@@ -269,7 +243,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
     let resp = server_context
         .api
         .ssi
-        .issuer_create_credential_mdoc(mdoc_credential_schema.id, doctype, &jwt_mdoc)
+        .issuer_create_credential_mdoc(mdoc_credential_schema.id, doctype, &jwt)
         .await;
     assert_eq!(resp.status(), 200);
     let resp_mdoc = resp.json_value().await;

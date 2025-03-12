@@ -29,10 +29,12 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::model::*;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
+use crate::provider::key_algorithm::eddsa::{self, Eddsa, EddsaParams};
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
@@ -702,6 +704,59 @@ async fn test_oidc_issuer_create_credential_success() {
             .returning(move |_| Ok(()));
     }
 
+    let key_algorithm = {
+        let key_algorithm = Eddsa::new(EddsaParams {
+            algorithm: eddsa::Algorithm::Ed25519,
+        });
+        Arc::new(key_algorithm)
+    };
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("EdDSA"))
+        .once()
+        .returning({
+            let key_algorithm = key_algorithm.clone();
+            move |_| Some(("EDDSA".to_string(), key_algorithm.clone()))
+        });
+    key_algorithm_provider
+        .expect_key_algorithm_from_id()
+        .with(eq("Ed25519"))
+        .once()
+        .returning({
+            let key_algorithm = key_algorithm.clone();
+            move |_| Some(key_algorithm.clone())
+        });
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(move |did_value| {
+            Ok(DidDocument {
+                context: serde_json::Value::Null,
+                id: did_value.clone(),
+                verification_method: vec![DidVerificationMethod {
+                    id: format!("{did_value}#key-1"),
+                    r#type: "".to_string(),
+                    controller: did_value.to_string(),
+                    // proof.jwt did key
+                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        r#use: None,
+                        kid: None,
+                        crv: "Ed25519".to_string(),
+                        x: "whP_b7GlegxzU0Q1J6fNV3XDxYuPMkdt7oIA-1dnkE0".to_string(),
+                        y: None,
+                    }),
+                }],
+                authentication: Some(vec![format!("{did_value}#key-1")]),
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: serde_json::Value::Null,
+            })
+        });
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
@@ -709,6 +764,8 @@ async fn test_oidc_issuer_create_credential_success() {
         config: generic_config().core,
         exchange_provider,
         did_repository,
+        key_algorithm_provider,
+        did_method_provider,
         ..Default::default()
     });
 
@@ -725,7 +782,7 @@ async fn test_oidc_issuer_create_credential_success() {
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6MTIzNCJ9.eyJhdWQiOiIxMjM0NTY3ODkwIn0.y9vUcoVsVgIt96oO28qpyCqCpc2Mr2Qztligw2PBaYI".to_string(),
+                    jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
                 },
             },
         )
@@ -821,6 +878,59 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
             .returning(move |_| Ok(()));
     }
 
+    let key_algorithm = {
+        let key_algorithm = Eddsa::new(EddsaParams {
+            algorithm: eddsa::Algorithm::Ed25519,
+        });
+        Arc::new(key_algorithm)
+    };
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("EdDSA"))
+        .once()
+        .returning({
+            let key_algorithm = key_algorithm.clone();
+            move |_| Some(("EDDSA".to_string(), key_algorithm.clone()))
+        });
+    key_algorithm_provider
+        .expect_key_algorithm_from_id()
+        .with(eq("Ed25519"))
+        .once()
+        .returning({
+            let key_algorithm = key_algorithm.clone();
+            move |_| Some(key_algorithm.clone())
+        });
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(move |did_value| {
+            Ok(DidDocument {
+                context: serde_json::Value::Null,
+                id: did_value.clone(),
+                verification_method: vec![DidVerificationMethod {
+                    id: format!("{did_value}#key-1"),
+                    r#type: "".to_string(),
+                    controller: did_value.to_string(),
+                    // proof.jwt did key
+                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        r#use: None,
+                        kid: None,
+                        crv: "Ed25519".to_string(),
+                        x: "whP_b7GlegxzU0Q1J6fNV3XDxYuPMkdt7oIA-1dnkE0".to_string(),
+                        y: None,
+                    }),
+                }],
+                authentication: Some(vec![format!("{did_value}#key-1")]),
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: serde_json::Value::Null,
+            })
+        });
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
@@ -828,6 +938,8 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
         config: generic_config().core,
         exchange_provider,
         did_repository,
+        key_algorithm_provider,
+        did_method_provider,
         ..Default::default()
     });
 
@@ -841,7 +953,7 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
                 doctype: Some(schema.schema_id),
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6MTIzNCJ9.eyJhdWQiOiIxMjM0NTY3ODkwIn0.y9vUcoVsVgIt96oO28qpyCqCpc2Mr2Qztligw2PBaYI".to_string(),
+                    jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
                 },
             },
         )

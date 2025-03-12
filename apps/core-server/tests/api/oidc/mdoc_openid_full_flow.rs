@@ -14,6 +14,7 @@ use uuid::Uuid;
 use super::full_flow_common::TestKey;
 use crate::api_oidc_tests::full_flow_common::{
     ecdsa_key_2, eddsa_key_2, eddsa_key_for_did_mdl, es256_key_for_did_mdl, prepare_dids_for_mdoc,
+    proof_jwt_for,
 };
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
@@ -243,20 +244,7 @@ async fn test_openid4vc_mdoc_flow(
         .await;
 
     let holder_did_value = holder_did.did;
-
-    let jwt = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JWT",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
+    let jwt = proof_jwt_for(&holder_key, &holder_did_value.to_string()).await;
 
     let resp = server_context
         .api
@@ -636,20 +624,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         .await;
 
     let holder_did_value = holder_did.did;
-
-    let jwt = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JWT",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
+    let jwt = proof_jwt_for(&holder_key, &holder_did_value.to_string()).await;
 
     let resp = server_context
         .api
@@ -1045,22 +1020,7 @@ async fn test_openid4vc_mdoc_flow_array(
         )
         .await;
 
-    let holder_did_value = holder_did.did;
-
-    let jwt = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JWT",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
-
+    let jwt = proof_jwt_for(&holder_key, &holder_did.did.to_string()).await;
     let resp = server_context
         .api
         .ssi

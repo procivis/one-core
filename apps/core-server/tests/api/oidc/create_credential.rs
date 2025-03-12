@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::InteractionId;
@@ -18,6 +17,7 @@ use time::macros::format_description;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::api_oidc_tests::full_flow_common::proof_jwt;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
@@ -221,14 +221,7 @@ async fn test_post_issuer_credential_with(
         )
         .await;
 
-    let jwt = [
-        r#"{"alg":"EDDSA","typ":"JWT","kid":"did:key:20927216-8144-474C-B249-0C048D2BFD51"}"#,
-        r#"{"aud":"test"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
-
+    let jwt = proof_jwt().await;
     let resp = context
         .api
         .ssi
@@ -332,14 +325,7 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
-    let jwt = [
-        r#"{"alg":"EDDSA","typ":"JWT","kid":"did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj"}"#,
-        r#"{"aud":"test"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
-
+    let jwt = proof_jwt().await;
     let resp = context
         .api
         .ssi

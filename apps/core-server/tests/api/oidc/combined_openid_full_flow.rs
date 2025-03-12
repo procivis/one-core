@@ -1,5 +1,4 @@
 use axum::http::StatusCode;
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::proof::ProofStateEnum;
 use one_crypto::hasher::sha256::SHA256;
@@ -9,7 +8,9 @@ use time::macros::format_description;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::api_oidc_tests::full_flow_common::{ecdsa_key_1, eddsa_key_2, prepare_dids};
+use crate::api_oidc_tests::full_flow_common::{
+    ecdsa_key_1, eddsa_key_2, prepare_dids, proof_jwt_for,
+};
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
 use crate::utils::context::TestContext;
@@ -218,19 +219,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
 
     let holder_did_value = holder_did.did;
 
-    let jwt = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JWT",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
+    let jwt = proof_jwt_for(&holder_key, &holder_did_value.to_string()).await;
 
     let resp = server_context
         .api
@@ -244,19 +233,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
     // Valid credentials
     let sdjwt_credential_token = resp["credential"].as_str().unwrap();
 
-    let jwt = [
-        &json!(
-            {
-            "alg": "EDDSA",
-            "typ": "JSON-LD",
-            "kid": holder_did_value
-        })
-        .to_string(),
-        r#"{"aud":"test123"}"#,
-        "MissingSignature",
-    ]
-    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
-    .join(".");
+    let jwt = proof_jwt_for(&holder_key, &holder_did_value.to_string()).await;
 
     let resp = server_context
         .api
