@@ -177,7 +177,7 @@ async fn initialize(
         let subscriber =
             subscriber.with(tracing_oslog::OsLogger::new("ProcivisOneCore", "default"));
 
-        let _ = subscriber.try_init();
+        subscriber.try_init();
     }
 
     let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");

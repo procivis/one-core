@@ -866,7 +866,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         )
         .await;
 
-    let _ = holder_context
+    holder_context
         .db
         .proofs
         .create(

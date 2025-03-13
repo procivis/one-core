@@ -157,8 +157,7 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorMustBeClient.into());
         }
 
-        let _ = self
-            .trust_provider
+        self.trust_provider
             .get(&trust_anchor.r#type)
             .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.r#type.clone()))?;
 

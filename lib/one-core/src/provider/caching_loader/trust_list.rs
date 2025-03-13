@@ -87,7 +87,7 @@ impl Resolver for TrustListResolver {
 
         let media_type = response.header_get("content-type").map(|t| t.to_owned());
 
-        let _: serde_json::Value = serde_json::from_slice(&response.body)?;
+        serde_json::from_slice::<serde_json::Value>(&response.body)?;
 
         Ok(ResolveResult::NewValue {
             content: response.body,

@@ -40,7 +40,7 @@ async fn test_get_list_credential_schema_success() {
 async fn test_get_list_credential_schema_include_layout_properties_success() {
     // GIVEN
     let (context, organisation, ..) = TestContext::new_with_did(None).await;
-    let _ = context
+    context
         .db
         .credential_schemas
         .create("test", &organisation, "NONE", Default::default())

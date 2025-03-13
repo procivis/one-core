@@ -803,7 +803,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         )
         .await;
 
-    let _ = holder_context
+    holder_context
         .db
         .proofs
         .create(
@@ -1212,7 +1212,7 @@ async fn test_openid4vc_mdoc_flow_array(
         )
         .await;
 
-    let _ = holder_context
+    holder_context
         .db
         .proofs
         .create(

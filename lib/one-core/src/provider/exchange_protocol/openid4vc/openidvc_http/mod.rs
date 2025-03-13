@@ -1253,7 +1253,7 @@ async fn create_and_store_interaction(
         organisation,
     );
 
-    let _ = storage_access
+    storage_access
         .create_interaction(interaction.clone())
         .await
         .map_err(ExchangeProtocolError::StorageAccessError)?;

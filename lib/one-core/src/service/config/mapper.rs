@@ -35,7 +35,7 @@ fn filter_config_entities(map: HashMap<String, Value>) -> HashMap<String, Value>
 
 fn filter_config_entity(mut value: Value) -> Value {
     if let Some(params) = value["params"].as_object_mut() {
-        _ = params.remove("private");
+        params.remove("private");
         let public_params = params
             .remove("public")
             .and_then(|v| v.as_object().cloned())

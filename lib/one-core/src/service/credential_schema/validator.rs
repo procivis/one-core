@@ -247,7 +247,7 @@ fn validate_claim_schema(
     validate_claim_schema_type(claim_schema, claim_type)?;
     if let Some(is_array) = claim_schema.array {
         if is_array {
-            let _ = config.datatype.get_if_enabled("ARRAY")?;
+            config.datatype.get_if_enabled("ARRAY")?;
         }
     }
 

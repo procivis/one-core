@@ -130,7 +130,7 @@ impl Resolver for VctTypeMetadataResolver {
     ) -> Result<ResolveResult, Self::Error> {
         let response = self.client.get(key).send().await?.error_for_status()?;
 
-        let _: SdJwtVcTypeMetadataResponseDTO = serde_json::from_slice(&response.body)?;
+        serde_json::from_slice::<SdJwtVcTypeMetadataResponseDTO>(&response.body)?;
 
         Ok(ResolveResult::NewValue {
             content: response.body,

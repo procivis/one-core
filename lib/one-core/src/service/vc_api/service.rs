@@ -233,7 +233,7 @@ impl VCAPIService {
             key_role: KeyRole::AssertionMethod,
         });
 
-        let _ = formatter
+        formatter
             .extract_credentials(&string_token, verification_fn, None)
             .await?;
 
@@ -275,7 +275,7 @@ impl VCAPIService {
             key_role: KeyRole::AssertionMethod,
         });
 
-        let _ = formatter
+        formatter
             .extract_presentation(
                 &string_token,
                 verification_fn,

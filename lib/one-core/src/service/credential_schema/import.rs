@@ -56,7 +56,7 @@ pub(crate) async fn import_credential_schema(
 
     let credential_schema = regenerate_credential_schema_uuids(credential_schema);
 
-    let _ = repository
+    repository
         .create_credential_schema(credential_schema.to_owned())
         .await
         .map_err(ServiceError::from)?;

@@ -138,7 +138,7 @@ mod test {
         let schemas: Vec<serde_json::Value> = serde_json::from_str(schemas).unwrap();
 
         for schema in schemas {
-            let _ = jsonschema::draft202012::new(&schema).unwrap();
+            jsonschema::draft202012::new(&schema).unwrap();
         }
     }
 }

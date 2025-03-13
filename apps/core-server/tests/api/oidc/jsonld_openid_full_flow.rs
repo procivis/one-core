@@ -731,7 +731,7 @@ async fn test_openid4vc_jsonld_flow_array(
         )
         .await;
 
-    let _ = holder_context
+    holder_context
         .db
         .proofs
         .create(

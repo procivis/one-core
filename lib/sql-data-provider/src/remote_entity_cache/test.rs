@@ -340,7 +340,7 @@ async fn test_get_repository_size_success() {
             .unwrap()
     );
 
-    let _ = insert_json_ld_context(&setup.db, &[1, 2, 3], "http://1.2.3.4", 0, None)
+    insert_json_ld_context(&setup.db, &[1, 2, 3], "http://1.2.3.4", 0, None)
         .await
         .unwrap();
 

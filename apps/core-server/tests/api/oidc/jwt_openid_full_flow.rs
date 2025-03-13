@@ -708,7 +708,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         )
         .await;
 
-    let _ = holder_context
+    holder_context
         .db
         .proofs
         .create(

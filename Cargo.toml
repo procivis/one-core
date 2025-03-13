@@ -60,6 +60,9 @@ uuid               = { version = "1.11", features = ["v4", "serde"] }
 validator          = { version = "0.19", features = ["derive"] }
 wiremock           = { version = "0.6" }
 
+[workspace.lints.rust]
+let_underscore_drop     = "warn"
+
 [workspace.lints.clippy]
 dbg_macro               = "deny"
 print_stderr            = "deny"

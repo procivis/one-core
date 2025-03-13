@@ -523,7 +523,7 @@ where
         });
 
         if let Some(map) = map.as_object_mut() {
-            _ = map.remove("params");
+            map.remove("params");
 
             let iter = self
                 .params

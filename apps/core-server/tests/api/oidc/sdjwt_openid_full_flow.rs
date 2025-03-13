@@ -719,7 +719,7 @@ async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKe
         )
         .await;
 
-    let _ = holder_context
+    holder_context
         .db
         .proofs
         .create(

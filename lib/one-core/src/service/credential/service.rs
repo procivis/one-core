@@ -760,8 +760,7 @@ impl CredentialService {
                     claims: None,
                 };
 
-                let _ = &self
-                    .credential_repository
+                self.credential_repository
                     .update_credential(update_request)
                     .await?;
             }

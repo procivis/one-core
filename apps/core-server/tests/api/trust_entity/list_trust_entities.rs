@@ -154,7 +154,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
         .dids
         .create(&organisation, TestingDidParams::default())
         .await;
-    let _ = context
+    context
         .db
         .trust_entities
         .create(
@@ -239,7 +239,7 @@ async fn test_list_trust_entities_find_by_name() {
         .dids
         .create(&organisation, TestingDidParams::default())
         .await;
-    let _ = context
+    context
         .db
         .trust_entities
         .create(
