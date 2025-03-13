@@ -45,7 +45,13 @@ impl TrustEntityService {
 
         let did = self
             .did_repository
-            .get_did(&request.did_id, &DidRelations::default())
+            .get_did(
+                &request.did_id,
+                &DidRelations {
+                    organisation: Some(OrganisationRelations {}),
+                    keys: None,
+                },
+            )
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
 
