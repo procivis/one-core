@@ -422,17 +422,27 @@ async fn test_create_did_with_same_value_in_different_organisations() {
     assert_eq!(resp2.status(), 201);
 }
 
+// old IACA cert
+static IACA_CERTIFICATE: &str = "MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmgwCgYIKoZIzj0EAwQwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTIyMDExMjEyMDAwMFoXDTMyMDExMDEyMDAwMFowYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaRFtZbpYHFlPgGyZCt6bGKS0hEekPVxiBHRXImo8_NUR-czg-DI2KTE3ikRVNgq2rICatkvkV2jaM2frPEOl1qNmMGQwEgYDVR0TAQH_BAgwBgEB_wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFO0asJ3iYEVQADvaWjQyGpi-LbfFMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMAoGCCqGSM49BAMEA0gAMEUCIQD9kfI800DOj76YsiW4lUNRZowH07j152M3UKHKEaIjUAIgZNINukb4SFKEC4A0qEKgpPEZM7_Vh5aNro-PQn3_rgA";
+
 #[tokio::test]
 async fn test_create_did_mdl_eddsa_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let additional_config = indoc::formatdoc! {"
+    did:
+        MDL:
+            params:
+                private:
+                    iacaCertificate: {IACA_CERTIFICATE}
+"};
+    let (context, organisation) = TestContext::new_with_organisation(Some(additional_config)).await;
 
     let key = context
         .db
         .keys
         .create(&organisation, eddsa_testing_params())
         .await;
-    // obtained from https://ca.dev.mdl-plus.com/admin for the MDL-CA(iacaCertficate in config) for the CSR obtained from eddsa_testing_params() key
+    // obtained from https://ca.dev.mdl-plus.com/admin for the old MDL-CA iaca certificate for the CSR obtained from eddsa_testing_params() key
     let signed_csr = "-----BEGIN CERTIFICATE-----
 MIIDRjCCAuygAwIBAgIUcD+tZOWr65vnTr0OWGIVIzWOPscwCgYIKoZIzj0EAwIw
 YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
@@ -490,7 +500,14 @@ gEudfmbqXoiDCBYUmNabrVJo6GiBeczXVoU=
 #[tokio::test]
 async fn test_create_did_mdl_es256_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let additional_config = indoc::formatdoc! {"
+    did:
+        MDL:
+            params:
+                private:
+                    iacaCertificate: {IACA_CERTIFICATE}
+"};
+    let (context, organisation) = TestContext::new_with_organisation(Some(additional_config)).await;
 
     let key = context
         .db
@@ -498,7 +515,7 @@ async fn test_create_did_mdl_es256_success() {
         .create(&organisation, es256_testing_params())
         .await;
 
-    // obtained from https://ca.dev.mdl-plus.com/admin for the MDL-CA(iacaCertficate in config) for the CSR obtained from eddsa_testing_params() key
+    // obtained from https://ca.dev.mdl-plus.com/admin for the old MDL-CA iaca certificate for the CSR obtained from eddsa_testing_params() key
     let signed_csr = "-----BEGIN CERTIFICATE-----
 MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
 YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2

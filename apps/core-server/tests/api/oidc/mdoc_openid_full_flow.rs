@@ -14,7 +14,7 @@ use uuid::Uuid;
 use super::full_flow_common::TestKey;
 use crate::api_oidc_tests::full_flow_common::{
     ecdsa_key_2, eddsa_key_2, eddsa_key_for_did_mdl, es256_key_for_did_mdl, prepare_dids_for_mdoc,
-    proof_jwt_for,
+    proof_jwt_for, IACA_CERTIFICATE,
 };
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
@@ -111,9 +111,18 @@ async fn test_openid4vc_mdoc_flow(
     issuer_key_type: KeyType,
 ) {
     // GIVEN
+    let additional_config = indoc::formatdoc! {"
+    did:
+        MDL:
+            params:
+                private:
+                    iacaCertificate: {IACA_CERTIFICATE}
+"};
+
     let interaction_id = Uuid::new_v4();
     let server_context =
-        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
+        TestContext::new_with_token(&format!("{}.test", interaction_id), Some(additional_config))
+            .await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -443,9 +452,18 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
     issuer_key_type: KeyType,
 ) {
     // GIVEN
+    let additional_config = indoc::formatdoc! {"
+    did:
+        MDL:
+            params:
+                private:
+                    iacaCertificate: {IACA_CERTIFICATE}
+"};
+
     let interaction_id = Uuid::new_v4();
     let server_context =
-        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
+        TestContext::new_with_token(&format!("{}.test", interaction_id), Some(additional_config))
+            .await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -856,9 +874,18 @@ async fn test_openid4vc_mdoc_flow_array(
     issuer_key_type: KeyType,
 ) {
     // GIVEN
+    let additional_config = indoc::formatdoc! {"
+    did:
+        MDL:
+            params:
+                private:
+                    iacaCertificate: {IACA_CERTIFICATE}
+"};
+
     let interaction_id = Uuid::new_v4();
     let server_context =
-        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
+        TestContext::new_with_token(&format!("{}.test", interaction_id), Some(additional_config))
+            .await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";

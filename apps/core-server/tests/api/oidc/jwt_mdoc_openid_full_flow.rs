@@ -8,7 +8,9 @@ use time::macros::format_description;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::full_flow_common::{eddsa_key_1, eddsa_key_for_did_mdl, prepare_dids_for_mdoc};
+use super::full_flow_common::{
+    eddsa_key_1, eddsa_key_for_did_mdl, prepare_dids_for_mdoc, IACA_CERTIFICATE,
+};
 use crate::api_oidc_tests::full_flow_common::{
     ecdsa_key_1, eddsa_key_2, prepare_dids, proof_jwt_for,
 };
@@ -20,9 +22,18 @@ use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 #[tokio::test]
 async fn test_openid4vc_jwt_mdoc_flow() {
     // GIVEN
+    let additional_config = indoc::formatdoc! {"
+    did:
+        MDL:
+            params:
+                private:
+                    iacaCertificate: {IACA_CERTIFICATE}
+"};
+
     let interaction_id = Uuid::new_v4();
     let server_context =
-        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
+        TestContext::new_with_token(&format!("{}.test", interaction_id), Some(additional_config))
+            .await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
