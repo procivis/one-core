@@ -187,7 +187,7 @@ fn append_object_claim_schemas(
                 .map(|child_claim| ProofClaimSchemaResponseDTO {
                     id: child_claim.schema.id,
                     requested: false,
-                    required: os.required,
+                    required: os.required && child_claim.required,
                     key: child_claim.schema.key.to_owned(),
                     data_type: child_claim.schema.data_type.to_owned(),
                     claims: vec![],
@@ -199,6 +199,8 @@ fn append_object_claim_schemas(
 
     proof_claim_schemas.append(&mut nested_claim_schemas);
 
+    // Blanket add all object claims so that the parent object claims of nested requested claims
+    // are definitely included when going into `nest_claim_schemas`.
     credential_claim_schemas.iter().try_for_each(|value| {
         if is_object(&value.schema.data_type, datatype_config)?
             && !proof_claim_schemas.iter().any(|c| c.id == value.schema.id)
