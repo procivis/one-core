@@ -155,6 +155,7 @@ pub fn credential_detail_response_from_model(
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity: None,
         holder_did: value.holder_did.map(Into::into),
+        exchange: value.exchange,
     })
 }
 

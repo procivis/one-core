@@ -73,6 +73,7 @@ fn generate_credential_detail_response(
             did_method: "".to_string(),
             deactivated: false,
         }),
+        exchange: "OPENID4VC".to_string(),
     }
 }
 

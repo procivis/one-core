@@ -62,6 +62,7 @@ pub fn credential_detail_response_from_model(
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
         holder_did: convert_inner(value.holder_did),
+        exchange: value.exchange,
     })
 }
 
@@ -287,6 +288,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             credential: value.credential,
             role: value.role.into(),
             suspend_end_date: value.suspend_end_date,
+            exchange: value.exchange,
         })
     }
 }

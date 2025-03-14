@@ -49,6 +49,7 @@ pub struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub exchange: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -104,6 +105,7 @@ pub struct GetCredentialResponseRestDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub holder_did: Option<DidListItemResponseRestDTO>,
+    pub exchange: String,
 }
 
 /// The role the system has in relation to the credential.

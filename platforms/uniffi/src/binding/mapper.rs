@@ -89,6 +89,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
+            exchange: value.exchange,
         }
     }
 }
@@ -118,6 +119,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
+            exchange: value.exchange,
         }
     }
 }

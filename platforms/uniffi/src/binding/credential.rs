@@ -173,6 +173,7 @@ pub struct CredentialDetailBindingDTO {
     pub lvvc_issuance_date: Option<String>,
     pub suspend_end_date: Option<String>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
+    pub exchange: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
@@ -292,4 +293,5 @@ pub struct CredentialListItemBindingDTO {
     pub schema: CredentialSchemaBindingDTO,
     pub role: CredentialRoleBindingDTO,
     pub suspend_end_date: Option<String>,
+    pub exchange: String,
 }

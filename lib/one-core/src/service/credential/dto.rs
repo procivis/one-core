@@ -32,6 +32,7 @@ pub struct CredentialListItemResponseDTO {
     pub credential: Vec<u8>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub exchange: String,
 }
 
 #[skip_serializing_none]
@@ -59,6 +60,7 @@ pub struct CredentialDetailResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
     pub holder_did: Option<DidListItemResponseDTO>,
+    pub exchange: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
