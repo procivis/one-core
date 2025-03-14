@@ -84,6 +84,7 @@ mod m20250218_094713_add_trust_entity_history_changes;
 mod m20250218_161915_add_proof_role;
 mod m20250220_080800_add_external_credential_schema_flag;
 mod m20250220_131625_add_proof_state_retracted;
+mod m20250314_114529_rename_transport_to_exchange;
 
 pub struct Migrator;
 
@@ -169,6 +170,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250218_161915_add_proof_role::Migration),
             Box::new(m20250220_131625_add_proof_state_retracted::Migration),
             Box::new(m20250220_080800_add_external_credential_schema_flag::Migration),
+            Box::new(m20250314_114529_rename_transport_to_exchange::Migration),
         ]
     }
 }

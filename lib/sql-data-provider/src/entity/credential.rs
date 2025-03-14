@@ -21,7 +21,6 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
 
-    #[sea_orm(column_name = "transport")]
     pub exchange: String,
     pub redirect_uri: Option<String>,
 
