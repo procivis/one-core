@@ -8,7 +8,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
-use tracing::log::warn;
+use tracing::warn;
 use uuid::Uuid;
 
 use super::dto::OpenID4VCICredentialResponseDTO;

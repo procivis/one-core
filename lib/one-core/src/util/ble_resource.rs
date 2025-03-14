@@ -5,7 +5,7 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinHandle;
-use tracing::log::warn;
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
