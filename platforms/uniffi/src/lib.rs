@@ -177,6 +177,7 @@ async fn initialize(
         let subscriber =
             subscriber.with(tracing_oslog::OsLogger::new("ProcivisOneCore", "default"));
 
+        #[allow(unused_must_use)]
         subscriber.try_init();
     }
 
