@@ -168,7 +168,7 @@ pub(crate) async fn check_certificate(
     summary = "Generate a CSR",
     description = indoc::formatdoc! {"
         Generates a Certificate Signing Request (CSR). These are used to create mDL DS certificates, enabling mdoc issuance.
-        See the [mdoc guide](../guides/mdocs.mdx#configuring-mdocs-issuance) for more.
+        See the [mdoc guide](../guides/mdocs.mdx) for more.
     "},
 )]
 pub(crate) async fn generate_csr(
