@@ -52,8 +52,13 @@ async fn test_server_starts_with_base_config() {
     .chain(set_encryption_key);
 
     let mut app_config: AppConfig<ServerConfig> = AppConfig::from_yaml(configs).unwrap();
+    let database_url = app_config.app.database_url;
     app_config.app = ServerConfig {
-        database_url: "sqlite::memory:".into(),
+        database_url: if database_url.is_empty() {
+            "sqlite::memory:".to_string()
+        } else {
+            database_url
+        },
         auth_token: "test".to_string(),
         core_base_url: "http://0.0.0.0:3000".into(),
         trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),

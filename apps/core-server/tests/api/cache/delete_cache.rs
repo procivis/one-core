@@ -95,7 +95,8 @@ async fn test_invalid_type() {
 }
 
 fn test_entry(cache_type: CacheType, persistent: bool) -> RemoteEntityCacheEntry {
-    let now = OffsetDateTime::now_utc();
+    // some dbs don't support nanosecond precision
+    let now = OffsetDateTime::now_utc().replace_nanosecond(0).unwrap();
     let id = Uuid::new_v4().into();
 
     RemoteEntityCacheEntry {

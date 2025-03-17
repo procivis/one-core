@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::http::StatusCode;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::ProofStateEnum;
@@ -753,26 +755,19 @@ async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKe
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
     let server_proof = server_context.db.proofs.get(&proof.id).await;
-    let claims = server_proof.claims.unwrap();
+    let claims = server_proof
+        .claims
+        .unwrap()
+        .into_iter()
+        .map(|c| (c.claim.path, c.claim.value))
+        .collect::<HashMap<String, String>>();
     // Proof sent to the server
-    assert_eq!(claims[0].claim.path, "root/array/0");
-    assert_eq!(claims[0].claim.value, "Value1");
-    assert_eq!(claims[1].claim.path, "root/array/1");
-    assert_eq!(claims[1].claim.value, "Value2");
-    assert_eq!(claims[2].claim.path, "root/array/2");
-    assert_eq!(claims[2].claim.value, "Value3");
-
-    assert_eq!(claims[3].claim.path, "root/object_array/0/field2");
-    assert_eq!(claims[3].claim.value, "FV12");
-
-    assert_eq!(claims[4].claim.path, "root/object_array/1/field1");
-    assert_eq!(claims[4].claim.value, "FV21");
-
-    assert_eq!(claims[5].claim.path, "root/object_array/2/field1");
-    assert_eq!(claims[5].claim.value, "FV31");
-    assert_eq!(claims[6].claim.path, "root/object_array/2/field2");
-    assert_eq!(claims[6].claim.value, "FV32");
-
-    assert_eq!(claims[7].claim.path, "root/object_array/3/field2");
-    assert_eq!(claims[7].claim.value, "FV42");
+    assert_eq!(claims["root/array/0"], "Value1");
+    assert_eq!(claims["root/array/1"], "Value2");
+    assert_eq!(claims["root/array/2"], "Value3");
+    assert_eq!(claims["root/object_array/0/field2"], "FV12");
+    assert_eq!(claims["root/object_array/1/field1"], "FV21");
+    assert_eq!(claims["root/object_array/2/field1"], "FV31");
+    assert_eq!(claims["root/object_array/2/field2"], "FV32");
+    assert_eq!(claims["root/object_array/3/field2"], "FV42");
 }

@@ -122,33 +122,29 @@ pub fn create_config(
 }
 
 pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
-    let db = sql_data_provider::db_conn(&config.app.database_url, true)
-        .await
-        .unwrap();
+    let env_db_url = std::env::var("ONE_app__databaseUrl").ok();
+    match env_db_url {
+        Some(url) if url != "sqlite::memory:" => {
+            let mut url: url::Url = url.parse().unwrap();
+            // remove path to connect to cluster
+            url.set_path("");
+            let conn = sea_orm::Database::connect(url.clone()).await.unwrap();
+            let db_name: String = ulid::Ulid::new().to_string();
 
-    let url = std::env::var("ONE_app__databaseUrl").ok();
-    let prefix = url.as_ref().and_then(|val| val.rsplit_once('/'));
+            conn.execute_unprepared(&format!("CREATE DATABASE {db_name};"))
+                .await
+                .unwrap();
 
-    if let Some((prefix, _)) = prefix {
-        let this_test_db: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(10)
-            .map(char::from)
-            .collect();
+            conn.execute_unprepared(&format!("USE {db_name};"))
+                .await
+                .unwrap();
 
-        db.execute_unprepared(&format!("CREATE DATABASE {this_test_db};"))
+            url.set_path(&db_name);
+            sql_data_provider::db_conn(url, true).await.unwrap()
+        }
+        _ => sql_data_provider::db_conn(&config.app.database_url, true)
             .await
-            .unwrap();
-
-        db.execute_unprepared(&format!("USE {this_test_db};"))
-            .await
-            .unwrap();
-
-        sql_data_provider::db_conn(&format!("{prefix}/{this_test_db}"), true)
-            .await
-            .unwrap()
-    } else {
-        db
+            .unwrap(),
     }
 }
 

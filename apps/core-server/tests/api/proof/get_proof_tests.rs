@@ -1,7 +1,10 @@
+use std::collections::HashSet;
+
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::proof::ProofStateEnum;
+use serde_json_path::JsonPath;
 use sql_data_provider::test_utilities::get_dummy_date;
 use validator::ValidateLength;
 
@@ -531,29 +534,21 @@ async fn test_get_proof_with_array() {
     let namespace = &resp["proofInputs"][0]["claims"][0];
     assert_eq!(namespace["path"], "namespace");
 
-    let root_array = &namespace["value"][0];
+    // all nested values
+    let path = JsonPath::parse(
+        "$.proofInputs[0].claims[0].value[*].value[*].value[*].value[*].value[*].value",
+    )
+    .unwrap();
 
-    let nested_0 = &root_array["value"][0]["value"][0];
-    assert_eq!(nested_0["path"], "namespace/root_array/0/nested");
+    let values: HashSet<&str> = path
+        .query(&resp)
+        .all()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect();
+    assert_eq!(values.len(), 4);
 
-    let field_0 = &nested_0["value"][0]["value"][0];
-    assert_eq!(field_0["path"], "namespace/root_array/0/nested/0/field");
-    assert_eq!(field_0["value"], "foo1");
-
-    let field_1 = &nested_0["value"][1]["value"][0];
-    assert_eq!(field_1["path"], "namespace/root_array/0/nested/1/field");
-    assert_eq!(field_1["value"], "foo2");
-
-    let nested_1 = &root_array["value"][1]["value"][0];
-    assert_eq!(nested_1["path"], "namespace/root_array/1/nested");
-
-    let field_2 = &nested_1["value"][0]["value"][0];
-    assert_eq!(field_2["path"], "namespace/root_array/1/nested/0/field");
-    assert_eq!(field_2["value"], "foo3");
-
-    let field_3 = &nested_1["value"][1]["value"][0];
-    assert_eq!(field_3["path"], "namespace/root_array/1/nested/1/field");
-    assert_eq!(field_3["value"], "foo4");
+    assert_eq!(values, HashSet::from_iter(["foo1", "foo2", "foo3", "foo4"]));
 }
 
 #[tokio::test]

@@ -23,7 +23,7 @@ pub mod build_info {
 mod middleware;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct ServerConfig {
     pub database_url: String,
     pub server_ip: Option<IpAddr>,
