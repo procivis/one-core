@@ -116,7 +116,7 @@ async fn create_lvvcs_for(credential_id: CredentialId, db_conn: &DatabaseConnect
 
 async fn create_and_store_credential(db_conn: &DatabaseConnection) -> CredentialId {
     // organisation
-    let organisation_id = test_utilities::insert_organisation_to_database(db_conn, None)
+    let organisation_id = test_utilities::insert_organisation_to_database(db_conn, None, None)
         .await
         .unwrap();
 

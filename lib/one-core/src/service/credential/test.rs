@@ -23,7 +23,6 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential,
@@ -61,7 +60,8 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{
-    dummy_did_document, generic_config, generic_formatter_capabilities, get_dummy_date,
+    dummy_did_document, dummy_organisation, generic_config, generic_formatter_capabilities,
+    get_dummy_date,
 };
 
 #[derive(Default)]
@@ -114,11 +114,7 @@ fn generic_credential() -> Credential {
         created_date: now,
         last_modified: now,
     };
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     let credential_id = Uuid::new_v4().into();
     Credential {
@@ -3394,11 +3390,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         schema_other_1.to_owned(),
         schema_str.to_owned(),
     ];
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     let id = Uuid::new_v4().into();
 
@@ -3962,11 +3954,7 @@ async fn test_get_credential_success_array_index_sorting() {
     let schema_str = generate_claim_schema("str", "STRING", true);
 
     let claim_schemas = vec![schema_str.to_owned()];
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     let id = Uuid::new_v4().into();
 
@@ -4283,11 +4271,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     let id = Uuid::new_v4().into();
 
@@ -4494,11 +4478,7 @@ async fn test_get_credential_success_array_single_element() {
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     let id = Uuid::new_v4().into();
 
@@ -4674,13 +4654,7 @@ async fn test_create_credential_array(
     let mut history_repository = MockHistoryRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
-    let now = get_dummy_date();
-
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
     let dummy_credential = generic_credential();
 
     let credential_schema = CredentialSchema {

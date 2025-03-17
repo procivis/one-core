@@ -153,6 +153,7 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
+        name: "org_name".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
     };

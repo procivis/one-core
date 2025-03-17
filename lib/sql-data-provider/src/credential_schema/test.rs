@@ -19,7 +19,7 @@ use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
-use crate::entity::credential_schema;
+use crate::entity::{credential_schema, organisation};
 use crate::test_utilities::*;
 
 #[derive(Default)]
@@ -38,14 +38,17 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
     TestSetup {
-        organisation: Organisation {
-            id: organisation_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        },
+        organisation: Organisation::from(
+            organisation::Entity::find_by_id(organisation_id)
+                .one(&db)
+                .await
+                .expect("failed to load organisation")
+                .expect("organisation not found"),
+        ),
         repository: Box::new(CredentialSchemaProvider {
             db: db.clone(),
             claim_schema_repository: Arc::from(repositories.claim_schema_repository),
@@ -336,13 +339,7 @@ async fn test_get_credential_schema_success() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithCredentialSchema {
         credential_schema,
@@ -402,13 +399,7 @@ async fn test_get_credential_schema_deleted() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithCredentialSchema {
         credential_schema,

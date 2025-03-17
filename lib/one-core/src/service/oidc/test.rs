@@ -22,7 +22,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
@@ -1584,11 +1583,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                         ]),
                         credential_schema: Some(credential_schema),
                     }]),
-                    organisation: Some(Organisation {
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        last_modified: now,
-                    }),
+                    organisation: Some(dummy_organisation(None)),
                     ..dummy_proof_schema()
                 }),
                 interaction: Some(interaction),
@@ -1826,13 +1821,11 @@ async fn test_get_client_metadata_success() {
             created_date: now,
             last_modified: now,
             name: "did1".to_string(),
-            organisation: Some(Organisation {
-                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            organisation: Some(dummy_organisation(Some(
+                Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                     .unwrap()
                     .into(),
-                created_date: now,
-                last_modified: now,
-            }),
+            ))),
             did: "did:example:1".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),

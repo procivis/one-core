@@ -1,7 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
-use shared_types::DidValue;
+use shared_types::{DidValue, OrganisationId};
 use time::macros::datetime;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -231,11 +231,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 },
                 required: true,
             }]),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -265,7 +261,7 @@ pub fn dummy_did() -> Did {
         did_type: DidType::Local,
         did_method: "INTERNAL".to_string(),
         keys: None,
-        organisation: Some(dummy_organisation()),
+        organisation: Some(dummy_organisation(None)),
         deactivated: false,
     }
 }
@@ -295,11 +291,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
             deleted_at: None,
             name: "dummy".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             input_schemas: None,
         }),
         claims: None,
@@ -324,9 +316,11 @@ pub fn dummy_key() -> Key {
     }
 }
 
-pub fn dummy_organisation() -> Organisation {
+pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
+    let id = id.unwrap_or(Uuid::new_v4().into());
     Organisation {
-        id: Uuid::new_v4().into(),
+        name: format!("{id}"),
+        id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
     }

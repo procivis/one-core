@@ -16,7 +16,7 @@ use crate::model::did::{
 };
 use crate::model::key::{Key, KeyRelations};
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
 use crate::provider::caching_loader::CachingLoader;
 use crate::provider::did_method::model::DidCapabilities;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
@@ -32,6 +32,7 @@ use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
+use crate::service::test_utilities::dummy_organisation;
 
 fn setup_service(
     did_repository: MockDidRepository,
@@ -94,11 +95,7 @@ async fn test_get_did_exists() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(dummy_organisation(None)),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
@@ -183,11 +180,7 @@ async fn test_get_did_list() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(dummy_organisation(None)),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
@@ -297,13 +290,7 @@ async fn test_create_did_success() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let service = setup_service(
         did_repository,
@@ -372,13 +359,7 @@ async fn test_create_did_value_already_exists() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut did_repository = MockDidRepository::default();
     did_repository

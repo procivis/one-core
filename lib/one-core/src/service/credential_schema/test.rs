@@ -19,7 +19,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -42,7 +42,9 @@ use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
-use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
+use crate::service::test_utilities::{
+    dummy_organisation, generic_config, generic_formatter_capabilities,
+};
 
 fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
@@ -87,11 +89,7 @@ fn generic_credential_schema() -> CredentialSchema {
             },
             required: true,
         }]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-        }),
+        organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -307,12 +305,7 @@ async fn test_create_credential_schema_success() {
         .times(1)
         .returning(|history| Ok(history.id));
 
-    let now = OffsetDateTime::now_utc();
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
     let schema_id: CredentialSchemaId = Uuid::new_v4().into();
 
     let response = GetCredentialSchemaList {
@@ -426,12 +419,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .times(1)
         .returning(|history| Ok(history.id));
 
-    let now = OffsetDateTime::now_utc();
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
     let schema_id: CredentialSchemaId = Uuid::new_v4().into();
 
     let response = GetCredentialSchemaList {
@@ -607,12 +595,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
             })
         });
 
-    let now = OffsetDateTime::now_utc();
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     {
         let organisation = organisation.clone();
@@ -672,12 +655,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .times(1)
         .returning(|history| Ok(history.id));
 
-    let now = OffsetDateTime::now_utc();
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
     let schema_id = Uuid::new_v4();
 
     let response = GetCredentialSchemaList {
@@ -995,12 +973,7 @@ async fn test_create_credential_schema_unique_name_error() {
     let mut formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
 
-    let now = OffsetDateTime::now_utc();
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(None);
 
     let response = GetCredentialSchemaList {
         values: vec![
@@ -2774,11 +2747,7 @@ async fn test_import_credential_schema_success() {
 
     let now = OffsetDateTime::now_utc();
     let own_organisation_id = Uuid::new_v4();
-    let organisation = Organisation {
-        id: own_organisation_id.to_owned().into(),
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(Some(own_organisation_id.into()));
     organisation_repository
         .expect_get_organisation()
         .return_once(|_, _| Ok(Some(organisation)));

@@ -27,7 +27,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
-use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
@@ -63,7 +62,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::oidc::service::credentials_format;
-use crate::service::test_utilities::get_dummy_date;
+use crate::service::test_utilities::{dummy_organisation, get_dummy_date};
 
 #[derive(Default)]
 struct TestInputs {
@@ -134,15 +133,6 @@ fn generic_presentation_params(
     }
 }
 
-fn generic_organisation() -> Organisation {
-    let now = OffsetDateTime::now_utc();
-    Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-    }
-}
-
 fn generic_credential() -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -193,7 +183,7 @@ fn generic_credential() -> Credential {
             did_method: "KEY".to_string(),
             keys: None,
             deactivated: false,
-            organisation: Some(generic_organisation()),
+            organisation: Some(dummy_organisation(None)),
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -217,7 +207,7 @@ fn generic_credential() -> Credential {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
-            organisation: Some(generic_organisation()),
+            organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
         }),
         interaction: Some(Interaction {
@@ -1015,7 +1005,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     let protocol = setup_protocol(Default::default());
     let result = protocol
-        .holder_handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
+        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy, &operations)
         .await
         .unwrap();
 
@@ -1072,7 +1062,7 @@ async fn test_handle_invitation_proof_success() {
     let operations = MockHandleInvitationOperations::default();
 
     let result = protocol
-        .holder_handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
+        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy, &operations)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -1106,7 +1096,7 @@ async fn test_handle_invitation_proof_success() {
     let result = protocol
         .holder_handle_invitation(
             url_using_uri_instead_of_values,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1167,7 +1157,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
     let operations = MockHandleInvitationOperations::default();
 
     let result = protocol
-        .holder_handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
+        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy, &operations)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -1264,7 +1254,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
     let operations = MockHandleInvitationOperations::default();
 
     let result = protocol
-        .holder_handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
+        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy, &operations)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -1304,7 +1294,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             incorrect_response_type,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1317,7 +1307,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             missing_nonce,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1330,7 +1320,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             incorrect_client_id_scheme,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1343,7 +1333,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             incorrect_response_mode,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1356,7 +1346,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             incorrect_client_id_scheme,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1370,7 +1360,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             missing_metadata_field,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1383,7 +1373,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             both_client_metadata_and_uri_specified,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1396,7 +1386,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .holder_handle_invitation(
             both_presentation_definition_and_uri_specified,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1434,7 +1424,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol_https_only
         .holder_handle_invitation(
             client_metadata_uri_is_not_https,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1448,7 +1438,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol_https_only
         .holder_handle_invitation(
             presentation_definition_uri_is_not_https,
-            generic_organisation(),
+            dummy_organisation(None),
             &storage_proxy,
             &operations,
         )
@@ -1664,11 +1654,7 @@ fn generic_schema() -> CredentialSchema {
                 required: true,
             },
         ]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        }),
+        organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
     }
 }
@@ -1779,11 +1765,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: true,
             },
         ]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        }),
+        organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
     }
 }
@@ -1861,11 +1843,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
                 required: false,
             },
         ]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        }),
+        organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
     }
 }

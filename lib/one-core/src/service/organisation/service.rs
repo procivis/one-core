@@ -1,12 +1,10 @@
 use one_dto_mapper::convert_inner;
 use shared_types::OrganisationId;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
-use super::dto::GetOrganisationDetailsResponseDTO;
-use super::validator::organisation_already_exists;
+use super::dto::{CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO};
 use super::OrganisationService;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
+use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
 impl OrganisationService {
@@ -39,37 +37,28 @@ impl OrganisationService {
         Ok(organisation.into())
     }
 
-    /// Accepts optional Uuid of new organisation
+    /// Accepts optional Uuid and optional name of new organisation
     /// and returns newly created organisation uuid.
     ///
     /// # Arguments
     ///
-    /// * `Option<OrganisationId>` - Optional Id for a new organisation. If not set then the
-    ///   ID will be created automatically
+    /// * `CreateOrganisationRequestDTO` - Optional Id and name for a new organisation. If not set then the
+    ///   ID will be created automatically and the name will be equal to the textual representation of the id.
     pub async fn create_organisation(
         &self,
-        id: Option<OrganisationId>,
+        request: CreateOrganisationRequestDTO,
     ) -> Result<OrganisationId, ServiceError> {
-        let now = OffsetDateTime::now_utc();
-
-        // Check if it already exists
-        if let Some(id) = id {
-            if organisation_already_exists(&*self.organisation_repository, &id).await? {
-                return Err(BusinessLogicError::OrganisationAlreadyExists.into());
-            }
-        }
-
-        let request = Organisation {
-            id: id.unwrap_or(Uuid::new_v4().into()),
-            created_date: now,
-            last_modified: now,
-        };
-
-        let uuid = self
+        let result = self
             .organisation_repository
-            .create_organisation(request.to_owned())
-            .await?;
+            .create_organisation(request.into())
+            .await;
 
-        Ok(uuid)
+        match result {
+            Ok(uuid) => Ok(uuid),
+            Err(DataLayerError::AlreadyExists) => {
+                Err(BusinessLogicError::OrganisationAlreadyExists.into())
+            }
+            Err(err) => Err(err.into()),
+        }
     }
 }

@@ -3,8 +3,7 @@ use std::sync::Arc;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::organisation_repository::OrganisationRepository;
 use shared_types::OrganisationId;
-use sql_data_provider::test_utilities::get_dummy_date;
-use uuid::Uuid;
+use sql_data_provider::test_utilities::dummy_organisation;
 
 pub struct OrganisationsDB {
     repository: Arc<dyn OrganisationRepository>,
@@ -24,19 +23,13 @@ impl OrganisationsDB {
     }
 
     pub async fn create(&self) -> Organisation {
-        let id = Uuid::new_v4().into();
-
-        let organisation = Organisation {
-            id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        };
+        let organisation = dummy_organisation(None);
 
         self.repository
-            .create_organisation(organisation)
+            .create_organisation(organisation.clone())
             .await
             .unwrap();
 
-        self.get(&id).await
+        self.get(&organisation.id).await
     }
 }

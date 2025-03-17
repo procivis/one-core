@@ -828,7 +828,7 @@ fn dummy_credential() -> Credential {
                 },
                 required: true,
             }]),
-            organisation: Some(dummy_organisation()),
+            organisation: Some(dummy_organisation(None)),
             deleted_at: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

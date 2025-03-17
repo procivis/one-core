@@ -8,7 +8,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof_schema::{
     GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations, SortableProofSchemaColumn,
@@ -48,7 +48,9 @@ async fn setup_empty(
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
 
     TestSetup {
         repository: Box::from(ProofSchemaProvider {
@@ -168,11 +170,7 @@ async fn test_create_proof_schema_already_exists() {
             deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
-                id: organisation_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }),
+            organisation: Some(dummy_organisation(Some(organisation_id))),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -268,11 +266,7 @@ async fn test_create_proof_schema_success() {
             deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
-                id: organisation_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }),
+            organisation: Some(dummy_organisation(Some(organisation_id))),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -488,13 +482,7 @@ async fn test_get_proof_schema_with_relations() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
@@ -629,13 +617,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(id.to_owned())))));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository

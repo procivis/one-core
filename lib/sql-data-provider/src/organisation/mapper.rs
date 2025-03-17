@@ -7,6 +7,7 @@ impl From<Organisation> for organisation::ActiveModel {
     fn from(value: Organisation) -> Self {
         Self {
             id: Set(value.id),
+            name: Set(value.name),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
         }

@@ -8,7 +8,6 @@ use super::KeyService;
 use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::Organisation;
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -23,7 +22,7 @@ use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
     KeyRequestDTO,
 };
-use crate::service::test_utilities::generic_config;
+use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 fn setup_service(
     repository: MockKeyRepository,
@@ -59,11 +58,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(Organisation {
-            id: organisation_id.into(),
-            created_date: now,
-            last_modified: now,
-        }),
+        organisation: Some(dummy_organisation(Some(organisation_id.into()))),
     }
 }
 

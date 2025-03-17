@@ -18,7 +18,7 @@ use crate::model::credential_schema::{
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
 use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
@@ -51,8 +51,8 @@ use crate::service::proof_schema::dto::{
 };
 use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::test_utilities::{
-    dummy_credential_schema, dummy_proof_schema, generic_config, generic_formatter_capabilities,
-    get_dummy_date,
+    dummy_credential_schema, dummy_organisation, dummy_proof_schema, generic_config,
+    generic_formatter_capabilities, get_dummy_date,
 };
 
 const IMPORT_URL: &str = "http://import.credential.schema";
@@ -362,13 +362,7 @@ async fn test_create_proof_schema_success() {
         .expect_get_organisation()
         .times(1)
         .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -527,13 +521,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         .expect_get_organisation()
         .times(1)
         .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let credential_schema_id_2: CredentialSchemaId = Uuid::new_v4().into();
@@ -709,13 +697,7 @@ async fn test_create_proof_schema_array_object_fail() {
         .expect_get_organisation()
         .times(1)
         .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -873,13 +855,7 @@ async fn test_create_proof_schema_array_success() {
         .expect_get_organisation()
         .times(1)
         .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -1111,13 +1087,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(move |_, _| Ok(Some(dummy_organisation(None))));
 
     let service = setup_service(
         proof_schema_repository,
@@ -1257,13 +1227,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     organisation_repository
         .expect_get_organisation()
         .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1464,13 +1428,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     organisation_repository
         .expect_get_organisation()
         .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1676,13 +1634,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     organisation_repository
         .expect_get_organisation()
         .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1843,13 +1795,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
     organisation_repository
         .expect_get_organisation()
         .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1932,13 +1878,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
     organisation_repo
         .expect_get_organisation()
         .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
@@ -2008,13 +1948,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
     organisation_repo
         .expect_get_organisation()
         .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
@@ -2085,11 +2019,7 @@ fn generic_proof_schema() -> ProofSchema {
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(dummy_organisation(None)),
         input_schemas: Some(vec![]),
     }
 }
@@ -2469,13 +2399,7 @@ async fn test_create_proof_schema_verify_nested_generic(
         .expect_get_organisation()
         .times(1)
         .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();

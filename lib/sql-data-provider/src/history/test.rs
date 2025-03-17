@@ -27,15 +27,13 @@ async fn setup_empty() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
 
     TestSetup {
         provider: HistoryProvider { db: db.clone() },
-        organisation: Organisation {
-            id: organisation_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        },
+        organisation: dummy_organisation(Some(organisation_id)),
         db,
     }
 }

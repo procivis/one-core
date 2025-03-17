@@ -15,7 +15,6 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };
 use crate::model::interaction::Interaction;
-use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
@@ -32,7 +31,7 @@ use crate::provider::exchange_protocol::iso_mdl::common::{
 use crate::provider::exchange_protocol::{ExchangeProtocolImpl, MockStorageProxy};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::service::test_utilities::generic_config;
+use crate::service::test_utilities::{dummy_organisation, generic_config};
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 
 #[tokio::test]
@@ -331,11 +330,7 @@ async fn test_get_presentation_definition_ok() {
         external_schema: false,
         schema_id: schema_id.clone(),
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        organisation: Some(Organisation {
-            id: organisation_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(dummy_organisation(Some(organisation_id))),
         layout_properties: None,
         claim_schemas: Some(claim_schemas.values().cloned().collect()),
         wallet_storage_type: None,

@@ -4,6 +4,7 @@ use std::hash::Hash;
 
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::interaction::InteractionId;
+use one_core::model::organisation::Organisation;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
@@ -311,9 +312,12 @@ pub async fn insert_many_proof_claim_to_database(
 pub async fn insert_organisation_to_database(
     database: &DatabaseConnection,
     id: Option<OrganisationId>,
+    name: Option<String>,
 ) -> Result<OrganisationId, DbErr> {
+    let id = id.unwrap_or(Uuid::new_v4().into());
     let organisation = organisation::ActiveModel {
-        id: Set(id.unwrap_or(Uuid::new_v4().into())),
+        id: Set(id),
+        name: Set(name.unwrap_or(id.to_string())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
     }
@@ -506,6 +510,16 @@ pub fn assert_eq_unordered<T: Hash + Eq + Debug, K: Into<T>>(
         left.into_iter().collect::<HashSet<_>>(),
         right.into_iter().map(Into::into).collect::<HashSet<_>>(),
     );
+}
+
+pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
+    let id = id.unwrap_or(Uuid::new_v4().into());
+    Organisation {
+        name: format!("{id}"),
+        id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+    }
 }
 
 #[test]

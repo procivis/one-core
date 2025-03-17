@@ -14,11 +14,15 @@ impl OrganisationsApi {
         Self { client }
     }
 
-    pub async fn create(&self, id: impl Into<Option<Uuid>>) -> Response {
-        let body = match id.into() {
+    pub async fn create(&self, id: impl Into<Option<Uuid>>, name: Option<&str>) -> Response {
+        let mut body = match id.into() {
             Some(id) => json!({"id": id}),
             None => json!({}),
         };
+
+        if let Some(name) = name {
+            body["name"] = json!(name);
+        }
 
         self.client.post("/api/organisation/v1", body).await
     }

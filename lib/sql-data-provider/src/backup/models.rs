@@ -37,6 +37,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_allow_suspension: bool,
 
     pub organisation_id: OrganisationId,
+    pub organisation_name: String,
     pub organisation_created_date: OffsetDateTime,
     pub organisation_last_modified: OffsetDateTime,
 

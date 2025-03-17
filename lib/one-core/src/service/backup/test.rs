@@ -15,7 +15,6 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::history::{HistoryAction, HistoryEntityType};
-use crate::model::organisation::Organisation;
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -93,11 +92,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     },
                     required: false,
                 }]),
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                }),
+                organisation: Some(dummy_organisation(None)),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -133,7 +128,7 @@ async fn test_fetch_unexportable() {
 #[tokio::test]
 async fn test_finalize_import() {
     let mut repositories = Repositories::default();
-    let organisation = dummy_organisation();
+    let organisation = dummy_organisation(None);
 
     repositories
         .organisation_repository
@@ -163,7 +158,7 @@ async fn test_finalize_import() {
 #[tokio::test]
 async fn test_backup_flow() {
     let mut repositories = Repositories::default();
-    let organisation = dummy_organisation();
+    let organisation = dummy_organisation(None);
     let db_version = "10".into();
     let history_id = Uuid::new_v4().into();
 

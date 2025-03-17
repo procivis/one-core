@@ -30,6 +30,7 @@ async fn test_create_organisation() {
 
     let organisation = Organisation {
         id: org_id,
+        name: org_id.to_string(),
         created_date: now,
         last_modified: now,
     };
@@ -63,7 +64,7 @@ async fn test_get_organisation_success() {
     let TestSetup { repository, db } = setup().await;
 
     let org_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(org_id))
+    insert_organisation_to_database(&db, Some(org_id), None)
         .await
         .unwrap();
 
@@ -81,7 +82,7 @@ async fn test_get_organisation_list() {
     let TestSetup { repository, db } = setup().await;
 
     let org_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(org_id))
+    insert_organisation_to_database(&db, Some(org_id), None)
         .await
         .unwrap();
 

@@ -45,7 +45,9 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         .unwrap();
     }
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
 
     let credential_schema_id = &insert_credential_schema_to_database(
         &db,

@@ -2,14 +2,15 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use mockall::Sequence;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OrganisationService;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::organisation::dto::CreateOrganisationRequestDTO;
+use crate::service::test_utilities::dummy_organisation;
 
 fn setup_service(organisation_repository: MockOrganisationRepository) -> OrganisationService {
     OrganisationService {
@@ -26,7 +27,7 @@ async fn test_create_organisation_id_not_set() {
         .returning(|org| Ok(org.id));
 
     let service = setup_service(organisation_repository);
-    let result = service.create_organisation(None).await;
+    let result = service.create_organisation(Default::default()).await;
 
     assert!(result.is_ok());
 }
@@ -36,11 +37,6 @@ async fn test_create_organisation_id_set() {
     let mut sequence = Sequence::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .in_sequence(&mut sequence)
-        .returning(|_, _| Ok(None));
-    organisation_repository
         .expect_create_organisation()
         .times(1)
         .in_sequence(&mut sequence)
@@ -48,7 +44,13 @@ async fn test_create_organisation_id_set() {
 
     let service = setup_service(organisation_repository);
     let id = Uuid::new_v4().into();
-    let result = service.create_organisation(Some(id)).await.unwrap();
+    let result = service
+        .create_organisation(CreateOrganisationRequestDTO {
+            id: Some(id),
+            name: None,
+        })
+        .await
+        .unwrap();
 
     assert_eq!(result, id);
 }
@@ -57,19 +59,18 @@ async fn test_create_organisation_id_set() {
 async fn test_create_organisation_already_exists() {
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
-        .expect_get_organisation()
+        .expect_create_organisation()
         .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }))
-        });
+        .returning(|_| Err(DataLayerError::AlreadyExists));
 
     let service = setup_service(organisation_repository);
     let id = Uuid::new_v4().into();
-    let result = service.create_organisation(Some(id)).await;
+    let result = service
+        .create_organisation(CreateOrganisationRequestDTO {
+            id: Some(id),
+            name: None,
+        })
+        .await;
 
     assert!(matches!(
         result,
@@ -83,11 +84,7 @@ async fn test_create_organisation_already_exists() {
 async fn test_get_organisation_success() {
     let mut organisation_repository = MockOrganisationRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
+    let organisation = dummy_organisation(None);
     let org_clone = organisation.clone();
     organisation_repository
         .expect_get_organisation()
@@ -133,13 +130,7 @@ async fn test_get_organisation_list_success() {
     organisation_repository
         .expect_get_organisation_list()
         .times(1)
-        .returning(|| {
-            Ok(vec![Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }])
-        });
+        .returning(|| Ok(vec![dummy_organisation(None)]));
 
     let service = setup_service(organisation_repository);
     let result = service.get_organisation_list().await;

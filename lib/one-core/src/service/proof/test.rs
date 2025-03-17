@@ -25,7 +25,7 @@ use crate::model::interaction::{Interaction, InteractionId, InteractionRelations
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
     GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
 };
@@ -73,7 +73,9 @@ use crate::service::proof::dto::{
     ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO, ShareProofRequestDTO,
 };
 use crate::service::proof::validator::validate_mdl_exchange;
-use crate::service::test_utilities::{dummy_did, generic_config, get_dummy_date};
+use crate::service::test_utilities::{
+    dummy_did, dummy_organisation, generic_config, get_dummy_date,
+};
 use crate::util::ble_resource::BleWaiter;
 
 #[derive(Default)]
@@ -157,11 +159,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             name: "".to_string(),
             expire_duration: 0,
             imported_source_url: None,
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             input_schemas: None,
         }),
         claims: None,
@@ -170,11 +168,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             did: "did:example:123".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
@@ -251,11 +245,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             last_modified: OffsetDateTime::now_utc(),
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -369,11 +359,7 @@ async fn test_get_proof_exists() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -511,12 +497,7 @@ async fn test_get_proof_with_array_holder() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
-
+    let organisation = dummy_organisation(None);
     let claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
@@ -717,12 +698,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
-
+    let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -941,12 +917,7 @@ async fn test_get_proof_with_object_array_holder() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
-
+    let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -1160,11 +1131,7 @@ async fn test_get_proof_with_array() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
+    let organisation = dummy_organisation(None);
 
     let claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -1384,12 +1351,7 @@ async fn test_get_proof_with_array_in_object() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
-
+    let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -1627,12 +1589,7 @@ async fn test_get_proof_with_object_array() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
 
-    let organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
-
+    let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {

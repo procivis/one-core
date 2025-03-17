@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::KeyProvider;
 use crate::entity::key;
 use crate::test_utilities::{
-    insert_organisation_to_database, setup_test_data_layer_and_connection,
+    dummy_organisation, insert_organisation_to_database, setup_test_data_layer_and_connection,
 };
 
 struct TestSetup {
@@ -28,14 +28,12 @@ async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
 
     let now = OffsetDateTime::now_utc();
-    let organisation = Organisation {
-        id: organisation_id,
-        created_date: now,
-        last_modified: now,
-    };
+    let organisation = dummy_organisation(Some(organisation_id));
 
     let key_id = Uuid::new_v4().into();
     key::ActiveModel {

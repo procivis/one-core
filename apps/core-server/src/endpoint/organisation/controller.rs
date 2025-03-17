@@ -1,12 +1,13 @@
-use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 use shared_types::OrganisationId;
 
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
     GetOrganisationDetailsResponseRestDTO,
 };
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse, VecResponse};
 use crate::router::AppState;
 
@@ -59,7 +60,7 @@ pub(crate) async fn get_organisations(
     path = "/api/organisation/v1",
     request_body(
         content((Option<CreateOrganisationRequestRestDTO>)),
-        example = json!({ "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6" }),
+        example = json!({ "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "name": "default organisation" }),
     ),
     responses(CreatedOrErrorResponse<CreateOrganisationResponseRestDTO>),
     tag = "organisation_management",
@@ -75,14 +76,15 @@ pub(crate) async fn get_organisations(
 #[axum::debug_handler]
 pub(crate) async fn post_organisation(
     state: State<AppState>,
-    request: Result<Json<CreateOrganisationRequestRestDTO>, JsonRejection>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateOrganisationRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
-    let id = request.ok().and_then(|body| body.0.id);
-
     let result = state
         .core
         .organisation_service
-        .create_organisation(id)
+        .create_organisation(request.into())
         .await;
     CreatedOrErrorResponse::from_result(result, state, "creating organization")
 }

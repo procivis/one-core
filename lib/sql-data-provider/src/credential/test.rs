@@ -17,7 +17,7 @@ use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::OrganisationRelations;
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::{
@@ -55,7 +55,9 @@ async fn setup_empty() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
 
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
@@ -115,11 +117,7 @@ async fn setup_empty() -> TestSetup {
                 })
                 .collect(),
         ),
-        organisation: Some(Organisation {
-            id: organisation_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        }),
+        organisation: Some(dummy_organisation(Some(organisation_id))),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -143,11 +141,7 @@ async fn setup_empty() -> TestSetup {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "name".to_string(),
-        organisation: Some(Organisation {
-            id: organisation_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        }),
+        organisation: Some(dummy_organisation(Some(organisation_id))),
         did: "did:key:123".parse().unwrap(),
         did_type: one_core::model::did::DidType::Local,
         did_method: "KEY".to_string(),
@@ -965,7 +959,7 @@ async fn test_update_credential_success() {
     let token = vec![1, 2, 3];
     assert_ne!(token, credential_before_update.credential);
 
-    let organisation_id = test_utilities::insert_organisation_to_database(&db, None)
+    let organisation_id = test_utilities::insert_organisation_to_database(&db, None, None)
         .await
         .unwrap();
 

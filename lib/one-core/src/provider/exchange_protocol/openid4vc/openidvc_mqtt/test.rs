@@ -13,7 +13,6 @@ use crate::config::core_config::{Fields, FormatType, TransportType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::MockSignatureProvider;
@@ -48,7 +47,7 @@ use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::service::test_utilities::generic_config;
+use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct TestInputs<'a> {
@@ -375,7 +374,7 @@ async fn test_handle_invitation_success() {
         ..Default::default()
     });
     let result = protocol
-        .holder_handle_invitation(valid, dummy_organization())
+        .holder_handle_invitation(valid, dummy_organisation(None))
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -610,14 +609,6 @@ async fn test_share_proof_for_mqtt_returns_url() {
     assert_eq!(custom_url_scheme, url.scheme());
     assert_eq!(interaction_id.to_string(), proof_id_query_value);
     assert_eq!(broker_url, broker_url_query_value);
-}
-
-fn dummy_organization() -> Organisation {
-    Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    }
 }
 
 fn generate_verifier_key() -> (KeyAgreementKey, String) {

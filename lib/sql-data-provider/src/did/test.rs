@@ -40,7 +40,9 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
     let key_id = insert_key_to_database(
         &db,
         "ED25519".to_string(),
@@ -58,11 +60,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
             organisation_repository: Arc::new(repositories.organisation_repository),
             db: db.clone(),
         },
-        organisation: Organisation {
-            id: organisation_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        },
+        organisation: dummy_organisation(Some(organisation_id)),
         key: Key {
             id: key_id,
             created_date: get_dummy_date(),
@@ -179,11 +177,7 @@ async fn test_create_did() {
 async fn test_create_did_invalid_organisation() {
     let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
-    let non_existing_organisation = Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-    };
+    let non_existing_organisation = dummy_organisation(None);
 
     let result = provider
         .create_did(Did {
@@ -208,13 +202,7 @@ async fn test_get_did_by_value_existing() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithDid {
         provider,
@@ -270,13 +258,7 @@ async fn test_get_did_existing() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_key().times(1).returning(|id, _| {

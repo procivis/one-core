@@ -19,6 +19,7 @@ use one_core::service::did::dto::{
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
+use one_core::service::organisation::dto::CreateOrganisationRequestDTO;
 use one_core::service::proof::dto::{
     GetProofQueryDTO, ProofClaimValueDTO, ProofDetailResponseDTO, ProofFilterValue,
 };
@@ -50,6 +51,7 @@ use crate::binding::history::{
 };
 use crate::binding::interaction::HandleInvitationResponseBindingEnum;
 use crate::binding::key::KeyRequestBindingDTO;
+use crate::binding::organisation::CreateOrganisationRequestBindingDTO;
 use crate::binding::proof::{
     ProofListQueryBindingDTO, ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
 };
@@ -658,4 +660,15 @@ pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
 
 pub fn optional_did_string(value: Option<DidListItemResponseDTO>) -> Option<String> {
     value.map(|inner| inner.id.to_string())
+}
+
+impl TryFrom<CreateOrganisationRequestBindingDTO> for CreateOrganisationRequestDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: CreateOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.id.map(|id| into_id(&id)).transpose()?,
+            name: value.name,
+        })
+    }
 }

@@ -18,7 +18,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
-use crate::model::organisation::Organisation;
 use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
@@ -64,11 +63,7 @@ async fn test_issuer_submit_succeeds() {
         key_reference: b"private_key".to_vec(),
         storage_type: key_storage_type.to_string(),
         key_type: key_type.to_string(),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(dummy_organisation(None)),
     };
 
     let credential = Credential {
@@ -98,7 +93,7 @@ async fn test_issuer_submit_succeeds() {
         .return_once(move |_, _| {
             let mut credential = credential_copy;
             credential.schema = Some(crate::model::credential_schema::CredentialSchema {
-                organisation: Some(dummy_organisation()),
+                organisation: Some(dummy_organisation(None)),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
@@ -680,7 +675,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .return_once(move |_, _| {
             let mut credential = credential_copy;
             credential.schema = Some(crate::model::credential_schema::CredentialSchema {
-                organisation: Some(dummy_organisation()),
+                organisation: Some(dummy_organisation(None)),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
@@ -822,7 +817,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .return_once(move |_, _| {
             let mut credential = credential_copy;
             credential.schema = Some(crate::model::credential_schema::CredentialSchema {
-                organisation: Some(dummy_organisation()),
+                organisation: Some(dummy_organisation(None)),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
@@ -1136,11 +1131,7 @@ fn dummy_credential() -> Credential {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
+            organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
         }),
         interaction: Some(Interaction {
@@ -1181,10 +1172,6 @@ fn dummy_key() -> Key {
         key_reference: b"private_key".to_vec(),
         storage_type: "SOFTWARE".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(dummy_organisation(None)),
     }
 }
