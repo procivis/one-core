@@ -1,30 +1,26 @@
 //! `struct`s and `enum`s for DID method provider.
 
 use one_dto_mapper::{convert_inner, From, Into};
+use serde::Serialize;
 use shared_types::DidValue;
 
 use super::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::model::key::PublicKeyJwk;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub enum Operation {
     RESOLVE,
     CREATE,
     DEACTIVATE,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DidCapabilities {
     pub operations: Vec<Operation>,
     pub key_algorithms: Vec<String>,
     /// Did method names that this did method is able to handle
     pub method_names: Vec<String>,
-}
-
-#[derive(Clone, Default)]
-pub struct DidKey {
-    pub key_type: String,
-    pub public_key: Vec<u8>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, From, Into)]

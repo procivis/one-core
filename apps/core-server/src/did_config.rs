@@ -1,5 +1,5 @@
 use one_crypto::utilities::deserialize_base64;
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into};
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 
@@ -113,25 +113,4 @@ impl<'a, const N: usize> Deserialize<'a> for MinMax<N> {
             max: val.max,
         })
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, From, Into)]
-#[from(one_core::provider::did_method::model::Operation)]
-#[into(one_core::provider::did_method::model::Operation)]
-pub enum Operation {
-    RESOLVE,
-    CREATE,
-    DEACTIVATE,
-}
-
-#[derive(Clone, Default, Serialize, Deserialize, From, Into)]
-#[from(one_core::provider::did_method::model::DidCapabilities)]
-#[into(one_core::provider::did_method::model::DidCapabilities)]
-#[serde(rename_all = "camelCase")]
-pub struct DidCapabilities {
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
-    pub operations: Vec<Operation>,
-    pub key_algorithms: Vec<String>,
-    pub method_names: Vec<String>,
 }

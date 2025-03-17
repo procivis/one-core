@@ -5,8 +5,8 @@ use std::sync::{Arc, LazyLock};
 
 use indexmap::IndexMap;
 use one_core::config::core_config::{
-    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, InputFormat,
-    KeyStorageType, RevocationType,
+    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType,
+    InputFormat, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
@@ -318,16 +318,15 @@ async fn initialize(
                     let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
 
                     for (name, field) in did_configs {
-                        let did_method: Arc<dyn DidMethod> = match field.r#type.to_string().as_str()
-                        {
-                            "KEY" => {
+                        let did_method: Arc<dyn DidMethod> = match field.r#type {
+                            DidType::Key => {
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
                                     .expect("key algorithm provider is required");
                                 Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
                             }
-                            "WEB" => {
+                            DidType::Web => {
                                 let params: DidWebParams = config
                                     .get(name)
                                     .expect("failed to deserialize did web params");
@@ -344,22 +343,22 @@ async fn initialize(
                                 .expect("failed to create did web method");
                                 Arc::new(did_web) as _
                             }
-                            "JWK" => {
+                            DidType::Jwk => {
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
                                     .expect("key algorithm provider is required");
                                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
                             }
-                            "X509" => Arc::new(X509Method::new()) as _,
-                            "UNIVERSAL_RESOLVER" => {
+                            DidType::X509 => Arc::new(X509Method::new()) as _,
+                            DidType::Universal => {
                                 let params: DidUniversalParams = config
                                     .get(name)
                                     .expect("failed to deserialize did universal params");
                                 Arc::new(UniversalDidMethod::new(params.into(), client.clone()))
                                     as _
                             }
-                            "MDL" => {
+                            DidType::MDL => {
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
@@ -384,7 +383,7 @@ async fn initialize(
 
                                 did_mdl as _
                             }
-                            "SD_JWT_VC_ISSUER_METADATA" => {
+                            DidType::SdJwtVcIssuerMetadata => {
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
@@ -403,7 +402,6 @@ async fn initialize(
                                     .expect("failed to create SdJwtVCIssuerMetadataDidMethod"),
                                 )
                             }
-                            other => panic!("Unexpected did method: {other}"),
                         };
                         did_methods.insert(name.to_owned(), did_method);
                     }
@@ -419,11 +417,9 @@ async fn initialize(
                                     private: None,
                                 }
                             });
-                            let capabilities: did_config::DidCapabilities =
-                                entity.get_capabilities().into();
 
                             *value = core_config::Fields {
-                                capabilities: Some(json!(capabilities)),
+                                capabilities: Some(json!(entity.get_capabilities())),
                                 params,
                                 ..value.clone()
                             }

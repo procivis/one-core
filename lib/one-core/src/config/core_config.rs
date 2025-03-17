@@ -278,7 +278,7 @@ pub enum DidType {
     X509,
     #[serde(rename = "UNIVERSAL_RESOLVER")]
     #[strum(serialize = "UNIVERSAL_RESOLVER")]
-    UNIVERSAL,
+    Universal,
     #[serde(rename = "MDL")]
     #[strum(serialize = "MDL")]
     MDL,
