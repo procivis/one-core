@@ -312,6 +312,9 @@ pub enum DidType {
     #[serde(rename = "SD_JWT_VC_ISSUER_METADATA")]
     #[strum(serialize = "SD_JWT_VC_ISSUER_METADATA")]
     SdJwtVcIssuerMetadata,
+    #[serde(rename = "WEBVH")]
+    #[strum(serialize = "WEBVH")]
+    WebVh,
 }
 
 pub type DatatypeConfig = ConfigBlock<DatatypeType>;

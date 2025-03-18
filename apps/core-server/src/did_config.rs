@@ -31,6 +31,13 @@ pub struct DidWebParams {
 }
 
 #[derive(Debug, Deserialize, Into)]
+#[into(one_core::provider::did_method::webvh::Params)]
+#[serde(rename_all = "camelCase")]
+pub struct DidWebVhParams {
+    pub max_did_log_entry_check: u32,
+}
+
+#[derive(Debug, Deserialize, Into)]
 #[into(one_core::provider::did_method::sd_jwt_vc_issuer_metadata::Params)]
 #[serde(rename_all = "camelCase")]
 pub struct DidSdJwtVCIssuerMetadataParams {

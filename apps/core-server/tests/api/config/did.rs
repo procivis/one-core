@@ -152,3 +152,36 @@ async fn test_multikey_is_present_in_config() {
     assert!(resp["did"]["X509"]["params"]["keys"].is_null());
     assert!(resp["did"]["ION"]["params"]["keys"].is_null());
 }
+
+#[tokio::test]
+async fn test_webvh_did_method_config() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.config.get().await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert!(resp["did"]["WEBVH"].is_object());
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["keyAlgorithms"]
+            .as_array()
+            .unwrap(),
+        &["ES256"]
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["methodNames"]
+            .as_array()
+            .unwrap(),
+        &["tdw"]
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["operations"]
+            .as_array()
+            .unwrap(),
+        &["RESOLVE"]
+    );
+}

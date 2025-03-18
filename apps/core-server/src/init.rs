@@ -28,6 +28,7 @@ use one_core::provider::did_method::resolver::DidCachingLoader;
 use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
+use one_core::provider::did_method::webvh::DidWebVh;
 use one_core::provider::did_method::x509::X509Method;
 use one_core::provider::did_method::DidMethod;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
@@ -76,7 +77,7 @@ use time::Duration;
 use tracing_subscriber::prelude::*;
 
 use crate::did_config::{
-    DidMdlParams, DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams,
+    DidMdlParams, DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams, DidWebVhParams,
 };
 use crate::{build_info, did_config, ServerConfig};
 
@@ -242,6 +243,13 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         .expect("failed to create SD JWT VC did method");
 
                         Arc::new(did_resolver) as _
+                    }
+                    DidType::WebVh => {
+                        let params: DidWebVhParams = config
+                            .get(name)
+                            .expect("failed to deserialize did webvh params");
+                        let did_webvh = DidWebVh::new(params.into());
+                        Arc::new(did_webvh) as _
                     }
                 };
                 did_methods.insert(name.to_owned(), did_method);

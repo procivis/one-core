@@ -22,6 +22,13 @@ pub struct DidUniversalParams {
 }
 
 #[derive(Debug, Deserialize, Into)]
+#[into(one_core::provider::did_method::webvh::Params)]
+#[serde(rename_all = "camelCase")]
+pub struct DidWebVhParams {
+    pub max_did_log_entry_check: u32,
+}
+
+#[derive(Debug, Deserialize, Into)]
 #[into(one_core::provider::did_method::web::Params)]
 #[serde(rename_all = "camelCase")]
 pub struct DidWebParams {

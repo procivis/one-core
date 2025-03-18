@@ -74,10 +74,10 @@ exchange:
             allowedSchemes: ["https"]
         presentation:
           verifier:
-            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+            supportedClientIdSchemes: [redirect_uri, verifier_attestation]
             defaultClientIdSchema: verifier_attestation
           holder:
-            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+            supportedClientIdSchemes: [redirect_uri, verifier_attestation]
           redirectUri:
             disabled: false
             allowedSchemes: ["https"]
@@ -100,10 +100,10 @@ exchange:
           urlScheme: mdoc-openid4vp
           x509CaCertificate: MIIC6jCCApCgAwIBAgIULOnT9JtSjwzSk5XUCy4lzAXgzsMwCgYIKoZIzj0EAwQwgZYxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20xCzAJBgNVBAYTAkNIMQ8wDQYDVQQHDAZadXJpY2gxFDASBgNVBAoMC1Byb2NpdmlzIEFHMR4wHAYDVQQLDBVDZXJ0aWZpY2F0ZSBBdXRob3JpdHkxIjAgBgkqhkiG9w0BCQEWE3N1cHBvcnRAcHJvY2l2aXMuY2gwHhcNMjUwMzEzMTQzNzAwWhcNMzUwMzExMTQzNzAwWjCBljEcMBoGA1UEAwwTY2EuZGV2Lm1kbC1wbHVzLmNvbTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABC8hfYMdzhP87J1EnaaIInDNqGebPugTdzANq8kd2no4Xav_cyHsOVCe6FL7yYHButVR7xrmCbQip_0ctE0cdrejgbkwgbYwDgYDVR0PAQH_BAQDAgEGMDAGA1UdHwQpMCcwJaAjoCGGH2h0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8wHgYDVR0SBBcwFYITY2EuZGV2Lm1kbC1wbHVzLmNvbTASBgNVHRMBAf8ECDAGAQH_AgEAMB0GA1UdDgQWBBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAfBgNVHSMEGDAWgBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAKBggqhkjOPQQDBANIADBFAiAwMs_rQEDwt0HbrAt4lvAwT3jrtqqR4BzZDQhqqh8zyAIhAKTYqzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
           verifier:
-            supportedClientIdSchemes: [ x509_san_dns ]
+            supportedClientIdSchemes: [x509_san_dns]
             defaultClientIdSchema: x509_san_dns
           holder:
-            supportedClientIdSchemes: [ x509_san_dns ]
+            supportedClientIdSchemes: [x509_san_dns]
           redirectUri:
             disabled: false
             allowedSchemes: ["https"]
@@ -215,6 +215,13 @@ did:
     params:
       private:
         iacaCertificate: MIIDHTCCAqOgAwIBAgIUVqjgtJqf4hUYJkqdYzi-0xwhwFYwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIFVUIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAlVUMB4XDTIzMDkwMTE4MzQxN1oXDTMyMTEyNzE4MzQxNlowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIFVUIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAlVUMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEFg5Shfsxp5R_UFIEKS3L27dwnFhnjSgUh2btKOQEnfb3doyeqMAvBtUMlClhsF3uefKinCw08NB31rwC-dtj6X_LE3n2C9jROIUN8PrnlLS5Qs4Rs4ZU5OIgztoaO8G9o4IBJDCCASAwEgYDVR0TAQH_BAgwBgEB_wIBADAfBgNVHSMEGDAWgBSzbLiRFxzXpBpmMYdC4YvAQMyVGzAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX1VUXzAxLmNybDAdBgNVHQ4EFgQUs2y4kRcc16QaZjGHQuGLwEDMlRswDgYDVR0PAQH_BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDaAAwZQIwaXUA3j--xl_tdD76tXEWCikfM1CaRz4vzBC7NS0wCdItKiz6HZeV8EPtNCnsfKpNAjEAqrdeKDnr5Kwf8BA7tATehxNlOV4Hnc10XO1XULtigCwb49RpkqlS2Hul-DpqObUs
+  WEBVH:
+    type: "WEBVH"
+    display: "did.webvh"
+    order: 21
+    params:
+      private:
+        maxDidLogEntryCheck: 10
 datatype:
   STRING:
     display: "datatype.string"

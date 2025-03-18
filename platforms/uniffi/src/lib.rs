@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
+use did_config::DidWebVhParams;
 use indexmap::IndexMap;
 use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType,
@@ -30,6 +31,7 @@ use one_core::provider::did_method::resolver::DidCachingLoader;
 use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
+use one_core::provider::did_method::webvh::DidWebVh;
 use one_core::provider::did_method::x509::X509Method;
 use one_core::provider::did_method::DidMethod;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
@@ -401,6 +403,13 @@ async fn initialize(
                                     )
                                     .expect("failed to create SdJwtVCIssuerMetadataDidMethod"),
                                 )
+                            }
+                            DidType::WebVh => {
+                                let params: DidWebVhParams = config
+                                    .get(name)
+                                    .expect("failed to deserialize did webvh params");
+                                let did_webvh = DidWebVh::new(params.into());
+                                Arc::new(did_webvh) as _
                             }
                         };
                         did_methods.insert(name.to_owned(), did_method);

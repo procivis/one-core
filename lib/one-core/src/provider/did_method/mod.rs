@@ -30,7 +30,9 @@ pub mod resolver;
 pub mod sd_jwt_vc_issuer_metadata;
 pub mod universal;
 pub mod web;
+pub mod webvh;
 pub mod x509;
+
 /// Performs operations on DIDs and provides DID utilities.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
