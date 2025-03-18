@@ -935,7 +935,7 @@ pub struct OpenID4VPHolderInteractionData {
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
     pub presentation_definition_uri: Option<Url>,
 
-    #[serde(skip_serializing)]
+    #[serde(default, skip_serializing)]
     pub redirect_uri: Option<String>,
 
     #[serde(default)]
@@ -1119,5 +1119,6 @@ pub struct OpenID4VCRedirectUriParams {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VCVerifierAttestationPayload {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub redirect_uris: Vec<String>,
 }

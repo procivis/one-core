@@ -276,6 +276,10 @@ fn validate_against_redirect_uris(
     redirect_uris: &[String],
     uri: Option<&str>,
 ) -> Result<(), ExchangeProtocolError> {
+    if redirect_uris.is_empty() {
+        return Ok(());
+    }
+
     if let Some(uri) = uri {
         if !redirect_uris.iter().any(|v| v == uri) {
             return Err(ExchangeProtocolError::Failed(
