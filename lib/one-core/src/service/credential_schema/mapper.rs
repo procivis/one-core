@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use super::dto::{CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO};
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
@@ -85,7 +86,7 @@ pub(super) fn from_create_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    format_type: &str,
+    format_type: &FormatType,
     schema_type: Option<CredentialSchemaType>,
     schema_id: String,
     imported_source_url: String,
@@ -101,8 +102,8 @@ pub(super) fn from_create_request_with_id(
     let claim_schemas = unnest_claim_schemas(request.claims);
 
     let schema_type = schema_type.unwrap_or(match format_type {
-        "MDOC" => CredentialSchemaType::Mdoc,
-        "SD_JWT_VC" => CredentialSchemaType::SdJwtVc,
+        FormatType::Mdoc => CredentialSchemaType::Mdoc,
+        FormatType::SdJwtVc => CredentialSchemaType::SdJwtVc,
         _ => CredentialSchemaType::ProcivisOneSchema2024,
     });
 

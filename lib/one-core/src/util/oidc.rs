@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
+use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::sdjwt::{detect_sdjwt_type_from_token, SdJwtType};
@@ -14,15 +15,12 @@ pub enum FormatError {
     MappingError(String),
 }
 
-pub fn map_core_to_oidc_format(format: &str) -> Result<String, FormatError> {
+pub fn map_core_to_oidc_format(format: &FormatType) -> Result<String, FormatError> {
     match format {
-        "JWT" => Ok("jwt_vc_json".to_string()),
-        "SD_JWT" => Ok("vc+sd-jwt".to_string()),
-        "SD_JWT_VC" => Ok("vc+sd-jwt".to_string()),
-        "JSON_LD_CLASSIC" => Ok("ldp_vc".to_string()),
-        "JSON_LD_BBSPLUS" => Ok("ldp_vc".to_string()),
-        "JSON_LD" => Ok("ldp_vc".to_string()),
-        "MDOC" => Ok("mso_mdoc".to_string()),
+        FormatType::Jwt => Ok("jwt_vc_json".to_string()),
+        FormatType::SdJwt | FormatType::SdJwtVc => Ok("vc+sd-jwt".to_string()),
+        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok("ldp_vc".to_string()),
+        FormatType::Mdoc => Ok("mso_mdoc".to_string()),
         _ => Err(FormatError::MappingError(
             "Credential format is invalid!".to_string(),
         )),

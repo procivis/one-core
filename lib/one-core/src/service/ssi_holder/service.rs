@@ -635,7 +635,14 @@ impl SSIHolderService {
                 .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
 
             let format = if &credential.exchange == "OPENID4VC" {
-                map_core_to_oidc_format(&schema.format)
+                let format_type = self
+                    .config
+                    .format
+                    .get_fields(&schema.format)
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                    .r#type;
+
+                map_core_to_oidc_format(&format_type)
                     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
             } else {
                 schema.format.to_owned()

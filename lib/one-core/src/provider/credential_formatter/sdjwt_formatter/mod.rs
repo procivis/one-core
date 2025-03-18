@@ -13,6 +13,7 @@ use serde_json::Value;
 use shared_types::DidValue;
 use time::Duration;
 
+use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -214,18 +215,13 @@ impl CredentialFormatter for SDJWTFormatter {
                 Features::SupportsCredentialDesign,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
-            issuance_did_methods: vec![
-                "KEY".to_string(),
-                "WEB".to_string(),
-                "JWK".to_string(),
-                "X509".to_string(),
-            ],
-            issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
+            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
+            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
             revocation_methods: vec![
-                "NONE".to_string(),
-                "BITSTRINGSTATUSLIST".to_string(),
-                "LVVC".to_string(),
+                RevocationType::None,
+                RevocationType::BitstringStatusList,
+                RevocationType::Lvvc,
             ],
             verification_key_algorithms: vec![
                 "EDDSA".to_string(),
@@ -233,9 +229,9 @@ impl CredentialFormatter for SDJWTFormatter {
                 "DILITHIUM".to_string(),
             ],
             verification_key_storages: vec![
-                "INTERNAL".to_string(),
-                "AZURE_VAULT".to_string(),
-                "SECURE_ELEMENT".to_string(),
+                KeyStorageType::Internal,
+                KeyStorageType::AzureVault,
+                KeyStorageType::SecureElement,
             ],
             forbidden_claim_names: vec!["0".to_string()],
         }

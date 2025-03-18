@@ -37,7 +37,9 @@ use self::mdoc::{
 use super::model::{CredentialData, HolderBindingCtx};
 use super::nest_claims;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::config::core_config::{
+    DatatypeConfig, DatatypeType, DidType, ExchangeType, KeyStorageType, RevocationType,
+};
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -515,13 +517,16 @@ impl CredentialFormatter for MdocFormatter {
             ],
             allowed_schema_ids: vec![],
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
-            issuance_did_methods: vec!["MDL".to_string()],
-            issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec!["OPENID4VC".to_string(), "ISO_MDL".to_string()],
-            revocation_methods: vec!["NONE".to_string(), "MDOC_MSO_UPDATE_SUSPENSION".to_string()],
+            issuance_did_methods: vec![DidType::MDL],
+            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc, ExchangeType::IsoMdl],
+            revocation_methods: vec![
+                RevocationType::None,
+                RevocationType::MdocMsoUpdateSuspension,
+            ],
             signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
             verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
-            verification_key_storages: vec!["INTERNAL".to_string()],
+            verification_key_storages: vec![KeyStorageType::Internal],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

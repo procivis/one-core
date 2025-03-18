@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-use crate::config::core_config::{Fields, TransportType};
+use crate::config::core_config::{Fields, FormatType, TransportType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -574,7 +574,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         interaction: None,
     };
 
-    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
 

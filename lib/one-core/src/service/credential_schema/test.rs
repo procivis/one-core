@@ -10,7 +10,7 @@ use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use super::validator::{
     check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
 };
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::config::ConfigValidationError;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
@@ -355,7 +355,7 @@ async fn test_create_credential_schema_success() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
     formatter
@@ -473,7 +473,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             features: vec![Features::SelectiveDisclosure, Features::RequiresSchemaId],
             ..Default::default()
         });
@@ -553,7 +553,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             features: [Features::RequiresSchemaId].into(),
             ..Default::default()
         });
@@ -714,7 +714,7 @@ async fn test_create_credential_schema_success_nested_claims() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
     formatter
@@ -1022,7 +1022,7 @@ async fn test_create_credential_schema_unique_name_error() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
     formatter_provider
@@ -1318,7 +1318,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
     formatter_provider
@@ -2786,7 +2786,7 @@ async fn test_import_credential_schema_success() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
     formatter_provider

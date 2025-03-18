@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::config::core_config::{CoreConfig, Fields, TransportType};
+use crate::config::core_config::{CoreConfig, ExchangeType, Fields, KeyStorageType, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -1992,11 +1992,11 @@ async fn test_get_proof_list_success() {
 
 #[tokio::test]
 async fn test_create_proof_using_invalid_did_method() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange_type = ExchangeType::OpenId4Vc;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
-        exchange: exchange.to_owned(),
+        exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
@@ -2061,13 +2061,12 @@ async fn test_create_proof_using_invalid_did_method() {
 
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
-    let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
         .times(2)
         .returning(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange_copy.clone()],
-            verification_key_storages: vec!["INTERNAL".to_string()],
+            proof_exchange_protocols: vec![exchange_type],
+            verification_key_storages: vec![KeyStorageType::Internal],
             ..Default::default()
         });
 
@@ -2115,11 +2114,11 @@ async fn test_create_proof_using_invalid_did_method() {
 
 #[tokio::test]
 async fn test_create_proof_without_related_key() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange_type = ExchangeType::OpenId4Vc;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
-        exchange: exchange.to_owned(),
+        exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
@@ -2184,13 +2183,12 @@ async fn test_create_proof_without_related_key() {
 
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
-    let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
         .times(2)
         .returning(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange_copy.clone()],
-            verification_key_storages: vec!["INTERNAL".to_string()],
+            proof_exchange_protocols: vec![exchange_type],
+            verification_key_storages: vec![KeyStorageType::Internal],
             ..Default::default()
         });
 
@@ -2205,7 +2203,7 @@ async fn test_create_proof_without_related_key() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.exchange == exchange)
+        .withf(move |proof| proof.exchange == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
@@ -2242,12 +2240,12 @@ async fn test_create_proof_without_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_with_related_key() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange_type = ExchangeType::OpenId4Vc;
     let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
-        exchange: exchange.to_owned(),
+        exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
         scan_to_verify: None,
@@ -2310,13 +2308,12 @@ async fn test_create_proof_with_related_key() {
 
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
-    let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
         .times(2)
         .returning(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange_copy.clone()],
-            verification_key_storages: vec!["INTERNAL".to_string()],
+            proof_exchange_protocols: vec![exchange_type],
+            verification_key_storages: vec![KeyStorageType::Internal],
             ..Default::default()
         });
 
@@ -2331,7 +2328,7 @@ async fn test_create_proof_with_related_key() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.exchange == exchange)
+        .withf(move |proof| proof.exchange == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
@@ -2368,11 +2365,11 @@ async fn test_create_proof_with_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_failed_no_key_with_assertion_method_role() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange_type = ExchangeType::OpenId4Vc;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
-        exchange: exchange.to_owned(),
+        exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
@@ -2425,8 +2422,8 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange],
+        .return_once(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_type],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2509,11 +2506,11 @@ async fn test_create_proof_failed_incompatible_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange_type = ExchangeType::OpenId4Vc;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
-        exchange: exchange.to_owned(),
+        exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
@@ -2566,8 +2563,8 @@ async fn test_create_proof_did_deactivated_error() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange],
+        .return_once(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_type],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2662,7 +2659,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .expect_get_capabilities()
         .once()
         .return_once(move || FormatterCapabilities {
-            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
+            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2700,11 +2697,11 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_verification_key_storage() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange_type = ExchangeType::OpenId4Vc;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
-        exchange: exchange.to_owned(),
+        exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
@@ -2773,7 +2770,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         .expect_get_capabilities()
         .times(2)
         .returning(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange.clone()],
+            proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![],
             ..Default::default()
         });

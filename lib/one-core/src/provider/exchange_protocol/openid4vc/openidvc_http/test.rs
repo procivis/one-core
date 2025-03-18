@@ -16,6 +16,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::{build_claims_keys_for_mdoc, OpenID4VCHTTP};
+use crate::config::core_config::FormatType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -429,7 +430,7 @@ async fn test_share_proof() {
     let proof_id = Uuid::new_v4();
     let proof = test_proof(proof_id, "JWT");
 
-    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
@@ -532,7 +533,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
 
     let proof = test_proof(Uuid::new_v4(), "MDOC");
 
-    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Mdoc));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
@@ -704,7 +705,7 @@ async fn test_share_proof_with_use_request_uri() {
         interaction: None,
     };
 
-    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
@@ -807,7 +808,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
         interaction: None,
     };
 
-    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
@@ -2363,7 +2364,7 @@ async fn test_share_proof_custom_scheme() {
     let proof_id = Uuid::new_v4();
     let proof = test_proof(proof_id, "JWT");
 
-    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 

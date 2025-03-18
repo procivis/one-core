@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialService;
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -2250,7 +2250,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     }
 
     let mut formatter_capabilities = generic_formatter_capabilities();
-    formatter_capabilities.issuance_exchange_protocols = vec!["SCAN_TO_VERIFY".to_string()];
+    formatter_capabilities.issuance_exchange_protocols = vec![ExchangeType::ScanToVerify];
 
     let mut formatter = MockCredentialFormatter::default();
     formatter

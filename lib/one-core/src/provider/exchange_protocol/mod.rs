@@ -22,7 +22,9 @@ use url::Url;
 
 use super::mqtt_client::MqttClient;
 use crate::common_mapper::DidRole;
-use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType, TransportType};
+use crate::config::core_config::{
+    CoreConfig, ExchangeConfig, ExchangeType, FormatType, TransportType,
+};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
@@ -228,10 +230,11 @@ fn validate_url_scheme_unique(
     Ok(())
 }
 
-pub type FormatMapper = Arc<dyn Fn(&str) -> Result<String, ExchangeProtocolError> + Send + Sync>;
+pub type FormatMapper =
+    Arc<dyn Fn(&str) -> Result<FormatType, ExchangeProtocolError> + Send + Sync>;
 pub type TypeToDescriptorMapper = Arc<
     dyn Fn(
-            &str,
+            &FormatType,
         ) -> Result<
             HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
             ExchangeProtocolError,

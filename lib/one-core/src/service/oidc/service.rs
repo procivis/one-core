@@ -108,7 +108,14 @@ impl OIDCService {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let oidc_format = map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?;
+        let format_type = self
+            .config
+            .format
+            .get_fields(&schema.format)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+            .r#type;
+
+        let oidc_format = map_core_to_oidc_format(&format_type).map_err(ServiceError::from)?;
 
         create_issuer_metadata_response(&base_url, &oidc_format, &schema, &self.config)
             .map_err(Into::into)

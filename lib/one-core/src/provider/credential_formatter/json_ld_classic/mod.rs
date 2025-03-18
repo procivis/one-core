@@ -21,6 +21,7 @@ use super::json_ld::{
 };
 use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
+use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -293,18 +294,13 @@ impl CredentialFormatter for JsonLdClassic {
             signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
-            issuance_did_methods: vec![
-                "KEY".to_string(),
-                "WEB".to_string(),
-                "JWK".to_string(),
-                "X509".to_string(),
-            ],
-            issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
+            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
+            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
             revocation_methods: vec![
-                "NONE".to_string(),
-                "BITSTRINGSTATUSLIST".to_string(),
-                "LVVC".to_string(),
+                RevocationType::None,
+                RevocationType::BitstringStatusList,
+                RevocationType::Lvvc,
             ],
             allowed_schema_ids: vec![],
             datatypes: vec![
@@ -322,9 +318,9 @@ impl CredentialFormatter for JsonLdClassic {
             ],
             verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
             verification_key_storages: vec![
-                "INTERNAL".to_string(),
-                "AZURE_VAULT".to_string(),
-                "SECURE_ELEMENT".to_string(),
+                KeyStorageType::Internal,
+                KeyStorageType::AzureVault,
+                KeyStorageType::SecureElement,
             ],
             forbidden_claim_names: [jsonld_forbidden_claim_names(), vec!["0".to_string()]].concat(),
         }

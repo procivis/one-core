@@ -451,7 +451,7 @@ fn validate_format_and_exchange_protocol_compatibility(
 
     if !formatter_capabilities
         .issuance_exchange_protocols
-        .contains(&exchange_protocol.r#type.to_string())
+        .contains(&exchange_protocol.r#type)
     {
         return Err(BusinessLogicError::IncompatibleIssuanceExchangeProtocol.into());
     }
@@ -468,7 +468,7 @@ fn validate_format_and_did_method_compatibility(
 
     if !formatter_capabilities
         .issuance_did_methods
-        .contains(&did_method_type.to_string())
+        .contains(&did_method_type)
     {
         return Err(BusinessLogicError::IncompatibleIssuanceDidMethod.into());
     }

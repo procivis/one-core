@@ -10,7 +10,7 @@ use super::dto::{
 };
 use super::ProofSchemaImportError;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
@@ -66,7 +66,7 @@ pub fn throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(
             .format
             .get_if_enabled(schema.format.as_str())
             .map_err(|_| ValidationError::InvalidFormatter(schema.format.to_owned()))?;
-        if format.r#type == "PHYSICAL_CARD" {
+        if format.r#type == FormatType::PhysicalCard {
             contains_physical_card = true;
             break;
         }

@@ -8,6 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
+use crate::config::core_config::RevocationType;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
@@ -1412,7 +1413,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
 
@@ -1624,7 +1625,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             ..Default::default()
         });
 
@@ -1800,7 +1801,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec![RevocationType::None],
             features: vec![Features::SelectiveDisclosure],
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             ..Default::default()

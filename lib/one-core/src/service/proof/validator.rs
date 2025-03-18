@@ -23,7 +23,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
             "input_schemas is None".to_string(),
         ))?;
 
-    let exchange_type = config.exchange.get_fields(exchange)?.r#type.to_string();
+    let exchange_type = config.exchange.get_fields(exchange)?.r#type;
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
@@ -138,6 +138,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
     proof_schema: &ProofSchema,
     verifier_key: &Key,
     formatter_provider: &dyn CredentialFormatterProvider,
+    config: &CoreConfig,
 ) -> Result<(), ServiceError> {
     let input_schemas = proof_schema
         .input_schemas
@@ -145,6 +146,11 @@ pub(super) fn validate_verification_key_storage_compatibility(
         .ok_or(ServiceError::MappingError(
             "input_schemas is None".to_string(),
         ))?;
+
+    let storage_type = config
+        .key_storage
+        .get_fields(&verifier_key.storage_type)?
+        .r#type;
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
@@ -164,7 +170,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
         let capabilities = formatter.get_capabilities();
         if !capabilities
             .verification_key_storages
-            .contains(&verifier_key.storage_type)
+            .contains(&storage_type)
         {
             return Err(ServiceError::BusinessLogic(
                 BusinessLogicError::IncompatibleProofVerificationKeyStorage,

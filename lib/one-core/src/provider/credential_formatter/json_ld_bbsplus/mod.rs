@@ -16,6 +16,7 @@ use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
 use super::model::{CredentialData, HolderBindingCtx};
 use super::CredentialFormatter;
+use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -235,12 +236,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                 Features::SelectiveDisclosure,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
-            issuance_did_methods: vec![
-                "KEY".to_string(),
-                "WEB".to_string(),
-                "JWK".to_string(),
-                "X509".to_string(),
-            ],
+            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
             allowed_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
@@ -255,12 +251,12 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
+            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
             revocation_methods: vec![
-                "NONE".to_string(),
-                "BITSTRINGSTATUSLIST".to_string(),
-                "LVVC".to_string(),
+                RevocationType::None,
+                RevocationType::BitstringStatusList,
+                RevocationType::Lvvc,
             ],
             verification_key_algorithms: vec![
                 "EDDSA".to_string(),
@@ -268,9 +264,9 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "DILITHIUM".to_string(),
             ],
             verification_key_storages: vec![
-                "INTERNAL".to_string(),
-                "AZURE_VAULT".to_string(),
-                "SECURE_ELEMENT".to_string(),
+                KeyStorageType::Internal,
+                KeyStorageType::AzureVault,
+                KeyStorageType::SecureElement,
             ],
             forbidden_claim_names: [jsonld_forbidden_claim_names(), vec!["0".to_string()]].concat(),
         }

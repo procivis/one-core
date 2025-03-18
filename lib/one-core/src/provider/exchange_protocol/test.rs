@@ -7,7 +7,7 @@ use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, DatatypeType, Fields, Params};
+use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -936,7 +936,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     config.format.insert(
         "MDOC".to_string(),
         Fields {
-            r#type: "MDOC".to_string(),
+            r#type: FormatType::Mdoc,
             display: Value::String("display".to_string()),
             order: None,
             disabled: None,
@@ -1018,7 +1018,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     config.format.insert(
         format.to_string(),
         Fields {
-            r#type: format.to_owned(),
+            r#type: FormatType::Mdoc,
             display: Value::String("display".to_string()),
             order: None,
             disabled: None,

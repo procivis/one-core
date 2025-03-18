@@ -10,7 +10,7 @@ use super::dto::{
     SdJwtVcTypeMetadataResponseDTO,
 };
 use super::SSIIssuerService;
-use crate::config::core_config::Params;
+use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -33,12 +33,12 @@ impl SSIIssuerService {
         if self
             .config
             .format
-            .get_by_type::<Params>("JSON_LD_CLASSIC".to_owned())
+            .get_by_type::<Params>(FormatType::JsonLdClassic)
             .is_err()
             && self
                 .config
                 .format
-                .get_by_type::<Params>("JSON_LD_BBSPLUS".to_owned())
+                .get_by_type::<Params>(FormatType::JsonLdBbsPlus)
                 .is_err()
         {
             return Err(ServiceError::from(ConfigValidationError::TypeNotFound(

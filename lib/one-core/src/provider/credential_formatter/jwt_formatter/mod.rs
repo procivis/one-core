@@ -17,6 +17,7 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -304,18 +305,13 @@ impl CredentialFormatter for JWTFormatter {
             ],
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
-            issuance_did_methods: vec![
-                "KEY".to_string(),
-                "WEB".to_string(),
-                "JWK".to_string(),
-                "X509".to_string(),
-            ],
-            issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
+            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
+            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
             revocation_methods: vec![
-                "NONE".to_string(),
-                "BITSTRINGSTATUSLIST".to_string(),
-                "LVVC".to_string(),
+                RevocationType::None,
+                RevocationType::BitstringStatusList,
+                RevocationType::Lvvc,
             ],
             verification_key_algorithms: vec![
                 "EDDSA".to_string(),
@@ -323,9 +319,9 @@ impl CredentialFormatter for JWTFormatter {
                 "DILITHIUM".to_string(),
             ],
             verification_key_storages: vec![
-                "INTERNAL".to_string(),
-                "AZURE_VAULT".to_string(),
-                "SECURE_ELEMENT".to_string(),
+                KeyStorageType::Internal,
+                KeyStorageType::AzureVault,
+                KeyStorageType::SecureElement,
             ],
             allowed_schema_ids: vec![],
             datatypes: vec![

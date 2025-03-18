@@ -367,6 +367,7 @@ impl ProofService {
             &proof_schema,
             &verifier_key,
             &*self.credential_formatter_provider,
+            &self.config,
         )?;
 
         let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {

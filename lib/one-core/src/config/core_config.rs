@@ -177,7 +177,34 @@ where
     }
 }
 
-pub type FormatConfig = ConfigBlock<String>;
+pub type FormatConfig = ConfigBlock<FormatType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum FormatType {
+    #[serde(rename = "JWT")]
+    #[strum(serialize = "JWT")]
+    Jwt,
+    #[serde(rename = "PHYSICAL_CARD")]
+    #[strum(serialize = "PHYSICAL_CARD")]
+    PhysicalCard,
+    #[serde(rename = "SD_JWT")]
+    #[strum(serialize = "SD_JWT")]
+    SdJwt,
+    #[serde(rename = "SD_JWT_VC")]
+    #[strum(serialize = "SD_JWT_VC")]
+    SdJwtVc,
+    #[serde(rename = "JSON_LD_CLASSIC")]
+    #[strum(serialize = "JSON_LD_CLASSIC")]
+    JsonLdClassic,
+    #[serde(rename = "JSON_LD_BBSPLUS")]
+    #[strum(serialize = "JSON_LD_BBSPLUS")]
+    JsonLdBbsPlus,
+    #[serde(rename = "MDOC")]
+    #[strum(serialize = "MDOC")]
+    Mdoc,
+}
 
 pub type TransportConfig = ConfigBlock<TransportType>;
 

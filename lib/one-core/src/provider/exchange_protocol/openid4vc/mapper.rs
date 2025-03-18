@@ -32,7 +32,7 @@ use super::model::{
 };
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::{value_to_model_claims, NESTED_CLAIM_MARKER};
-use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -709,13 +709,13 @@ fn unnest_claim_schemas_inner(
 }
 
 pub fn create_format_map(
-    format_type: &str,
+    format_type: &FormatType,
 ) -> Result<
     HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     ExchangeProtocolError,
 > {
     match format_type {
-        "JWT" | "SD_JWT" | "MDOC" | "SD_JWT_VC" => {
+        FormatType::Jwt | FormatType::SdJwt | FormatType::Mdoc | FormatType::SdJwtVc => {
             let key = map_core_to_oidc_format(format_type)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
             Ok(HashMap::from([(
@@ -726,17 +726,16 @@ pub fn create_format_map(
                 },
             )]))
         }
-        "PHYSICAL_CARD" => {
+        FormatType::PhysicalCard => {
             unimplemented!()
         }
-        "JSON_LD_CLASSIC" | "JSON_LD_BBSPLUS" => Ok(HashMap::from([(
+        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok(HashMap::from([(
             "ldp_vc".to_string(),
             OpenID4VPPresentationDefinitionInputDescriptorFormat {
                 alg: vec![],
                 proof_type: vec!["DataIntegrityProof".to_string()],
             },
         )])),
-        _ => unimplemented!(),
     }
 }
 
@@ -1091,12 +1090,12 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
     index: usize,
     credential_schema: CredentialSchema,
     claim_schemas: Vec<ProofInputClaimSchema>,
-    presentation_format_type: &str,
+    presentation_format_type: &FormatType,
     format_to_type_mapper: &TypeToDescriptorMapper,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, ExchangeProtocolError> {
     let (id, schema_fields, intent_to_retain) = match presentation_format_type {
-        "MDOC" => (credential_schema.schema_id, vec![], Some(true)),
+        FormatType::Mdoc => (credential_schema.schema_id, vec![], Some(true)),
         _ => {
             let path = match credential_schema.schema_type {
                 CredentialSchemaType::SdJwtVc => ["$.vct".to_string()],
@@ -1164,13 +1163,13 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
     })
 }
 
-fn format_path(claim_key: &str, format_type: &str) -> Result<String, ExchangeProtocolError> {
+fn format_path(claim_key: &str, format_type: &FormatType) -> Result<String, ExchangeProtocolError> {
     match format_type {
-        "MDOC" => match claim_key.split_once(NESTED_CLAIM_MARKER) {
+        FormatType::Mdoc => match claim_key.split_once(NESTED_CLAIM_MARKER) {
             None => Ok(format!("$['{claim_key}']")),
             Some((namespace, key)) => Ok(format!("$['{namespace}']['{key}']")),
         },
-        "SdJwtVc" => Ok(format!("$.{}", claim_key)),
+        FormatType::SdJwtVc => Ok(format!("$.{}", claim_key)),
         _ => Ok(format!("$.vc.credentialSubject.{}", claim_key)),
     }
 }
@@ -1767,9 +1766,15 @@ pub(super) fn credentials_supported_mdoc(
     let claim_schema = prepare_nested_representation(&schema, config)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+    let format_type = config
+        .format
+        .get_fields(&schema.format)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        .r#type;
+
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         wallet_storage_type: schema.wallet_storage_type,
-        format: map_core_to_oidc_format(&schema.format)
+        format: map_core_to_oidc_format(&format_type)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
         // We only take objects from the initial structure as arrays are not allowed on the first level
         claims: claim_schema.claims,

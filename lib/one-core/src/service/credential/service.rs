@@ -433,7 +433,14 @@ impl CredentialService {
             ))?;
 
         let format = if credential_exchange == "OPENID4VC" {
-            map_core_to_oidc_format(&credential_schema.format)
+            let format_type = self
+                .config
+                .format
+                .get_fields(&credential_schema.format)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                .r#type;
+
+            map_core_to_oidc_format(&format_type)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         } else {
             credential_schema.format.to_owned()

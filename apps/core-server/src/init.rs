@@ -4,7 +4,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use one_core::config::core_config::{
     AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType, Fields,
-    KeyStorageType, Params, RevocationType,
+    FormatType, KeyStorageType, Params, RevocationType,
 };
 use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
@@ -350,19 +350,19 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                 .expect("Crypto provider is mandatory");
 
             for (name, field) in format_config.iter() {
-                let formatter = match field.r#type.as_str() {
-                    "JWT" => {
+                let formatter = match field.r#type {
+                    FormatType::Jwt => {
                         let params = format_config
                             .get(name)
                             .expect("JWT formatter params are mandatory");
                         Arc::new(JWTFormatter::new(params, key_algorithm_provider.clone())) as _
                     }
-                    "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new(
+                    FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new(
                         crypto.clone(),
                         caching_loader.clone(),
                         client.clone(),
                     )) as _,
-                    "SD_JWT" => {
+                    FormatType::SdJwt => {
                         let params = format_config
                             .get(name)
                             .expect("SD_JWT formatter params are mandatory");
@@ -372,7 +372,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             did_method_provider.clone(),
                         )) as _
                     }
-                    "SD_JWT_VC" => {
+                    FormatType::SdJwtVc => {
                         let params = format_config
                             .get(name)
                             .expect("SD-JWT VC formatter params are mandatory");
@@ -382,7 +382,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             did_method_provider.clone(),
                         )) as _
                     }
-                    "JSON_LD_CLASSIC" => {
+                    FormatType::JsonLdClassic => {
                         let params = format_config
                             .get(name)
                             .expect("JSON_LD_CLASSIC formatter params are mandatory");
@@ -395,7 +395,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             client.clone(),
                         )) as _
                     }
-                    "JSON_LD_BBSPLUS" => {
+                    FormatType::JsonLdBbsPlus => {
                         let params = format_config
                             .get(name)
                             .expect("JSON_LD_BBSPLUS formatter params are mandatory");
@@ -409,7 +409,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             client.clone(),
                         )) as _
                     }
-                    "MDOC" => {
+                    FormatType::Mdoc => {
                         let params = format_config
                             .get(name)
                             .expect("MDOC formatter params are mandatory");
@@ -428,7 +428,6 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             datatype_config.clone(),
                         )) as _
                     }
-                    other => unimplemented!("formatter: {other}"),
                 };
                 formatters.insert(name.to_owned(), formatter);
             }

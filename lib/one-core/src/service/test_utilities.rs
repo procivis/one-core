@@ -6,7 +6,7 @@ use time::macros::datetime;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::AppConfig;
+use crate::config::core_config::{AppConfig, ExchangeType, KeyStorageType, RevocationType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -386,20 +386,20 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         allowed_schema_ids: vec![],
         selective_disclosure: vec![],
         issuance_did_methods: vec![
-            "KEY".to_string(),
-            "WEB".to_string(),
-            "JWK".to_string(),
-            "X509".to_string(),
+            crate::config::core_config::DidType::Key,
+            crate::config::core_config::DidType::Web,
+            crate::config::core_config::DidType::Jwk,
+            crate::config::core_config::DidType::X509,
         ],
-        issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-        proof_exchange_protocols: vec!["OPENID4VC".to_string()],
+        issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+        proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
         revocation_methods: vec![
-            "NONE".to_string(),
-            "BITSTRINGSTATUSLIST".to_string(),
-            "LVVC".to_string(),
+            RevocationType::None,
+            RevocationType::BitstringStatusList,
+            RevocationType::Lvvc,
         ],
         verification_key_algorithms: vec!["EDDSA".to_string()],
-        verification_key_storages: vec!["INTERNAL".to_string()],
+        verification_key_storages: vec![KeyStorageType::Internal],
         datatypes: vec![],
         forbidden_claim_names: vec![],
     }
