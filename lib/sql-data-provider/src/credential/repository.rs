@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -631,6 +632,23 @@ impl CredentialRepository for CredentialProvider {
                     .await?,
             ),
         })
+    }
+
+    async fn delete_credential_blobs(
+        &self,
+        request: HashSet<CredentialId>,
+    ) -> Result<(), DataLayerError> {
+        credential::Entity::update_many()
+            .filter(credential::Column::Id.is_in(request))
+            .set(credential::ActiveModel {
+                credential: Set(vec![]),
+                ..Default::default()
+            })
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        Ok(())
     }
 }
 

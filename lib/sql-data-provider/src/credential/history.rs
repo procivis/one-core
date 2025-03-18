@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -88,6 +89,13 @@ impl CredentialRepository for CredentialHistoryDecorator {
 
     async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError> {
         self.inner.delete_credential(id).await
+    }
+
+    async fn delete_credential_blobs(
+        &self,
+        request: HashSet<CredentialId>,
+    ) -> Result<(), DataLayerError> {
+        self.inner.delete_credential_blobs(request).await
     }
 
     async fn get_credential(

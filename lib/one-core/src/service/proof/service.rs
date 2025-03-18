@@ -569,7 +569,11 @@ impl ProofService {
         self.proof_repository.delete_proof_claims(&proof.id).await?;
 
         self.claim_repository
-            .delete_claims_for_credentials(credential_ids)
+            .delete_claims_for_credentials(credential_ids.clone())
+            .await?;
+
+        self.credential_repository
+            .delete_credential_blobs(credential_ids)
             .await?;
 
         Ok(())

@@ -67,6 +67,7 @@ pub(crate) fn tasks_from_config(
             )) as _,
             TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(
                 claim_repository.clone(),
+                credential_repository.clone(),
                 proof_repository.clone(),
                 history_repository.clone(),
             )) as _,

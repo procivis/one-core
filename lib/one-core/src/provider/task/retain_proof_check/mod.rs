@@ -15,6 +15,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
 use crate::model::proof::{ProofClaimRelations, ProofRelations, ProofStateEnum};
 use crate::repository::claim_repository::ClaimRepository;
+use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{EntityNotFoundError, ServiceError};
@@ -22,6 +23,7 @@ use crate::service::proof::dto::ProofFilterValue;
 
 pub struct RetainProofCheck {
     claim_repository: Arc<dyn ClaimRepository>,
+    credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     history_repository: Arc<dyn HistoryRepository>,
 }
@@ -29,11 +31,13 @@ pub struct RetainProofCheck {
 impl RetainProofCheck {
     pub fn new(
         claim_repository: Arc<dyn ClaimRepository>,
+        credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
             claim_repository,
+            credential_repository,
             proof_repository,
             history_repository,
         }
@@ -131,7 +135,10 @@ impl Task for RetainProofCheck {
 
                 self.proof_repository.delete_proof_claims(&proof.id).await?;
                 self.claim_repository
-                    .delete_claims_for_credentials(credential_ids)
+                    .delete_claims_for_credentials(credential_ids.clone())
+                    .await?;
+                self.credential_repository
+                    .delete_credential_blobs(credential_ids)
                     .await?;
             }
 

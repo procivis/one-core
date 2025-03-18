@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use shared_types::{CredentialId, DidId};
 
 use super::error::DataLayerError;
@@ -13,6 +15,11 @@ pub trait CredentialRepository: Send + Sync {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
     async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError>;
+
+    async fn delete_credential_blobs(
+        &self,
+        request: HashSet<shared_types::CredentialId>,
+    ) -> Result<(), DataLayerError>;
 
     async fn get_credential(
         &self,

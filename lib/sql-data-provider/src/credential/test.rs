@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::ops::Add;
 use std::sync::Arc;
 
@@ -1088,4 +1089,73 @@ async fn test_get_credential_by_claim_id_success() {
     assert!(credential.is_ok());
     let credential = credential.unwrap().unwrap();
     assert_eq!(credential_id, credential.id);
+}
+
+#[tokio::test]
+async fn test_delete_credential_blobs_success() {
+    let TestSetup {
+        credential_schema,
+        did,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id,
+        CredentialStateEnum::Created,
+        "OPENID4VC",
+        did.id,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let credential_id_two = insert_credential(
+        &db,
+        &credential_schema.id,
+        CredentialStateEnum::Created,
+        "OPENID4VC",
+        did.id,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let provider = credential_repository(db, None);
+
+    let credential = provider
+        .get_credential(&credential_id, &CredentialRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!credential.credential.is_empty());
+
+    let credential_two = provider
+        .get_credential(&credential_id_two, &CredentialRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!credential_two.credential.is_empty());
+
+    provider
+        .delete_credential_blobs(HashSet::from([credential_id, credential_id_two]))
+        .await
+        .unwrap();
+
+    let credential = provider
+        .get_credential(&credential_id, &CredentialRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(credential.credential.is_empty());
+
+    let credential_two = provider
+        .get_credential(&credential_id_two, &CredentialRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(credential_two.credential.is_empty());
 }
