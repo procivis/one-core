@@ -5,7 +5,7 @@ use anyhow::Context;
 use indexmap::IndexMap;
 use one_dto_mapper::{convert_inner, Into};
 use secrecy::{SecretSlice, SecretString};
-use serde::de::{self, MapAccess, Visitor};
+use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
@@ -795,34 +795,53 @@ impl<'de> Deserialize<'de> for OpenID4VCICredentialSubjectItem {
 
                             // Classify the field by inspecting its type
                             if next_value.is_object() {
-                                let obj: OpenID4VCICredentialSubjectItem =
-                                    serde_json::from_value(next_value)
-                                        .map_err(de::Error::custom)?;
-                                // sort out arrays and put them to arrays list
-                                if obj.value_type.as_ref().map(|vt| vt.ends_with("[]"))
-                                    == Some(true)
-                                {
-                                    let value_type =
-                                        obj.value_type.map(|vt| vt[0..vt.len() - 2].to_owned());
-                                    arrays.insert(
-                                        key,
-                                        vec![OpenID4VCICredentialSubjectItem {
-                                            value_type,
-                                            ..Default::default()
-                                        }],
-                                    );
-                                } else {
-                                    claims.insert(key, obj);
+                                match serde_json::from_value::<OpenID4VCICredentialSubjectItem>(
+                                    next_value.clone(),
+                                ) {
+                                    Ok(obj) => {
+                                        // Check if array
+                                        if let Some(value_type) = obj
+                                            .value_type
+                                            .as_ref()
+                                            .and_then(|vt| vt.strip_suffix("[]"))
+                                        {
+                                            arrays.insert(
+                                                key,
+                                                vec![OpenID4VCICredentialSubjectItem {
+                                                    value_type: Some(value_type.to_string()),
+                                                    ..Default::default()
+                                                }],
+                                            );
+                                        } else {
+                                            claims.insert(key, obj);
+                                        }
+                                    }
+                                    Err(_) => {
+                                        // If it fails to deserialize, add it to additional_values
+                                        additional_values.insert(key, next_value);
+                                    }
                                 }
                             } else if next_value.is_array() {
-                                let arr: Vec<OpenID4VCICredentialSubjectItem> =
-                                    serde_json::from_value(next_value)
-                                        .map_err(de::Error::custom)?;
-                                arrays.insert(key, arr);
+                                // Handle arrays
+                                // First try to deserialize as our custom array
+                                match serde_json::from_value::<Vec<OpenID4VCICredentialSubjectItem>>(
+                                    next_value.clone(),
+                                ) {
+                                    Ok(arr) => {
+                                        arrays.insert(key, arr);
+                                    }
+                                    Err(_) => {
+                                        // If it fails, add as additional value
+                                        additional_values.insert(key, next_value);
+                                    }
+                                }
                             } else if next_value.is_string()
                                 || next_value.is_boolean()
                                 || next_value.is_number()
                             {
+                                additional_values.insert(key, next_value);
+                            } else {
+                                // For any other type, add to additional values
                                 additional_values.insert(key, next_value);
                             }
                         }

@@ -135,9 +135,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 offer_id: offer_id.to_owned(),
             },
             // external sd-jwt vc
-            // support for example+sd-jwt is required for interop with the EUDIW issuer,
-            // see https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78
-            "vc+sd-jwt" | "dc+sd-jwt" | "example+sd-jwt" => {
+            "vc+sd-jwt" | "dc+sd-jwt" => {
                 // We use the vc+sd-jwt format identifier for both SD-JWT-VC and SD-JWT credential formats.
                 // Checking the credential configuration for the VCT is a workaround.
                 let (schema_type, id) = match credential_config.vct.as_ref() {

@@ -7,7 +7,6 @@ pub(crate) mod model;
 #[cfg(test)]
 mod test;
 
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -306,34 +305,6 @@ pub(super) async fn extract_credentials_internal(
     )
     .await?;
 
-    // EUDIW issuer uses a disclosure called "verified_claims" to store the disclosed claims
-    // this does not seem to be a standard, see point 3 in https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78
-    let public_claims = jwt.payload.custom.public_claims;
-    let claims: HashMap<String, serde_json::Value> = match &public_claims
-        .get("verified_claims")
-        .and_then(|verified_claims| verified_claims.get("claims"))
-    {
-        None => public_claims.into_iter().collect(),
-        Some(Value::Object(claims)) => {
-            let inner_claims = if claims.len() > 1 {
-                claims.clone()
-            } else {
-                claims
-                    .values()
-                    .next()
-                    .and_then(|v| v.as_object().cloned())
-                    .unwrap_or(serde_json::Map::new())
-            };
-
-            inner_claims.into_iter().collect()
-        }
-        Some(_) => {
-            return Err(FormatterError::CouldNotExtractCredentials(
-                "Expected verified_claims to contain a claims object".to_string(),
-            ));
-        }
-    };
-
     let subject = jwt
         .payload
         .subject
@@ -354,7 +325,10 @@ pub(super) async fn extract_credentials_internal(
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?,
         subject,
-        claims: CredentialSubject { claims, id: None },
+        claims: CredentialSubject {
+            claims: jwt.payload.custom.public_claims,
+            id: None,
+        },
         status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
         credential_schema: None,
     })
@@ -393,6 +367,7 @@ fn sdjwt_vc_from_credential(
         hash_alg: Some(algorithm.to_owned()),
         status: status.map(|status| SdJwtVcStatus {
             status_list: status,
+            custom_claims: Default::default(),
         }),
         public_claims: Default::default(),
     })

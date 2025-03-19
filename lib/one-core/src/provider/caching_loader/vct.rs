@@ -91,21 +91,24 @@ impl VctTypeMetadataCache {
         &self,
         vct: &str,
     ) -> Result<Option<SdJwtVcTypeMetadataResponseDTO>, VctCacheError> {
-        if url::Url::parse(vct).is_ok() {
-            let (metadata, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
-
-            Ok(Some(serde_json::from_slice(&metadata)?))
-        } else {
-            let metadata = self
-                .inner
-                .get_if_cached(vct)
-                .await?
-                .as_deref()
-                .map(serde_json::from_slice)
-                .transpose()?;
-
-            Ok(metadata)
+        // Only make HTTP requests for http and https schemes
+        if let Ok(url) = url::Url::parse(vct) {
+            if url.scheme() == "http" || url.scheme() == "https" {
+                let (metadata, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
+                return Ok(Some(serde_json::from_slice(&metadata)?));
+            }
         }
+
+        // For all other cases (non-HTTP URLs or invalid URLs), just check the cache
+        let metadata = self
+            .inner
+            .get_if_cached(vct)
+            .await?
+            .as_deref()
+            .map(serde_json::from_slice)
+            .transpose()?;
+
+        Ok(metadata)
     }
 }
 
