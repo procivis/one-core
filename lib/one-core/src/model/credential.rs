@@ -73,8 +73,6 @@ pub type GetCredentialQuery =
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateCredentialRequest {
-    pub id: CredentialId,
-
     pub credential: Option<Vec<u8>>,
     pub holder_did_id: Option<DidId>,
     pub issuer_did_id: Option<DidId>,

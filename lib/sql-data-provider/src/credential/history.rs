@@ -135,12 +135,15 @@ impl CredentialRepository for CredentialHistoryDecorator {
 
     async fn update_credential(
         &self,
+        credential_id: CredentialId,
         credential: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError> {
-        self.inner.update_credential(credential.clone()).await?;
+        self.inner
+            .update_credential(credential_id, credential.clone())
+            .await?;
 
         if let Some(state) = credential.state {
-            self.create_history_entry(credential.id, state).await;
+            self.create_history_entry(credential_id, state).await;
         };
 
         Ok(())

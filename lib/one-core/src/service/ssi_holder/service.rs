@@ -672,18 +672,18 @@ impl SSIHolderService {
                 .await?;
 
             self.credential_repository
-                .update_credential(UpdateCredentialRequest {
-                    id: credential.id,
-                    state: Some(CredentialStateEnum::Accepted),
-                    suspend_end_date: Clearable::DontTouch,
-                    credential: Some(issuer_response.credential.bytes().collect()),
-                    holder_did_id: Some(did_id),
-                    issuer_did_id: None,
-                    interaction: None,
-                    key: Some(selected_key.id),
-                    redirect_uri: None,
-                    claims: Some(claims),
-                })
+                .update_credential(
+                    credential.id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Accepted),
+                        suspend_end_date: Clearable::DontTouch,
+                        credential: Some(issuer_response.credential.bytes().collect()),
+                        holder_did_id: Some(did_id),
+                        key: Some(selected_key.id),
+                        claims: Some(claims),
+                        ..Default::default()
+                    },
+                )
                 .await?;
         }
 
@@ -783,11 +783,13 @@ impl SSIHolderService {
                 .await?;
 
             self.credential_repository
-                .update_credential(UpdateCredentialRequest {
-                    id: credential.id,
-                    state: Some(CredentialStateEnum::Rejected),
-                    ..Default::default()
-                })
+                .update_credential(
+                    credential.id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Rejected),
+                        ..Default::default()
+                    },
+                )
                 .await?;
         }
 
@@ -814,9 +816,9 @@ impl SSIHolderService {
                 .update_credential_schema(update_credential_schema)
                 .await?;
         }
-        if let Some(update_credential) = update_response.update_credential {
+        if let Some((credential_id, update_credential)) = update_response.update_credential {
             self.credential_repository
-                .update_credential(update_credential)
+                .update_credential(credential_id, update_credential)
                 .await?;
         }
         Ok(update_response.result)

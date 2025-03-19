@@ -432,7 +432,7 @@ async fn test_oidc_issuer_create_token() {
     credential_repository
         .expect_update_credential()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     interaction_repository
         .expect_update_interaction()
@@ -699,10 +699,10 @@ async fn test_oidc_issuer_create_credential_success() {
         credential_repository
             .expect_update_credential()
             .once()
-            .withf(move |request| {
-                request.id == credential.id && request.holder_did_id == Some(holder_did_id)
+            .withf(move |id, request| {
+                *id == credential.id && request.holder_did_id == Some(holder_did_id)
             })
-            .returning(move |_| Ok(()));
+            .returning(move |_, _| Ok(()));
     }
 
     let key_algorithm = {
@@ -873,10 +873,10 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
         credential_repository
             .expect_update_credential()
             .once()
-            .withf(move |request| {
-                request.id == credential.id && request.holder_did_id == Some(holder_did_id)
+            .withf(move |id, request| {
+                *id == credential.id && request.holder_did_id == Some(holder_did_id)
             })
-            .returning(move |_| Ok(()));
+            .returning(move |_, _| Ok(()));
     }
 
     let key_algorithm = {
@@ -1996,7 +1996,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     credential_repository
         .expect_update_credential()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     interaction_repository
         .expect_update_interaction()

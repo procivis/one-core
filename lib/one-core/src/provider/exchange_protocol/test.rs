@@ -106,7 +106,7 @@ async fn test_issuer_submit_succeeds() {
     credential_repository
         .expect_update_credential()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let mut revocation_method = MockRevocationMethod::new();
     revocation_method
@@ -688,7 +688,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     credential_repository
         .expect_update_credential()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider

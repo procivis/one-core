@@ -456,11 +456,10 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             }
             ("MDOC", CredentialStateEnum::Offered) => {
                 self.credential_repository
-                    .update_credential(get_issued_credential_update(
-                        credential_id,
-                        &token,
-                        holder_did.id,
-                    ))
+                    .update_credential(
+                        *credential_id,
+                        get_issued_credential_update(&token, holder_did.id),
+                    )
                     .await?;
 
                 self.validity_credential_repository
@@ -477,11 +476,10 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             }
             _ => {
                 self.credential_repository
-                    .update_credential(get_issued_credential_update(
-                        credential_id,
-                        &token,
-                        holder_did.id,
-                    ))
+                    .update_credential(
+                        *credential_id,
+                        get_issued_credential_update(&token, holder_did.id),
+                    )
                     .await?;
             }
         }

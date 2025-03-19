@@ -971,18 +971,16 @@ async fn test_update_credential_success() {
     .unwrap();
 
     assert!(provider
-        .update_credential(UpdateCredentialRequest {
-            id: credential_id.to_owned(),
-            credential: Some(token.to_owned()),
-            holder_did_id: None,
-            issuer_did_id: None,
-            state: Some(CredentialStateEnum::Pending),
-            suspend_end_date: Clearable::DontTouch,
-            interaction: Some(interaction_id),
-            key: None,
-            redirect_uri: None,
-            claims: None,
-        })
+        .update_credential(
+            credential_id,
+            UpdateCredentialRequest {
+                credential: Some(token.to_owned()),
+                state: Some(CredentialStateEnum::Pending),
+                suspend_end_date: Clearable::DontTouch,
+                interaction: Some(interaction_id),
+                ..Default::default()
+            }
+        )
         .await
         .is_ok());
     let credential_after_update = provider

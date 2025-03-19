@@ -756,18 +756,15 @@ impl OpenID4VCHTTP {
                 layout_type,
                 layout_properties,
             }),
-            update_credential: Some(UpdateCredentialRequest {
-                id: credential.id,
-                issuer_did_id: Some(issuer_did_id),
-                redirect_uri: Some(redirect_uri),
-                credential: None,
-                holder_did_id: None,
-                state: None,
-                interaction: None,
-                key: None,
-                claims: None,
-                suspend_end_date: Clearable::DontTouch,
-            }),
+            update_credential: Some((
+                credential.id,
+                UpdateCredentialRequest {
+                    issuer_did_id: Some(issuer_did_id),
+                    redirect_uri: Some(redirect_uri),
+                    suspend_end_date: Clearable::DontTouch,
+                    ..Default::default()
+                },
+            )),
         })
     }
 

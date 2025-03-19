@@ -74,7 +74,7 @@ impl ProofsDB {
             claims: Some(vec![ProofClaim {
                 claim: Claim {
                     id: Default::default(),
-                    credential_id: Default::default(),
+                    credential_id: Uuid::default().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     value: "test".to_string(),

@@ -46,6 +46,7 @@ pub trait CredentialRepository: Send + Sync {
 
     async fn update_credential(
         &self,
+        credential_id: CredentialId,
         credential: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError>;
 

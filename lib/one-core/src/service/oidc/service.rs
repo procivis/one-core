@@ -465,11 +465,13 @@ impl OIDCService {
         }?;
 
         self.credential_repository
-            .update_credential(UpdateCredentialRequest {
-                id: credential.id,
-                holder_did_id: Some(holder_did.id),
-                ..Default::default()
-            })
+            .update_credential(
+                credential.id,
+                UpdateCredentialRequest {
+                    holder_did_id: Some(holder_did.id),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         let issued_credential = self
@@ -571,11 +573,13 @@ impl OIDCService {
         if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {
             for credential in &credentials {
                 self.credential_repository
-                    .update_credential(UpdateCredentialRequest {
-                        id: credential.id,
-                        state: Some(CredentialStateEnum::Offered),
-                        ..Default::default()
-                    })
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Offered),
+                            ..Default::default()
+                        },
+                    )
                     .await?;
             }
 

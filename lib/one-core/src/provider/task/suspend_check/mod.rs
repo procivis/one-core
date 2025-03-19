@@ -169,18 +169,14 @@ impl Task for SuspendCheckProvider {
             .await?;
 
             self.credential_repository
-                .update_credential(UpdateCredentialRequest {
-                    id: credential_id,
-                    state: Some(CredentialStateEnum::Accepted),
-                    suspend_end_date: Clearable::ForceSet(None),
-                    credential: None,
-                    holder_did_id: None,
-                    issuer_did_id: None,
-                    interaction: None,
-                    key: None,
-                    redirect_uri: None,
-                    claims: None,
-                })
+                .update_credential(
+                    credential_id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Accepted),
+                        suspend_end_date: Clearable::ForceSet(None),
+                        ..Default::default()
+                    },
+                )
                 .await?;
         }
 

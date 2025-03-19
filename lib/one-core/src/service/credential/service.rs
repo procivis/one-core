@@ -10,7 +10,7 @@ use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::{
-    self, Clearable, Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    Clearable, Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -405,18 +405,14 @@ impl CredentialService {
         match credential.state {
             CredentialStateEnum::Created => {
                 self.credential_repository
-                    .update_credential(UpdateCredentialRequest {
-                        id: credential_id.to_owned(),
-                        state: Some(credential::CredentialStateEnum::Pending),
-                        suspend_end_date: Clearable::DontTouch,
-                        credential: None,
-                        holder_did_id: None,
-                        issuer_did_id: None,
-                        interaction: None,
-                        key: None,
-                        redirect_uri: None,
-                        claims: None,
-                    })
+                    .update_credential(
+                        *credential_id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Pending),
+                            suspend_end_date: Clearable::DontTouch,
+                            ..Default::default()
+                        },
+                    )
                     .await?;
             }
             CredentialStateEnum::Pending => {}
@@ -661,20 +657,16 @@ impl CredentialService {
                 None
             };
         self.credential_repository
-            .update_credential(UpdateCredentialRequest {
-                id: credential_id.to_owned(),
-                state: Some(credential_revocation_state_to_model_state(
-                    revocation_state.to_owned(),
-                )),
-                suspend_end_date: Clearable::ForceSet(suspend_end_date),
-                credential: None,
-                holder_did_id: None,
-                issuer_did_id: None,
-                interaction: None,
-                key: None,
-                redirect_uri: None,
-                claims: None,
-            })
+            .update_credential(
+                *credential_id,
+                UpdateCredentialRequest {
+                    state: Some(credential_revocation_state_to_model_state(
+                        revocation_state.to_owned(),
+                    )),
+                    suspend_end_date: Clearable::ForceSet(suspend_end_date),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         Ok(())
@@ -755,20 +747,13 @@ impl CredentialService {
 
             if new_state != current_state {
                 let update_request = UpdateCredentialRequest {
-                    id: credential_id,
-                    credential: None,
-                    holder_did_id: None,
-                    issuer_did_id: None,
                     state: Some(new_state),
                     suspend_end_date: Clearable::DontTouch,
-                    interaction: None,
-                    key: None,
-                    redirect_uri: None,
-                    claims: None,
+                    ..Default::default()
                 };
 
                 self.credential_repository
-                    .update_credential(update_request)
+                    .update_credential(credential_id, update_request)
                     .await?;
             }
 
@@ -877,18 +862,14 @@ impl CredentialService {
         // update local credential state if change detected
         if current_state != detected_state {
             self.credential_repository
-                .update_credential(UpdateCredentialRequest {
-                    id: credential_id,
-                    state: Some(detected_state.to_owned()),
-                    suspend_end_date: Clearable::ForceSet(suspend_end_date),
-                    credential: None,
-                    holder_did_id: None,
-                    issuer_did_id: None,
-                    interaction: None,
-                    key: None,
-                    redirect_uri: None,
-                    claims: None,
-                })
+                .update_credential(
+                    credential_id,
+                    UpdateCredentialRequest {
+                        state: Some(detected_state.to_owned()),
+                        suspend_end_date: Clearable::ForceSet(suspend_end_date),
+                        ..Default::default()
+                    },
+                )
                 .await?;
         }
 

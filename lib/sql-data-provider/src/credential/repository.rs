@@ -472,10 +472,9 @@ impl CredentialRepository for CredentialProvider {
 
     async fn update_credential(
         &self,
+        credential_id: CredentialId,
         request: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError> {
-        let id = &request.id;
-
         let holder_did_id = match request.holder_did_id {
             None => Unchanged(Default::default()),
             Some(holder_did) => Set(Some(holder_did)),
@@ -520,7 +519,7 @@ impl CredentialRepository for CredentialProvider {
         };
 
         let update_model = credential::ActiveModel {
-            id: Unchanged(*id),
+            id: Unchanged(credential_id),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
             issuer_did_id,
@@ -534,12 +533,15 @@ impl CredentialRepository for CredentialProvider {
         };
 
         if let Some(claims) = request.claims {
-            if claims.iter().any(|claim| claim.credential_id != request.id) {
+            if claims
+                .iter()
+                .any(|claim| claim.credential_id != credential_id)
+            {
                 return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
             }
 
             self.claim_repository
-                .delete_claims_for_credential(*id)
+                .delete_claims_for_credential(credential_id)
                 .await?;
 
             self.claim_repository.create_claim_list(claims).await?;

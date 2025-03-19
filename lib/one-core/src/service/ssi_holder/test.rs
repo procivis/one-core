@@ -618,7 +618,7 @@ async fn test_accept_credential() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut exchange_protocol_mock = MockExchangeProtocol::default();
     exchange_protocol_mock
@@ -712,7 +712,7 @@ async fn test_reject_credential() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut exchange_protocol_mock = MockExchangeProtocol::default();
     exchange_protocol_mock

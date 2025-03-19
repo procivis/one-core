@@ -117,15 +117,15 @@ async fn test_run_one_update() {
         .once()
         .withf({
             let id = credential.id;
-            move |request| {
-                assert_eq!(request.id, id);
+            move |credential_id, request| {
+                assert_eq!(*credential_id, id);
                 assert_eq!(request.suspend_end_date, Clearable::ForceSet(None));
                 let state = request.state.as_ref().unwrap();
                 assert_eq!(*state, CredentialStateEnum::Accepted);
                 true
             }
         })
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method

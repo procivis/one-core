@@ -618,7 +618,7 @@ async fn test_share_credential_success() {
         credential_repository
             .expect_update_credential()
             .times(1)
-            .returning(move |_| Ok(()));
+            .returning(move |_, _| Ok(()));
     }
 
     let mut interaction_repository = MockInteractionRepository::default();
@@ -631,8 +631,8 @@ async fn test_share_credential_success() {
     credential_repository
         .expect_update_credential()
         .once()
-        .withf(move |req| req.id == credential.id)
-        .returning(|_| Ok(()));
+        .withf(move |id, _| *id == credential.id)
+        .returning(|_, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -1601,7 +1601,7 @@ async fn test_check_revocation_being_revoked() {
 
     credential_repository
         .expect_update_credential()
-        .withf(|request| {
+        .withf(|_, request| {
             matches!(
                 request,
                 UpdateCredentialRequest {
@@ -1610,7 +1610,7 @@ async fn test_check_revocation_being_revoked() {
                 }
             )
         })
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -2442,7 +2442,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(move |request| {
+        .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
             Ok(())
         });
@@ -2517,7 +2517,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(move |request| {
+        .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
             Ok(())
         });
@@ -2603,7 +2603,7 @@ async fn test_suspend_credential_success() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(move |request| {
+        .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
             Ok(())
         });
@@ -2730,7 +2730,7 @@ async fn test_reactivate_credential_success() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(move |request| {
+        .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap());
             Ok(())
         });

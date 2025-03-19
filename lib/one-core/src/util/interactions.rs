@@ -47,12 +47,13 @@ pub async fn update_credentials_interaction(
     credential_repository: &dyn CredentialRepository,
 ) -> Result<(), ServiceError> {
     let update = UpdateCredentialRequest {
-        id: credential_id.to_owned(),
         interaction: Some(interaction_id.to_owned()),
         ..Default::default()
     };
 
-    credential_repository.update_credential(update).await?;
+    credential_repository
+        .update_credential(credential_id, update)
+        .await?;
     Ok(())
 }
 

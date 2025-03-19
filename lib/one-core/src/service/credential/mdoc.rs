@@ -167,20 +167,13 @@ impl CredentialService {
 
         // Update credential value
         let update_request = UpdateCredentialRequest {
-            id: credential.id,
             credential: Some(result.credential.as_bytes().to_vec()),
-            holder_did_id: None,
-            issuer_did_id: None,
-            state: None,
-            interaction: None,
-            key: None,
-            redirect_uri: None,
-            claims: None,
             suspend_end_date: Clearable::DontTouch,
+            ..Default::default()
         };
 
         self.credential_repository
-            .update_credential(update_request)
+            .update_credential(credential.id, update_request)
             .await?;
         Ok(())
     }

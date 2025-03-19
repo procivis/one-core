@@ -8,7 +8,9 @@ use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{
+    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId,
+};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
@@ -640,7 +642,7 @@ pub struct UpdateResponse<T> {
     pub result: T,
     pub update_proof: Option<UpdateProofRequest>,
     pub create_did: Option<Did>,
-    pub update_credential: Option<UpdateCredentialRequest>,
+    pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,
     pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }
 

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use shared_types::{CredentialId, DidId, OrganisationId, ProofId};
+use shared_types::{DidId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -23,21 +23,15 @@ use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
 pub(super) fn get_issued_credential_update(
-    credential_id: &CredentialId,
     token: &str,
     holder_did_id: DidId,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
-        id: credential_id.to_owned(),
         credential: Some(token.bytes().collect()),
-        state: Some(crate::model::credential::CredentialStateEnum::Accepted),
+        state: Some(CredentialStateEnum::Accepted),
         suspend_end_date: Clearable::DontTouch,
-        key: None,
         holder_did_id: Some(holder_did_id),
-        issuer_did_id: None,
-        interaction: None,
-        redirect_uri: None,
-        claims: None,
+        ..Default::default()
     }
 }
 
