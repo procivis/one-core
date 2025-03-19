@@ -21,17 +21,28 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 #[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_none() {
-    test_openid4vc_jsonld_bbsplus_flow("NONE").await
+    test_openid4vc_jsonld_bbsplus_flow("NONE", None).await
 }
 
 #[tokio::test]
-async fn test_openid4vc_jsonld_bbsplus_flow_bitstring() {
-    test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST").await
+async fn test_openid4vc_jsonld_bbsplus_flow_bitstring_jwt() {
+    test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST", None).await
+}
+
+#[tokio::test]
+async fn test_openid4vc_jsonld_bbsplus_flow_bitstring_json_ld_classic() {
+    let additional_config = r#"revocation:
+  BITSTRINGSTATUSLIST:
+    params:
+      public:
+        format: 'JSON_LD_CLASSIC'"#
+        .to_string();
+    test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST", Some(additional_config)).await
 }
 
 #[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_lvvc() {
-    test_openid4vc_jsonld_bbsplus_flow("LVVC").await
+    test_openid4vc_jsonld_bbsplus_flow("LVVC", None).await
 }
 
 #[tokio::test]
@@ -39,7 +50,10 @@ async fn test_openid4vc_jsonld_bbsplus_flow_array() {
     test_openid4vc_jsonld_bbsplus_array("NONE").await
 }
 
-async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
+async fn test_openid4vc_jsonld_bbsplus_flow(
+    revocation_method: &str,
+    additional_config: Option<String>,
+) {
     // GIVEN
     let issuer_bbs_key = bbs_key_1();
     let holder_key = eddsa_key_1();
@@ -48,8 +62,11 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let date_format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let interaction_id = Uuid::new_v4();
-    let server_context =
-        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
+    let server_context = TestContext::new_with_token(
+        &format!("{}.test", interaction_id),
+        additional_config.clone(),
+    )
+    .await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -246,7 +263,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     assert!(credentials.is_some());
 
     // Valid holder context
-    let holder_context = TestContext::new(None).await;
+    let holder_context = TestContext::new(additional_config).await;
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db

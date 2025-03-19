@@ -594,6 +594,7 @@ async fn initialize(
             };
 
             let cache_entities_config = core_config.cache_entities.to_owned();
+            let app_config = core_config.clone();
             let revocation_method_creator: RevocationMethodCreator = {
                 let client = client.clone();
                 Box::new(move |config, providers| {
@@ -642,6 +643,7 @@ async fn initialize(
                                     ),
                                     formatter_provider.clone(),
                                     client.clone(),
+                                    Arc::new(app_config.clone()),
                                     None,
                                 )) as _
                             }

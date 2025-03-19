@@ -497,6 +497,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
 
     let cache_entities_config = app_config.core.cache_entities.to_owned();
     let core_base_url = app_config.app.core_base_url.to_owned();
+    let core_config = app_config.core.clone();
     let revocation_method_creator: RevocationMethodCreator = {
         let client = client.clone();
         Box::new(move |config, providers| {
@@ -548,6 +549,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             ),
                             formatter_provider.clone(),
                             client.clone(),
+                            Arc::new(core_config.clone()),
                             Some(params),
                         )) as _
                     }

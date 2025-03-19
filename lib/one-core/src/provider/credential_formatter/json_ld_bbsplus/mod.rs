@@ -7,14 +7,15 @@ use std::vec;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
+use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
-use super::model::{CredentialData, HolderBindingCtx};
+use super::model::{CredentialData, HolderBindingCtx, Issuer};
 use super::CredentialFormatter;
 use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
 use crate::model::did::Did;
@@ -26,7 +27,7 @@ use crate::provider::credential_formatter::model::{
     FormatPresentationCtx, FormatterCapabilities, Presentation, SelectiveDisclosure,
     VerificationFn,
 };
-use crate::provider::credential_formatter::vcdm::VcdmCredential;
+use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -124,17 +125,73 @@ impl CredentialFormatter for JsonLdBbsplus {
 
     async fn format_status_list(
         &self,
-        _revocation_list_url: String,
-        _issuer_did: &Did,
-        _encoded_list: String,
+        revocation_list_url: String,
+        issuer_did: &Did,
+        encoded_list: String,
         _algorithm: String,
-        _auth_fn: AuthenticationFn,
-        _status_purpose: StatusPurpose,
-        _status_list_type: StatusListType,
+        auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
+        status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
-        Err(FormatterError::Failed(
-            "Cannot format StatusList with BBS+ formatter".to_string(),
-        ))
+        if status_list_type != StatusListType::BitstringStatusList {
+            return Err(FormatterError::Failed(
+                "Only BitstringStatusList can be formatted with JSON_LD_BBSPLUS formatter"
+                    .to_string(),
+            ));
+        }
+        if auth_fn.get_key_type() != "BBS_PLUS" {
+            return Err(FormatterError::BBSOnly);
+        }
+
+        let issuer = Issuer::Url(
+            issuer_did
+                .did
+                .as_str()
+                .parse()
+                .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
+        );
+
+        let credential_subject_id: Url =
+            format!("{revocation_list_url}#list").parse().map_err(|_| {
+                FormatterError::Failed("Invalid issuer credential subject id".to_string())
+            })?;
+        let credential_subject = VcdmCredentialSubject::new([
+            ("type", json!("BitstringStatusList")),
+            ("statusPurpose", json!(status_purpose)),
+            ("encodedList", json!(encoded_list)),
+        ])
+        .with_id(credential_subject_id);
+
+        let credential_id = Url::parse(&revocation_list_url).map_err(|_| {
+            FormatterError::Failed("Revocation list is not a valid URL".to_string())
+        })?;
+
+        let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+            .with_id(credential_id)
+            .add_type("BitstringStatusListCredential".to_string())
+            .with_valid_from(OffsetDateTime::now_utc());
+
+        let verification_method = auth_fn
+            .get_key_id()
+            .ok_or_else(|| FormatterError::CouldNotFormat("Missing jwk key id".to_string()))?;
+
+        let mut mandatory_pointers = generate_mandatory_pointers(&vcdm);
+        mandatory_pointers.push("/credentialSubject".to_string());
+
+        let proof = data_integrity::create_base_proof(
+            &vcdm,
+            mandatory_pointers,
+            verification_method,
+            &self.caching_loader,
+            &*self.crypto.get_hasher("sha-256")?,
+            &*auth_fn,
+            json_ld_processor_options(),
+        )
+        .await?;
+
+        vcdm.proof = Some(proof);
+
+        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
     }
 
     async fn extract_credentials(

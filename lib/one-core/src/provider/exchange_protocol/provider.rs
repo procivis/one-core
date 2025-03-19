@@ -16,7 +16,9 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
+use crate::model::revocation_list::{
+    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -271,9 +273,17 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         if credential_schema.revocation_method == StatusListType::BitstringStatusList.to_string() {
             let Params { format } = convert_params(revocation_method.get_params()?)?;
 
+            let status_list_format = if format == StatusListCredentialFormat::JsonLdClassic
+                && credential_schema.format == "JSON_LD_BBSPLUS"
+            {
+                "JSON_LD_BBSPLUS".to_string()
+            } else {
+                format.to_string()
+            };
+
             let formatter = self
                 .formatter_provider
-                .get_formatter(&format.to_string())
+                .get_formatter(&status_list_format)
                 .ok_or(ValidationError::InvalidFormatter(format.to_string()))?;
 
             credential_additional_data = Some(CredentialAdditionalData {

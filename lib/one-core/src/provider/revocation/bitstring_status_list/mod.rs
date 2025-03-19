@@ -8,6 +8,7 @@ use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
+use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
@@ -15,6 +16,7 @@ use crate::model::revocation_list::{
 };
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -67,6 +69,7 @@ pub struct BitstringStatusList {
     pub caching_loader: StatusListCachingLoader,
     pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
     resolver: Arc<StatusListResolver>,
+    config: Arc<CoreConfig>,
     params: Params,
 }
 
@@ -80,6 +83,7 @@ impl BitstringStatusList {
         caching_loader: StatusListCachingLoader,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         client: Arc<dyn HttpClient>,
+        config: Arc<CoreConfig>,
         params: Option<Params>,
     ) -> Self {
         Self {
@@ -90,6 +94,7 @@ impl BitstringStatusList {
             caching_loader,
             formatter_provider,
             resolver: Arc::new(StatusListResolver::new(client)),
+            config,
             params: params.unwrap_or(Params {
                 format: StatusListCredentialFormat::Jwt,
             }),
@@ -239,6 +244,13 @@ impl RevocationMethod for BitstringStatusList {
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
         let response_content = String::from_utf8(response.content)?;
 
+        let is_bbs = if let Ok(vcdm) = serde_json::from_str::<VcdmCredential>(&response_content) {
+            vcdm.proof
+                .is_some_and(|proof| proof.cryptosuite == "bbs-2023")
+        } else {
+            false
+        };
+
         let content_type = match (media_type, &response.content_type) {
             (Some(media_type), _) => media_type,
             (None, Some(content_type)) => content_type,
@@ -256,7 +268,7 @@ impl RevocationMethod for BitstringStatusList {
         });
 
         let status_credential = self
-            .get_formatter_for_parsing(content_type)?
+            .get_formatter_for_parsing(content_type, is_bbs)?
             .extract_credentials(&response_content, key_verification, None)
             .await?;
 
@@ -292,20 +304,39 @@ impl RevocationMethod for BitstringStatusList {
 }
 
 impl BitstringStatusList {
-    fn get_formatter_for_issuance(&self) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
+    fn get_formatter_for_issuance(
+        &self,
+        is_bbs: bool,
+    ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
+        let format = match self.params.format {
+            StatusListCredentialFormat::Jwt => self.params.format.to_string(),
+            StatusListCredentialFormat::JsonLdClassic => {
+                if is_bbs {
+                    "JSON_LD_BBSPLUS".to_string()
+                } else {
+                    self.params.format.to_string()
+                }
+            }
+        };
+
         self.formatter_provider
-            .get_formatter(self.params.format.to_string().as_str())
+            .get_formatter(format.as_str())
             .ok_or_else(|| RevocationError::FormatterNotFound(self.params.format.to_string()))
     }
 
     fn get_formatter_for_parsing(
         &self,
         content_type: &str,
+        is_bbs: bool,
     ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
         let format = match content_type {
             "application/jwt" => "JWT",
             "application/vc+ld+json" | "application/ld+json" | "application/json" => {
-                "JSON_LD_CLASSIC"
+                if is_bbs {
+                    "JSON_LD_BBSPLUS"
+                } else {
+                    "JSON_LD_CLASSIC"
+                }
             }
             _ => {
                 return Err(RevocationError::MappingError(format!(
@@ -401,6 +432,28 @@ impl BitstringStatusList {
         )
         .await?;
 
+        let bbs_key_algorithms = self
+            .config
+            .key_algorithm
+            .iter()
+            .filter_map(|(algorithm, fields)| {
+                if fields.r#type == "BBS_PLUS" {
+                    Some(algorithm)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<&str>>();
+
+        let is_bbs = !issuer_did
+            .keys
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer_did keys are None".to_string(),
+            ))?
+            .iter()
+            .any(|key| !bbs_key_algorithms.contains(&key.key.key_type.as_str()));
+
         let list_credential = format_status_list_credential(
             &list_id,
             StatusListType::BitstringStatusList,
@@ -410,7 +463,7 @@ impl BitstringStatusList {
             &self.key_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
-            &*self.get_formatter_for_issuance()?,
+            &*self.get_formatter_for_issuance(is_bbs)?,
             issuer_jwk_key_id,
         )
         .await?;

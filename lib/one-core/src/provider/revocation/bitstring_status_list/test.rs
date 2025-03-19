@@ -13,7 +13,7 @@ use crate::provider::revocation::bitstring_status_list::resolver::StatusListCach
 use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
 use crate::provider::revocation::RevocationMethod;
-use crate::service::test_utilities::{dummy_credential, dummy_did};
+use crate::service::test_utilities::{dummy_credential, dummy_did, generic_config};
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_allowed() {
@@ -56,6 +56,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         caching_loader,
         Arc::new(formatter_provider),
         client,
+        Arc::new(generic_config().core),
         None,
     );
 
