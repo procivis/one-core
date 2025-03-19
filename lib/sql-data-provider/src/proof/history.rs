@@ -75,7 +75,7 @@ impl ProofHistoryDecorator {
                 entity_id: Some((*proof_id).into()),
                 entity_type: HistoryEntityType::Proof,
                 metadata: error_info.map(HistoryMetadata::ErrorMetadata),
-                organisation: Some(organisation),
+                organisation_id: organisation.id,
             })
             .await;
 

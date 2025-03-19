@@ -50,7 +50,7 @@ impl DidsDB {
                 did_id,
                 &DidRelations {
                     keys: Some(KeyRelations::default()),
-                    ..Default::default()
+                    organisation: Some(Default::default()),
                 },
             )
             .await

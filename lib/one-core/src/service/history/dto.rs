@@ -1,11 +1,11 @@
-use one_dto_mapper::From;
+use one_dto_mapper::{convert_inner, From};
 use serde::{Deserialize, Serialize};
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::history::{
-    HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
 };
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 use crate::service::error::ErrorCode;
@@ -24,6 +24,8 @@ pub struct HistoryErrorMetadataDTO {
     pub message: String,
 }
 
+#[derive(From)]
+#[from(History)]
 pub struct HistoryResponseDTO {
     pub created_date: OffsetDateTime,
     pub id: HistoryId,
@@ -31,6 +33,7 @@ pub struct HistoryResponseDTO {
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: OrganisationId,
+    #[from(with_fn = convert_inner)]
     pub metadata: Option<HistoryMetadataResponse>,
 }
 

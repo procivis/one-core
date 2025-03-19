@@ -83,7 +83,7 @@ impl ProofSchemaRepository for ProofSchemaHistoryDecorator {
                 entity_id: Some((*id).into()),
                 entity_type: HistoryEntityType::ProofSchema,
                 metadata: None,
-                organisation: Some(organisation),
+                organisation_id: organisation.id,
             })
             .await;
 

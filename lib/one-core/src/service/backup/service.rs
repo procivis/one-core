@@ -53,7 +53,7 @@ impl BackupService {
             })?;
 
         let history_event = create_backup_history_event(
-            organisation,
+            organisation.id,
             HistoryAction::Created,
             Some(unexportable.clone().into()),
         );
@@ -144,7 +144,7 @@ impl BackupService {
             .and_then(|organisation| {
                 self.history_repository
                     .create_history(create_backup_history_event(
-                        organisation,
+                        organisation.id,
                         HistoryAction::Restored,
                         None,
                     ))

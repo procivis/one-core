@@ -30,7 +30,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
                 entity_id: Some(organisation_id.into()),
                 entity_type: HistoryEntityType::Organisation,
                 metadata: None,
-                organisation: Some(request),
+                organisation_id,
             })
             .await;
 

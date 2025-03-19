@@ -46,7 +46,7 @@ impl HistoriesDB {
             entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
             metadata: params.metadata,
-            organisation: Some(organisation.clone()),
+            organisation_id: organisation.id,
         };
 
         self.repository

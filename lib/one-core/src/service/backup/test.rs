@@ -148,11 +148,11 @@ async fn test_finalize_import() {
         .history_repository
         .expect_create_history()
         .once()
-        .return_once(|event| {
+        .return_once(move |event| {
             assert_eq!(event.action, HistoryAction::Restored);
             assert_eq!(event.entity_id, None);
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
-            assert_eq!(event.organisation, Some(organisation));
+            assert_eq!(event.organisation_id, organisation.id);
             Ok(Uuid::new_v4().into())
         });
 
@@ -213,7 +213,7 @@ async fn test_backup_flow() {
             assert_eq!(event.action, HistoryAction::Created);
             assert_eq!(event.entity_id, None);
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
-            assert_eq!(event.organisation, Some(organisation));
+            assert_eq!(event.organisation_id, organisation.id);
             Ok(history_id)
         });
 

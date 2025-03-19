@@ -4,7 +4,6 @@ use shared_types::{
 };
 use time::OffsetDateTime;
 
-use super::organisation::Organisation;
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
@@ -37,9 +36,7 @@ pub struct History {
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub metadata: Option<HistoryMetadata>,
-
-    // Relations
-    pub organisation: Option<Organisation>,
+    pub organisation_id: OrganisationId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

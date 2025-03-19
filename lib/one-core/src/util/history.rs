@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
 use crate::repository::history_repository::HistoryRepository;
@@ -24,11 +23,7 @@ pub(crate) fn history_event(
         entity_id: Some(entity_id.into()),
         entity_type,
         metadata: None,
-        organisation: Some(Organisation {
-            id: organisation_id,
-            created_date: OffsetDateTime::UNIX_EPOCH,
-            last_modified: OffsetDateTime::UNIX_EPOCH,
-        }),
+        organisation_id,
     }
 }
 

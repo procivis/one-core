@@ -16,10 +16,8 @@ impl HistoryService {
         &self,
         query: HistoryListQuery,
     ) -> Result<GetHistoryListResponseDTO, ServiceError> {
-        self.history_repository
-            .get_history_list(query)
-            .await?
-            .try_into()
+        let history_list = self.history_repository.get_history_list(query).await?;
+        Ok(history_list.into())
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
@@ -27,10 +25,11 @@ impl HistoryService {
         &self,
         history_id: HistoryId,
     ) -> Result<HistoryResponseDTO, ServiceError> {
-        self.history_repository
+        let history = self
+            .history_repository
             .get_history_entry(history_id)
             .await?
-            .ok_or(EntityNotFoundError::History(history_id))?
-            .try_into()
+            .ok_or(EntityNotFoundError::History(history_id))?;
+        Ok(history.into())
     }
 }

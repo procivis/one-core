@@ -29,7 +29,7 @@ impl DidRepository for DidHistoryDecorator {
                 entity_id: Some(did_id.into()),
                 entity_type: HistoryEntityType::Did,
                 metadata: None,
-                organisation: request.organisation,
+                organisation_id: request.organisation.ok_or(DataLayerError::MappingError)?.id,
             })
             .await;
 
@@ -88,7 +88,7 @@ impl DidRepository for DidHistoryDecorator {
                 entity_id: Some(request.id.into()),
                 entity_type: HistoryEntityType::Did,
                 metadata: None,
-                organisation: did.organisation,
+                organisation_id: did.organisation.ok_or(DataLayerError::MappingError)?.id,
             })
             .await;
 

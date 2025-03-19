@@ -4,13 +4,13 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use one_crypto::hasher::sha256::SHA256;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
-use crate::model::organisation::Organisation;
 use crate::service::error::ServiceError;
 
 const DB_FILE: &str = "database.sqlite3";
@@ -140,7 +140,7 @@ pub(super) fn load_db_from_zip<T: Read + Seek, K: Write + Seek>(
 }
 
 pub(super) fn create_backup_history_event(
-    organisation: Organisation,
+    organisation_id: OrganisationId,
     action: HistoryAction,
     metadata: Option<HistoryMetadata>,
 ) -> History {
@@ -151,7 +151,7 @@ pub(super) fn create_backup_history_event(
         entity_id: None,
         entity_type: HistoryEntityType::Backup,
         metadata,
-        organisation: Some(organisation),
+        organisation_id,
     }
 }
 

@@ -1,9 +1,7 @@
 use one_core::model::history::{GetHistoryList, History};
-use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
 use sea_orm::ActiveValue::Set;
-use time::OffsetDateTime;
 
 use crate::common::calculate_pages_count;
 use crate::entity::history;
@@ -26,11 +24,7 @@ impl TryFrom<history::Model> for History {
             entity_id: value.entity_id,
             entity_type: value.entity_type.into(),
             metadata,
-            organisation: Some(Organisation {
-                id: value.organisation_id,
-                created_date: OffsetDateTime::UNIX_EPOCH,
-                last_modified: OffsetDateTime::UNIX_EPOCH,
-            }),
+            organisation_id: value.organisation_id,
         })
     }
 }
@@ -39,7 +33,6 @@ impl TryFrom<History> for history::ActiveModel {
     type Error = DataLayerError;
 
     fn try_from(value: History) -> Result<Self, Self::Error> {
-        let organisation = value.organisation.ok_or(DataLayerError::MappingError)?;
         let metadata = value
             .metadata
             .as_ref()
@@ -54,7 +47,7 @@ impl TryFrom<History> for history::ActiveModel {
             entity_id: Set(value.entity_id),
             entity_type: Set(value.entity_type.into()),
             metadata: Set(metadata),
-            organisation_id: Set(organisation.id),
+            organisation_id: Set(value.organisation_id),
         })
     }
 }

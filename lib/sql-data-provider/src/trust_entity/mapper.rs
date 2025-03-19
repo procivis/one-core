@@ -1,4 +1,5 @@
 use one_core::model::trust_entity::TrustEntity;
+use one_core::repository::error::DataLayerError;
 use one_core::service::did::dto::DidListItemResponseDTO;
 use one_core::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 use one_core::service::trust_entity::dto::{
@@ -6,6 +7,7 @@ use one_core::service::trust_entity::dto::{
 };
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::IntoSimpleExpr;
+use shared_types::OrganisationId;
 
 use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole};
@@ -98,4 +100,14 @@ impl IntoFilterCondition for TrustEntityFilterValue {
             Self::OrganisationId(id) => get_equals_condition(did::Column::OrganisationId, id),
         }
     }
+}
+
+pub fn trust_entity_to_organisation_id(
+    trust_entity: TrustEntity,
+) -> Result<OrganisationId, DataLayerError> {
+    trust_entity
+        .did
+        .and_then(|did| did.organisation)
+        .map(|organisation| organisation.id)
+        .ok_or(DataLayerError::MappingError)
 }
