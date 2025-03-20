@@ -110,6 +110,20 @@ impl HttpClient {
         Response { resp }
     }
 
+    pub async fn put(&self, url: &str, body: impl Into<Option<Value>>) -> Response {
+        let url = format!("{}{url}", self.base_url);
+
+        let resp = http_client()
+            .put(url)
+            .bearer_auth(&self.token)
+            .json(&body.into())
+            .send()
+            .await
+            .unwrap();
+
+        Response { resp }
+    }
+
     pub async fn delete(&self, url: &str) -> Response {
         let url = format!("{}{url}", self.base_url);
 

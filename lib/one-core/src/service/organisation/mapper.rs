@@ -2,7 +2,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::organisation::Organisation;
-use crate::service::organisation::dto::CreateOrganisationRequestDTO;
+use crate::service::organisation::dto::{
+    CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
+};
 
 impl From<CreateOrganisationRequestDTO> for Organisation {
     fn from(request: CreateOrganisationRequestDTO) -> Self {
@@ -13,6 +15,15 @@ impl From<CreateOrganisationRequestDTO> for Organisation {
             id,
             created_date: now,
             last_modified: now,
+        }
+    }
+}
+
+impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
+    fn from(request: UpsertOrganisationRequestDTO) -> Self {
+        CreateOrganisationRequestDTO {
+            id: Some(request.id),
+            name: Some(request.name),
         }
     }
 }

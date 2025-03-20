@@ -1,7 +1,7 @@
 use shared_types::OrganisationId;
 
 use super::error::DataLayerError;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::{Organisation, OrganisationRelations, UpdateOrganisationRequest};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -10,6 +10,11 @@ pub trait OrganisationRepository: Send + Sync {
         &self,
         request: Organisation,
     ) -> Result<OrganisationId, DataLayerError>;
+
+    async fn update_organisation(
+        &self,
+        request: UpdateOrganisationRequest,
+    ) -> Result<(), DataLayerError>;
 
     async fn get_organisation(
         &self,

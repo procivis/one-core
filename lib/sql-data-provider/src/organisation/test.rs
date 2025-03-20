@@ -1,4 +1,6 @@
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::{
+    Organisation, OrganisationRelations, UpdateOrganisationRequest,
+};
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use time::OffsetDateTime;
@@ -92,4 +94,31 @@ async fn test_get_organisation_list() {
     let organisations = result.unwrap();
     assert_eq!(organisations.len(), 1);
     assert_eq!(organisations[0].id, org_id);
+}
+
+#[tokio::test]
+async fn test_update_organisation() {
+    let TestSetup { db, repository } = setup().await;
+
+    let org_id = Uuid::new_v4().into();
+    insert_organisation_to_database(&db, Some(org_id), None)
+        .await
+        .unwrap();
+
+    let request = UpdateOrganisationRequest {
+        id: org_id,
+        name: "name".to_string(),
+    };
+
+    let result = repository.update_organisation(request).await;
+    assert!(result.is_ok());
+
+    let organisations = crate::entity::organisation::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(organisations.len(), 1);
+    assert_eq!(organisations[0].name, "name");
+    // last_modified has been updated
+    assert!(organisations[0].last_modified > organisations[0].created_date);
 }

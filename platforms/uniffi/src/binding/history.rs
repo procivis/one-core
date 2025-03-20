@@ -149,6 +149,7 @@ pub enum HistoryActionBindingEnum {
     Withdrawn,
     Removed,
     Retracted,
+    Updated,
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]

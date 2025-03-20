@@ -1,7 +1,9 @@
 use one_dto_mapper::convert_inner;
 use shared_types::OrganisationId;
 
-use super::dto::{CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO};
+use super::dto::{
+    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, UpsertOrganisationRequestDTO,
+};
 use super::OrganisationService;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
@@ -57,6 +59,29 @@ impl OrganisationService {
             Ok(uuid) => Ok(uuid),
             Err(DataLayerError::AlreadyExists) => {
                 Err(BusinessLogicError::OrganisationAlreadyExists.into())
+            }
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    pub async fn upsert_organisation(
+        &self,
+        request: UpsertOrganisationRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let result = self
+            .organisation_repository
+            .update_organisation(request.clone().into())
+            .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(DataLayerError::AlreadyExists) => {
+                Err(BusinessLogicError::OrganisationAlreadyExists.into())
+            }
+            Err(DataLayerError::RecordNotUpdated) => {
+                // Organisation does not exist, create a new one instead.
+                self.create_organisation(request.into()).await?;
+                Ok(())
             }
             Err(err) => Err(err.into()),
         }

@@ -15,10 +15,28 @@ impl OneCoreBinding {
             .await?
             .to_string())
     }
+
+    #[uniffi::method]
+    pub async fn upsert_organisation(
+        &self,
+        request: UpsertOrganisationRequestBindingDTO,
+    ) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .organisation_service
+            .upsert_organisation(request.try_into()?)
+            .await?)
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct CreateOrganisationRequestBindingDTO {
     pub id: Option<String>,
     pub name: Option<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct UpsertOrganisationRequestBindingDTO {
+    pub id: String,
+    pub name: String,
 }

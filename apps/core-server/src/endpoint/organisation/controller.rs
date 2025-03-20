@@ -1,14 +1,17 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use one_core::service::organisation::dto::UpsertOrganisationRequestDTO;
 use shared_types::OrganisationId;
 
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
-    GetOrganisationDetailsResponseRestDTO,
+    GetOrganisationDetailsResponseRestDTO, UpsertOrganisationRequestRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse, VecResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
+};
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -87,4 +90,42 @@ pub(crate) async fn post_organisation(
         .create_organisation(request.into())
         .await;
     CreatedOrErrorResponse::from_result(result, state, "creating organization")
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/organisation/v1/{id}",
+    params(
+        ("id" = OrganisationId, Path, description = "Organization id")
+    ),
+    request_body = UpsertOrganisationRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    tag = "organisation_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Update or insert organization",
+    description = indoc::formatdoc! {"
+        Updates the name of an organisation if it exists, otherwise creates a new one with that id and name.
+    "},
+)]
+#[axum::debug_handler]
+pub(crate) async fn put_organisation(
+    state: State<AppState>,
+    Path(id): Path<OrganisationId>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<UpsertOrganisationRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let request = UpsertOrganisationRequestDTO {
+        id,
+        name: request.name,
+    };
+    let result = state
+        .core
+        .organisation_service
+        .upsert_organisation(request)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "upserting organization")
 }

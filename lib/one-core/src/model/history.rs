@@ -61,6 +61,7 @@ pub enum HistoryAction {
     Withdrawn,
     Removed,
     Retracted,
+    Updated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -1,3 +1,4 @@
+use one_core::model::history::HistoryAction;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -19,6 +20,15 @@ async fn test_create_organisation_success_id_set() {
     // THEN
     assert_eq!(resp.status(), 201);
     resp.json_value().await["id"].assert_eq(&organisation_id);
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&organisation_id.into())
+        .await;
+    assert_eq!(
+        history.values.first().unwrap().action,
+        HistoryAction::Created
+    )
 }
 
 #[tokio::test]

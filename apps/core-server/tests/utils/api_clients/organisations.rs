@@ -27,6 +27,12 @@ impl OrganisationsApi {
         self.client.post("/api/organisation/v1", body).await
     }
 
+    pub async fn upsert(&self, id: &impl Display, name: &str) -> Response {
+        self.client
+            .put(&format!("/api/organisation/v1/{id}"), json!({"name": name}))
+            .await
+    }
+
     pub async fn list(&self) -> Response {
         self.client.get("/api/organisation/v1").await
     }

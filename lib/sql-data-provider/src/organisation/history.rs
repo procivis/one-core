@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::{
+    Organisation, OrganisationRelations, UpdateOrganisationRequest,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use shared_types::OrganisationId;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct OrganisationHistoryDecorator {
@@ -35,10 +38,36 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert organisation history event: {err:?}");
+            tracing::warn!("failed to insert organisation history event: {err:?}");
         }
 
         Ok(organisation_id)
+    }
+
+    async fn update_organisation(
+        &self,
+        request: UpdateOrganisationRequest,
+    ) -> Result<(), DataLayerError> {
+        self.inner.update_organisation(request.clone()).await?;
+
+        let result = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                action: HistoryAction::Updated,
+                entity_id: Some(request.id.into()),
+                entity_type: HistoryEntityType::Organisation,
+                metadata: None,
+                organisation_id: request.id,
+            })
+            .await;
+
+        if let Err(err) = result {
+            tracing::warn!("failed to insert organisation history event: {err:?}");
+        }
+
+        Ok(())
     }
 
     async fn get_organisation(

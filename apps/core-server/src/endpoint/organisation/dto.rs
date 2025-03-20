@@ -19,7 +19,13 @@ pub struct CreateOrganisationRequestRestDTO {
     pub name: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpsertOrganisationRequestRestDTO {
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateOrganisationResponseRestDTO {
     pub id: OrganisationId,

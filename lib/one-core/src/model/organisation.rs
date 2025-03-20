@@ -9,5 +9,11 @@ pub struct Organisation {
     pub last_modified: OffsetDateTime,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UpdateOrganisationRequest {
+    pub id: OrganisationId,
+    pub name: String,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct OrganisationRelations {}

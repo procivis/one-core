@@ -19,7 +19,9 @@ use one_core::service::did::dto::{
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
-use one_core::service::organisation::dto::CreateOrganisationRequestDTO;
+use one_core::service::organisation::dto::{
+    CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
+};
 use one_core::service::proof::dto::{
     GetProofQueryDTO, ProofClaimValueDTO, ProofDetailResponseDTO, ProofFilterValue,
 };
@@ -51,7 +53,9 @@ use crate::binding::history::{
 };
 use crate::binding::interaction::HandleInvitationResponseBindingEnum;
 use crate::binding::key::KeyRequestBindingDTO;
-use crate::binding::organisation::CreateOrganisationRequestBindingDTO;
+use crate::binding::organisation::{
+    CreateOrganisationRequestBindingDTO, UpsertOrganisationRequestBindingDTO,
+};
 use crate::binding::proof::{
     ProofListQueryBindingDTO, ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
 };
@@ -668,6 +672,17 @@ impl TryFrom<CreateOrganisationRequestBindingDTO> for CreateOrganisationRequestD
     fn try_from(value: CreateOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.id.map(|id| into_id(&id)).transpose()?,
+            name: value.name,
+        })
+    }
+}
+
+impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: UpsertOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: into_id(&value.id)?,
             name: value.name,
         })
     }
