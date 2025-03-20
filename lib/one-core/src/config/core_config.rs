@@ -346,7 +346,25 @@ pub enum DatatypeType {
     Boolean,
 }
 
-pub type KeyAlgorithmConfig = ConfigBlock<String>;
+pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum KeyAlgorithmType {
+    #[serde(rename = "EDDSA")]
+    #[strum(serialize = "EDDSA")]
+    Eddsa,
+    #[serde(rename = "ES256")]
+    #[strum(serialize = "ES256")]
+    Es256,
+    #[serde(rename = "BBS_PLUS")]
+    #[strum(serialize = "BBS_PLUS")]
+    BbsPlus,
+    #[serde(rename = "DILITHIUM")]
+    #[strum(serialize = "DILITHIUM")]
+    Dilithium,
+}
 
 pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
 

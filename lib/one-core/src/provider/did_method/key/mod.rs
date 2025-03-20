@@ -7,6 +7,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
@@ -98,9 +99,9 @@ impl DidMethod for KeyDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec![
-                "ES256".to_string(),
-                "EDDSA".to_string(),
-                "BBS_PLUS".to_string(),
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::BbsPlus,
             ],
             method_names: vec!["key".to_string()],
         }

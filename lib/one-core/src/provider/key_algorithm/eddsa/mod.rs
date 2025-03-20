@@ -11,6 +11,7 @@ use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde::Deserialize;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -48,6 +49,10 @@ impl Eddsa {
 impl KeyAlgorithm for Eddsa {
     fn algorithm_id(&self) -> String {
         "Ed25519".to_string()
+    }
+
+    fn algorithm_type(&self) -> KeyAlgorithmType {
+        KeyAlgorithmType::Eddsa
     }
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {

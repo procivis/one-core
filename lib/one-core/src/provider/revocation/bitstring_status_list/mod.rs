@@ -8,7 +8,7 @@ use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
@@ -437,7 +437,7 @@ impl BitstringStatusList {
             .key_algorithm
             .iter()
             .filter_map(|(algorithm, fields)| {
-                if fields.r#type == "BBS_PLUS" {
+                if fields.r#type == KeyAlgorithmType::BbsPlus {
                     Some(algorithm)
                 } else {
                     None

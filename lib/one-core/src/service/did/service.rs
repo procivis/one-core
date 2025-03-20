@@ -21,7 +21,7 @@ use crate::service::did::mapper::{
 };
 use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 
 impl DidService {
@@ -162,10 +162,17 @@ impl DidService {
         let new_did_id = DidId::from(Uuid::new_v4());
 
         for key in &keys {
+            let key_algorithm = self
+                .key_algorithm_provider
+                .key_algorithm_from_name(&key.key_type)
+                .ok_or(ValidationError::InvalidKeyAlgorithm(
+                    key.key_type.to_owned(),
+                ))?;
+
             if !did_method
                 .get_capabilities()
                 .key_algorithms
-                .contains(&key.key_type)
+                .contains(&key_algorithm.algorithm_type())
             {
                 return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
                     key_algorithm: key.key_type.to_owned(),

@@ -24,7 +24,9 @@ use url::Url;
 use super::model::{CredentialData, HolderBindingCtx};
 use super::sdjwt;
 use super::vcdm::VcdmCredential;
-use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -203,9 +205,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             signing_key_algorithms: vec![
-                "EDDSA".to_owned(),
-                "ES256".to_owned(),
-                "DILITHIUM".to_owned(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             allowed_schema_ids: vec![],
             datatypes: vec![
@@ -232,9 +234,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
             proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
             revocation_methods: vec![RevocationType::None, RevocationType::TokenStatusList],
             verification_key_algorithms: vec![
-                "EDDSA".to_string(),
-                "ES256".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,

@@ -11,6 +11,7 @@ use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde::Deserialize;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -48,6 +49,10 @@ impl Es256 {
 impl KeyAlgorithm for Es256 {
     fn algorithm_id(&self) -> String {
         "ES256".to_string()
+    }
+
+    fn algorithm_type(&self) -> KeyAlgorithmType {
+        KeyAlgorithmType::Es256
     }
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {

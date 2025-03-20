@@ -15,7 +15,9 @@ use url::Url;
 
 use super::error::FormatterError;
 use super::vcdm::VcdmCredential;
-use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -254,8 +256,8 @@ pub struct FormatterCapabilities {
     pub issuance_exchange_protocols: Vec<ExchangeType>,
     pub proof_exchange_protocols: Vec<ExchangeType>,
     pub revocation_methods: Vec<RevocationType>,
-    pub signing_key_algorithms: Vec<String>,
-    pub verification_key_algorithms: Vec<String>,
+    pub signing_key_algorithms: Vec<KeyAlgorithmType>,
+    pub verification_key_algorithms: Vec<KeyAlgorithmType>,
     pub verification_key_storages: Vec<KeyStorageType>,
     pub datatypes: Vec<String>,
     pub allowed_schema_ids: Vec<String>,

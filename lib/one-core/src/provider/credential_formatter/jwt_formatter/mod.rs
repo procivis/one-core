@@ -17,7 +17,9 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -299,9 +301,9 @@ impl CredentialFormatter for JWTFormatter {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             signing_key_algorithms: vec![
-                "EDDSA".to_owned(),
-                "ES256".to_owned(),
-                "DILITHIUM".to_owned(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
@@ -314,9 +316,9 @@ impl CredentialFormatter for JWTFormatter {
                 RevocationType::Lvvc,
             ],
             verification_key_algorithms: vec![
-                "EDDSA".to_string(),
-                "ES256".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,

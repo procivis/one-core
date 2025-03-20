@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialService;
-use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::config::core_config::{CoreConfig, ExchangeType, KeyAlgorithmType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -37,6 +37,7 @@ use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderEx
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{
     CredentialRevocationState, Operation, RevocationMethodCapabilities, RevocationUpdate,
@@ -745,12 +746,25 @@ async fn test_create_credential_success() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository: MockHistoryRepository::default(),
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -987,12 +1001,25 @@ async fn test_create_credential_one_required_claim_missing_success() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository: MockHistoryRepository::default(),
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1698,12 +1725,25 @@ async fn test_create_credential_key_with_issuer_key() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1823,12 +1863,25 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1918,10 +1971,23 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1997,10 +2063,23 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2093,10 +2172,23 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2189,10 +2281,23 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Es256);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -4726,12 +4831,25 @@ async fn test_create_credential_array(
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         formatter_provider,
         history_repository,
+        key_algorithm_provider,
         revocation_method_provider,
         protocol_provider,
         config: generic_config().core,

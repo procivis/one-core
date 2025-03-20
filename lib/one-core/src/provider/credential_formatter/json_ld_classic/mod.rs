@@ -21,7 +21,9 @@ use super::json_ld::{
 };
 use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
-use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -291,7 +293,7 @@ impl CredentialFormatter for JsonLdClassic {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
+            signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
@@ -316,7 +318,7 @@ impl CredentialFormatter for JsonLdClassic {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+            verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
             verification_key_storages: vec![
                 KeyStorageType::Internal,
                 KeyStorageType::AzureVault,

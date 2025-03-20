@@ -11,6 +11,7 @@ pub use validator::{DidMdlValidationError, DidMdlValidator};
 use x509_parser::certificate::X509Certificate;
 use x509_parser::pem::Pem;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::common::jwk_context;
 use crate::provider::did_method::error::DidMethodError;
@@ -186,7 +187,7 @@ impl DidMethod for DidMdl {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::CREATE, Operation::RESOLVE],
-            key_algorithms: ["ES256", "EDDSA"].map(str::to_string).to_vec(),
+            key_algorithms: vec![KeyAlgorithmType::Es256, KeyAlgorithmType::Eddsa],
             method_names: vec!["mdl".to_string()],
         }
     }

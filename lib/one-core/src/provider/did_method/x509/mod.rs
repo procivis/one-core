@@ -4,6 +4,7 @@
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
@@ -45,7 +46,7 @@ impl DidMethod for X509Method {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
-            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            key_algorithms: vec![KeyAlgorithmType::Es256, KeyAlgorithmType::Eddsa],
             method_names: vec!["x509".to_string()],
         }
     }

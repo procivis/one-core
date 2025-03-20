@@ -5,6 +5,7 @@ use serde::Serialize;
 use shared_types::DidValue;
 
 use super::dto::{DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
@@ -18,7 +19,7 @@ pub enum Operation {
 #[serde(rename_all = "camelCase")]
 pub struct DidCapabilities {
     pub operations: Vec<Operation>,
-    pub key_algorithms: Vec<String>,
+    pub key_algorithms: Vec<KeyAlgorithmType>,
     /// Did method names that this did method is able to handle
     pub method_names: Vec<String>,
 }

@@ -138,10 +138,17 @@ impl CredentialService {
         )?;
 
         let valid_keys_filter = |entry: &&RelatedKey| {
-            entry.role == KeyRole::AssertionMethod
-                && formatter_capabilities
-                    .signing_key_algorithms
-                    .contains(&entry.key.key_type)
+            if let Some(key_algorithm) = self
+                .key_algorithm_provider
+                .key_algorithm_from_name(&entry.key.key_type)
+            {
+                entry.role == KeyRole::AssertionMethod
+                    && formatter_capabilities
+                        .signing_key_algorithms
+                        .contains(&key_algorithm.algorithm_type())
+            } else {
+                false
+            }
         };
 
         let did_keys = issuer_did

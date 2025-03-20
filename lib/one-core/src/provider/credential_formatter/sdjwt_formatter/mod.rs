@@ -13,7 +13,9 @@ use serde_json::Value;
 use shared_types::DidValue;
 use time::Duration;
 
-use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -192,9 +194,9 @@ impl CredentialFormatter for SDJWTFormatter {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             signing_key_algorithms: vec![
-                "EDDSA".to_owned(),
-                "ES256".to_owned(),
-                "DILITHIUM".to_owned(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             allowed_schema_ids: vec![],
             datatypes: vec![
@@ -224,9 +226,9 @@ impl CredentialFormatter for SDJWTFormatter {
                 RevocationType::Lvvc,
             ],
             verification_key_algorithms: vec![
-                "EDDSA".to_string(),
-                "ES256".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,

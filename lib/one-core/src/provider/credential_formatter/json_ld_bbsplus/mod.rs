@@ -17,7 +17,9 @@ use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
 use super::model::{CredentialData, HolderBindingCtx, Issuer};
 use super::CredentialFormatter;
-use crate::config::core_config::{DidType, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -287,7 +289,7 @@ impl CredentialFormatter for JsonLdBbsplus {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
-            signing_key_algorithms: vec!["BBS_PLUS".to_owned()],
+            signing_key_algorithms: vec![KeyAlgorithmType::BbsPlus],
             features: vec![
                 Features::SupportsCredentialDesign,
                 Features::SelectiveDisclosure,
@@ -316,9 +318,9 @@ impl CredentialFormatter for JsonLdBbsplus {
                 RevocationType::Lvvc,
             ],
             verification_key_algorithms: vec![
-                "EDDSA".to_string(),
-                "ES256".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,

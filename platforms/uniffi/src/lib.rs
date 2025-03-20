@@ -7,7 +7,7 @@ use did_config::DidWebVhParams;
 use indexmap::IndexMap;
 use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType,
-    FormatType, InputFormat, KeyStorageType, RevocationType,
+    FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
@@ -223,21 +223,20 @@ async fn initialize(
                 let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
                 for (name, field) in config.iter() {
-                    let key_algorithm: Arc<dyn KeyAlgorithm> = match field.r#type.as_str() {
-                        "EDDSA" => {
+                    let key_algorithm: Arc<dyn KeyAlgorithm> = match field.r#type {
+                        KeyAlgorithmType::Eddsa => {
                             let params = config.get(name).expect("EDDSA config is required");
                             Arc::new(Eddsa::new(params))
                         }
-                        "ES256" => {
+                        KeyAlgorithmType::Es256 => {
                             let params = config.get(name).expect("ES256 config is required");
                             Arc::new(Es256::new(params))
                         }
-                        "BBS_PLUS" => Arc::new(BBS),
-                        "DILITHIUM" => {
+                        KeyAlgorithmType::BbsPlus => Arc::new(BBS),
+                        KeyAlgorithmType::Dilithium => {
                             let params = config.get(name).expect("DILITHIUM config is required");
                             Arc::new(MlDsa::new(params))
                         }
-                        other => panic!("Unexpected key algorithm: {other}"),
                     };
                     key_algorithms.insert(name.to_owned(), key_algorithm);
                 }

@@ -10,7 +10,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::DidService;
-use crate::config::core_config::{self, CoreConfig, DidConfig, Fields};
+use crate::config::core_config::{self, CoreConfig, DidConfig, Fields, KeyAlgorithmType};
 use crate::model::did::{
     Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey,
 };
@@ -22,6 +22,7 @@ use crate::provider::did_method::model::DidCapabilities;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{DidMethod, MockDidMethod};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::repository::did_repository::MockDidRepository;
@@ -275,8 +276,20 @@ async fn test_create_did_success() {
         .once()
         .returning(|| DidCapabilities {
             operations: vec![],
-            key_algorithms: vec!["".to_owned()],
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
             method_names: vec!["example".to_string()],
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
         });
 
     let mut did_repository = MockDidRepository::default();
@@ -297,7 +310,7 @@ async fn test_create_did_success() {
         key_repository,
         organisation_repository,
         did_method,
-        MockKeyAlgorithmProvider::default(),
+        key_algorithm_provider,
         get_did_config(),
     );
 
@@ -351,8 +364,20 @@ async fn test_create_did_value_already_exists() {
         .once()
         .returning(|| DidCapabilities {
             operations: vec![],
-            key_algorithms: vec!["".to_owned()],
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
             method_names: vec!["example".to_string()],
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_name()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
         });
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -372,7 +397,7 @@ async fn test_create_did_value_already_exists() {
         key_repository,
         organisation_repository,
         did_method,
-        MockKeyAlgorithmProvider::default(),
+        key_algorithm_provider,
         get_did_config(),
     );
 

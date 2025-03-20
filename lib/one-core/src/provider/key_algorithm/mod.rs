@@ -2,6 +2,7 @@ use error::KeyAlgorithmError;
 use model::GeneratedKey;
 use secrecy::SecretSlice;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
@@ -19,6 +20,8 @@ pub mod provider;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyAlgorithm: Send + Sync {
     fn algorithm_id(&self) -> String;
+
+    fn algorithm_type(&self) -> KeyAlgorithmType;
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities;
 

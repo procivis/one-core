@@ -8,7 +8,7 @@ use shared_types::{CredentialSchemaId, DidValue};
 
 use super::json_ld_classic::verify_credential_signature;
 use super::model::{CredentialData, HolderBindingCtx};
-use crate::config::core_config::{ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
@@ -123,9 +123,9 @@ impl CredentialFormatter for PhysicalCardFormatter {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             signing_key_algorithms: vec![
-                "EDDSA".to_owned(),
-                "ES256".to_owned(),
-                "DILITHIUM".to_owned(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             allowed_schema_ids: vec![
                 "UtopiaEmploymentDocument".to_string(),
@@ -139,9 +139,9 @@ impl CredentialFormatter for PhysicalCardFormatter {
             proof_exchange_protocols: vec![ExchangeType::ScanToVerify],
             revocation_methods: vec![RevocationType::None],
             verification_key_algorithms: vec![
-                "EDDSA".to_string(),
-                "ES256".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,

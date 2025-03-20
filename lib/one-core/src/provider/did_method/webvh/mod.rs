@@ -7,6 +7,7 @@ use super::error::DidMethodError;
 use super::keys::Keys;
 use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use super::DidMethod;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::http_client::HttpClient;
 
@@ -55,7 +56,7 @@ impl DidMethod for DidWebVh {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE],
-            key_algorithms: vec!["ES256".to_string()],
+            key_algorithms: vec![KeyAlgorithmType::Es256],
             method_names: vec!["tdw".to_string()],
         }
     }

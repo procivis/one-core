@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
@@ -106,10 +107,10 @@ impl DidMethod for WebDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE, Operation::DEACTIVATE],
             key_algorithms: vec![
-                "ES256".to_string(),
-                "EDDSA".to_string(),
-                "BBS_PLUS".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::BbsPlus,
+                KeyAlgorithmType::Dilithium,
             ],
             method_names: vec!["web".to_string()],
         }

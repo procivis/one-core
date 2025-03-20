@@ -6,7 +6,9 @@ use time::macros::datetime;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::{AppConfig, ExchangeType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    AppConfig, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -375,7 +377,7 @@ pub fn dummy_claim_schema() -> ClaimSchema {
 
 pub fn generic_formatter_capabilities() -> FormatterCapabilities {
     FormatterCapabilities {
-        signing_key_algorithms: vec!["EDDSA".to_string()],
+        signing_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         features: vec![],
         allowed_schema_ids: vec![],
         selective_disclosure: vec![],
@@ -392,7 +394,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             RevocationType::BitstringStatusList,
             RevocationType::Lvvc,
         ],
-        verification_key_algorithms: vec!["EDDSA".to_string()],
+        verification_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         verification_key_storages: vec![KeyStorageType::Internal],
         datatypes: vec![],
         forbidden_claim_names: vec![],

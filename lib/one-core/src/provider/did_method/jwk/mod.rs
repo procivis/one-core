@@ -9,6 +9,7 @@ pub(crate) mod jwk_helpers;
 
 use shared_types::{DidId, DidValue};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::{
@@ -78,10 +79,10 @@ impl DidMethod for JWKDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec![
-                "ES256".to_string(),
-                "EDDSA".to_string(),
-                "BBS_PLUS".to_string(),
-                "DILITHIUM".to_string(),
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::BbsPlus,
+                KeyAlgorithmType::Dilithium,
             ],
             method_names: vec!["jwk".to_string()],
         }

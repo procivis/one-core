@@ -7,6 +7,7 @@ use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use one_crypto::SignerError;
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -24,6 +25,10 @@ mod test;
 impl KeyAlgorithm for BBS {
     fn algorithm_id(&self) -> String {
         "BBS".to_string()
+    }
+
+    fn algorithm_type(&self) -> KeyAlgorithmType {
+        KeyAlgorithmType::BbsPlus
     }
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {

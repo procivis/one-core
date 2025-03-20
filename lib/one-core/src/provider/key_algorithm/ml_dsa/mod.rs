@@ -9,6 +9,7 @@ use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde::Deserialize;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -45,6 +46,10 @@ impl MlDsa {
 impl KeyAlgorithm for MlDsa {
     fn algorithm_id(&self) -> String {
         "DILITHIUM".to_string()
+    }
+
+    fn algorithm_type(&self) -> KeyAlgorithmType {
+        KeyAlgorithmType::Dilithium
     }
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {

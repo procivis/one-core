@@ -38,7 +38,8 @@ use super::model::{CredentialData, HolderBindingCtx};
 use super::nest_claims;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{
-    DatatypeConfig, DatatypeType, DidType, ExchangeType, KeyStorageType, RevocationType,
+    DatatypeConfig, DatatypeType, DidType, ExchangeType, KeyAlgorithmType, KeyStorageType,
+    RevocationType,
 };
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
@@ -524,8 +525,8 @@ impl CredentialFormatter for MdocFormatter {
                 RevocationType::None,
                 RevocationType::MdocMsoUpdateSuspension,
             ],
-            signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
-            verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+            signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
+            verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
             verification_key_storages: vec![KeyStorageType::Internal],
             datatypes: vec![
                 "STRING".to_string(),
