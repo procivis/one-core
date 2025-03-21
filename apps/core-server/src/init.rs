@@ -248,7 +248,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         let params: DidWebVhParams = config
                             .get(name)
                             .expect("failed to deserialize did webvh params");
-                        let did_webvh = DidWebVh::new(params.into());
+                        let did_webvh = DidWebVh::new(params.into(), client.clone());
                         Arc::new(did_webvh) as _
                     }
                 };

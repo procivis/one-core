@@ -51,7 +51,8 @@ async fn test_resolve_jwk_did_without_use_field() {
         key_agreement: Some(vec!["did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9#0".to_string()]),
         capability_invocation: Some(vec!["did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9#0".to_string()]),
         capability_delegation: Some(vec!["did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9#0".to_string()]),
-        rest: Default::default()
+        also_known_as: None,
+        service: None,
     };
 
     assert_eq!(expected, result);
@@ -90,7 +91,8 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
         key_agreement: Some(vec!["did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9#0".to_string()]),
         capability_invocation: None,
         capability_delegation: None,
-        rest: Default::default()
+        also_known_as: None,
+        service: None,
     };
 
     assert_eq!(expected, result);
@@ -129,7 +131,8 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
         key_agreement: None,
         capability_invocation: Some(vec!["did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ#0".to_string()]),
         capability_delegation: Some(vec!["did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ#0".to_string()]),
-        rest: Default::default()
+        also_known_as: None,
+        service: None,
     };
 
     assert_eq!(expected, result);

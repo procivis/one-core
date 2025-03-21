@@ -127,7 +127,8 @@ async fn create_token(include_layout: bool) -> Value {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 
@@ -279,7 +280,8 @@ async fn test_format_presentation_multi_tokens() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 
@@ -490,7 +492,8 @@ async fn test_parse_presentation_multi_tokens() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 

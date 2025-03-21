@@ -116,7 +116,8 @@ async fn test_did_key_resolve_details_eddsa() {
                 "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
             ],
         ),
-        rest: Default::default()
+        also_known_as: None,
+        service: None,
     });
 }
 
@@ -210,7 +211,8 @@ async fn test_did_key_resolve_details_es256() {
                 "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
             ],
         ),
-        rest: Default::default()
+        also_known_as: None,
+        service: None,
     });
 }
 
@@ -304,7 +306,8 @@ async fn test_did_key_resolve_details_bbs() {
                 "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
             ],
         ),
-        rest: Default::default()
+        also_known_as: None,
+        service: None,
     });
 }
 

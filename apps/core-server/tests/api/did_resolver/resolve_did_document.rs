@@ -174,6 +174,7 @@ async fn test_resolve_did_universal_document() {
     // THEN
     assert_eq!(resp.status(), 200);
     let document = resp.json_value().await;
+
     assert_eq!(document, expected_document);
 }
 

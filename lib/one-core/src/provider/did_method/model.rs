@@ -1,10 +1,10 @@
 //! `struct`s and `enum`s for DID method provider.
 
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::Serialize;
 use shared_types::DidValue;
 
-use super::dto::{DidDocumentDTO, DidVerificationMethodDTO};
+use super::dto::{DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO};
 use crate::model::key::PublicKeyJwk;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
@@ -37,8 +37,19 @@ pub struct DidDocument {
     pub key_agreement: Option<Vec<String>>,
     pub capability_invocation: Option<Vec<String>>,
     pub capability_delegation: Option<Vec<String>>,
+    pub also_known_as: Option<Vec<String>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    #[into(with_fn = convert_inner_of_inner)]
+    pub service: Option<Vec<DidServiceEndoint>>,
+}
 
-    pub rest: serde_json::Value,
+#[derive(Clone, Debug, PartialEq, Eq, From, Into)]
+#[from(DidServiceEndointDTO)]
+#[into(DidServiceEndointDTO)]
+pub struct DidServiceEndoint {
+    pub id: String,
+    pub r#type: Vec<String>,
+    pub service_endpoint: serde_json::Value,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, From, Into)]

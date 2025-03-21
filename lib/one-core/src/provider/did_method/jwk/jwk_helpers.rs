@@ -35,7 +35,8 @@ pub fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocument {
         key_agreement: None,
         capability_invocation: None,
         capability_delegation: None,
-        rest: Default::default(),
+        also_known_as: None,
+        service: None,
     };
 
     match jwk.get_use() {

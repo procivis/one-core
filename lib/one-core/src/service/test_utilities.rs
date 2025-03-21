@@ -414,7 +414,8 @@ pub fn dummy_did_document(did: &DidValue) -> DidDocument {
         key_agreement: None,
         capability_invocation: None,
         capability_delegation: None,
-        rest: Default::default(),
+        also_known_as: None,
+        service: None,
     }
 }
 

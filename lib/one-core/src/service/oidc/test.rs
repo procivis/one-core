@@ -754,7 +754,8 @@ async fn test_oidc_issuer_create_credential_success() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: serde_json::Value::Null,
+                also_known_as: None,
+                service: None,
             })
         });
 
@@ -928,7 +929,8 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: serde_json::Value::Null,
+                also_known_as: None,
+                service: None,
             })
         });
 

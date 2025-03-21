@@ -133,7 +133,8 @@ impl DidMethod for DidMdl {
                 key_agreement: Some(vec![id.clone()]),
                 capability_invocation: Some(vec![id.clone()]),
                 capability_delegation: Some(vec![id]),
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         } else if let Some(mdl_public_key) = did.as_str().strip_prefix("did:mdl:public_key:") {
             let did_key = format!("did:key:{mdl_public_key}")

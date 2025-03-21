@@ -85,7 +85,8 @@ fn expected_did_document(did: &str) -> DidDocument {
             format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
             format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
         ]),
-        rest: json!(null),
+        also_known_as: None,
+        service: None,
     }
 }
 

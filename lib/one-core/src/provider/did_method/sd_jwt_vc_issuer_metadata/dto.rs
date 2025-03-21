@@ -55,7 +55,8 @@ pub fn generate_document(did: &DidValue, jwks: Vec<PublicKeyJwkDTO>) -> DidDocum
         key_agreement: None,
         capability_invocation: None,
         capability_delegation: None,
-        rest: Default::default(),
+        also_known_as: None,
+        service: None,
     };
 
     let mut signature_keys = vec![];

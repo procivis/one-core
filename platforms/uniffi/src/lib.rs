@@ -408,7 +408,7 @@ async fn initialize(
                                 let params: DidWebVhParams = config
                                     .get(name)
                                     .expect("failed to deserialize did webvh params");
-                                let did_webvh = DidWebVh::new(params.into());
+                                let did_webvh = DidWebVh::new(params.into(), client.clone());
                                 Arc::new(did_webvh) as _
                             }
                         };

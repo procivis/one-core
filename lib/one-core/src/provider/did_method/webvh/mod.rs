@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
@@ -6,6 +8,9 @@ use super::keys::Keys;
 use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use super::DidMethod;
 use crate::model::key::Key;
+use crate::provider::http_client::HttpClient;
+
+mod resolver;
 
 #[derive(Debug)]
 pub struct Params {
@@ -13,12 +18,14 @@ pub struct Params {
 }
 
 pub struct DidWebVh {
-    pub params: Params,
+    #[allow(dead_code)]
+    params: Params,
+    client: Arc<dyn HttpClient>,
 }
 
 impl DidWebVh {
-    pub fn new(params: Params) -> Self {
-        Self { params }
+    pub fn new(params: Params, client: Arc<dyn HttpClient>) -> Self {
+        Self { params, client }
     }
 }
 
@@ -33,8 +40,8 @@ impl DidMethod for DidWebVh {
         todo!()
     }
 
-    async fn resolve(&self, _did: &DidValue) -> Result<DidDocument, DidMethodError> {
-        todo!()
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {
+        resolver::resolve(did, &*self.client, false).await
     }
 
     fn update(&self) -> Result<(), DidMethodError> {

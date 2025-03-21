@@ -137,7 +137,8 @@ pub(super) fn map_did_model_to_did_web_response(
             grouped_key,
         )?
         .into(),
-        rest: Default::default(),
+        also_known_as: None,
+        service: None,
     })
 }
 

@@ -272,7 +272,8 @@ async fn test_handle_invitation_success() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 

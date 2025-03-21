@@ -226,12 +226,12 @@ impl VcdmCredentialSubject {
 pub type Claims = HashMap<String, String>;
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VcdmProof {
     #[serde(rename = "@context")]
     pub context: Option<IndexSet<ContextType>>,
-    r#type: String,
+    pub r#type: String,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub created: Option<OffsetDateTime>,
     pub cryptosuite: String,
@@ -239,8 +239,8 @@ pub struct VcdmProof {
     pub proof_purpose: String,
     pub proof_value: Option<String>,
     pub nonce: Option<String>,
-    challenge: Option<String>,
-    domain: Option<String>,
+    pub challenge: Option<String>,
+    pub domain: Option<String>,
 }
 
 #[bon]

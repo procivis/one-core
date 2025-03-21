@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use indexmap::IndexMap;
 use one_core::common_mapper::{opt_secret_string, secret_string};
-use one_core::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
+use one_core::provider::did_method::dto::{
+    DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
+};
 use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use one_core::provider::exchange_protocol::openid4vc::model::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -51,7 +53,7 @@ use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::json::JsonString;
-use serde_with::skip_serializing_none;
+use serde_with::{serde_as, skip_serializing_none, OneOrMany};
 use shared_types::{CredentialId, DidValue, ProofId, TrustAnchorId, TrustEntityId};
 use strum::Display;
 use time::OffsetDateTime;
@@ -226,8 +228,20 @@ pub struct DidDocumentRestDTO {
     pub key_agreement: Option<Vec<String>>,
     pub capability_invocation: Option<Vec<String>>,
     pub capability_delegation: Option<Vec<String>>,
-    #[serde(flatten)]
-    pub rest: serde_json::Value,
+    pub also_known_as: Option<Vec<String>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub service: Option<Vec<DidServiceEndointRestDTO>>,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(DidServiceEndointDTO)]
+pub struct DidServiceEndointRestDTO {
+    pub id: String,
+    #[serde_as(as = "OneOrMany<_>")]
+    pub r#type: Vec<String>,
+    pub service_endpoint: serde_json::Value,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]

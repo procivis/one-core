@@ -220,7 +220,8 @@ mod test {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: serde_json::json!({}),
+                also_known_as: None,
+                service: None,
             })
         });
 

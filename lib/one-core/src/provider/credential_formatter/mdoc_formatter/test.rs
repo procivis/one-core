@@ -247,7 +247,8 @@ async fn test_credential_formatting_ok_for_es256() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 
@@ -431,7 +432,8 @@ async fn test_unverified_credential_extraction() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 
@@ -619,7 +621,8 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: Default::default(),
+                also_known_as: None,
+                service: None,
             })
         });
 
