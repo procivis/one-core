@@ -1,7 +1,6 @@
 import CoreBluetooth
-import UIKit
 
-class IOSBLECentral: NSObject {
+public class IOSBLECentral: NSObject {
     
     private lazy var centralManager: CBCentralManager = {
         return CBCentralManager(delegate: self,
@@ -42,7 +41,7 @@ class IOSBLECentral: NSObject {
 
 extension IOSBLECentral: BleCentral {
     
-    func isAdapterEnabled() async throws -> Bool {
+    public func isAdapterEnabled() async throws -> Bool {
         return await withCheckedContinuation { continuation in
             adapterStateLock.withLock {
                 let state = centralManager.state
@@ -66,7 +65,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    func startScan(filterServices: [String]?) async throws {
+    public func startScan(filterServices: [String]?) async throws {
 #if DEBUG
         print("startScan: \(filterServices)")
 #endif
@@ -80,7 +79,7 @@ extension IOSBLECentral: BleCentral {
         centralManager.scanForPeripherals(withServices: filterServices?.map { CBUUID(string: $0) })
     }
     
-    func stopScan() async throws {
+    public func stopScan() async throws {
 #if DEBUG
         print("stopScan")
 #endif
@@ -90,11 +89,11 @@ extension IOSBLECentral: BleCentral {
         centralManager.stopScan()
     }
     
-    func isScanning() async throws -> Bool {
+    public func isScanning() async throws -> Bool {
         return centralManager.isScanning
     }
     
-    func connect(peripheral: String) async throws -> UInt16 {
+    public func connect(peripheral: String) async throws -> UInt16 {
 #if DEBUG
         print("connect: \(peripheral)")
 #endif
@@ -130,7 +129,7 @@ extension IOSBLECentral: BleCentral {
         return mtu
     }
     
-    func disconnect(peripheral: String) async throws {
+    public func disconnect(peripheral: String) async throws {
 #if DEBUG
         print("disconnect: \(peripheral)")
 #endif
@@ -149,7 +148,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    func getDiscoveredDevices() async throws -> [PeripheralDiscoveryDataBindingDto] {
+    public func getDiscoveredDevices() async throws -> [PeripheralDiscoveryDataBindingDto] {
         return await withCheckedContinuation { continuation in
             deviceDiscoveryLock.withLock {
                 guard discoveredPeripheralsQueue.isEmpty else {
@@ -166,7 +165,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    func writeData(peripheral: String, service: String, characteristic: String, data: Data, writeType: CharacteristicWriteTypeBindingEnum) async throws {
+    public func writeData(peripheral: String, service: String, characteristic: String, data: Data, writeType: CharacteristicWriteTypeBindingEnum) async throws {
 #if DEBUG
         print("writeData: \(peripheral), characteristic: \(characteristic)")
 #endif
@@ -223,7 +222,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    func readData(peripheral: String, service: String, characteristic: String) async throws -> Data {
+    public func readData(peripheral: String, service: String, characteristic: String) async throws -> Data {
 #if DEBUG
         print("readData: \(peripheral), characteristic: \(characteristic)")
 #endif
@@ -256,7 +255,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    func subscribeToCharacteristicNotifications(peripheral: String, service: String, characteristic: String) async throws {
+    public func subscribeToCharacteristicNotifications(peripheral: String, service: String, characteristic: String) async throws {
 #if DEBUG
         print("subscribeToCharacteristicNotifications: \(peripheral), characteristic: \(characteristic)")
 #endif
@@ -291,7 +290,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    func unsubscribeFromCharacteristicNotifications(peripheral: String, service: String, characteristic: String) async throws {
+    public func unsubscribeFromCharacteristicNotifications(peripheral: String, service: String, characteristic: String) async throws {
 #if DEBUG
         print("unsubscribeFromCharacteristicNotifications: \(peripheral), characteristic: \(characteristic)")
 #endif
@@ -323,7 +322,7 @@ extension IOSBLECentral: BleCentral {
     
     @discardableResult
     
-    func getNotifications(peripheral: String, service: String, characteristic: String) async throws -> [Data] {
+    public func getNotifications(peripheral: String, service: String, characteristic: String) async throws -> [Data] {
         guard let peripheralUuid = UUID(uuidString: peripheral) else {
             throw BleError.InvalidUuid(uuid: peripheral)
         }
@@ -486,7 +485,7 @@ private func getKeys<T>(_ keys: Dictionary<CharacteristicKey, T>.Keys, for perip
 
 extension IOSBLECentral: CBCentralManagerDelegate {
     
-    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+    public func centralManagerDidUpdateState(_ central: CBCentralManager) {
 #if DEBUG
         print("central manager did update state \(central.state)")
 #endif
@@ -495,7 +494,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         }
     }
     
-    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+    public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         let uuids = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?.map { $0.uuidString } ?? []
         let peripheral = PeripheralDiscoveryDataBindingDto(deviceAddress: peripheral.identifier.uuidString,
                                                            localDeviceName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
@@ -510,7 +509,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         }
     }
     
-    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
 #if DEBUG
         print("connected to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
@@ -521,7 +520,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         }
     }
     
-    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
+    public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
 #if DEBUG
         print("failed to connect to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
@@ -530,7 +529,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         }
     }
     
-    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
+    public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
 #if DEBUG
         print("disconnected from \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
@@ -615,7 +614,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
 
 extension IOSBLECentral: CBPeripheralDelegate {
     
-    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: (any Error)?) {
+    public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: (any Error)?) {
         let result = getResult(value: peripheral.servicesDescriptions, error: error)
         discoverServicesResultCallback?(result)
 #if DEBUG
@@ -626,7 +625,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
 #endif
     }
     
-    func peripheral(_ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]) {
+    public func peripheral(_ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]) {
         // This is signaled if the peripheral server stops
 #if DEBUG
         print("peripheral \(peripheral.identifier) did modify services: \(invalidatedServices)")
@@ -636,7 +635,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
         }
     }
     
-    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: (any Error)?) {
+    public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: (any Error)?) {
         let result = getResult(value: service.servicesDescription, error: error)
         discoverCharacteristicsResultCallbacks[service.uuid]?(result)
 #if DEBUG
@@ -647,7 +646,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
 #endif
     }
     
-    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
+    public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
         guard let characteristicKey = characteristicKey(peripheral: peripheral, characteristic: characteristic) else {
             return
         }
@@ -660,7 +659,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
         }
     }
     
-    func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
+    public func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
 #if DEBUG
         print("peripheralIsReady")
 #endif
@@ -674,7 +673,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
         }
     }
     
-    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
+    public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
         guard let characteristicKey = characteristicKey(peripheral: peripheral, characteristic: characteristic) else {
             return
         }
@@ -713,7 +712,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
         }
     }
     
-    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: (any Error)?) {
+    public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: (any Error)?) {
 #if DEBUG
         print("update notification state for \(characteristic): \(String(describing: characteristic.value)) (error: \(String(describing: error)))")
 #endif

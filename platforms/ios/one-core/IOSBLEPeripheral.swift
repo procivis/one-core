@@ -1,7 +1,6 @@
 import CoreBluetooth
-import UIKit
 
-class IOSBLEPeripheral: NSObject {
+public class IOSBLEPeripheral: NSObject {
     
     private var _peripheralManager: CBPeripheralManager?
     private var peripheralManager: CBPeripheralManager {
@@ -42,7 +41,7 @@ class IOSBLEPeripheral: NSObject {
 
 extension IOSBLEPeripheral: BlePeripheral {
     
-    func isAdapterEnabled() async throws -> Bool {
+    public func isAdapterEnabled() async throws -> Bool {
         return await withCheckedContinuation { continuation in
             adapterStateLock.withLock {
                 let state = peripheralManager.state
@@ -75,7 +74,7 @@ extension IOSBLEPeripheral: BlePeripheral {
     }
     
     @discardableResult
-    func startAdvertisement(deviceName: String?, services: [ServiceDescriptionBindingDto]) async throws -> String? {
+    public func startAdvertisement(deviceName: String?, services: [ServiceDescriptionBindingDto]) async throws -> String? {
         guard try await isAdapterEnabled() else {
             throw BleError.AdapterNotEnabled
         }
@@ -100,14 +99,14 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func stopAdvertisement() async throws {
+    public func stopAdvertisement() async throws {
         guard peripheralManager.isAdvertising else {
             return
         }
         peripheralManager.stopAdvertising()
     }
     
-    func stopServer() async throws {
+    public func stopServer() async throws {
         _peripheralManager = nil
         startAdvertisementResultCallback = nil
         services = []
@@ -142,11 +141,11 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func isAdvertising() async throws -> Bool {
+    public func isAdvertising() async throws -> Bool {
         return peripheralManager.isAdvertising
     }
     
-    func setCharacteristicData(service: String, characteristic: String, data: Data) async throws {
+    public func setCharacteristicData(service: String, characteristic: String, data: Data) async throws {
         let service = CBUUID(string: service)
         let characteristic = CBUUID(string: characteristic)
         let characteristicValueKey = characteristicValueKey(service: service, characteristic: characteristic)
@@ -156,7 +155,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func notifyCharacteristicData(deviceAddress: String, service: String, characteristic: String, data: Data) async throws {
+    public func notifyCharacteristicData(deviceAddress: String, service: String, characteristic: String, data: Data) async throws {
         try await setCharacteristicData(service: service, characteristic: characteristic, data: data)
         let service = CBUUID(string: service)
         let characteristic = CBUUID(string: characteristic)
@@ -201,7 +200,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func getConnectionChangeEvents() async throws -> [ConnectionEventBindingEnum] {
+    public func getConnectionChangeEvents() async throws -> [ConnectionEventBindingEnum] {
         return try await withCheckedThrowingContinuation { continuation in
             connectionLock.withLock {
                 guard connectionChangeEventsQueue.isEmpty else {
@@ -218,7 +217,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func getCharacteristicWrites(device: String, service: String, characteristic: String) async throws -> [Data] {
+    public func getCharacteristicWrites(device: String, service: String, characteristic: String) async throws -> [Data] {
         guard let centralUuid = UUID(uuidString: device) else {
             throw BleError.InvalidUuid(uuid: device)
         }
@@ -240,7 +239,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func waitForCharacteristicRead(device: String, service: String, characteristic: String) async throws {
+    public func waitForCharacteristicRead(device: String, service: String, characteristic: String) async throws {
         guard let centralUuid = UUID(uuidString: device) else {
             throw BleError.InvalidUuid(uuid: device)
         }
@@ -338,7 +337,7 @@ private extension IOSBLEPeripheral {
 
 extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
     
-    func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+    public func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
 #if DEBUG
         print("peripheral manager did update state \(peripheral.state)")
 #endif
@@ -347,7 +346,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
     }
     
-    func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: (any Error)?) {
+    public func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: (any Error)?) {
 #if DEBUG
         print("did start advertising \(peripheral) \(String(describing: error))")
 #endif
@@ -361,7 +360,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
     }
     
-    func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
+    public func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
 #if DEBUG
         print("did receive read request \(request)")
 #endif
@@ -388,7 +387,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
     }
     
-    func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+    public func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
 #if DEBUG
         print("did receive write requests \(requests)")
 #endif
@@ -419,7 +418,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
     }
     
-    func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
+    public func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
 #if DEBUG
         print("central \(central) subscribed to \(characteristic)")
 #endif
@@ -430,7 +429,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
     }
     
-    func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
+    public func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
 #if DEBUG
         print("central \(central) unsubscribed from \(characteristic)")
 #endif
@@ -449,7 +448,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
     }
     
-    func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
+    public func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
 #if DEBUG
         print("peripheral manager ready to update subscribers")
 #endif

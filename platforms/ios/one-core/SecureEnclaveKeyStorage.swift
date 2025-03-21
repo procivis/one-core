@@ -6,8 +6,10 @@ import Foundation
 import CryptoKit
 import LocalAuthentication
 
-class SecureEnclaveKeyStorage: NativeKeyStorage {
-    func generateKey(keyAlias: String) async throws -> GeneratedKeyBindingDto {
+public class SecureEnclaveKeyStorage: NativeKeyStorage {
+    public init() {}
+    
+    public func generateKey(keyAlias: String) async throws -> GeneratedKeyBindingDto {
         if (!SecureEnclave.isAvailable) {
             throw NativeKeyStorageError.Unsupported;
         }
@@ -35,7 +37,7 @@ class SecureEnclaveKeyStorage: NativeKeyStorage {
         }
     }
     
-    func sign(keyReference: Data, message: Data) async throws -> Data {
+    public func sign(keyReference: Data, message: Data) async throws -> Data {
         if (!SecureEnclave.isAvailable) {
             throw NativeKeyStorageError.Unsupported;
         }

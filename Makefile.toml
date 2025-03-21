@@ -248,26 +248,40 @@ do
   cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap &&
   cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h &&
   strip -S -x -o ./one_coreFFI -r ../libone_core_uniffi.a 2>/dev/null &&
-  cp ../../../../platforms/ios/Info.plist ./Resources &&
   popd >/dev/null
 done
 """
 
-[tasks.create_xc_framework]
+[tasks.create_ffi_xc_framework]
 script = '''
 lipo -create ${CARGO_TARGET_DIR}/x86_64-apple-ios/mobile-release/one_coreFFI.framework/one_coreFFI ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework/one_coreFFI -output ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework/one_coreFFI
 rm -rf ${CARGO_TARGET_DIR}/one_coreFFI.xcframework || echo 'skip removing'
 xcodebuild -create-xcframework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios/mobile-release/one_coreFFI.framework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework -output ${CARGO_TARGET_DIR}/one_coreFFI.xcframework
 '''
 
-[tasks.package_ios_bindings]
+[tasks.build_ios_framework]
 script = '''
 pushd ${CARGO_TARGET_DIR} >/dev/null
-rm -rf bindings/ios && mkdir -p bindings/ios/one_core
-cp -r ../platforms/ios/Sources bindings/ios/one_core/
-cp -r one_coreFFI.xcframework bindings/ios/one_core/Sources/
-cp uniffi/ios/one_core.swift bindings/ios/one_core/Sources/
-cp ../platforms/ios/Package.swift bindings/ios/one_core/Package.swift
+export TARGET_DIR=`pwd`
+popd
+
+pushd platforms/ios >/dev/null
+rm -rf ${TARGET_DIR}/platforms/ios
+
+mkdir -p ${TARGET_DIR}/platforms/ios/build/ios
+xcodebuild build -project one-core.xcodeproj -scheme one-core -configuration Release -destination "generic/platform=iOS" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+
+mkdir -p ${TARGET_DIR}/platforms/ios/build/ios-simulator
+xcodebuild build -project one-core.xcodeproj -scheme one-core -configuration Release -destination "generic/platform=iOS Simulator" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios-simulator CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+
+pushd ${TARGET_DIR}/platforms/ios >/dev/null
+rm -rf ../../bindings/ios && mkdir -p ../../bindings/ios
+xcodebuild -create-xcframework \
+  -framework build/ios/one_core.framework \
+  -framework build/ios-simulator/one_core.framework \
+  -output ../../bindings/ios/one_core.xcframework
+
+cp -r ../../one_coreFFI.xcframework ../../bindings/ios
 '''
 
 [tasks.build_ios]
@@ -276,8 +290,8 @@ dependencies = [
   "build_ios_code",
   "generate_swift",
   "collect_ios_libs",
-  "create_xc_framework",
-  "package_ios_bindings",
+  "create_ffi_xc_framework",
+  "build_ios_framework",
 ]
 script = 'echo "--- output available in ${CARGO_TARGET_DIR}/bindings/ios ---"'
 
