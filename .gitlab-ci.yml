@@ -358,7 +358,7 @@ sdk:generate_binding_files:
   artifacts:
     paths:
       - target/uniffi-interface/ch/procivis/one/core/one_core_uniffi.kt
-      - target/uniffi-interface/one_core.swift
+      - target/uniffi-interface/ProcivisOneCore.swift
     expire_in: 10 days
 
 tests:e2e:
