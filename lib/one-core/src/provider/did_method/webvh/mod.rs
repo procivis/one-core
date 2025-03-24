@@ -1,3 +1,6 @@
+//! Implementation of did:webvh.
+//! https://identity.foundation/didwebvh/v0.3/
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

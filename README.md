@@ -396,6 +396,7 @@ Support for the recently published [FIPS-204][fips] is planned for the near futu
   - [did:key][dk]
   - [did:web][dw]
   - [did:jwk][djw]
+  - [did:webvh][webvh]
 - [Universal DID resolution][univ]
 
 See our [supported technology][supptech] page for more details.
@@ -464,3 +465,4 @@ Version 2.0](./LICENSE).
 [vcdm]: https://www.w3.org/TR/vc-data-model-2.0/
 [vci]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
 [vp]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html
+[webvh]: https://identity.foundation/didwebvh/v0.3/
