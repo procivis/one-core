@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-use crate::config::core_config::{Fields, FormatType, TransportType};
+use crate::config::core_config::{Fields, FormatType, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -295,7 +295,7 @@ async fn test_handle_invitation_success() {
     let mock_key_algorithm_clone = mock_key_algorithm.clone();
     mock_key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
-        .returning(move |_| Some(("ES256".to_string(), mock_key_algorithm_clone.clone())));
+        .returning(move |_| Some((KeyAlgorithmType::Es256, mock_key_algorithm_clone.clone())));
     mock_key_algorithm_provider
         .expect_key_algorithm_from_id()
         .returning(move |_| Some(mock_key_algorithm.clone()));

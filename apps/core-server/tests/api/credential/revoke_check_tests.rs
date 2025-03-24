@@ -4,8 +4,7 @@ use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::jwt::mapper::{
     bin_to_b64url_string, string_to_b64url_string,
 };
-use one_core::provider::key_algorithm::eddsa::Algorithm::Ed25519;
-use one_core::provider::key_algorithm::eddsa::{Eddsa, EddsaParams};
+use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use one_crypto::Signer;
@@ -285,7 +284,7 @@ async fn setup_bitstring_status_list_success(
     mock_server: &MockServer,
     expected_status_lookups: u64,
 ) -> (TestContext, Credential, Did, String) {
-    let key_alg = Eddsa::new(EddsaParams { algorithm: Ed25519 });
+    let key_alg = Eddsa;
     let key_pair = EDDSASigner::generate_key_pair();
     let issuer_did = format!(
         "did:key:{}",

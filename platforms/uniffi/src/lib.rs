@@ -220,23 +220,18 @@ async fn initialize(
             ));
 
             let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, _| {
-                let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
+                let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> =
+                    HashMap::new();
 
-                for (name, field) in config.iter() {
-                    let key_algorithm: Arc<dyn KeyAlgorithm> = match field.r#type {
-                        KeyAlgorithmType::Eddsa => {
-                            let params = config.get(name).expect("EDDSA config is required");
-                            Arc::new(Eddsa::new(params))
-                        }
-                        KeyAlgorithmType::Es256 => {
-                            let params = config.get(name).expect("ES256 config is required");
-                            Arc::new(Es256::new(params))
-                        }
+                for (name, fields) in config.iter() {
+                    if fields.disabled.is_some_and(|value| value) {
+                        continue;
+                    }
+                    let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
+                        KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
+                        KeyAlgorithmType::Es256 => Arc::new(Es256),
                         KeyAlgorithmType::BbsPlus => Arc::new(BBS),
-                        KeyAlgorithmType::Dilithium => {
-                            let params = config.get(name).expect("DILITHIUM config is required");
-                            Arc::new(MlDsa::new(params))
-                        }
+                        KeyAlgorithmType::Dilithium => Arc::new(MlDsa),
                     };
                     key_algorithms.insert(name.to_owned(), key_algorithm);
                 }
@@ -593,7 +588,6 @@ async fn initialize(
             };
 
             let cache_entities_config = core_config.cache_entities.to_owned();
-            let app_config = core_config.clone();
             let revocation_method_creator: RevocationMethodCreator = {
                 let client = client.clone();
                 Box::new(move |config, providers| {
@@ -642,7 +636,6 @@ async fn initialize(
                                     ),
                                     formatter_provider.clone(),
                                     client.clone(),
-                                    Arc::new(app_config.clone()),
                                     None,
                                 )) as _
                             }

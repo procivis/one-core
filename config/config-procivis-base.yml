@@ -313,29 +313,19 @@ keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"
     order: 0
-    type: "EDDSA"
-    params:
-      public:
-        algorithm: "Ed25519"
+    params: null
   ES256:
     display: "keyAlgorithm.es256"
     order: 1
-    type: "ES256"
-    params:
-      public:
-        algorithm: "ES256"
+    params: null
   BBS_PLUS:
     display: "keyAlgorithm.bbs_plus"
     order: 2
-    type: "BBS_PLUS"
     params: null
   DILITHIUM:
     display: "keyAlgorithm.dilithium"
     order: 3
-    type: "DILITHIUM"
-    params:
-      public:
-        algorithm: "CRYDI3"
+    params: null
 keyStorage:
   INTERNAL:
     display: "keyStorage.internal"

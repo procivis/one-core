@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 
 use super::model::JWTPayload;
 use super::{Jwt, TokenVerifier};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -130,7 +131,7 @@ async fn test_build_from_token() {
                 .expect_algorithm_id()
                 .return_once(|| "Algorithm1".to_string());
 
-            Some(("Algorithm1".to_string(), Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
 
     let jwt_part = extract_jwt_part(reference_token.clone());

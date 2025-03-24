@@ -93,7 +93,8 @@ use std::sync::Arc;
 
 use config::OneCoreConfig;
 use indexmap::IndexMap;
-use model::{CredentialFormat, DidMethodType, KeyAlgorithmType, StorageType};
+use model::{CredentialFormat, DidMethodType, StorageType};
+use one_core::config::core_config;
 use one_core::provider::caching_loader::CachingLoader;
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::{
@@ -115,8 +116,8 @@ use one_core::provider::did_method::web::{Params as WebDidMethodParams, WebDidMe
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::http_client::HttpClient;
 use one_core::provider::key_algorithm::bbs::BBS;
-use one_core::provider::key_algorithm::eddsa::{self, Eddsa, EddsaParams};
-use one_core::provider::key_algorithm::es256::{self, Es256, Es256Params};
+use one_core::provider::key_algorithm::eddsa::Eddsa;
+use one_core::provider::key_algorithm::es256::Es256;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_storage::internal::{
@@ -175,21 +176,12 @@ impl OneDevCore {
         ));
 
         // initialize key algorithm provider
-        let key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::from_iter(vec![
-            (
-                KeyAlgorithmType::Eddsa.to_string(),
-                Arc::new(Eddsa::new(EddsaParams {
-                    algorithm: eddsa::Algorithm::Ed25519,
-                })) as _,
-            ),
-            (
-                KeyAlgorithmType::Es256.to_string(),
-                Arc::new(Es256::new(Es256Params {
-                    algorithm: es256::Algorithm::Es256,
-                })) as _,
-            ),
-            (KeyAlgorithmType::BbsPlus.to_string(), Arc::new(BBS) as _),
-        ]);
+        let key_algorithms: HashMap<core_config::KeyAlgorithmType, Arc<dyn KeyAlgorithm>> =
+            HashMap::from_iter(vec![
+                (core_config::KeyAlgorithmType::Eddsa, Arc::new(Eddsa) as _),
+                (core_config::KeyAlgorithmType::Es256, Arc::new(Es256) as _),
+                (core_config::KeyAlgorithmType::BbsPlus, Arc::new(BBS) as _),
+            ]);
         let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms));
 
         // initialize key storage provider

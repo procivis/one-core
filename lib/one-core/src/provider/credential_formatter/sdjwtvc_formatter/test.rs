@@ -14,6 +14,7 @@ use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::LayoutType;
 use crate::model::did::KeyRole;
 use crate::model::key::Key;
@@ -34,7 +35,7 @@ use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::resolver::DidCachingLoader;
 use crate::provider::did_method::DidMethod;
-use crate::provider::key_algorithm::eddsa::{Eddsa, EddsaParams};
+use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
 };
@@ -298,7 +299,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
                 .expect_algorithm_id()
                 .return_once(|| "algorithm".to_string());
 
-            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -383,7 +384,7 @@ async fn test_extract_presentation() {
                 .expect_algorithm_id()
                 .return_once(|| "algorithm".to_string());
 
-            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
     verify_mock
         .expect_key_algorithm_provider()
@@ -477,12 +478,10 @@ async fn test_format_extract_round_trip() {
     };
     let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
 
-    let key_alg = Eddsa::new(EddsaParams {
-        algorithm: crate::provider::key_algorithm::eddsa::Algorithm::Ed25519,
-    });
+    let key_alg = Eddsa;
     let key_algorithm_provider =
         Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
-            "EDDSA".to_owned(),
+            KeyAlgorithmType::Eddsa,
             Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
         )])));
     let key_pair = EDDSASigner::generate_key_pair();

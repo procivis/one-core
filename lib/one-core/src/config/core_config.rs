@@ -346,10 +346,32 @@ pub enum DatatypeType {
     Boolean,
 }
 
-pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType>;
+pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyAlgorithmFields {
+    pub display: Value,
+    pub order: Option<u64>,
+    pub disabled: Option<bool>,
+    #[serde(skip_deserializing)]
+    pub capabilities: Option<Value>,
+}
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
 )]
 pub enum KeyAlgorithmType {
     #[serde(rename = "EDDSA")]

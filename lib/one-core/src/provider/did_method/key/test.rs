@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyDidMethod;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
 use crate::provider::did_method::DidMethod;
@@ -18,9 +19,12 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 
-fn setup_key_did_method(key_algorithm: MockKeyAlgorithm, algorithm_id: &str) -> KeyDidMethod {
-    let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
-    key_algorithms.insert(algorithm_id.to_string(), Arc::new(key_algorithm));
+fn setup_key_did_method(
+    key_algorithm: MockKeyAlgorithm,
+    algorithm_id: KeyAlgorithmType,
+) -> KeyDidMethod {
+    let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
+    key_algorithms.insert(algorithm_id, Arc::new(key_algorithm));
 
     let key_algorithm_provider = KeyAlgorithmProviderImpl::new(key_algorithms);
 
@@ -57,7 +61,7 @@ async fn test_did_key_resolve_details_eddsa() {
             )))
         });
 
-    let did_method = setup_key_did_method(key_algorithm, "EDDSA");
+    let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::Eddsa);
 
     let result = did_method
         .resolve(
@@ -152,7 +156,7 @@ async fn test_did_key_resolve_details_es256() {
             )))
         });
 
-    let did_method = setup_key_did_method(key_algorithm, "ES256");
+    let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::Es256);
 
     let result = did_method
         .resolve(
@@ -250,7 +254,7 @@ async fn test_did_key_resolve_details_bbs() {
             )))
         });
 
-    let did_method = setup_key_did_method(key_algorithm, "BBS_PLUS");
+    let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::BbsPlus);
 
     let result = did_method
         .resolve(
@@ -341,7 +345,7 @@ async fn test_create_did_success() {
             )))
         });
 
-    let did_method = setup_key_did_method(key_algorithm, "EDDSA");
+    let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::Eddsa);
     let result = did_method
         .create(Some(DidId::from(Uuid::new_v4())), &None, Some(vec![key]))
         .await;
@@ -350,7 +354,7 @@ async fn test_create_did_success() {
 
 #[test]
 fn test_validate_keys() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), "EDDSA");
+    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
 
     let keys = AmountOfKeys {
         global: 1,
@@ -365,7 +369,7 @@ fn test_validate_keys() {
 
 #[test]
 fn test_validate_keys_no_keys() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), "EDDSA");
+    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
 
     let keys = AmountOfKeys {
         global: 0,
@@ -380,7 +384,7 @@ fn test_validate_keys_no_keys() {
 
 #[test]
 fn test_validate_keys_too_much_keys() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), "EDDSA");
+    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
 
     let keys = AmountOfKeys {
         global: 2,
@@ -395,7 +399,7 @@ fn test_validate_keys_too_much_keys() {
 
 #[test]
 fn test_validate_keys_missing_key() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), "EDDSA");
+    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
 
     let keys = AmountOfKeys {
         global: 1,

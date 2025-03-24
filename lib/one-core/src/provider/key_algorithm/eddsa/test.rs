@@ -11,15 +11,11 @@ fn test_jwk_to_bytes() {
         y: None,
     });
 
-    let alg = Eddsa::new(EddsaParams {
-        algorithm: Algorithm::Ed25519,
-    });
-
     assert_eq!(
         vec![
             155, 176, 4, 229, 68, 29, 140, 187, 130, 58, 118, 71, 7, 88, 2, 21, 250, 54, 186, 248,
             76, 233, 111, 248, 196, 89, 169, 36, 173, 54, 175, 187,
         ],
-        alg.parse_jwk(&jwk).unwrap().public_key_as_raw()
+        Eddsa.parse_jwk(&jwk).unwrap().public_key_as_raw()
     )
 }

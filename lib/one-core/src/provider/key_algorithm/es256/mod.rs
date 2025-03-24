@@ -9,7 +9,6 @@ use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
-use serde::Deserialize;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
@@ -26,25 +25,6 @@ pub struct Es256;
 
 #[cfg(test)]
 mod test;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Es256Params {
-    pub algorithm: Algorithm,
-}
-
-#[derive(Deserialize)]
-pub enum Algorithm {
-    #[serde(rename = "ES256")]
-    Es256,
-}
-
-impl Es256 {
-    pub fn new(params: Es256Params) -> Self {
-        _ = params.algorithm;
-        Self
-    }
-}
 
 impl KeyAlgorithm for Es256 {
     fn algorithm_id(&self) -> String {

@@ -158,12 +158,13 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
+    use crate::config::core_config::KeyAlgorithmType;
     use crate::model::did::KeyRole;
     use crate::model::key::{Key, PublicKeyJwk};
     use crate::provider::credential_formatter::model::SignatureProvider;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
-    use crate::provider::key_algorithm::eddsa::{self, Eddsa, EddsaParams};
+    use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_storage::provider::SignatureProviderImpl;
@@ -237,10 +238,8 @@ mod test {
 
         let key_algorithm_provider =
             Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([(
-                "Ed25519".to_string(),
-                Arc::new(Eddsa::new(EddsaParams {
-                    algorithm: eddsa::Algorithm::Ed25519,
-                })) as _,
+                KeyAlgorithmType::Eddsa,
+                Arc::new(Eddsa) as _,
             )])));
 
         let key_verification = KeyVerification {
@@ -253,9 +252,7 @@ mod test {
     }
 
     fn auth_fn() -> Box<dyn SignatureProvider> {
-        let key_algorithm = Eddsa::new(EddsaParams {
-            algorithm: eddsa::Algorithm::Ed25519,
-        });
+        let key_algorithm = Eddsa;
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), Some(private_key().into()), None)
             .unwrap();
@@ -275,7 +272,7 @@ mod test {
             key_handle,
             jwk_key_id: None,
             key_algorithm_provider: Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([
-                ("EDDSA".to_string(), Arc::new(key_algorithm) as _),
+                (KeyAlgorithmType::Eddsa, Arc::new(key_algorithm) as _),
             ]))),
         };
 
@@ -283,9 +280,7 @@ mod test {
     }
 
     fn did_key() -> DidValue {
-        let key_algorithm = Eddsa::new(EddsaParams {
-            algorithm: eddsa::Algorithm::Ed25519,
-        });
+        let key_algorithm = Eddsa;
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), None, None)
             .unwrap();
@@ -296,9 +291,7 @@ mod test {
     }
 
     fn pk_jwk() -> PublicKeyJwk {
-        let key_algorithm = Eddsa::new(EddsaParams {
-            algorithm: eddsa::Algorithm::Ed25519,
-        });
+        let key_algorithm = Eddsa;
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), None, None)
             .unwrap();

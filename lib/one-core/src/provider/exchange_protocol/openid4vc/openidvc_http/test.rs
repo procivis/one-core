@@ -16,7 +16,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::{build_claims_keys_for_mdoc, OpenID4VCHTTP};
-use crate::config::core_config::FormatType;
+use crate::config::core_config::{FormatType, KeyAlgorithmType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -1187,7 +1187,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
     });
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
-        .return_once(|_| Some(("ES256".to_string(), Arc::new(key_alg))));
+        .return_once(|_| Some((KeyAlgorithmType::Es256, Arc::new(key_alg))));
 
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4VCParams {

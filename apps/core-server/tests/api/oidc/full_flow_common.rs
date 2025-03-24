@@ -5,11 +5,12 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use hex_literal::hex;
+use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::provider::key_algorithm::eddsa::{self, Eddsa, EddsaParams};
-use one_core::provider::key_algorithm::es256::{self, Es256, Es256Params};
+use one_core::provider::key_algorithm::eddsa::Eddsa;
+use one_core::provider::key_algorithm::es256::Es256;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
@@ -486,16 +487,12 @@ pub(super) async fn proof_jwt_for(key: &TestKey, holder_key_id: &str) -> String 
 
     let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([
         (
-            "EDDSA".to_string(),
-            Arc::new(Eddsa::new(EddsaParams {
-                algorithm: eddsa::Algorithm::Ed25519,
-            })) as Arc<dyn KeyAlgorithm>,
+            KeyAlgorithmType::Eddsa,
+            Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
         ),
         (
-            "ES256".to_string(),
-            Arc::new(Es256::new(Es256Params {
-                algorithm: es256::Algorithm::Es256,
-            })) as Arc<dyn KeyAlgorithm>,
+            KeyAlgorithmType::Es256,
+            Arc::new(Es256) as Arc<dyn KeyAlgorithm>,
         ),
     ])));
     let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");

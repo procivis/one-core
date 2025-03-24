@@ -12,7 +12,7 @@ use shared_types::{DidId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -34,7 +34,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::model::*;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
-use crate::provider::key_algorithm::eddsa::{self, Eddsa, EddsaParams};
+use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
@@ -705,12 +705,7 @@ async fn test_oidc_issuer_create_credential_success() {
             .returning(move |_, _| Ok(()));
     }
 
-    let key_algorithm = {
-        let key_algorithm = Eddsa::new(EddsaParams {
-            algorithm: eddsa::Algorithm::Ed25519,
-        });
-        Arc::new(key_algorithm)
-    };
+    let key_algorithm = { Arc::new(Eddsa) };
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -718,7 +713,7 @@ async fn test_oidc_issuer_create_credential_success() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(("EDDSA".to_string(), key_algorithm.clone()))
+            move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
         });
     key_algorithm_provider
         .expect_key_algorithm_from_id()
@@ -880,12 +875,7 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
             .returning(move |_, _| Ok(()));
     }
 
-    let key_algorithm = {
-        let key_algorithm = Eddsa::new(EddsaParams {
-            algorithm: eddsa::Algorithm::Ed25519,
-        });
-        Arc::new(key_algorithm)
-    };
+    let key_algorithm = { Arc::new(Eddsa) };
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -893,7 +883,7 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(("EDDSA".to_string(), key_algorithm.clone()))
+            move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
         });
     key_algorithm_provider
         .expect_key_algorithm_from_id()

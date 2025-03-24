@@ -7,7 +7,6 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
-use serde::Deserialize;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
@@ -23,25 +22,6 @@ pub struct MlDsa;
 
 #[cfg(test)]
 mod test;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MlDsaParams {
-    algorithm: Algorithm,
-}
-
-#[derive(Deserialize)]
-enum Algorithm {
-    #[serde(rename = "CRYDI3")]
-    Crydi3,
-}
-
-impl MlDsa {
-    pub fn new(params: MlDsaParams) -> Self {
-        _ = params.algorithm;
-        Self
-    }
-}
 
 impl KeyAlgorithm for MlDsa {
     fn algorithm_id(&self) -> String {

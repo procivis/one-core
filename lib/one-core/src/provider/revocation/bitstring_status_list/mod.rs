@@ -8,7 +8,7 @@ use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
@@ -69,7 +69,6 @@ pub struct BitstringStatusList {
     pub caching_loader: StatusListCachingLoader,
     pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
     resolver: Arc<StatusListResolver>,
-    config: Arc<CoreConfig>,
     params: Params,
 }
 
@@ -83,7 +82,6 @@ impl BitstringStatusList {
         caching_loader: StatusListCachingLoader,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         client: Arc<dyn HttpClient>,
-        config: Arc<CoreConfig>,
         params: Option<Params>,
     ) -> Self {
         Self {
@@ -94,7 +92,6 @@ impl BitstringStatusList {
             caching_loader,
             formatter_provider,
             resolver: Arc::new(StatusListResolver::new(client)),
-            config,
             params: params.unwrap_or(Params {
                 format: StatusListCredentialFormat::Jwt,
             }),
@@ -432,19 +429,6 @@ impl BitstringStatusList {
         )
         .await?;
 
-        let bbs_key_algorithms = self
-            .config
-            .key_algorithm
-            .iter()
-            .filter_map(|(algorithm, fields)| {
-                if fields.r#type == KeyAlgorithmType::BbsPlus {
-                    Some(algorithm)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<&str>>();
-
         let is_bbs = !issuer_did
             .keys
             .as_ref()
@@ -452,7 +436,7 @@ impl BitstringStatusList {
                 "issuer_did keys are None".to_string(),
             ))?
             .iter()
-            .any(|key| !bbs_key_algorithms.contains(&key.key.key_type.as_str()));
+            .any(|key| key.key.key_type == KeyAlgorithmType::BbsPlus.to_string());
 
         let list_credential = format_status_list_credential(
             &list_id,

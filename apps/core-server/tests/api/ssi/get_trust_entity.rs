@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
@@ -10,7 +11,7 @@ use one_core::provider::credential_formatter::jwt::Jwt;
 use one_core::provider::credential_formatter::model::SignatureProvider;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::DidMethod;
-use one_core::provider::key_algorithm::es256::{Algorithm, Es256, Es256Params};
+use one_core::provider::key_algorithm::es256::Es256;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_crypto::signer::es256::ES256Signer;
@@ -110,10 +111,8 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
 
     let key_algorithm_provider =
         Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
-            "ES256".to_owned(),
-            Arc::new(Es256::new(Es256Params {
-                algorithm: Algorithm::Es256,
-            })) as Arc<dyn KeyAlgorithm>,
+            KeyAlgorithmType::Es256,
+            Arc::new(Es256) as Arc<dyn KeyAlgorithm>,
         )])));
     let did_method = KeyDidMethod::new(key_algorithm_provider.clone());
     let did_value = did_method

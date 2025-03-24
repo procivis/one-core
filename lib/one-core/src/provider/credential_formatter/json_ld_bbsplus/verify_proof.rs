@@ -1,4 +1,5 @@
 use super::{data_integrity, JsonLdBbsplus};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
 use crate::provider::credential_formatter::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
@@ -97,7 +98,7 @@ impl JsonLdBbsplus {
             .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
         let algo_provider = self
             .key_algorithm_provider
-            .key_algorithm_from_name("BBS_PLUS")
+            .key_algorithm_from_type(KeyAlgorithmType::BbsPlus)
             .ok_or(FormatterError::CouldNotVerify(
                 "Missing BBS_PLUS algorithm".to_owned(),
             ))?;

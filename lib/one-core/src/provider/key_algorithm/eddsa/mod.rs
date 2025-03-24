@@ -9,7 +9,6 @@ use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
-use serde::Deserialize;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
@@ -26,25 +25,6 @@ pub struct Eddsa;
 
 #[cfg(test)]
 mod test;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EddsaParams {
-    pub algorithm: Algorithm,
-}
-
-#[derive(Deserialize)]
-pub enum Algorithm {
-    #[serde(rename = "Ed25519")]
-    Ed25519,
-}
-
-impl Eddsa {
-    pub fn new(params: EddsaParams) -> Self {
-        _ = params.algorithm;
-        Self
-    }
-}
 
 impl KeyAlgorithm for Eddsa {
     fn algorithm_id(&self) -> String {

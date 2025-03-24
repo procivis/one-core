@@ -1,4 +1,6 @@
-use crate::config::core_config::CoreConfig;
+use std::str::FromStr;
+
+use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::model::Features;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -9,10 +11,21 @@ pub(super) fn validate_generate_request(
     request: &KeyRequestDTO,
     config: &CoreConfig,
 ) -> Result<(), ValidationError> {
-    config
-        .key_algorithm
-        .get_if_enabled(&request.key_type)
+    let key_type = KeyAlgorithmType::from_str(&request.key_type)
         .map_err(|err| ValidationError::InvalidKeyAlgorithm(err.to_string()))?;
+    let algorithm_config =
+        config
+            .key_algorithm
+            .get(&key_type)
+            .ok_or(ValidationError::InvalidKeyAlgorithm(
+                request.key_type.clone(),
+            ))?;
+    if algorithm_config.disabled.is_some_and(|value| value) {
+        return Err(ValidationError::InvalidKeyAlgorithm(
+            "algorithm is disabled".to_string(),
+        ));
+    }
+
     config
         .key_storage
         .get_if_enabled(&request.storage_type)

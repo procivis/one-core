@@ -9,6 +9,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::JWTFormatter;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
@@ -448,7 +449,7 @@ async fn test_extract_credentials() {
                 .expect_algorithm_id()
                 .return_once(|| "algorithm".to_string());
 
-            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
     verify_mock
         .expect_key_algorithm_provider()
@@ -533,7 +534,7 @@ async fn test_extract_credentials_nested_array() {
                 .expect_algorithm_id()
                 .return_once(|| "algorithm".to_string());
 
-            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
     verify_mock
         .expect_key_algorithm_provider()
@@ -759,7 +760,7 @@ async fn test_extract_presentation() {
                 .expect_algorithm_id()
                 .return_once(|| "algorithm".to_string());
 
-            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
     verify_mock
         .expect_key_algorithm_provider()

@@ -91,10 +91,6 @@ rusty_fork_test! {
                 EDDSA:
                     display: 'display'
                     order: 0
-                    type: 'EDDSA'
-                    params:
-                        public:
-                            algorithm: 'Ed25519'
             keyStorage:
                 INTERNAL:
                     display: 'display'
@@ -110,10 +106,6 @@ rusty_fork_test! {
             keyAlgorithm:
                 EDDSA:
                     order: 10
-                    type: 'EDDSA'
-                    params:
-                        public:
-                            algorithm: 'TestAlg'
         "};
 
         let config4 = indoc::indoc! {"
@@ -121,12 +113,6 @@ rusty_fork_test! {
                 BBS_PLUS:
                     order: 10
                     display: 'display'
-                    type: 'BBS_PLUS'
-                    params:
-                        public:
-                            algorithm: 'TestAlg'
-                        private:
-                            test_array: ['1', '2']
         "};
 
         #[cfg(feature = "config_json")]
@@ -135,21 +121,8 @@ rusty_fork_test! {
             \"keyAlgorithm\": {
                 \"BBS_PLUS\": {
                     \"order\": 15,
-                    \"display\": \"display\",
-                    \"type\": \"BBS_PLUS\",
-                    \"params\": {
-                        \"public\": {
-                            \"algorithm\": \"TestAlg\"
-                        },
-                        \"private\": {
-                            \"test_array\": [
-                                \"4\",
-                                \"5\",
-                                \"6\"
-                                ]
-                            }
-                        }
-                    }
+                    \"display\": \"display\"
+                }
             }
         }
         "};
@@ -182,31 +155,18 @@ rusty_fork_test! {
         let eddsa = config
             .core
             .key_algorithm
-            .get_fields("EDDSA")
+            .get(&KeyAlgorithmType::Eddsa)
             .unwrap();
 
         assert_eq!(eddsa.order, Some(10)); // via config 3
-        assert_eq!(
-            eddsa.params.as_ref().unwrap().public,
-            Some(json!({ "algorithm": "TestAlg" })) // via config 3
-        );
 
         let bbs_plus = config
             .core
             .key_algorithm
-            .get_fields("BBS_PLUS")
-            .ok();
-
-        assert!(bbs_plus.is_some());
-
-        let bbs_plus = bbs_plus.unwrap();
+            .get(&KeyAlgorithmType::BbsPlus)
+            .unwrap();
 
         assert_eq!(bbs_plus.order, Some(15));
-
-        assert_eq!(
-            bbs_plus.params.as_ref().unwrap().private,
-            Some(json!({ "test_array": ["4", "5", "6"] })) // via config 5
-        );
 
         assert_eq!(bbs_plus.display, "NewDisplay"); // via env 2
 

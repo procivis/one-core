@@ -106,25 +106,19 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
     ));
 
     let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, _providers| {
-        let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
+        let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
-        for (name, field) in config.iter() {
-            let key_algorithm: Arc<dyn KeyAlgorithm> = match field.r#type {
-                KeyAlgorithmType::Eddsa => {
-                    let params = config.get(name).expect("EDDSA config is required");
-                    Arc::new(Eddsa::new(params))
-                }
-                KeyAlgorithmType::Es256 => {
-                    let params = config.get(name).expect("ES256 config is required");
-                    Arc::new(Es256::new(params))
-                }
+        for (name, fields) in config.iter() {
+            if fields.disabled.is_some_and(|value| value) {
+                continue;
+            }
+            let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
+                KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
+                KeyAlgorithmType::Es256 => Arc::new(Es256),
                 KeyAlgorithmType::BbsPlus => Arc::new(BBS),
-                KeyAlgorithmType::Dilithium => {
-                    let params = config.get(name).expect("DILITHIUM config is required");
-                    Arc::new(MlDsa::new(params))
-                }
+                KeyAlgorithmType::Dilithium => Arc::new(MlDsa),
             };
-            key_algorithms.insert(name.to_owned(), key_algorithm);
+            key_algorithms.insert(*name, key_algorithm);
         }
 
         for (key, value) in config.iter_mut() {
@@ -496,7 +490,6 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
 
     let cache_entities_config = app_config.core.cache_entities.to_owned();
     let core_base_url = app_config.app.core_base_url.to_owned();
-    let core_config = app_config.core.clone();
     let revocation_method_creator: RevocationMethodCreator = {
         let client = client.clone();
         Box::new(move |config, providers| {
@@ -548,7 +541,6 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             ),
                             formatter_provider.clone(),
                             client.clone(),
-                            Arc::new(core_config.clone()),
                             Some(params),
                         )) as _
                     }
