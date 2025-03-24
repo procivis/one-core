@@ -236,27 +236,27 @@ cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate 
 
 [tasks.collect_ios_libs]
 script = """
-sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' ${CARGO_TARGET_DIR}/uniffi/ios/one_coreFFI.modulemap
+sed -i '' 's/^module\\ ProcivisOneCoreFFI/framework\\ module\\ ProcivisOneCoreFFI/' ${CARGO_TARGET_DIR}/uniffi/ios/ProcivisOneCoreFFI.modulemap
 
-find . -type d -name one_coreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
+find . -type d -name ProcivisOneCoreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
 for arch in "x86_64-apple-ios" "aarch64-apple-ios-sim" "aarch64-apple-ios"
 do
   pushd ${CARGO_TARGET_DIR}/$arch/mobile-release >/dev/null &&
-  mkdir -p one_coreFFI.framework &&
-  cd one_coreFFI.framework &&
+  mkdir -p ProcivisOneCoreFFI.framework &&
+  cd ProcivisOneCoreFFI.framework &&
   mkdir -p Headers Modules Resources &&
-  cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap &&
-  cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h &&
-  strip -S -x -o ./one_coreFFI -r ../libone_core_uniffi.a 2>/dev/null &&
+  cp ../../../uniffi/ios/ProcivisOneCoreFFI.modulemap ./Modules/module.modulemap &&
+  cp ../../../uniffi/ios/ProcivisOneCoreFFI.h ./Headers/ProcivisOneCoreFFI.h &&
+  strip -S -x -o ./ProcivisOneCoreFFI -r ../libone_core_uniffi.a 2>/dev/null &&
   popd >/dev/null
 done
 """
 
 [tasks.create_ffi_xc_framework]
 script = '''
-lipo -create ${CARGO_TARGET_DIR}/x86_64-apple-ios/mobile-release/one_coreFFI.framework/one_coreFFI ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework/one_coreFFI -output ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework/one_coreFFI
-rm -rf ${CARGO_TARGET_DIR}/one_coreFFI.xcframework || echo 'skip removing'
-xcodebuild -create-xcframework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios/mobile-release/one_coreFFI.framework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/one_coreFFI.framework -output ${CARGO_TARGET_DIR}/one_coreFFI.xcframework
+lipo -create ${CARGO_TARGET_DIR}/x86_64-apple-ios/mobile-release/ProcivisOneCoreFFI.framework/ProcivisOneCoreFFI ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/ProcivisOneCoreFFI.framework/ProcivisOneCoreFFI -output ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/ProcivisOneCoreFFI.framework/ProcivisOneCoreFFI
+rm -rf ${CARGO_TARGET_DIR}/ProcivisOneCoreFFI.xcframework || echo 'skip removing'
+xcodebuild -create-xcframework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios/mobile-release/ProcivisOneCoreFFI.framework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/mobile-release/ProcivisOneCoreFFI.framework -output ${CARGO_TARGET_DIR}/ProcivisOneCoreFFI.xcframework
 '''
 
 [tasks.build_ios_framework]
@@ -269,19 +269,19 @@ pushd platforms/ios >/dev/null
 rm -rf ${TARGET_DIR}/platforms/ios
 
 mkdir -p ${TARGET_DIR}/platforms/ios/build/ios
-xcodebuild build -project one-core.xcodeproj -scheme one-core -configuration Release -destination "generic/platform=iOS" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+xcodebuild build -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -configuration Release -destination "generic/platform=iOS" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
 mkdir -p ${TARGET_DIR}/platforms/ios/build/ios-simulator
-xcodebuild build -project one-core.xcodeproj -scheme one-core -configuration Release -destination "generic/platform=iOS Simulator" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios-simulator CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+xcodebuild build -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -configuration Release -destination "generic/platform=iOS Simulator" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios-simulator CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
 pushd ${TARGET_DIR}/platforms/ios >/dev/null
 rm -rf ../../bindings/ios && mkdir -p ../../bindings/ios
 xcodebuild -create-xcframework \
-  -framework build/ios/one_core.framework \
-  -framework build/ios-simulator/one_core.framework \
-  -output ../../bindings/ios/one_core.xcframework
+  -framework build/ios/ProcivisOneCore.framework \
+  -framework build/ios-simulator/ProcivisOneCore.framework \
+  -output ../../bindings/ios/ProcivisOneCore.xcframework
 
-cp -r ../../one_coreFFI.xcframework ../../bindings/ios
+cp -r ../../ProcivisOneCoreFFI.xcframework ../../bindings/ios
 '''
 
 [tasks.build_ios]

@@ -4,4 +4,4 @@ cdylib_name  = "procivis_one_core"
 package_name = "ch.procivis.one.core"
 
 [bindings.swift]
-module_name = "one_core"
+module_name = "ProcivisOneCore"

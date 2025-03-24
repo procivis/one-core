@@ -7,22 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3312039E2CBFBB4D009A0CFC /* IOSBLEModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3312039C2CBFBB4D009A0CFC /* IOSBLEModels.swift */; };
-		3312039F2CBFBB4D009A0CFC /* IOSBLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3312039D2CBFBB4D009A0CFC /* IOSBLEPeripheral.swift */; };
-		331203A02CBFBB4D009A0CFC /* IOSBLECentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3312039B2CBFBB4D009A0CFC /* IOSBLECentral.swift */; };
-		339F03CA2B10FCC500FF10ED /* SecureEnclaveKeyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339F03C92B10FCC500FF10ED /* SecureEnclaveKeyStorage.swift */; };
-		339F03CC2B10FCFB00FF10ED /* ../../../target/uniffi/ios/one_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339F03CB2B10FCFB00FF10ED /* ../../../target/uniffi/ios/one_core.swift */; };
-		33E15DED2B11096D0085370C /* one_coreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 339F03CE2B10FD3D00FF10ED /* one_coreFFI.xcframework */; };
+		33CBDF262D9152C1006768C1 /* SecureEnclaveKeyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF252D9152C1006768C1 /* SecureEnclaveKeyStorage.swift */; };
+		33CBDF282D915308006768C1 /* IOSBLECentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF272D915308006768C1 /* IOSBLECentral.swift */; };
+		33CBDF2A2D915312006768C1 /* IOSBLEModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF292D915312006768C1 /* IOSBLEModels.swift */; };
+		33CBDF2C2D915319006768C1 /* IOSBLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF2B2D915319006768C1 /* IOSBLEPeripheral.swift */; };
+		33CBDF302D91539D006768C1 /* ProcivisOneCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF2F2D91539D006768C1 /* ProcivisOneCore.swift */; };
+		33E15DED2B11096D0085370C /* ProcivisOneCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 339F03CE2B10FD3D00FF10ED /* ProcivisOneCoreFFI.xcframework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		3312039B2CBFBB4D009A0CFC /* IOSBLECentral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBLECentral.swift; sourceTree = "<group>"; };
-		3312039C2CBFBB4D009A0CFC /* IOSBLEModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBLEModels.swift; sourceTree = "<group>"; };
-		3312039D2CBFBB4D009A0CFC /* IOSBLEPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBLEPeripheral.swift; sourceTree = "<group>"; };
-		339F03BF2B10FC8300FF10ED /* one_core.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = one_core.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		339F03C92B10FCC500FF10ED /* SecureEnclaveKeyStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SecureEnclaveKeyStorage.swift; sourceTree = "<group>"; };
-		339F03CB2B10FCFB00FF10ED /* ../../../target/uniffi/ios/one_core.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ../../../target/uniffi/ios/one_core.swift; sourceTree = "<group>"; };
-		339F03CE2B10FD3D00FF10ED /* one_coreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = one_coreFFI.xcframework; path = ../../target/one_coreFFI.xcframework; sourceTree = "<group>"; };
+		339F03BF2B10FC8300FF10ED /* ProcivisOneCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ProcivisOneCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		339F03CE2B10FD3D00FF10ED /* ProcivisOneCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ProcivisOneCoreFFI.xcframework; path = ../../target/ProcivisOneCoreFFI.xcframework; sourceTree = "<group>"; };
+		33CBDF252D9152C1006768C1 /* SecureEnclaveKeyStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SecureEnclaveKeyStorage.swift; path = "one-core/SecureEnclaveKeyStorage.swift"; sourceTree = SOURCE_ROOT; };
+		33CBDF272D915308006768C1 /* IOSBLECentral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IOSBLECentral.swift; path = "one-core/IOSBLECentral.swift"; sourceTree = SOURCE_ROOT; };
+		33CBDF292D915312006768C1 /* IOSBLEModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IOSBLEModels.swift; path = "one-core/IOSBLEModels.swift"; sourceTree = SOURCE_ROOT; };
+		33CBDF2B2D915319006768C1 /* IOSBLEPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IOSBLEPeripheral.swift; path = "one-core/IOSBLEPeripheral.swift"; sourceTree = SOURCE_ROOT; };
+		33CBDF2F2D91539D006768C1 /* ProcivisOneCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProcivisOneCore.swift; path = ../../target/uniffi/ios/ProcivisOneCore.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -30,7 +30,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				33E15DED2B11096D0085370C /* one_coreFFI.xcframework in Frameworks */,
+				33E15DED2B11096D0085370C /* ProcivisOneCoreFFI.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -40,7 +40,7 @@
 		339F03B52B10FC8300FF10ED = {
 			isa = PBXGroup;
 			children = (
-				339F03C12B10FC8300FF10ED /* one-core */,
+				339F03C12B10FC8300FF10ED /* ProcivisOneCore */,
 				339F03C02B10FC8300FF10ED /* Products */,
 				339F03CD2B10FD3D00FF10ED /* Frameworks */,
 			);
@@ -49,27 +49,27 @@
 		339F03C02B10FC8300FF10ED /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				339F03BF2B10FC8300FF10ED /* one_core.framework */,
+				339F03BF2B10FC8300FF10ED /* ProcivisOneCore.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		339F03C12B10FC8300FF10ED /* one-core */ = {
+		339F03C12B10FC8300FF10ED /* ProcivisOneCore */ = {
 			isa = PBXGroup;
 			children = (
-				339F03C92B10FCC500FF10ED /* SecureEnclaveKeyStorage.swift */,
-				3312039B2CBFBB4D009A0CFC /* IOSBLECentral.swift */,
-				3312039C2CBFBB4D009A0CFC /* IOSBLEModels.swift */,
-				3312039D2CBFBB4D009A0CFC /* IOSBLEPeripheral.swift */,
-				339F03CB2B10FCFB00FF10ED /* ../../../target/uniffi/ios/one_core.swift */,
+				33CBDF252D9152C1006768C1 /* SecureEnclaveKeyStorage.swift */,
+				33CBDF272D915308006768C1 /* IOSBLECentral.swift */,
+				33CBDF292D915312006768C1 /* IOSBLEModels.swift */,
+				33CBDF2B2D915319006768C1 /* IOSBLEPeripheral.swift */,
+				33CBDF2F2D91539D006768C1 /* ProcivisOneCore.swift */,
 			);
-			path = "one-core";
+			path = ProcivisOneCore;
 			sourceTree = "<group>";
 		};
 		339F03CD2B10FD3D00FF10ED /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				339F03CE2B10FD3D00FF10ED /* one_coreFFI.xcframework */,
+				339F03CE2B10FD3D00FF10ED /* ProcivisOneCoreFFI.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -87,9 +87,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		339F03BE2B10FC8300FF10ED /* one-core */ = {
+		339F03BE2B10FC8300FF10ED /* ProcivisOneCore */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 339F03C62B10FC8300FF10ED /* Build configuration list for PBXNativeTarget "one-core" */;
+			buildConfigurationList = 339F03C62B10FC8300FF10ED /* Build configuration list for PBXNativeTarget "ProcivisOneCore" */;
 			buildPhases = (
 				339F03BA2B10FC8300FF10ED /* Headers */,
 				339F03BB2B10FC8300FF10ED /* Sources */,
@@ -100,9 +100,9 @@
 			);
 			dependencies = (
 			);
-			name = "one-core";
-			productName = "one-core";
-			productReference = 339F03BF2B10FC8300FF10ED /* one_core.framework */;
+			name = ProcivisOneCore;
+			productName = ProcivisOneCore;
+			productReference = 339F03BF2B10FC8300FF10ED /* ProcivisOneCore.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
@@ -120,7 +120,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 339F03B92B10FC8300FF10ED /* Build configuration list for PBXProject "one-core" */;
+			buildConfigurationList = 339F03B92B10FC8300FF10ED /* Build configuration list for PBXProject "ProcivisOneCore" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -133,7 +133,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				339F03BE2B10FC8300FF10ED /* one-core */,
+				339F03BE2B10FC8300FF10ED /* ProcivisOneCore */,
 			);
 		};
 /* End PBXProject section */
@@ -153,11 +153,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				339F03CA2B10FCC500FF10ED /* SecureEnclaveKeyStorage.swift in Sources */,
-				339F03CC2B10FCFB00FF10ED /* ../../../target/uniffi/ios/one_core.swift in Sources */,
-				3312039E2CBFBB4D009A0CFC /* IOSBLEModels.swift in Sources */,
-				3312039F2CBFBB4D009A0CFC /* IOSBLEPeripheral.swift in Sources */,
-				331203A02CBFBB4D009A0CFC /* IOSBLECentral.swift in Sources */,
+				33CBDF262D9152C1006768C1 /* SecureEnclaveKeyStorage.swift in Sources */,
+				33CBDF302D91539D006768C1 /* ProcivisOneCore.swift in Sources */,
+				33CBDF282D915308006768C1 /* IOSBLECentral.swift in Sources */,
+				33CBDF2A2D915312006768C1 /* IOSBLEModels.swift in Sources */,
+				33CBDF2C2D915319006768C1 /* IOSBLEPeripheral.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -169,6 +169,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -220,7 +221,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -234,6 +235,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -365,7 +367,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		339F03B92B10FC8300FF10ED /* Build configuration list for PBXProject "one-core" */ = {
+		339F03B92B10FC8300FF10ED /* Build configuration list for PBXProject "ProcivisOneCore" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				339F03C42B10FC8300FF10ED /* Debug */,
@@ -374,7 +376,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		339F03C62B10FC8300FF10ED /* Build configuration list for PBXNativeTarget "one-core" */ = {
+		339F03C62B10FC8300FF10ED /* Build configuration list for PBXNativeTarget "ProcivisOneCore" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				339F03C72B10FC8300FF10ED /* Debug */,
