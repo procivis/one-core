@@ -271,6 +271,10 @@ rm -rf ${TARGET_DIR}/platforms/ios
 mkdir -p ${TARGET_DIR}/platforms/ios/build/ios
 xcodebuild build -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -configuration Release -destination "generic/platform=iOS" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
+# Comment out limitation to arm64 only
+# https://developer.apple.com/documentation/xcode-release-notes/xcode-10_2-release-notes#Known-Issues
+sed -i '' 's/^#elif defined(__arm64__) && __arm64__$/#elif 1/' ${TARGET_DIR}/platforms/ios/build/ios/ProcivisOneCore.framework/Headers/ProcivisOneCore-Swift.h
+
 mkdir -p ${TARGET_DIR}/platforms/ios/build/ios-simulator
 xcodebuild build -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -configuration Release -destination "generic/platform=iOS Simulator" CONFIGURATION_BUILD_DIR=${TARGET_DIR}/platforms/ios/build/ios-simulator CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
