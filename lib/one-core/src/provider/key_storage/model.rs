@@ -2,6 +2,8 @@
 
 use serde::Serialize;
 
+use crate::config::core_config::KeyAlgorithmType;
+
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum KeySecurity {
@@ -13,7 +15,7 @@ pub enum KeySecurity {
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct KeyStorageCapabilities {
     pub features: Vec<Features>,
-    pub algorithms: Vec<String>,
+    pub algorithms: Vec<KeyAlgorithmType>,
     pub security: Vec<KeySecurity>,
 }
 

@@ -21,6 +21,7 @@ use tokio::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk};
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::key::{
@@ -64,7 +65,7 @@ impl KeyStorage for AzureVaultKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             features: vec![Features::Exportable],
-            algorithms: vec!["ES256".to_string()],
+            algorithms: vec![KeyAlgorithmType::Es256],
             security: vec![KeySecurity::RemoteSecureElement],
         }
     }
@@ -77,7 +78,8 @@ impl KeyStorage for AzureVaultKeyProvider {
         if !self
             .get_capabilities()
             .algorithms
-            .contains(&key_type.to_string())
+            .iter()
+            .any(|alg| alg.to_string() == *key_type)
         {
             return Err(KeyStorageError::UnsupportedKeyType {
                 key_type: key_type.to_owned(),

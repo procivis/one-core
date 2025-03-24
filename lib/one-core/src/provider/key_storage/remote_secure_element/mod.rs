@@ -5,6 +5,7 @@ use one_crypto::{Signer, SignerError};
 use shared_types::KeyId;
 
 use super::secure_element::NativeKeyStorage;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk};
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
@@ -25,7 +26,7 @@ pub struct RemoteSecureElementKeyProvider {
 impl KeyStorage for RemoteSecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
-            algorithms: vec!["EDDSA".to_string()],
+            algorithms: vec![KeyAlgorithmType::Eddsa],
             security: vec![KeySecurity::RemoteSecureElement],
             features: vec![],
         }

@@ -5,6 +5,7 @@ use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk};
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
@@ -40,7 +41,7 @@ pub struct Params {
 impl KeyStorage for SecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
-            algorithms: vec!["ES256".to_string()],
+            algorithms: vec![KeyAlgorithmType::Es256],
             security: vec![KeySecurity::Hardware],
             features: vec![],
         }

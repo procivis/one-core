@@ -8,6 +8,7 @@ use secrecy::SecretSlice;
 use serde::Deserialize;
 use shared_types::KeyId;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -47,10 +48,10 @@ impl KeyStorage for InternalKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             algorithms: vec![
-                "ES256".to_string(),
-                "EDDSA".to_string(),
-                "DILITHIUM".to_string(),
-                "BBS_PLUS".to_string(),
+                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::BbsPlus,
             ],
             security: vec![KeySecurity::Software],
             features: vec![Features::Exportable],
