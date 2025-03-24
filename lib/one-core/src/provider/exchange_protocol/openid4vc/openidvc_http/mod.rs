@@ -595,6 +595,7 @@ impl OpenID4VCHTTP {
             interaction_data.issuer_url,
             jwk_key_id,
             jwk,
+            token_response.c_nonce,
             auth_fn,
         )
         .await

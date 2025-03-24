@@ -1,3 +1,4 @@
+use serde::Serialize;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
@@ -108,14 +109,21 @@ impl OpenID4VCIProofJWTFormatter {
         issuer_url: String,
         holder_key_id: Option<String>,
         jwk: Option<PublicKeyJwkDTO>,
+        nonce: Option<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
+        #[derive(Serialize)]
+        struct NonceClaim {
+            nonce: String,
+        }
+
+        let custom = nonce.map(|nonce| NonceClaim { nonce });
         let payload = JWTPayload {
             issuer: None,
             jwt_id: None,
             subject: None,
             audience: Some(vec![issuer_url]),
-            custom: (),
+            custom,
             issued_at: Some(OffsetDateTime::now_utc()),
             expires_at: None,
             invalid_before: None,
@@ -170,6 +178,7 @@ mod test {
             "https://example.com".to_string(),
             Some(format!("{holder_key_id}#key-1")),
             None,
+            None,
             auth_fn,
         )
         .await
@@ -189,6 +198,7 @@ mod test {
             "https://example.com".to_string(),
             None,
             Some(jwk.into()),
+            Some("nonce".to_string()),
             auth_fn,
         )
         .await

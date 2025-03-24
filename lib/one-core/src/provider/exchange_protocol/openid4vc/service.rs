@@ -748,6 +748,7 @@ pub fn oidc_issuer_create_token(
                 expires_in: Timestamp((now + access_token_expires_in).unix_timestamp()),
                 refresh_token: None,
                 refresh_token_expires_in: None,
+                c_nonce: None,
             }
         }
 
@@ -762,6 +763,7 @@ pub fn oidc_issuer_create_token(
                 refresh_token_expires_in: Some(Timestamp(
                     (now + refresh_token_expires_in).unix_timestamp(),
                 )),
+                c_nonce: None,
             }
         }
     })

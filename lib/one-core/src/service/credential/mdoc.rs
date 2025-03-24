@@ -108,6 +108,7 @@ impl CredentialService {
             interaction_data.issuer_url.clone(),
             Some(key_id),
             None,
+            None,
             auth_fn,
         )
         .await
