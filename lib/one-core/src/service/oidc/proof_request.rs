@@ -269,6 +269,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
     interaction_id: &InteractionId,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ExchangeProtocolError> {
     let client_response = generate_authorization_request_params(
         proof,
@@ -281,6 +282,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
     let JWTSigner {
         auth_fn,
         jose_algorithm,
+        verifier_key,
         ..
     } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
 
@@ -291,12 +293,17 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
             "verifier_did is None".to_string(),
         ))?;
 
+    let key_id = did_method_provider
+        .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
     let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
 
     let request_jwt = Jwt {
         header: JWTHeader {
             algorithm: jose_algorithm,
-            key_id: auth_fn.get_key_id(),
+            key_id: Some(key_id),
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: None,

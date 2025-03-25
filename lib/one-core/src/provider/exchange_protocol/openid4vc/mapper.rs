@@ -1274,6 +1274,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
                     &interaction_id,
                     key_algorithm_provider,
                     key_provider,
+                    did_method_provider,
                 )
                 .await?;
                 get_params_with_request(token, client_id, client_id_scheme)

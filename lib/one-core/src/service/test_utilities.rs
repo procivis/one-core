@@ -96,10 +96,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                                 allowedSchemes: [ https ]
                         presentation:
                             verifier:
-                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
                                 defaultClientIdSchema: verifier_attestation
                             holder:
-                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
                             redirectUri:
                                 disabled: false
                                 allowedSchemes: [ https ]

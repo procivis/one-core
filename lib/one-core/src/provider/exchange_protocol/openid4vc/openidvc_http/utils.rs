@@ -335,10 +335,7 @@ pub(crate) async fn interaction_data_from_query(
 
     let query_client_id_scheme = query_params.client_id_scheme;
     if let Some(client_id_scheme) = &query_client_id_scheme {
-        if request.is_none()
-            && (client_id_scheme == &ClientIdSchemaType::VerifierAttestation
-                || client_id_scheme == &ClientIdSchemaType::X509SanDns)
-        {
+        if request.is_none() && client_id_scheme != &ClientIdSchemaType::RedirectUri {
             return Err(ExchangeProtocolError::InvalidRequest(format!(
                 "request or request_uri missing for client_id_scheme {client_id_scheme}",
             )));
