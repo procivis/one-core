@@ -24,8 +24,9 @@ use crate::router::AppState;
     ),
     summary = "Create proof schema",
     description = indoc::formatdoc! {"
-        Creates a proof schema, for creating proof requests. See the
-        [proof schemas](../api/proofSchemas.mdx) guide.
+        Creates a proof schema, for creating proof requests.
+
+        Related guide: [Proof schemas](/proof-schemas)
     "},
 )]
 pub(crate) async fn post_proof_schema(
@@ -53,7 +54,7 @@ pub(crate) async fn post_proof_schema(
         ("bearer" = [])
     ),
     summary = "Retrieve proof schemas",
-    description = "Returns a list of proof schemas. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
+    description = "Returns a list of proof schemas. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,

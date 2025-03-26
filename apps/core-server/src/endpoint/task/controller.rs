@@ -21,7 +21,7 @@ use crate::router::AppState;
         Runs a task. Tasks can be also be run via the CLI after starting
         the core-server.
 
-        Related guide: [Configuration](../setup/configuration.mdx)
+        Related guide: [Configuration](/configure)
     "},
 )]
 pub(crate) async fn post_task(

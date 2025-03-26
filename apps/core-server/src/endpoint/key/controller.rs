@@ -72,7 +72,7 @@ pub(crate) async fn get_key(
     instances from your system configuration. This is because the system allows
     multiple configurations of the same type.
 
-    Related guide: [Keys](../api/keys.mdx)
+    Related guide: [Keys](/keys)
 "},
 )]
 pub(crate) async fn post_key(
@@ -93,7 +93,7 @@ pub(crate) async fn post_key(
         ("bearer" = [])
     ),
     summary = "List keys",
-    description = "Returns a list of keys created in an organization. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
+    description = "Returns a list of keys created in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_key_list(
     state: State<AppState>,
@@ -168,7 +168,7 @@ pub(crate) async fn check_certificate(
     summary = "Generate a CSR",
     description = indoc::formatdoc! {"
         Generates a Certificate Signing Request (CSR). These are used to create mDL DS certificates, enabling mdoc issuance.
-        See the [mdoc guide](../guides/mdocs.mdx) for more.
+        Related guide: [ISO mdoc configuration](/configure/iso-mdoc)
     "},
 )]
 pub(crate) async fn generate_csr(

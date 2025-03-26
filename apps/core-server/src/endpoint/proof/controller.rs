@@ -86,7 +86,7 @@ pub(crate) async fn get_proof_details(
     `REQUESTED` state then the proof is retracted instead, retaining history
     of the interaction.
 
-    Related guide: [Manage proof requests](../guides/manageProof.mdx)
+    Related guide: [Manage proof requests](/verify/manage-proofs)
 "},
 )]
 pub(crate) async fn delete_proof(
@@ -107,7 +107,7 @@ pub(crate) async fn delete_proof(
         ("bearer" = [])
     ),
     summary = "List proof requests",
-    description = "Returns a list of proof requests in an organization. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
+    description = "Returns a list of proof requests in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_proofs(
     state: State<AppState>,

@@ -18,7 +18,7 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Retrieve JSON-lD context",
-    description = "Returns the context of a JSON-LD credential. This is a [cached entity](../api/caching.mdx).",
+    description = "Returns the context of a JSON-LD credential. This is a [cached entity](/configure/caching).",
 )]
 pub(crate) async fn resolve_jsonld_context(
     state: State<AppState>,

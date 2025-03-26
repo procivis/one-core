@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::macros::impls_for_uuid_newtype;
 
-/// DID details. See the [DID](../api/dids.mdx) guide.
+/// DID details. See the [DID](/dids) guide.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]

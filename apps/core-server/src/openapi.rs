@@ -100,8 +100,8 @@ fn get_tags() -> Vec<Tag> {
             .name("other")
             .description(Some(indoc::formatdoc! {"
                 Returns the system configuration, along with other system information.
-                See the [Configuration](../setup/configuration.mdx) guide for more
-                information.
+
+                Related guide: [Configuration](/configure)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -117,7 +117,7 @@ fn get_tags() -> Vec<Tag> {
                 means that keys, DIDs, credentials and proofs belong to the organization used
                 to create them and to no other.
 
-                Related guide: [Organizations](../setup/organizations.mdx)
+                Related guide: [Organizations](/organizations)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -138,6 +138,8 @@ fn get_tags() -> Vec<Tag> {
 
                 This resource also generates Certificate Signing Requests, a necessary component
                 of ISO mdoc issuance and verification.
+
+                Related guide: [Keys](/keys)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -158,7 +160,7 @@ fn get_tags() -> Vec<Tag> {
 
                 A DID is needed to issue credentials, request a proof, and verify credentials.
 
-                Related guide: [DIDs](../api/dids.mdx).
+                Related guide: [DIDs](/dids)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -177,7 +179,7 @@ fn get_tags() -> Vec<Tag> {
 
                 The system supports the creation of as many credential schemas as is needed.
 
-                Related guide: [Credential schemas](../api/credentialSchemas.mdx)
+                Related guide: [Credential schemas](/credential-schemas)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -195,7 +197,7 @@ fn get_tags() -> Vec<Tag> {
                 Then create a share endpoint URL for the wallet holder to access the offered
                 credential. Suspension and revocation options are determined by the schema.
 
-                Related guide: [Credentials](../api/credentials.mdx)
+                Related guide: [Issuance](/issue)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -218,7 +220,7 @@ fn get_tags() -> Vec<Tag> {
 
                 Proof schemas cannot combine hardware- and software-based credentials.
 
-                Related guide: [Proof schemas](../api/proofSchemas.mdx)
+                Related guide: [Proof schemas](/proof-schemas)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -238,7 +240,7 @@ fn get_tags() -> Vec<Tag> {
                 a filtering function for wallet holders to see what credentials stored in
                 their wallet match a proof request.
 
-                Related guide: [Proof requests](../api/proofRequests.mdx)
+                Related guide: [Verify](/verify)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -257,7 +259,7 @@ fn get_tags() -> Vec<Tag> {
 
                 The holder then makes the choice to accept or reject the exchange.
 
-                Related guide: [Wallet interaction](../api/walletInteraction.mdx)
+                Related guide: [Wallet interaction](/hold/wallet-interaction)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -268,9 +270,9 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("history_management")
             .description(Some(indoc::formatdoc! {"
-                Retrieve event history. See the
-                [History](../api/history.mdx) guide for more
-                information.
+                Retrieve event history.
+
+                Related guide: [History](/history)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -282,7 +284,8 @@ fn get_tags() -> Vec<Tag> {
             .name("trust_anchor")
             .description(Some(indoc::formatdoc! {"
                 Manage trust anchors as a publisher or subscribe to trust anchors as a consumer.
-                See the [trust management](../api/trustManagement.mdx) guide for more information.
+
+                Related guide: [Trust](/trust)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -293,8 +296,9 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("trust_entity")
             .description(Some(indoc::formatdoc! {"
-                Manage trust entities on an anchor. See the [trust management](../api/trustManagement.mdx)
-                guide for more information.
+                Manage trust entities on an anchor.
+
+                Related guide: [Trust](/trust)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -317,6 +321,8 @@ fn get_tags() -> Vec<Tag> {
             .name("task")
             .description(Some(indoc::formatdoc! {"
                 Run tasks.
+
+                Related guide: [Configuration](/configure)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -328,6 +334,8 @@ fn get_tags() -> Vec<Tag> {
             .name("cache")
             .description(Some(indoc::formatdoc! {"
                 Manage cached entities.
+
+                Related guide: [Configuration](/configure)
             "}))
             .extensions(Some(
                 Extensions::builder()

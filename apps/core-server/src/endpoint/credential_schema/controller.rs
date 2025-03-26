@@ -76,7 +76,7 @@ pub(crate) async fn get_credential_schema(
         ("bearer" = [])
     ),
     summary = "List credential schemas",
-    description = "Returns a list of credential schemas in an organization. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
+    description = "Returns a list of credential schemas in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
@@ -152,7 +152,7 @@ pub(crate) async fn import_credential_schema(
         configuration. This is because the system allows multiple
         configurations of the same type.
 
-        Related guide: [Credential schemas](../api/credentialSchemas.mdx)
+        Related guide: [Credential schemas](/credential-schemas)
     "},
 )]
 pub(crate) async fn post_credential_schema(

@@ -118,8 +118,7 @@ pub struct CreateDidRequestRestDTO {
 }
 
 /// Each DID has five verification relationships defining the verification
-/// method used for different purposes. Related guide: [DIDs: keys
-/// object](../api/dids.mdx)
+/// method used for different purposes. Related guide: [Keys object](/dids#keys-object)
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]

@@ -64,7 +64,7 @@ pub(crate) async fn get_did(
         ("bearer" = [])
     ),
     summary = "List DIDs",
-    description = "Returns a list of DIDs within an organization. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
+    description = "Returns a list of DIDs within an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_did_list(
     state: State<AppState>,
@@ -91,7 +91,7 @@ pub(crate) async fn get_did_list(
         from your system configuration. This is because the system allows
         multiple configurations of the same type.
 
-        Related guide: [DIDs](../api/dids.mdx)
+        Related guide: [DIDs](/dids)
     "},
 )]
 pub(crate) async fn post_did(
@@ -129,7 +129,7 @@ pub(crate) async fn post_did(
     ),
     summary = "Deactivate a DID",
     description = indoc::formatdoc! {"
-        Deactivate a DID. See the [DID deactivation](../api/dids.mdx#did-deactivation)
+        Deactivate a DID. See the [DID deactivation](/dids#deactivate-a-did)
         guide for a list of supported DID methods which allow deactivation.
     "},
 )]

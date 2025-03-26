@@ -84,7 +84,7 @@ pub(crate) async fn get_credential(
         ("bearer" = [])
     ),
     summary = "List credentials",
-    description = "Returns a list of credentials within an organization. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
+    description = "Returns a list of credentials within an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,
@@ -144,7 +144,7 @@ pub(crate) async fn get_credential_list(
     from your system configuration. This is because the system allows
     multiple configurations of the same type.
 
-    Related guide: [Issuance workflow](../issue/issuanceFlow.mdx)
+    Related guide: [Issuance workflow](/issue)
 "},
 )]
 pub(crate) async fn post_credential(
@@ -177,7 +177,7 @@ pub(crate) async fn post_credential(
     summary = "Reactivate a credential",
     description = indoc::formatdoc! {"
         Reactivates a suspended credential.
-        See the [suspension and reactivation](../api/credentials.mdx#suspension-and-reactivation) guide for more information.
+        Related guide: [Manage credential status](/issue/manage-status)
     "},
 )]
 pub(crate) async fn reactivate_credential(
@@ -206,7 +206,7 @@ pub(crate) async fn reactivate_credential(
     summary = "Revoke a credential",
     description = indoc::formatdoc! {"
         Changes a credential state to `REVOKED`.
-        See the [credential states](../api/credentials.mdx#credential-states) guide.
+        Related guide: [Manage credential status](/issue/manage-status)
     "},
 )]
 pub(crate) async fn revoke_credential(
@@ -232,7 +232,7 @@ pub(crate) async fn revoke_credential(
     summary = "Suspend a credential",
     description = indoc::formatdoc! {"
         Suspends a credential, rendering it invalid until it has been reactivated.
-        See the [suspension and reactivation](../api/credentials.mdx#suspension-and-reactivation) guide for more information.
+        Related guide: [Manage credential status](/issue/manage-status)
     "},
 )]
 pub(crate) async fn suspend_credential(
@@ -302,7 +302,7 @@ pub(crate) async fn share_credential(
         parameter to force the system to request a new MSO (for mdocs) or a new
         LVVC with the latest status.
 
-        Related guide: [Caching](../api/caching.mdx)
+        Related guide: [Caching](/configure/caching)
     "},
 )]
 pub(crate) async fn revocation_check(

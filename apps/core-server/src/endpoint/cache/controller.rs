@@ -22,7 +22,7 @@ use crate::router::AppState;
     description = indoc::formatdoc! {"
         Removes cached entities. If types are not specified, all cached entities are pruned.
 
-        Related guide: [Caching](../api/caching.mdx)
+        Related guide: [Caching](/configure/caching)
     "},
 )]
 #[axum::debug_handler]

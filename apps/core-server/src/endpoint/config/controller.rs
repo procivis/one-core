@@ -37,8 +37,7 @@ use crate::router::AppState;
     - Trust management solutions
     - DID methods
 
-    Related guide: [Configuration](../api/configuration.mdx)
-    guide for more information.
+    Related guide: [Configuration](/configure)
 "},
 )]
 pub(crate) async fn get_config(state: State<AppState>) -> OkOrErrorResponse<ConfigRestDTO> {

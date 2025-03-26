@@ -296,7 +296,7 @@ pub struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
     /// The type of data accepted for this attribute. The `DATE` datatype
     /// only accepts full date-time. See the
-    /// [datatypes](../setup/configuration.mdx#datatype-object) guide for
+    /// [configuration](/configure) guide for
     /// the full reference of datatypes.
     pub datatype: String,
     pub required: bool,
