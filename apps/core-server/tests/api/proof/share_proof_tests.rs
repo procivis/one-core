@@ -1,14 +1,17 @@
 use std::str::FromStr;
 
+use core_server::endpoint::proof::dto::ClientIdSchemaTypeRestDTO;
 use one_core::model::history::HistoryAction;
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::Value;
+use url::Url;
 use uuid::Uuid;
 
+use crate::fixtures;
 use crate::fixtures::assert_history_count;
+use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
-use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_share_proof_success() {
@@ -55,20 +58,11 @@ async fn test_share_proof_success() {
     .await;
 
     // WHEN
-    let url = format!(
-        "{}/api/proof-request/v1/{}/share",
-        context.config.app.core_base_url, proof.id
-    );
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.proofs.share(proof.id, None).await;
 
     // THEN
     assert_eq!(resp.status(), 201);
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json::<Value>().await;
     let url = resp["url"].as_str().unwrap();
     assert!(url.starts_with("openid4vp"));
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
@@ -152,7 +146,7 @@ async fn test_share_proof_success_mdoc() {
         )
         .await;
 
-    assert_eq!(201, context.api.proofs.share(proof.id).await.status());
+    assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.unwrap();
@@ -277,7 +271,7 @@ async fn test_share_proof_success_jsonld() {
         )
         .await;
 
-    assert_eq!(201, context.api.proofs.share(proof.id).await.status());
+    assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.unwrap();
@@ -317,4 +311,134 @@ async fn test_share_proof_success_jsonld() {
     });
 
     assert_eq!(expected, input_descriptor);
+}
+
+async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = fixtures::create_proof_schema(
+        &context.db.db_conn,
+        "test",
+        &organisation,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
+    )
+    .await;
+
+    let proof = fixtures::create_proof(
+        &context.db.db_conn,
+        &did,
+        None,
+        Some(&proof_schema),
+        ProofStateEnum::Created,
+        "OPENID4VC",
+        None,
+    )
+    .await;
+
+    (context, proof)
+}
+
+async fn extract_client_id(response: Response) -> String {
+    assert_eq!(response.status(), 201);
+    let resp = response.json::<Value>().await;
+    let url = resp["url"].as_str().unwrap();
+    let url = Url::parse(url).unwrap();
+    let client_id = url
+        .query_pairs()
+        .find(|(key, _)| key == "client_id")
+        .unwrap()
+        .1;
+    client_id.to_string()
+}
+
+#[tokio::test]
+async fn test_share_proof_client_id_scheme_redirect_uri() {
+    // GIVEN
+    let (context, proof) = prepare_created_openid4vp_proof().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(proof.id, Some(ClientIdSchemaTypeRestDTO::RedirectUri))
+        .await;
+
+    // THEN
+    let client_id = extract_client_id(resp).await;
+    assert_eq!(
+        client_id,
+        format!(
+            "{}/ssi/oidc-verifier/v1/response",
+            context.config.app.core_base_url
+        )
+    );
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_client_id_scheme_did() {
+    // GIVEN
+    let (context, proof) = prepare_created_openid4vp_proof().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(proof.id, Some(ClientIdSchemaTypeRestDTO::Did))
+        .await;
+
+    // THEN
+    let client_id = extract_client_id(resp).await;
+    assert_eq!(client_id, proof.verifier_did.unwrap().did.to_string());
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_client_id_scheme_verifier_attestation() {
+    // GIVEN
+    let (context, proof) = prepare_created_openid4vp_proof().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(
+            proof.id,
+            Some(ClientIdSchemaTypeRestDTO::VerifierAttestation),
+        )
+        .await;
+
+    // THEN
+    let client_id = extract_client_id(resp).await;
+    assert_eq!(
+        client_id,
+        format!(
+            "{}/ssi/oidc-verifier/v1/response",
+            context.config.app.core_base_url
+        )
+    );
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }
