@@ -27,9 +27,11 @@ lazy_static! {
     ]);
     pub static ref OID4VP_TO_FORMATTER_MAP: HashMap<&'static str, &'static str> = HashMap::from([
         ("jwt_vc_json", "JWT"),
+        ("jwt_vp_json", "JWT"),
         ("dc+sd-jwt", "SD_JWT"),
         ("vc+sd-jwt", "SD_JWT"),
         ("ldp_vc", "JSON_LD"),
+        ("ldp_vp", "JSON_LD"),
         ("mso_mdoc", "MDOC"),
     ]);
 }

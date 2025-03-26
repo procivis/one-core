@@ -414,6 +414,130 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     );
 }
 
+fn get_open_id_interaction_data_without_vp_formats(
+    credential_schema: &CredentialSchema,
+) -> Vec<u8> {
+    json!({
+        "response_type": "vp_token",
+        "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+        "nonce": "xKpt9wiB4apJ1MVTzQv1zdDty2dVWkl7",
+        "client_id_scheme": "redirect_uri",
+        "client_id": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+        "client_metadata": {
+            "jwks": {
+                "keys": [{
+                    "crv": "P-256",
+                    "kid": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                    "kty": "EC",
+                    "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                    "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
+                    "use": "enc"
+                }]
+            },
+            "vp_formats": {},
+            "client_id_scheme": "redirect_uri"
+        },
+        "response_mode": "direct_post",
+        "response_uri": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+        "presentation_definition": {
+            "id": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+            "input_descriptors": [
+                {
+                    "format": {
+                        "jwt_vc_json": {
+                            "alg": ["EdDSA", "ES256"]
+                        }
+                    },
+                    "id": "input_0",
+                    "constraints": {
+                        "fields": [
+                            {
+                                "path":["$.credentialSchema.id"],
+                                "filter": {
+                                    "type": "string",
+                                    "const": credential_schema.schema_id
+                                }
+                            },
+                            {
+                                "id": "2c99eaf6-1b23-4554-afb5-464f92103bf3",
+                                "path": [
+                                    "$.vc.credentialSubject.firstName"
+                                ],
+                                "optional": false
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    })
+    .to_string()
+    .into_bytes()
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty() {
+    // GIVEN
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let _credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            Default::default(),
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            "http://localhost",
+            &get_open_id_interaction_data_without_vp_formats(&credential_schema),
+            &organisation,
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            Some(&did),
+            None,
+            ProofStateEnum::Requested,
+            "OPENID4VC",
+            Some(&interaction),
+            key,
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert!(
+        resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     // GIVEN

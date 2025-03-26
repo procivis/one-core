@@ -41,8 +41,8 @@ use crate::provider::exchange_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VCParams, OpenID4VpPresentationFormat, PresentedCredential,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCParams, OpenID4VPClientMetadata, OpenID4VpPresentationFormat,
+    PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
@@ -420,41 +420,48 @@ impl ExchangeProtocolImpl for OpenID4VC {
             ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        let presentation_definition = match transport {
+        let (presentation_definition, client_metadata) = match transport {
             TransportType::Ble => {
                 let interaction_data: BLEOpenID4VPInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                interaction_data.openid_request.presentation_definition
+                (
+                    interaction_data.openid_request.presentation_definition,
+                    None,
+                )
             }
             TransportType::Http => {
                 let interaction_data: OpenID4VPHolderInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                interaction_data.presentation_definition
+                (
+                    interaction_data.presentation_definition,
+                    interaction_data.client_metadata,
+                )
             }
             TransportType::Mqtt => {
                 let interaction_data: MQTTOpenID4VPInteractionDataHolder =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                interaction_data.presentation_definition
+                (interaction_data.presentation_definition, None)
             }
-        }
-        .ok_or(ExchangeProtocolError::Failed(
-            "presentation_definition is None".to_string(),
-        ))?;
+        };
+
+        let presentation_definition = presentation_definition.ok_or(
+            ExchangeProtocolError::Failed("presentation_definition is None".to_string()),
+        )?;
 
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
 
-        let mut allowed_oidc_formats = HashSet::new();
+        let mut allowed_oidc_input_descriptor_formats = HashSet::new();
 
         for input_descriptor in presentation_definition.input_descriptors {
             input_descriptor.format.keys().for_each(|key| {
-                allowed_oidc_formats.insert(key.to_owned());
+                allowed_oidc_input_descriptor_formats.insert(key.to_owned());
             });
             let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
 
@@ -505,17 +512,24 @@ impl ExchangeProtocolImpl for OpenID4VC {
             });
         }
 
-        let allowed_schema_formats: HashSet<_> = allowed_oidc_formats
-            .iter()
-            .map(|oidc_format| {
-                OID4VP_TO_FORMATTER_MAP
-                    .get(oidc_format.as_str())
-                    .ok_or(ExchangeProtocolError::Failed(format!(
-                        "unknown format {oidc_format}"
-                    )))
-                    .copied()
-            })
-            .collect::<Result<_, _>>()?;
+        let allowed_schema_input_descriptor_formats: HashSet<_> =
+            allowed_oidc_input_descriptor_formats
+                .iter()
+                .map(|oidc_format| {
+                    OID4VP_TO_FORMATTER_MAP
+                        .get(oidc_format.as_str())
+                        .ok_or_else(|| {
+                            ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
+                        })
+                        .copied()
+                })
+                .collect::<Result<_, _>>()?;
+
+        let allowed_schema_formats = extract_common_formats(
+            allowed_schema_input_descriptor_formats,
+            &client_metadata,
+            &OID4VP_TO_FORMATTER_MAP,
+        )?;
 
         let organisation = proof
             .interaction
@@ -691,4 +705,37 @@ fn merge_query_params(mut first: Url, second: Url) -> Url {
     first.query_pairs_mut().extend_pairs(query_params);
 
     first
+}
+
+fn extract_common_formats<'a>(
+    allowed_schema_input_descriptor_formats: HashSet<&'a str>,
+    client_metadata: &'a Option<OpenID4VPClientMetadata>,
+    format_map: &'a HashMap<&'static str, &'static str>,
+) -> Result<HashSet<&'a str>, ExchangeProtocolError> {
+    if let Some(client_metadata) = client_metadata {
+        let oidc_formats = client_metadata
+            .vp_formats
+            .keys()
+            .map(|k| k.as_str())
+            .collect::<HashSet<&str>>();
+
+        let schema_formats: HashSet<_> = oidc_formats
+            .iter()
+            .map(|oidc_format| {
+                format_map
+                    .get(*oidc_format)
+                    .ok_or_else(|| {
+                        ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
+                    })
+                    .copied()
+            })
+            .collect::<Result<_, _>>()?;
+
+        Ok(allowed_schema_input_descriptor_formats
+            .intersection(&schema_formats)
+            .copied()
+            .collect())
+    } else {
+        Ok(allowed_schema_input_descriptor_formats)
+    }
 }
