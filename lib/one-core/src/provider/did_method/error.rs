@@ -18,6 +18,8 @@ pub enum DidMethodError {
     NotSupported,
     #[error("Did value validation error")]
     ValidationError,
+    #[error("Did is deactivated")]
+    Deactivated,
 }
 
 #[derive(Debug, Error)]

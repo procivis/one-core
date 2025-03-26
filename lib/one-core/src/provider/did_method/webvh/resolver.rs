@@ -11,12 +11,17 @@ use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::did_method::webvh::verification::verify_did_log;
+use crate::provider::did_method::webvh::Params;
 use crate::provider::http_client::HttpClient;
 
 pub async fn resolve(
     did: &DidValue,
     client: &dyn HttpClient,
+    did_method_provider: &dyn DidMethodProvider,
     use_http: bool,
+    params: &Params,
 ) -> Result<DidDocument, DidMethodError> {
     let TransformedDid { mut url, .. } = transform_did_to_https(did.as_str())?;
     if use_http {
@@ -32,9 +37,8 @@ pub async fn resolve(
             DidMethodError::ResolutionError(format!("Failed resolving did:webvh: {err}"))
         })?;
 
-    let entries: Vec<_> = resp
-        .body
-        .lines()
+    let lines = resp.body.lines().peekable();
+    let entries: Vec<_> = lines
         .map(|line| {
             let line = line.map_err(|err| {
                 DidMethodError::ResolutionError(format!("Invalid did log line: {err}"))
@@ -44,11 +48,13 @@ pub async fn resolve(
                 DidMethodError::ResolutionError(format!("Invalid did log entry: {err}"))
             })?;
 
-            Ok(entry)
+            Ok((entry, line))
         })
         .collect::<Result<_, _>>()?;
 
-    let Some(entry) = entries.into_iter().next_back() else {
+    verify_did_log(&entries, did_method_provider, params).await?;
+
+    let Some((entry, _)) = entries.into_iter().next_back() else {
         return Err(DidMethodError::ResolutionError(
             "Did log contains no entries".to_string(),
         ));
@@ -61,50 +67,50 @@ pub async fn resolve(
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DidLogEntry {
-    version_id: String,
+pub struct DidLogEntry {
+    pub version_id: String,
     #[serde(with = "time::serde::iso8601")]
-    version_time: OffsetDateTime,
-    parameters: DidLogParameters,
-    state: DidDocState,
+    pub version_time: OffsetDateTime,
+    pub parameters: DidLogParameters,
+    pub state: DidDocState,
     #[serde(default)]
-    proof: Vec<VcdmProof>,
+    pub proof: Vec<VcdmProof>,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct DidLogParameters {
-    method: Option<DidMethodVersion>,
-    prerotation: Option<bool>,
-    portable: Option<bool>,
+pub struct DidLogParameters {
+    pub method: Option<DidMethodVersion>,
+    pub prerotation: Option<bool>,
+    pub portable: Option<bool>,
     #[serde(default)]
-    update_keys: Vec<String>,
+    pub update_keys: Option<Vec<String>>,
     #[serde(default)]
-    next_key_hashes: Vec<String>,
-    scid: Option<String>,
+    pub next_key_hashes: Vec<String>,
+    pub scid: Option<String>,
     #[serde(default)]
-    witness: Vec<String>,
-    deactivated: Option<bool>,
-    ttl: Option<u32>,
+    pub witness: Vec<String>,
+    pub deactivated: Option<bool>,
+    pub ttl: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
-enum DidMethodVersion {
+pub enum DidMethodVersion {
     #[serde(rename = "did:tdw:0.3")]
     V3,
 }
 
 #[derive(Debug, Deserialize)]
-struct DidDocState {
-    value: Document,
+pub struct DidDocState {
+    pub value: Document,
 }
 
 #[derive(Debug)]
-struct Document {
+pub struct Document {
     #[allow(dead_code)]
-    source: json_syntax::Value,
-    document: DidDocumentDTO,
+    pub source: json_syntax::Value,
+    pub document: DidDocumentDTO,
 }
 
 impl<'de> Deserialize<'de> for Document {
@@ -173,14 +179,37 @@ fn transform_did_to_https(did: &str) -> Result<TransformedDid, DidMethodError> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+    use std::fs;
+    use std::fs::{File, ReadDir};
+    use std::io::Read;
+    use std::sync::Arc;
 
+    use indexmap::IndexMap;
+    use maplit::hashmap;
     use serde_json::json;
+    use serde_json_path::JsonPath;
     use time::macros::datetime;
+    use time::Duration;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
+    use crate::config::core_config::KeyAlgorithmType;
+    use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use crate::provider::did_method::error::DidMethodError::ResolutionError;
+    use crate::provider::did_method::jwk::JWKDidMethod;
+    use crate::provider::did_method::key::KeyDidMethod;
+    use crate::provider::did_method::model::DidVerificationMethod;
+    use crate::provider::did_method::provider::DidMethodProviderImpl;
+    use crate::provider::did_method::resolver::DidCachingLoader;
+    use crate::provider::did_method::DidMethod;
     use crate::provider::http_client::reqwest_client::ReqwestClient;
+    use crate::provider::key_algorithm::eddsa::Eddsa;
+    use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+    use crate::provider::key_algorithm::KeyAlgorithm;
+    use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+    use crate::provider::remote_entity_storage::RemoteEntityType;
 
     #[test]
     fn test_transform_did_webvh_to_https() {
@@ -247,10 +276,10 @@ mod test {
             DidLogParameters {
                 method: Some(DidMethodVersion::V3),
                 prerotation: Some(true),
-                update_keys: vec![
+                update_keys: Some(vec![
                     "z82LkvR3CBNkb9tUVps4GhGpNvEVP6vWzdwgGwQbA1iYoZwd7m1F1hSvkJFSe6sWci7JiXc"
                         .to_string()
-                ],
+                ]),
                 next_key_hashes: vec!["QmcbM5bppyT4yyaL35TQQJ2XdSrSNAhH5t6f4ZcuyR4VSv".to_string()],
                 scid: Some("Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu".to_string()),
                 witness: vec![],
@@ -300,15 +329,20 @@ mod test {
 
     #[tokio::test]
     async fn test_didwebvh_resolver_returns_last_document() {
-        let did_log = include_str!("test_data/did.jsonl");
+        let did_method_provider = test_did_method_provider();
+
+        let did_log = include_str!("test_data/success/did_long_log.jsonl");
+        let did: DidValue = "did:tdw:QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:example.com"
+            .parse()
+            .unwrap();
 
         let mock_server = MockServer::start().await;
+        // adjust port for the resolution using the mock server
         let address = mock_server.address().to_string().replace(":", "%3A");
-        let did_webvh: DidValue =
-            format!("did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:{address}")
+        let did_dynamic_port: DidValue =
+            format!("did:tdw:QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:{address}")
                 .parse()
                 .unwrap();
-
         Mock::given(method("GET"))
             .and(path("/.well-known/did.jsonl"))
             .respond_with(ResponseTemplate::new(200).set_body_raw(did_log, "text/jsonl"))
@@ -317,27 +351,209 @@ mod test {
             .await;
         let client = ReqwestClient::default();
 
-        let last_document = resolve(&did_webvh, &client, true).await.unwrap();
+        let document = resolve(
+            &did_dynamic_port,
+            &client,
+            &did_method_provider,
+            true,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
 
+        let verification_method_1 = DidVerificationMethod {
+            id: format!("{did}#auth-key-01"),
+            r#type: "JsonWebKey2020".to_string(),
+            controller: did.to_string(),
+            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                r#use: None,
+                kid: Some("auth-key-01".to_string()),
+                crv: "P-256".to_string(),
+                x: "GoFNDeVYoSfkPmcPSA1Dz-2Pl7VhEk5jqCh4UZRG3xs".to_string(),
+                y: Some("l4QrQoCDMQRXadyVUCa0r6Pj4638lKpwnVT5YVfUsvQ".to_string()),
+            }),
+        };
         assert_eq!(
-            last_document,
+            document,
             DidDocument {
                 context: json!([
                     "https://www.w3.org/ns/did/v1",
-                    "https://w3id.org/security/multikey/v1"
+                    "https://w3id.org/security/jwk/v1"
                 ]),
-                id: "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example"
-                    .parse()
-                    .unwrap(),
-                verification_method: vec![],
-                authentication: None,
-                assertion_method: None,
+                id: did.clone(),
+                verification_method: vec![verification_method_1],
+                authentication: Some(vec![format!("{did}#auth-key-01")]),
+                assertion_method: Some(vec![format!("{did}#auth-key-01")]),
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
                 also_known_as: None,
                 service: None,
             }
+        )
+    }
+
+    #[tokio::test]
+    async fn test_didwebvh_resolver_fail_too_many_entries() {
+        let did_method_provider = test_did_method_provider();
+
+        let did_log = include_str!("test_data/success/did_long_log.jsonl");
+        let mock_server = MockServer::start().await;
+        // adjust port for the resolution using the mock server
+        let address = mock_server.address().to_string().replace(":", "%3A");
+        let did_dynamic_port: DidValue =
+            format!("did:tdw:QmeLapUpgZeyyCmjG8vRKjXYwEAXaYJyAT4ohzR73jZf1A:{address}")
+                .parse()
+                .unwrap();
+        Mock::given(method("GET"))
+            .and(path("/.well-known/did.jsonl"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(did_log, "text/jsonl"))
+            .up_to_n_times(1)
+            .mount(&mock_server)
+            .await;
+        let client = ReqwestClient::default();
+
+        let document = resolve(
+            &did_dynamic_port,
+            &client,
+            &did_method_provider,
+            true,
+            &Params {
+                max_did_log_entry_check: Some(2),
+            },
+        )
+        .await;
+        assert!(matches!(document, Err(ResolutionError(_))));
+    }
+
+    /// Test that runs through the files in the success test data folder and checks everything resolves.
+    ///
+    /// Note, the following keys were used to sign the entries:
+    /// - Key1
+    ///     - public key bytes: 0x14bb5dd69734a472b6693fd947a579d9b714f49a771dc1a0933bbc823aed6a80, multibase: z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV
+    ///     - private key bytes: 0xa3f88f2bc284a8f1ff94d30c83a8b42a4155c4c38da501183731cbf977b3c3e914bb5dd69734a472b6693fd947a579d9b714f49a771dc1a0933bbc823aed6a80
+    /// - Key2
+    ///     - public key bytes: 0x5fdef8f02b852787f802c4f53d04c48183ef5b766d5e6f3d28ff10204b0cd61c, multibase: z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH
+    ///     - private key bytes: 0x2d922fd47cda6d5adb72c9d33b63153adf38ee05980da13ce1878704e9f410a55fdef8f02b852787f802c4f53d04c48183ef5b766d5e6f3d28ff10204b0cd61c
+    #[tokio::test]
+    async fn test_didwebvh_success() {
+        let folder = fs::read_dir("src/provider/did_method/webvh/test_data/success").unwrap();
+        resolve_log_files(folder, |result, file_name| {
+            assert!(
+                result.is_ok(),
+                "Failed resolving did! Did log file: {}, result: {:#?}",
+                file_name,
+                result
+            )
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_didwebvh_failure() {
+        let expected_error_messages = hashmap! {
+            "entry_hash_mismatch.jsonl" => "Entry hash mismatch, expected QmQikVGn3cLzaQ8PwqS4KNXtrfCr9Rbf5kTz9ayWXDAZZo, got QmVdZgk73vwTHX7wbNd7bd6jcMZeae88gxCuNqwMTT6PCQ.",
+            "invalid_proof_verification_method_key.jsonl" => "Proof verification failed: verification method did:key:z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH#z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH is not allowed update_key",
+            "wrong_index.jsonl" => "Unexpected versionId '1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW', expected index 2, got 1.",
+            "invalid_sig.jsonl" => "Failed to verify integrity proof for log entry 1-QmQ5sMLi5vKyHhdaL1LaD3b2C1JY2rCckr2uyGN9KyxMy2: Invalid signature",
+            "prerotation_not_supported.jsonl" => "prerotation is not supported",
+            "invalid_scid.jsonl" => "Invalid SCID: expected QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zY, got QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW",
+            "proof_too_old.jsonl" => "Invalid proof: created time is before entry time.",
+            "portable_true_after_first_entry.jsonl" => "portable flag can only be set to true in first entry",
+            "entry_timestamp_too_old.jsonl" => "Invalid log entry 2-QmaidiuDMxyJc8rXAVv8QEY3k4yj96rTW1mzJjxagpNMTF: version time 2025-03-24 16:27:36.0 +00:00:00 is before version time of the previous entry",
+            "challenge_mismatch.jsonl" => "Proof challenge mismatch, expected 2-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW, got 1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW.",
+        };
+        let folder = fs::read_dir("src/provider/did_method/webvh/test_data/failure").unwrap();
+        resolve_log_files(folder, |result, file_name| {
+            assert!(
+                result.is_err(),
+                "Failed resolving did! Did log file: {}, result: {:#?}",
+                file_name,
+                result
+            );
+            let expected_msg = *expected_error_messages.get(&file_name as &str).unwrap();
+            assert!(matches!(result, Err(ResolutionError(msg)) if msg == expected_msg));
+        })
+        .await;
+    }
+
+    async fn resolve_log_files<T: Fn(Result<DidDocument, DidMethodError>, String)>(
+        paths: ReadDir,
+        check: T,
+    ) {
+        let did_matcher = JsonPath::parse("$[3].value.id").unwrap();
+        let mock_server = MockServer::start().await;
+        // adjust port for the resolution using the mock server
+        let address = mock_server.address().to_string().replace(":", "%3A");
+
+        let client = ReqwestClient::default();
+        let did_method_provider = test_did_method_provider();
+
+        for path in paths {
+            let path_buf = path.unwrap().path();
+            let mut file = File::open(path_buf.clone()).unwrap();
+            let mut did_log = String::new();
+            file.read_to_string(&mut did_log).unwrap();
+
+            let did = did_matcher
+                .query(&serde_json::from_str(did_log.lines().next().unwrap()).unwrap())
+                .first()
+                .unwrap()
+                .to_string()
+                .replace("\"", "");
+
+            Mock::given(method("GET"))
+                .and(wiremock::matchers::path("/.well-known/did.jsonl"))
+                .respond_with(ResponseTemplate::new(200).set_body_raw(did_log, "text/jsonl"))
+                .up_to_n_times(1)
+                .mount(&mock_server)
+                .await;
+
+            let did_dynamic_port = format!("{}:{address}", did.rsplit_once(":").unwrap().0)
+                .parse()
+                .unwrap();
+            let result = resolve(
+                &did_dynamic_port,
+                &client,
+                &did_method_provider,
+                true,
+                &Default::default(),
+            )
+            .await;
+
+            check(
+                result,
+                path_buf.file_name().unwrap().to_str().unwrap().to_string(),
+            );
+        }
+    }
+
+    fn test_did_method_provider() -> DidMethodProviderImpl {
+        let caching_loader = DidCachingLoader::new(
+            RemoteEntityType::DidDocument,
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            100,
+            Duration::minutes(1),
+            Duration::minutes(1),
+        );
+        let key_algorithm_provider =
+            Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+                KeyAlgorithmType::Eddsa,
+                Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
+            )])));
+        DidMethodProviderImpl::new(
+            caching_loader,
+            IndexMap::from_iter(vec![
+                (
+                    "JWK".to_owned(),
+                    Arc::new(JWKDidMethod::new(key_algorithm_provider.clone()))
+                        as Arc<dyn DidMethod>,
+                ),
+                (
+                    "KEY".to_owned(),
+                    Arc::new(KeyDidMethod::new(key_algorithm_provider)) as Arc<dyn DidMethod>,
+                ),
+            ]),
         )
     }
 }

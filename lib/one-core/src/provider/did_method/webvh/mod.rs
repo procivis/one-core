@@ -12,24 +12,34 @@ use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use super::DidMethod;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 
 mod resolver;
+mod verification;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Params {
-    pub max_did_log_entry_check: u32,
+    pub max_did_log_entry_check: Option<u32>,
 }
 
 pub struct DidWebVh {
-    #[allow(dead_code)]
     params: Params,
     client: Arc<dyn HttpClient>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
 }
 
 impl DidWebVh {
-    pub fn new(params: Params, client: Arc<dyn HttpClient>) -> Self {
-        Self { params, client }
+    pub fn new(
+        params: Params,
+        client: Arc<dyn HttpClient>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+    ) -> Self {
+        Self {
+            params,
+            client,
+            did_method_provider,
+        }
     }
 }
 
@@ -45,7 +55,14 @@ impl DidMethod for DidWebVh {
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {
-        resolver::resolve(did, &*self.client, false).await
+        resolver::resolve(
+            did,
+            &*self.client,
+            &*self.did_method_provider,
+            false,
+            &self.params,
+        )
+        .await
     }
 
     fn update(&self) -> Result<(), DidMethodError> {

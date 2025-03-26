@@ -312,6 +312,7 @@ async fn initialize(
                         .sort_by(|(_, fields1), (_, fields2)| fields1.order.cmp(&fields2.order));
                     let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
                     let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
+                    let mut did_webvh_params: Vec<(String, DidWebVhParams)> = vec![];
 
                     for (name, field) in did_configs {
                         let did_method: Arc<dyn DidMethod> = match field.r#type {
@@ -402,11 +403,32 @@ async fn initialize(
                                 let params: DidWebVhParams = config
                                     .get(name)
                                     .expect("failed to deserialize did webvh params");
-                                let did_webvh = DidWebVh::new(params.into(), client.clone());
-                                Arc::new(did_webvh) as _
+                                // did:webvh cannot be constructed yet, as it needs a did resolver internally
+                                // -> save for later
+                                did_webvh_params.push((name.to_string(), params));
+                                continue;
                             }
                         };
                         did_methods.insert(name.to_owned(), did_method);
+                    }
+
+                    let did_caching_loader = initialize_did_caching_loader(
+                        &cache_entities_config,
+                        data_provider.clone(),
+                    );
+                    let intermediary_provider = Arc::new(DidMethodProviderImpl::new(
+                        did_caching_loader,
+                        did_methods.clone(),
+                    ));
+
+                    // Separately construct the did:webvh providers using the intermediary provider
+                    for (name, params) in did_webvh_params {
+                        let did_webvh = DidWebVh::new(
+                            params.into(),
+                            client.clone(),
+                            intermediary_provider.clone(),
+                        );
+                        did_methods.insert(name, Arc::new(did_webvh) as _);
                     }
 
                     for (key, value) in config.iter_mut() {

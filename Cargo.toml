@@ -32,6 +32,7 @@ futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 indexmap           = { version = "2.6", features = ["serde"] }
 mockall            = { version = "0.13" }
+multihash          = { version = "0.19" }
 one-dto-mapper     = { version = "0.1" }
 rand               = { version = "0.8" }
 regex              = { version = "1.10" }
@@ -40,6 +41,7 @@ sea-orm            = { version = "1.1", default-features = false }
 secrecy            = { version = "0.10.3", features = ["serde"] }
 serde              = { version = "1.0" }
 serde_json         = { version = "1.0" }
+serde_json_path    = { version = "0.7.2" }
 serde_qs           = { version = "0.13" }
 serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }

@@ -34,7 +34,8 @@ pub struct DidWebParams {
 #[into(one_core::provider::did_method::webvh::Params)]
 #[serde(rename_all = "camelCase")]
 pub struct DidWebVhParams {
-    pub max_did_log_entry_check: u32,
+    #[serde(default)]
+    pub max_did_log_entry_check: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Into)]
