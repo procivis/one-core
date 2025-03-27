@@ -6,7 +6,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::key::Key;
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
 use one_crypto::hasher::sha256::SHA256;
-use one_crypto::signer::es256::ES256Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::Hasher;
 use serde_json::json;
 use time::macros::format_description;
@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use super::full_flow_common::TestKey;
 use crate::api_oidc_tests::full_flow_common::{
-    ecdsa_key_2, eddsa_key_2, eddsa_key_for_did_mdl, es256_key_for_did_mdl, prepare_dids_for_mdoc,
+    ecdsa_key_2, ecdsa_key_for_did_mdl, eddsa_key_2, eddsa_key_for_did_mdl, prepare_dids_for_mdoc,
     proof_jwt_for, IACA_CERTIFICATE,
 };
 use crate::fixtures::TestingCredentialParams;
@@ -47,12 +47,12 @@ async fn test_openid4vc_mdoc_flow_eddsa_ecdsa() {
 
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa() {
-    test_openid4vc_mdoc_flow(es256_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
+    test_openid4vc_mdoc_flow(ecdsa_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
 }
 
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_eddsa() {
-    test_openid4vc_mdoc_flow(es256_key_for_did_mdl(), eddsa_key_2(), KeyType::Ecdsa).await
+    test_openid4vc_mdoc_flow(ecdsa_key_for_did_mdl(), eddsa_key_2(), KeyType::Ecdsa).await
 }
 
 #[tokio::test]
@@ -68,7 +68,7 @@ async fn test_openid4vc_mdoc_flow_eddsa_selective() {
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_selective() {
     test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
-        es256_key_for_did_mdl(),
+        ecdsa_key_for_did_mdl(),
         ecdsa_key_2(),
         KeyType::Ecdsa,
     )
@@ -77,13 +77,13 @@ async fn test_openid4vc_mdoc_flow_ecdsa_selective() {
 
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_array() {
-    test_openid4vc_mdoc_flow_array(es256_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
+    test_openid4vc_mdoc_flow_array(ecdsa_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
 }
 
 fn get_key_data(key_type: KeyType, key: Key) -> KeyData {
     match key_type {
         KeyType::Ecdsa => {
-            let (x, y) = ES256Signer::get_public_key_coordinates(&key.public_key).unwrap();
+            let (x, y) = ECDSASigner::get_public_key_coordinates(&key.public_key).unwrap();
             let x = Base64UrlSafeNoPadding::encode_to_string(x).unwrap();
             let y = Base64UrlSafeNoPadding::encode_to_string(y).unwrap();
 

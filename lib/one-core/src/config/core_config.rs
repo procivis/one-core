@@ -388,9 +388,9 @@ pub enum KeyAlgorithmType {
     #[serde(rename = "EDDSA")]
     #[strum(serialize = "EDDSA")]
     Eddsa,
-    #[serde(rename = "ES256")]
-    #[strum(serialize = "ES256")]
-    Es256,
+    #[serde(rename = "ECDSA")]
+    #[strum(serialize = "ECDSA")]
+    Ecdsa,
     #[serde(rename = "BBS_PLUS")]
     #[strum(serialize = "BBS_PLUS")]
     BbsPlus,

@@ -46,7 +46,7 @@ impl DidMethod for X509Method {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
-            key_algorithms: vec![KeyAlgorithmType::Es256, KeyAlgorithmType::Eddsa],
+            key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             method_names: vec!["x509".to_string()],
         }
     }

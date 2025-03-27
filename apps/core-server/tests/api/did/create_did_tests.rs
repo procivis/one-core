@@ -4,17 +4,17 @@ use serde_json::json;
 use crate::fixtures::TestingKeyParams;
 use crate::utils::api_clients::dids::DidKeys;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::{eddsa_testing_params, es256_testing_params};
+use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
-async fn test_create_did_key_es256_success() {
+async fn test_create_did_key_ecdsa_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     // WHEN
@@ -118,12 +118,12 @@ async fn test_fail_to_create_did_key_to_much_keys() {
     let key1 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
     let key2 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     // WHEN
@@ -151,7 +151,7 @@ async fn test_create_did_web_success() {
     let key = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     // WHEN
@@ -188,13 +188,13 @@ async fn test_create_did_web_mixed_keys() {
     let key1 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     let key2 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     // WHEN
@@ -498,7 +498,7 @@ gEudfmbqXoiDCBYUmNabrVJo6GiBeczXVoU=
 }
 
 #[tokio::test]
-async fn test_create_did_mdl_es256_success() {
+async fn test_create_did_mdl_ecdsa_success() {
     // GIVEN
     let additional_config = indoc::formatdoc! {"
     did:
@@ -512,7 +512,7 @@ async fn test_create_did_mdl_es256_success() {
     let key = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     // obtained from https://ca.dev.mdl-plus.com/admin for the old MDL-CA iaca certificate for the CSR obtained from eddsa_testing_params() key

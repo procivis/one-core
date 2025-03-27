@@ -299,7 +299,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
                 .expect_algorithm_id()
                 .return_once(|| "algorithm".to_string());
 
-            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+            Some((KeyAlgorithmType::Ecdsa, Arc::new(key_algorithm)))
         });
 
     let mut verify_mock = MockTokenVerifier::new();

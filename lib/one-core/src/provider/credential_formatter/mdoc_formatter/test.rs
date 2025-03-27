@@ -175,7 +175,7 @@ fn test_device_response_serialize_deserialize() {
 }
 
 #[tokio::test]
-async fn test_credential_formatting_ok_for_es256() {
+async fn test_credential_formatting_ok_for_ecdsa() {
     let issuer_did = Issuer::Url("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap());
 
     let claims = vec![PublishedClaim {
@@ -285,7 +285,7 @@ async fn test_credential_formatting_ok_for_es256() {
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
         .expect_get_key_type()
-        .return_const("ES256".to_string());
+        .return_const("ECDSA".to_string());
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -481,7 +481,7 @@ async fn test_unverified_credential_extraction() {
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
         .expect_get_key_type()
-        .return_const("ES256".to_string());
+        .return_const("ECDSA".to_string());
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -522,8 +522,8 @@ async fn test_unverified_credential_extraction() {
 }
 
 #[tokio::test]
-async fn test_credential_formatting_ok_for_es256_layout_transfered() {
-    let detailed_credential = format_and_extract_es256(true).await;
+async fn test_credential_formatting_ok_for_ecdsa_layout_transfered() {
+    let detailed_credential = format_and_extract_ecdsa(true).await;
     assert_eq!(
         detailed_credential
             .credential_schema
@@ -540,8 +540,8 @@ async fn test_credential_formatting_ok_for_es256_layout_transfered() {
 }
 
 #[tokio::test]
-async fn test_credential_formatting_ok_for_es256_layout_not_transfered() {
-    let detailed_credential = format_and_extract_es256(false).await;
+async fn test_credential_formatting_ok_for_ecdsa_layout_not_transfered() {
+    let detailed_credential = format_and_extract_ecdsa(false).await;
     assert!(detailed_credential
         .credential_schema
         .unwrap()
@@ -549,7 +549,7 @@ async fn test_credential_formatting_ok_for_es256_layout_not_transfered() {
         .is_none());
 }
 
-async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
+async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
     let issuer_did = Issuer::Url("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap());
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
@@ -675,7 +675,7 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
         .expect_get_key_type()
-        .return_const("ES256".to_string());
+        .return_const("ECDSA".to_string());
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))

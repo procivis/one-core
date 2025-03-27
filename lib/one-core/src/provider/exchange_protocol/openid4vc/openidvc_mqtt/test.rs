@@ -280,7 +280,7 @@ async fn test_handle_invitation_success() {
     let mut mock_key_algorithm = MockKeyAlgorithm::default();
     mock_key_algorithm
         .expect_algorithm_id()
-        .return_once(|| "ES256".to_string());
+        .return_once(|| "ECDSA".to_string());
     mock_key_algorithm.expect_parse_jwk().return_once(|_| {
         let mut key_handle = MockSignaturePublicKeyHandle::default();
         key_handle.expect_verify().return_once(|_, _| Ok(()));
@@ -295,7 +295,7 @@ async fn test_handle_invitation_success() {
     let mock_key_algorithm_clone = mock_key_algorithm.clone();
     mock_key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
-        .returning(move |_| Some((KeyAlgorithmType::Es256, mock_key_algorithm_clone.clone())));
+        .returning(move |_| Some((KeyAlgorithmType::Ecdsa, mock_key_algorithm_clone.clone())));
     mock_key_algorithm_provider
         .expect_key_algorithm_from_id()
         .returning(move |_| Some(mock_key_algorithm.clone()));

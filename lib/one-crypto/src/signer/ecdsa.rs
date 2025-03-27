@@ -14,9 +14,9 @@ use crate::encryption::EncryptionError;
 use crate::jwe::{decode_b64, RemoteJwk};
 use crate::{Signer, SignerError};
 
-pub struct ES256Signer {}
+pub struct ECDSASigner {}
 
-impl ES256Signer {
+impl ECDSASigner {
     fn from_bytes(public_key: &[u8]) -> Result<VerifyingKey, SignerError> {
         let point = EncodedPoint::from_bytes(public_key).map_err(|err| {
             SignerError::CouldNotExtractPublicKey(format!(
@@ -134,14 +134,14 @@ impl ES256Signer {
     }
 
     pub fn bytes_as_jwk(public_key: &[u8]) -> Result<RemoteJwk, EncryptionError> {
-        let verifying_key = ES256Signer::from_bytes(public_key)
+        let verifying_key = ECDSASigner::from_bytes(public_key)
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
         let public_key = PublicKey::from(verifying_key);
         public_key.to_jwk().try_into()
     }
 }
 
-impl Signer for ES256Signer {
+impl Signer for ECDSASigner {
     fn sign(
         &self,
         input: &[u8],

@@ -11,7 +11,7 @@ use mapper::{
     create_generate_key_request, create_get_token_request, create_sign_request,
     public_key_from_components,
 };
-use one_crypto::signer::es256::ES256Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{CryptoProvider, Signer, SignerError};
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
@@ -33,7 +33,7 @@ use crate::provider::key_storage::model::{
     Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_storage::KeyStorage;
-use crate::provider::key_utils::{es256_public_key_as_jwk, es256_public_key_as_multibase};
+use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
 mod dto;
 mod mapper;
@@ -65,7 +65,7 @@ impl KeyStorage for AzureVaultKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             features: vec![Features::Exportable],
-            algorithms: vec![KeyAlgorithmType::Es256],
+            algorithms: vec![KeyAlgorithmType::Ecdsa],
             security: vec![KeySecurity::RemoteSecureElement],
         }
     }
@@ -112,7 +112,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
-        let public_key = ES256Signer::parse_public_key(&public_key_bytes, true)
+        let public_key = ECDSASigner::parse_public_key(&public_key_bytes, true)
             .map_err(|err| KeyStorageError::Failed(format!("failed to build public key: {err}")))?;
 
         Ok(StorageGeneratedKey {
@@ -265,11 +265,11 @@ impl AzureVaultKeyHandle {
 
 impl SignaturePublicKeyHandle for AzureVaultKeyHandle {
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        es256_public_key_as_jwk(&self.key.public_key, None)
+        ecdsa_public_key_as_jwk(&self.key.public_key, None)
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
-        es256_public_key_as_multibase(&self.key.public_key)
+        ecdsa_public_key_as_multibase(&self.key.public_key)
     }
 
     fn as_raw(&self) -> Vec<u8> {
@@ -277,7 +277,7 @@ impl SignaturePublicKeyHandle for AzureVaultKeyHandle {
     }
 
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        ES256Signer {}.verify(message, signature, &self.key.public_key)
+        ECDSASigner {}.verify(message, signature, &self.key.public_key)
     }
 }
 

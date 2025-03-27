@@ -48,7 +48,7 @@ impl KeyStorage for InternalKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             algorithms: vec![
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::Dilithium,
                 KeyAlgorithmType::BbsPlus,

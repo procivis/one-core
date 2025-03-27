@@ -76,7 +76,7 @@ impl DidMethod for DidWebVh {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE],
-            key_algorithms: vec![KeyAlgorithmType::Es256],
+            key_algorithms: vec![KeyAlgorithmType::Ecdsa],
             method_names: vec!["tdw".to_string()],
         }
     }

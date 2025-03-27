@@ -127,11 +127,11 @@ async fn test_azure_vault_generate() {
         Arc::new(ReqwestClient::default()),
     );
     vault
-        .generate(Uuid::new_v4().into(), "ES256")
+        .generate(Uuid::new_v4().into(), "ECDSA")
         .await
         .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), "ES256")
+        .generate(Uuid::new_v4().into(), "ECDSA")
         .await
         .unwrap();
 }
@@ -149,11 +149,11 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
         Arc::new(ReqwestClient::default()),
     );
     vault
-        .generate(Uuid::new_v4().into(), "ES256")
+        .generate(Uuid::new_v4().into(), "ECDSA")
         .await
         .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), "ES256")
+        .generate(Uuid::new_v4().into(), "ECDSA")
         .await
         .unwrap();
 }

@@ -244,7 +244,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         FormatterCapabilities {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
             allowed_schema_ids: vec![],
@@ -273,7 +273,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             revocation_methods: vec![RevocationType::None, RevocationType::TokenStatusList],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![

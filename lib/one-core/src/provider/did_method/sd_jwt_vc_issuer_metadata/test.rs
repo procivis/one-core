@@ -302,7 +302,7 @@ async fn test_resolve_with_certificate() {
 
     mock_key_algorithm_provider
         .expect_key_algorithm_from_name()
-        .with(eq("ES256"))
+        .with(eq("ECDSA"))
         .return_once(move |_| Some(Arc::new(mock_key_algorithm)));
 
     let provider = SdJwtVcIssuerMetadataDidMethod::new(

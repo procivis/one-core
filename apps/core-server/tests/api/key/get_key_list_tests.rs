@@ -98,7 +98,7 @@ async fn test_get_keys_filter_by_key_type() {
         .create(
             &organisation,
             TestingKeyParams {
-                key_type: Some("ES256".to_string()),
+                key_type: Some("ECDSA".to_string()),
                 ..Default::default()
             },
         )

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_crypto::signer::es256::ES256Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
@@ -16,7 +16,7 @@ use crate::provider::key_storage::model::{
     KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_storage::KeyStorage;
-use crate::provider::key_utils::{es256_public_key_as_jwk, es256_public_key_as_multibase};
+use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -41,7 +41,7 @@ pub struct Params {
 impl KeyStorage for SecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
-            algorithms: vec![KeyAlgorithmType::Es256],
+            algorithms: vec![KeyAlgorithmType::Ecdsa],
             security: vec![KeySecurity::Hardware],
             features: vec![],
         }
@@ -52,7 +52,7 @@ impl KeyStorage for SecureElementKeyProvider {
         key_id: KeyId,
         key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if key_type != "ES256" {
+        if key_type != "ECDSA" {
             return Err(KeyStorageError::UnsupportedKeyType {
                 key_type: key_type.to_owned(),
             });
@@ -94,11 +94,11 @@ struct SecureElementKeyHandle {
 
 impl SignaturePublicKeyHandle for SecureElementKeyHandle {
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        es256_public_key_as_jwk(&self.key.public_key, None)
+        ecdsa_public_key_as_jwk(&self.key.public_key, None)
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
-        es256_public_key_as_multibase(&self.key.public_key)
+        ecdsa_public_key_as_multibase(&self.key.public_key)
     }
 
     fn as_raw(&self) -> Vec<u8> {
@@ -106,7 +106,7 @@ impl SignaturePublicKeyHandle for SecureElementKeyHandle {
     }
 
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        ES256Signer {}.verify(message, signature, &self.key.public_key)
+        ECDSASigner {}.verify(message, signature, &self.key.public_key)
     }
 }
 

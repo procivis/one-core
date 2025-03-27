@@ -79,7 +79,7 @@ impl DidMethod for JWKDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec![
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::BbsPlus,
                 KeyAlgorithmType::Dilithium,

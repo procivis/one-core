@@ -19,7 +19,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({ "features": ["GENERATE_CSR"] })
     );
     assert_eq!(
-        resp["keyAlgorithm"]["ES256"]["capabilities"],
+        resp["keyAlgorithm"]["ECDSA"]["capabilities"],
         json!({ "features": ["GENERATE_CSR"] })
     );
     assert_eq!(

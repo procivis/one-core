@@ -95,7 +95,7 @@ impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
     }
 
     fn get_key_type(&self) -> &str {
-        "ES256"
+        "ECDSA"
     }
 
     fn jose_alg(&self) -> Option<String> {

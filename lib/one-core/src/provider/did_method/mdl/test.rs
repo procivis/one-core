@@ -13,8 +13,8 @@ use super::{DidMdl, Params};
 use crate::model::key::Key;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::DidMethod;
+use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::eddsa::Eddsa;
-use crate::provider::key_algorithm::es256::Es256;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 
@@ -37,9 +37,9 @@ fn test_new_did_mdl_instance() {
 
 #[tokio::test]
 async fn test_create_mdl_did_for_e256_key() {
-    let key_algorithm: Arc<dyn KeyAlgorithm> = Arc::new(Es256) as _;
+    let key_algorithm: Arc<dyn KeyAlgorithm> = Arc::new(Ecdsa) as _;
 
-    test_create_mdl_did_for("ES256", key_algorithm, &PKCS_ECDSA_P256_SHA256).await
+    test_create_mdl_did_for("ECDSA", key_algorithm, &PKCS_ECDSA_P256_SHA256).await
 }
 
 #[tokio::test]

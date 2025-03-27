@@ -58,7 +58,7 @@
 //! ```ignore rust
 //! let key_pair = core
 //!     .signature_service
-//!     .get_key_pair(&KeyAlgorithmType::Es256)
+//!     .get_key_pair(&KeyAlgorithmType::Ecdsa)
 //!     .expect("Key pair creation failed");
 //! ```
 //!
@@ -116,8 +116,8 @@ use one_core::provider::did_method::web::{Params as WebDidMethodParams, WebDidMe
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::http_client::HttpClient;
 use one_core::provider::key_algorithm::bbs::BBS;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
-use one_core::provider::key_algorithm::es256::Es256;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_storage::internal::{
@@ -130,8 +130,8 @@ use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
 use one_crypto::signer::crydi3::CRYDI3Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::signer::eddsa::EDDSASigner;
-use one_crypto::signer::es256::ES256Signer;
 use one_crypto::utilities::generate_random_seed_32;
 use one_crypto::CryptoProviderImpl;
 use secrecy::SecretSlice;
@@ -169,7 +169,7 @@ impl OneDevCore {
             HashMap::from_iter(vec![("sha-256".to_string(), Arc::new(SHA256 {}) as _)]),
             HashMap::from_iter(vec![
                 ("Ed25519".to_string(), Arc::new(EDDSASigner {}) as _),
-                ("ES256".to_string(), Arc::new(ES256Signer {}) as _),
+                ("ECDSA".to_string(), Arc::new(ECDSASigner {}) as _),
                 ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {}) as _),
                 ("BBS".to_string(), Arc::new(BBSSigner {}) as _),
             ]),
@@ -179,7 +179,7 @@ impl OneDevCore {
         let key_algorithms: HashMap<core_config::KeyAlgorithmType, Arc<dyn KeyAlgorithm>> =
             HashMap::from_iter(vec![
                 (core_config::KeyAlgorithmType::Eddsa, Arc::new(Eddsa) as _),
-                (core_config::KeyAlgorithmType::Es256, Arc::new(Es256) as _),
+                (core_config::KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa) as _),
                 (core_config::KeyAlgorithmType::BbsPlus, Arc::new(BBS) as _),
             ]);
         let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms));

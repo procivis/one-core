@@ -11,10 +11,10 @@ use one_core::provider::credential_formatter::jwt::Jwt;
 use one_core::provider::credential_formatter::model::SignatureProvider;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::DidMethod;
-use one_core::provider::key_algorithm::es256::Es256;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_crypto::signer::es256::ES256Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
@@ -65,16 +65,16 @@ async fn test_get_trust_entity_by_did_success() {
     body["did"]["id"].assert_eq(&did.id);
 }
 
-struct FakeEs256Signer {
+struct FakeEcdsaSigner {
     public_key: Vec<u8>,
     private_key: SecretSlice<u8>,
     key_id: String,
 }
 
 #[async_trait]
-impl SignatureProvider for FakeEs256Signer {
+impl SignatureProvider for FakeEcdsaSigner {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        ES256Signer {}.sign(message, &self.public_key, &self.private_key)
+        ECDSASigner {}.sign(message, &self.public_key, &self.private_key)
     }
 
     fn get_key_id(&self) -> Option<String> {
@@ -82,7 +82,7 @@ impl SignatureProvider for FakeEs256Signer {
     }
 
     fn get_key_type(&self) -> &str {
-        "ES256"
+        "ECDSA"
     }
 
     fn jose_alg(&self) -> Option<String> {
@@ -94,7 +94,7 @@ impl SignatureProvider for FakeEs256Signer {
     }
 }
 async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did, String) {
-    let (private_key, public_key) = ES256Signer::generate_key_pair();
+    let (private_key, public_key) = ECDSASigner::generate_key_pair();
 
     let key = context
         .db
@@ -103,7 +103,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
             org,
             TestingKeyParams {
                 public_key: Some(public_key.clone()),
-                key_type: Some("ES256".to_string()),
+                key_type: Some("ECDSA".to_string()),
                 ..Default::default()
             },
         )
@@ -111,8 +111,8 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
 
     let key_algorithm_provider =
         Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
-            KeyAlgorithmType::Es256,
-            Arc::new(Es256) as Arc<dyn KeyAlgorithm>,
+            KeyAlgorithmType::Ecdsa,
+            Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
         )])));
     let did_method = KeyDidMethod::new(key_algorithm_provider.clone());
     let did_value = did_method
@@ -147,7 +147,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         .verification_method[0]
         .id
         .clone();
-    let signer = FakeEs256Signer {
+    let signer = FakeEcdsaSigner {
         public_key,
         private_key,
         key_id: key_id.clone(),

@@ -63,7 +63,7 @@ impl DidMethod for KeyDidMethod {
         let decoded = decode_did(did_value)?;
         let key_type = match decoded.type_ {
             key_helpers::DidKeyType::Eddsa => "EDDSA",
-            key_helpers::DidKeyType::Ecdsa => "ES256",
+            key_helpers::DidKeyType::Ecdsa => "ECDSA",
             key_helpers::DidKeyType::Bbs => "BBS_PLUS",
         };
 
@@ -99,7 +99,7 @@ impl DidMethod for KeyDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec![
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::BbsPlus,
             ],

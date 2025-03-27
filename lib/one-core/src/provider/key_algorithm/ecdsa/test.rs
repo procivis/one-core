@@ -16,13 +16,13 @@ fn test_jwk_to_bytes() {
             3, 9, 2, 142, 246, 191, 8, 23, 185, 132, 98, 22, 72, 154, 35, 168, 46, 172, 59, 209,
             102, 11, 2, 136, 106, 79, 114, 100, 162, 102, 86, 223, 30
         ],
-        Es256.parse_jwk(&jwk).unwrap().public_key_as_raw()
+        Ecdsa.parse_jwk(&jwk).unwrap().public_key_as_raw()
     )
 }
 
 #[tokio::test]
 async fn test_generate_key() {
-    let es256_alg = Es256 {};
+    let es256_alg = Ecdsa {};
     let key = es256_alg.generate_key().unwrap();
 
     let recipient_jwk = RemoteJwk {

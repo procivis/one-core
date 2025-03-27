@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
-use one_crypto::signer::es256::ES256Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 
@@ -19,20 +19,20 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
-use crate::provider::key_utils::{es256_public_key_as_jwk, es256_public_key_as_multibase};
+use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
-pub struct Es256;
+pub struct Ecdsa;
 
 #[cfg(test)]
 mod test;
 
-impl KeyAlgorithm for Es256 {
+impl KeyAlgorithm for Ecdsa {
     fn algorithm_id(&self) -> String {
-        "ES256".to_string()
+        "ECDSA".to_string()
     }
 
     fn algorithm_type(&self) -> KeyAlgorithmType {
-        KeyAlgorithmType::Es256
+        KeyAlgorithmType::Ecdsa
     }
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
@@ -42,10 +42,10 @@ impl KeyAlgorithm for Es256 {
     }
 
     fn generate_key(&self) -> Result<GeneratedKey, KeyAlgorithmError> {
-        let (private, public) = ES256Signer::generate_key_pair();
+        let (private, public) = ECDSASigner::generate_key_pair();
 
-        let private_handle = Arc::new(Es256PrivateKeyHandle::new(private.clone(), public.clone()));
-        let public_handle = Arc::new(Es256PublicKeyHandle::new(public.clone(), None));
+        let private_handle = Arc::new(EcdsaPrivateKeyHandle::new(private.clone(), public.clone()));
+        let public_handle = Arc::new(EcdsaPublicKeyHandle::new(public.clone(), None));
 
         Ok(GeneratedKey {
             key: KeyHandle::SignatureAndKeyAgreement {
@@ -71,8 +71,8 @@ impl KeyAlgorithm for Es256 {
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
             let private_handle =
-                Arc::new(Es256PrivateKeyHandle::new(private_key, public_key.to_vec()));
-            let public_handle = Arc::new(Es256PublicKeyHandle::new(public_key.to_vec(), r#use));
+                Arc::new(EcdsaPrivateKeyHandle::new(private_key, public_key.to_vec()));
+            let public_handle = Arc::new(EcdsaPublicKeyHandle::new(public_key.to_vec(), r#use));
 
             Ok(KeyHandle::SignatureAndKeyAgreement {
                 signature: SignatureKeyHandle::WithPrivateKey {
@@ -85,7 +85,7 @@ impl KeyAlgorithm for Es256 {
                 },
             })
         } else {
-            let public_handle = Arc::new(Es256PublicKeyHandle::new(public_key.to_vec(), r#use));
+            let public_handle = Arc::new(EcdsaPublicKeyHandle::new(public_key.to_vec(), r#use));
 
             Ok(KeyHandle::SignatureAndKeyAgreement {
                 signature: SignatureKeyHandle::PublicKeyOnly(public_handle.clone()),
@@ -118,8 +118,8 @@ impl KeyAlgorithm for Es256 {
             )
             .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
 
-            let public_key = ES256Signer::parse_public_key_coordinates(&x, &y, true)?;
-            let handle = Arc::new(Es256PublicKeyHandle::new(public_key, data.r#use.clone()));
+            let public_key = ECDSASigner::parse_public_key_coordinates(&x, &y, true)?;
+            let handle = Arc::new(EcdsaPublicKeyHandle::new(public_key, data.r#use.clone()));
 
             Ok(KeyHandle::SignatureAndKeyAgreement {
                 signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
@@ -135,8 +135,8 @@ impl KeyAlgorithm for Es256 {
     }
 
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
-        let public_key = ES256Signer::parse_public_key_from_der(public_key_der, true)?;
-        let handle = Arc::new(Es256PublicKeyHandle::new(public_key, None));
+        let public_key = ECDSASigner::parse_public_key_from_der(public_key_der, true)?;
+        let handle = Arc::new(EcdsaPublicKeyHandle::new(public_key, None));
         Ok(KeyHandle::SignatureAndKeyAgreement {
             signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
             key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
@@ -144,23 +144,23 @@ impl KeyAlgorithm for Es256 {
     }
 }
 
-struct Es256PublicKeyHandle {
+struct EcdsaPublicKeyHandle {
     public_key: Vec<u8>,
     r#use: Option<String>,
 }
 
-impl Es256PublicKeyHandle {
+impl EcdsaPublicKeyHandle {
     fn new(public_key: Vec<u8>, r#use: Option<String>) -> Self {
         Self { public_key, r#use }
     }
 }
 
-struct Es256PrivateKeyHandle {
+struct EcdsaPrivateKeyHandle {
     private_key: SecretSlice<u8>,
     public_key: Vec<u8>,
 }
 
-impl Es256PrivateKeyHandle {
+impl EcdsaPrivateKeyHandle {
     fn new(private_key: SecretSlice<u8>, public_key: Vec<u8>) -> Self {
         Self {
             private_key,
@@ -169,13 +169,13 @@ impl Es256PrivateKeyHandle {
     }
 }
 
-impl SignaturePublicKeyHandle for Es256PublicKeyHandle {
+impl SignaturePublicKeyHandle for EcdsaPublicKeyHandle {
     fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        es256_public_key_as_jwk(&self.public_key, self.r#use.clone())
+        ecdsa_public_key_as_jwk(&self.public_key, self.r#use.clone())
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
-        es256_public_key_as_multibase(&self.public_key)
+        ecdsa_public_key_as_multibase(&self.public_key)
     }
 
     fn as_raw(&self) -> Vec<u8> {
@@ -183,24 +183,24 @@ impl SignaturePublicKeyHandle for Es256PublicKeyHandle {
     }
 
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        ES256Signer {}.verify(message, signature, &self.public_key)
+        ECDSASigner {}.verify(message, signature, &self.public_key)
     }
 }
 
 #[async_trait::async_trait]
-impl SignaturePrivateKeyHandle for Es256PrivateKeyHandle {
+impl SignaturePrivateKeyHandle for EcdsaPrivateKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        ES256Signer {}.sign(message, &self.public_key, &self.private_key)
+        ECDSASigner {}.sign(message, &self.public_key, &self.private_key)
     }
 }
 
-impl PublicKeyAgreementHandle for Es256PublicKeyHandle {
+impl PublicKeyAgreementHandle for EcdsaPublicKeyHandle {
     fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError> {
-        ES256Signer::bytes_as_jwk(&self.public_key).map_err(KeyHandleError::Encryption)
+        ECDSASigner::bytes_as_jwk(&self.public_key).map_err(KeyHandleError::Encryption)
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {
-        es256_public_key_as_multibase(&self.public_key)
+        ecdsa_public_key_as_multibase(&self.public_key)
     }
 
     fn as_raw(&self) -> Vec<u8> {
@@ -209,11 +209,11 @@ impl PublicKeyAgreementHandle for Es256PublicKeyHandle {
 }
 
 #[async_trait]
-impl PrivateKeyAgreementHandle for Es256PrivateKeyHandle {
+impl PrivateKeyAgreementHandle for EcdsaPrivateKeyHandle {
     async fn shared_secret(
         &self,
         remote_jwk: &RemoteJwk,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
-        ES256Signer::shared_secret_p256(&self.private_key, remote_jwk)
+        ECDSASigner::shared_secret_p256(&self.private_key, remote_jwk)
     }
 }

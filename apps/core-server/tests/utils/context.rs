@@ -11,7 +11,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use super::api_clients::Client;
-use super::db_clients::keys::es256_testing_params;
+use super::db_clients::keys::ecdsa_testing_params;
 use super::db_clients::DbClient;
 use super::mock_server::MockServer;
 use super::server::run_server;
@@ -91,7 +91,7 @@ impl TestContext {
         let key = context
             .db
             .keys
-            .create(&organisation, es256_testing_params())
+            .create(&organisation, ecdsa_testing_params())
             .await;
         let did = context
             .db

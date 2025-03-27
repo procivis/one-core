@@ -165,7 +165,7 @@ async fn test_mrz_proof_process() {
             let expected_issuer = expected_issuer.to_did_value().unwrap();
             assert_eq!(issuer, Some(expected_issuer));
             assert_eq!(verification_method, verification_method);
-            assert_eq!(alg, "ES256");
+            assert_eq!(alg, "ECDSA");
             assert_eq!(digest.len(), 3);
             assert_eq!(signature.len(), 64);
             Ok(())

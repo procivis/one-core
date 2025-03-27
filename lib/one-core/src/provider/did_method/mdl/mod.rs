@@ -145,7 +145,7 @@ impl DidMethod for DidMdl {
 
             let decoded_did_key = decode_did(&did_key)?;
             let algorithm = if decoded_did_key.type_ == DidKeyType::Ecdsa {
-                "ES256"
+                "ECDSA"
             } else if decoded_did_key.type_ == DidKeyType::Eddsa {
                 "EDDSA"
             } else {
@@ -187,7 +187,7 @@ impl DidMethod for DidMdl {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::CREATE, Operation::RESOLVE],
-            key_algorithms: vec![KeyAlgorithmType::Es256, KeyAlgorithmType::Eddsa],
+            key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             method_names: vec!["mdl".to_string()],
         }
     }

@@ -127,7 +127,7 @@ async fn test_did_key_resolve_details_eddsa() {
 
 // https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/nist-curves.json
 #[tokio::test]
-async fn test_did_key_resolve_details_es256() {
+async fn test_did_key_resolve_details_ecdsa() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
         .expect_reconstruct_key()
@@ -156,7 +156,7 @@ async fn test_did_key_resolve_details_es256() {
             )))
         });
 
-    let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::Es256);
+    let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::Ecdsa);
 
     let result = did_method
         .resolve(

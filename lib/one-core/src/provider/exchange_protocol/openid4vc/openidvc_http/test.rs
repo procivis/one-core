@@ -1185,7 +1185,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
     });
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
-        .return_once(|_| Some((KeyAlgorithmType::Es256, Arc::new(key_alg))));
+        .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(key_alg))));
 
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4VCParams {

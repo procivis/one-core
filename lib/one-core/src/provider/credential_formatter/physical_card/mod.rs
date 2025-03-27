@@ -124,7 +124,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         FormatterCapabilities {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
             allowed_schema_ids: vec![
@@ -140,7 +140,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
             revocation_methods: vec![RevocationType::None],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![

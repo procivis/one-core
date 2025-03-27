@@ -2288,7 +2288,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
                 .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Es256);
+                .return_once(|| KeyAlgorithmType::Ecdsa);
 
             Some(Arc::new(key_algorithm))
         });

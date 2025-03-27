@@ -6,7 +6,7 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
-async fn test_create_key_es256() {
+async fn test_create_key_ecdsa() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -14,7 +14,7 @@ async fn test_create_key_es256() {
     let resp = context
         .api
         .keys
-        .create(organisation.id, "ES256", "ESTEST")
+        .create(organisation.id, "ECDSA", "ESTEST")
         .await;
 
     // THEN
@@ -24,7 +24,7 @@ async fn test_create_key_es256() {
     let key = context.db.keys.get(&resp["id"].parse()).await;
 
     assert_eq!(key.name, "ESTEST");
-    assert_eq!(key.key_type, "ES256");
+    assert_eq!(key.key_type, "ECDSA");
     assert!(!key.public_key.is_empty());
     assert_eq!(key.organisation.unwrap().id, organisation.id);
 }

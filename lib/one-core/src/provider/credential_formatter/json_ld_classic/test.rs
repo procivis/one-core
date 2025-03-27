@@ -186,7 +186,7 @@ async fn create_token(include_layout: bool) -> Value {
         .returning(|| Some("keyid".to_string()));
     auth_fn
         .expect_get_key_type()
-        .return_const("ES256".to_string());
+        .return_const("ECDSA".to_string());
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -289,7 +289,7 @@ async fn test_format_presentation_multi_tokens() {
         embed_layout_properties: true,
         allowed_contexts: None,
     };
-    let algorithm = "ES256";
+    let algorithm = "ECDSA";
 
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();

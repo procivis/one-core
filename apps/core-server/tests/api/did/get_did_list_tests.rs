@@ -80,7 +80,7 @@ async fn test_get_did_list_filters_with_key_filtering() {
         .create(
             &organisation,
             TestingKeyParams {
-                key_type: Some("ES256".to_string()),
+                key_type: Some("ECDSA".to_string()),
                 ..Default::default()
             },
         )
@@ -259,7 +259,7 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
         .create(
             &organisation,
             TestingKeyParams {
-                key_type: Some("ES256".to_string()),
+                key_type: Some("ECDSA".to_string()),
                 ..Default::default()
             },
         )

@@ -127,7 +127,7 @@ pub fn extract_jwk_from_der(
             }
 
             key_algorithm_provider
-                .key_algorithm_from_name("ES256")
+                .key_algorithm_from_name("ECDSA")
                 .ok_or(DidMethodError::KeyAlgorithmNotFound)?
         }
         other => {

@@ -8,9 +8,9 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 
 pub mod bbs;
+pub mod ecdsa;
 pub mod eddsa;
 pub mod error;
-pub mod es256;
 pub mod key;
 pub mod ml_dsa;
 pub mod model;

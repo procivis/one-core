@@ -218,7 +218,7 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE],
-            key_algorithms: vec![KeyAlgorithmType::Es256, KeyAlgorithmType::Eddsa],
+            key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             method_names: vec!["sd_jwt_vc_issuer_metadata".to_string()],
         }
     }

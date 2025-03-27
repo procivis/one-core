@@ -17,7 +17,7 @@ async fn test_capabilities_are_present_in_config() {
     assert_eq!(
         resp["did"]["KEY"]["capabilities"],
         json!({
-            "keyAlgorithms": ["ES256", "EDDSA", "BBS_PLUS"],
+            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["key"],
         })
@@ -25,7 +25,7 @@ async fn test_capabilities_are_present_in_config() {
     assert_eq!(
         resp["did"]["WEB"]["capabilities"],
         json!({
-            "keyAlgorithms": ["ES256", "EDDSA", "BBS_PLUS", "DILITHIUM"],
+            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "DILITHIUM"],
             "operations": ["RESOLVE", "CREATE", "DEACTIVATE"],
             "methodNames": ["web"],
         })
@@ -33,7 +33,7 @@ async fn test_capabilities_are_present_in_config() {
     assert_eq!(
         resp["did"]["JWK"]["capabilities"],
         json!({
-            "keyAlgorithms": ["ES256", "EDDSA", "BBS_PLUS", "DILITHIUM"],
+            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "DILITHIUM"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["jwk"],
         })
@@ -41,7 +41,7 @@ async fn test_capabilities_are_present_in_config() {
     assert_eq!(
         resp["did"]["X509"]["capabilities"],
         json!({
-            "keyAlgorithms": ["ES256", "EDDSA"],
+            "keyAlgorithms": ["ECDSA", "EDDSA"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["x509"],
         })
@@ -170,7 +170,7 @@ async fn test_webvh_did_method_config() {
         resp["did"]["WEBVH"]["capabilities"]["keyAlgorithms"]
             .as_array()
             .unwrap(),
-        &["ES256"]
+        &["ECDSA"]
     );
     assert_eq!(
         resp["did"]["WEBVH"]["capabilities"]["methodNames"]

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
-use one_crypto::signer::es256::ES256Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use time::OffsetDateTime;
@@ -233,13 +233,13 @@ impl RemoteKeyAdapter {
         let mut decompressed_public_key = None;
 
         let algorithm = match key.key_type.as_str() {
-            "ES256" => &PKCS_ECDSA_P256_SHA256,
+            "ECDSA" => &PKCS_ECDSA_P256_SHA256,
             "EDDSA" => &PKCS_ED25519,
             other => bail!("Unsupported key type `{other}` for CSR"),
         };
         if algorithm == &PKCS_ECDSA_P256_SHA256 {
             decompressed_public_key = Some(
-                ES256Signer::parse_public_key(&key.public_key, false)
+                ECDSASigner::parse_public_key(&key.public_key, false)
                     .context("Key decompression failed")?,
             );
         }

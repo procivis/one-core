@@ -1,6 +1,6 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::signer::eddsa::EDDSASigner;
-use one_crypto::signer::es256::ES256Signer;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::key::KeyHandleError;
@@ -28,12 +28,12 @@ pub fn eddsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHan
     Ok(format!("z{}", bs58::encode(data).into_string()))
 }
 
-pub fn es256_public_key_as_jwk(
+pub fn ecdsa_public_key_as_jwk(
     public_key: &[u8],
     r#use: Option<String>,
 ) -> Result<PublicKeyJwk, KeyHandleError> {
     let (x, y) =
-        ES256Signer::get_public_key_coordinates(public_key).map_err(KeyHandleError::Signer)?;
+        ECDSASigner::get_public_key_coordinates(public_key).map_err(KeyHandleError::Signer)?;
     Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
         r#use,
         kid: None,
@@ -47,9 +47,9 @@ pub fn es256_public_key_as_jwk(
     }))
 }
 
-pub fn es256_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+pub fn ecdsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
     let codec = &[0x80, 0x24];
-    let key = ES256Signer::parse_public_key(public_key, true)
+    let key = ECDSASigner::parse_public_key(public_key, true)
         .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
     let data = [codec, key.as_slice()].concat();
     Ok(format!("z{}", bs58::encode(data).into_string()))

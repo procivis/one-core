@@ -530,8 +530,8 @@ impl CredentialFormatter for MdocFormatter {
                 RevocationType::None,
                 RevocationType::MdocMsoUpdateSuspension,
             ],
-            signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
-            verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
+            signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
+            verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             verification_key_storages: vec![KeyStorageType::Internal],
             datatypes: vec![
                 "STRING".to_string(),
@@ -600,7 +600,7 @@ fn try_extract_holder_did_mdl_public_key(
 ) -> Result<DidValue, FormatterError> {
     let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
     let algorithm = match &holder_public_key {
-        PublicKeyJwk::Ec(_) => "ES256",
+        PublicKeyJwk::Ec(_) => "ECDSA",
         PublicKeyJwk::Okp(_) => "EDDSA",
         key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
             return Err(FormatterError::Failed(format!(
@@ -1164,7 +1164,7 @@ fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> 
 
 fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, FormatterError> {
     let algorithm = match algorithm {
-        "ES256" => iana::Algorithm::ES256,
+        "ECDSA" => iana::Algorithm::ES256,
         "EDDSA" => iana::Algorithm::EdDSA,
         _ => {
             return Err(FormatterError::Failed(format!(
@@ -1223,7 +1223,7 @@ fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<String
 
     if let Some(RegisteredLabelWithPrivate::Assigned(algorithm)) = alg {
         match algorithm {
-            iana::Algorithm::ES256 => Some("ES256".to_owned()),
+            iana::Algorithm::ES256 => Some("ECDSA".to_owned()),
             iana::Algorithm::EdDSA => Some("Ed25519".to_owned()),
             _ => None,
         }

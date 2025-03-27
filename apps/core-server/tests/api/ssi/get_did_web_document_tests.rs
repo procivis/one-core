@@ -7,7 +7,7 @@ use crate::utils;
 use crate::utils::server::run_server;
 
 #[tokio::test]
-async fn test_get_did_web_document_es256_success() {
+async fn test_get_did_web_document_ecdsa_success() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -15,7 +15,7 @@ async fn test_get_did_web_document_es256_success() {
     let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_es256_key(&db_conn, &organisation).await;
+    let key = fixtures::create_ecdsa_key(&db_conn, &organisation).await;
     let id = Uuid::new_v4();
     let did = fixtures::create_did(
         &db_conn,

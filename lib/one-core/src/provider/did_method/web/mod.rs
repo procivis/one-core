@@ -107,7 +107,7 @@ impl DidMethod for WebDidMethod {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE, Operation::DEACTIVATE],
             key_algorithms: vec![
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::BbsPlus,
                 KeyAlgorithmType::Dilithium,

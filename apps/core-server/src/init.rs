@@ -34,8 +34,8 @@ use one_core::provider::did_method::DidMethod;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::http_client::HttpClient;
 use one_core::provider::key_algorithm::bbs::BBS;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
-use one_core::provider::key_algorithm::es256::Es256;
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
 use one_core::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
@@ -67,8 +67,8 @@ use one_core::{
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
 use one_crypto::signer::crydi3::CRYDI3Signer;
+use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::signer::eddsa::EDDSASigner;
-use one_crypto::signer::es256::ES256Signer;
 use one_crypto::{CryptoProviderImpl, Hasher, Signer};
 use sentry::integrations::tracing::EventFilter;
 use serde_json::json;
@@ -94,7 +94,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
 
     let signers: Vec<(String, Arc<dyn Signer>)> = vec![
         ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
-        ("ES256".to_string(), Arc::new(ES256Signer {})),
+        ("ECDSA".to_string(), Arc::new(ECDSASigner {})),
         ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {})),
         ("BBS".to_string(), Arc::new(BBSSigner {})),
     ];
@@ -114,7 +114,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
             }
             let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
                 KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
-                KeyAlgorithmType::Es256 => Arc::new(Es256),
+                KeyAlgorithmType::Ecdsa => Arc::new(Ecdsa),
                 KeyAlgorithmType::BbsPlus => Arc::new(BBS),
                 KeyAlgorithmType::Dilithium => Arc::new(MlDsa),
             };

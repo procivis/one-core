@@ -318,8 +318,8 @@ keyAlgorithm:
     display: "keyAlgorithm.eddsa"
     order: 0
     params: null
-  ES256:
-    display: "keyAlgorithm.es256"
+  ECDSA:
+    display: "keyAlgorithm.ecdsa"
     order: 1
     params: null
   BBS_PLUS:

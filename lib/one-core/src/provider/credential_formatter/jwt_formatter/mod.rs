@@ -302,7 +302,7 @@ impl CredentialFormatter for JWTFormatter {
         FormatterCapabilities {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
             features: vec![Features::SupportsCredentialDesign],
@@ -317,7 +317,7 @@ impl CredentialFormatter for JWTFormatter {
             ],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Es256,
+                KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
             verification_key_storages: vec![

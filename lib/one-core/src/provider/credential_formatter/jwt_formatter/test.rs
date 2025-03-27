@@ -652,7 +652,7 @@ async fn test_format_presentation() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_name()
-        .with(eq("ES256"))
+        .with(eq("ECDSA"))
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let jwt_formatter = JWTFormatter {
@@ -669,7 +669,7 @@ async fn test_format_presentation() {
         .format_presentation(
             &[jwt_token.to_owned()],
             &"did:example:123".parse().unwrap(),
-            "ES256",
+            "ECDSA",
             Box::new(auth_fn),
             Default::default(),
         )

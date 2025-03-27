@@ -159,7 +159,7 @@ pub(crate) async fn check_certificate(
     request_body = KeyGenerateCSRRequestRestDTO,
     responses(CreatedOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
-        ("id" = KeyId, Path, description = "Key id. Must be either `ES256` or `EDDSA`.")
+        ("id" = KeyId, Path, description = "Key id. Must be either `ECDSA` or `EDDSA`.")
     ),
     tag = "key",
     security(

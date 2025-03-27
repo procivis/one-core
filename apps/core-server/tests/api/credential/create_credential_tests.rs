@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::es256_testing_params;
+use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -234,19 +234,19 @@ async fn test_create_credential_with_issuer_key() {
     let key1 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     let key2 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     let key3 = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     let credential_schema = context
@@ -317,7 +317,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
     let key = context
         .db
         .keys
-        .create(&organisation, es256_testing_params())
+        .create(&organisation, ecdsa_testing_params())
         .await;
 
     let credential_schema = context

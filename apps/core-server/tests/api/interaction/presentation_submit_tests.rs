@@ -228,7 +228,7 @@ async fn setup_submittable_presentation(
         &context.db.db_conn,
         organisation,
         Some(TestingKeyParams {
-            key_type: Some("ES256".to_string()),
+            key_type: Some("ECDSA".to_string()),
             storage_type: Some("INTERNAL".to_string()),
             public_key: Some(vec![
                 2, 41, 83, 61, 165, 86, 37, 125, 46, 237, 61, 7, 255, 169, 76, 11, 51, 20, 151,
@@ -367,7 +367,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         &db_conn,
         &organisation,
         Some(TestingKeyParams {
-            key_type: Some("ES256".to_string()),
+            key_type: Some("ECDSA".to_string()),
             storage_type: Some("INTERNAL".to_string()),
             public_key: Some(vec![
                 2, 41, 83, 61, 165, 86, 37, 125, 46, 237, 61, 7, 255, 169, 76, 11, 51, 20, 151,

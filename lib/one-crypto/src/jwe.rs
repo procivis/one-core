@@ -446,8 +446,8 @@ pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, Encr
 mod test {
     use super::*;
     use crate::jwe::EncryptionAlgorithm::{A128CBCHS256, A256GCM};
+    use crate::signer::ecdsa::ECDSASigner;
     use crate::signer::eddsa::EDDSASigner;
-    use crate::signer::es256::ES256Signer;
 
     const PRIVATE_JWK_EC: &str = r#"{"kty":"EC","crv":"P-256","x":"KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo","y":"d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU","d":"81vofgUlDnb6OUF-WPhH8p1T_mo_F2H9XZvaTvtEZHk"}"#;
     const PRIVATE_JWK_ED25519: &str = r#"{"kty":"OKP","crv":"Ed25519","x":"0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM","d":"IM92LwWowNDr7OHXEYwuZ1uVm71ihELJda3i50doJ53TISuUpwwLHkMbrOaChSecW8sERC65hZBJggvBXY71Mw"}"#;
@@ -463,7 +463,7 @@ mod test {
                 &self,
                 remote_jwk: &RemoteJwk,
             ) -> Result<SecretSlice<u8>, EncryptionError> {
-                ES256Signer::shared_secret_p256(&self.key.to_bytes().to_vec().into(), remote_jwk)
+                ECDSASigner::shared_secret_p256(&self.key.to_bytes().to_vec().into(), remote_jwk)
             }
         }
 

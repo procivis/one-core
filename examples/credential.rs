@@ -26,7 +26,7 @@ async fn main() -> Result<(), CredentialServiceError> {
 
     let key_pair = core
         .signature_service
-        .get_key_pair(&KeyAlgorithmType::Es256)
+        .get_key_pair(&KeyAlgorithmType::Ecdsa)
         .expect("Key pair creation failed");
 
     let issuer_key = Key {
@@ -38,7 +38,7 @@ async fn main() -> Result<(), CredentialServiceError> {
         //Encryption is disabled so key_reference just holds private key
         key_reference: key_pair.private.expose_secret().to_vec(),
         storage_type: StorageType::Internal.to_string(),
-        key_type: KeyAlgorithmType::Es256.to_string(),
+        key_type: KeyAlgorithmType::Ecdsa.to_string(),
         organisation: None,
     };
 

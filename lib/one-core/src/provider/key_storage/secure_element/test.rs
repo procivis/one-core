@@ -34,7 +34,7 @@ async fn test_generate_success() {
 
     let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
 
-    let result = provider.generate(key_id.into(), "ES256").await.unwrap();
+    let result = provider.generate(key_id.into(), "ECDSA").await.unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, b"key_reference");
 }
@@ -71,7 +71,7 @@ async fn test_sign_success() {
             public_key: b"public_key".to_vec(),
             name: "".to_string(),
             storage_type: "SECURE_ELEMENT".to_string(),
-            key_type: "ES256".to_string(),
+            key_type: "ECDSA".to_string(),
             organisation: None,
         })
         .unwrap();

@@ -53,9 +53,9 @@ impl KeysDB {
     }
 }
 
-pub fn es256_testing_params() -> TestingKeyParams {
+pub fn ecdsa_testing_params() -> TestingKeyParams {
     TestingKeyParams {
-        key_type: Some("ES256".to_string()),
+        key_type: Some("ECDSA".to_string()),
         storage_type: Some("INTERNAL".to_string()),
 
         // multibase: zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ

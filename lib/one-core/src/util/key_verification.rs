@@ -156,7 +156,7 @@ mod test {
             .expect_key_algorithm_from_id()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "ES256");
+                assert_eq!(alg, "ECDSA");
                 true
             })
             .returning(move |_| Some(key_alg.clone()));
@@ -171,7 +171,7 @@ mod test {
             .verify(
                 Some("did:example:123".parse().unwrap()),
                 None,
-                "ES256",
+                "ECDSA",
                 "token".as_bytes(),
                 b"signature",
             )
@@ -239,7 +239,7 @@ mod test {
             .expect_key_algorithm_from_id()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "ES256");
+                assert_eq!(alg, "ECDSA");
                 true
             })
             .returning(move |_| Some(key_alg.clone()));
@@ -254,7 +254,7 @@ mod test {
             .verify(
                 Some("did:example:123".parse().unwrap()),
                 None,
-                "ES256",
+                "ECDSA",
                 "token".as_bytes(),
                 b"signature",
             )

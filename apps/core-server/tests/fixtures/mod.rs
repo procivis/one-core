@@ -208,12 +208,12 @@ pub async fn create_key(
     key
 }
 
-pub async fn create_es256_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
+pub async fn create_ecdsa_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
     create_key(
         db_conn,
         organisation,
         Some(TestingKeyParams {
-            key_type: Some("ES256".to_string()),
+            key_type: Some("ECDSA".to_string()),
             storage_type: Some("INTERNAL".to_string()),
 
             // multibase: zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ

@@ -6,8 +6,8 @@ pub enum KeyAlgorithmType {
     Eddsa,
     #[strum(serialize = "BBS_PLUS")]
     BbsPlus,
-    #[strum(serialize = "ES256")]
-    Es256,
+    #[strum(serialize = "ECDSA")]
+    Ecdsa,
 }
 
 #[derive(Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord)]

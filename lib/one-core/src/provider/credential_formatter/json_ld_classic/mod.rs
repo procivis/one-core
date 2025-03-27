@@ -235,7 +235,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let cryptosuite = match algorithm {
             "EDDSA" => "eddsa-rdfc-2022",
-            "ES256" => "ecdsa-rdfc-2019",
+            "ECDSA" => "ecdsa-rdfc-2019",
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported algorithm: {algorithm}"
@@ -294,7 +294,7 @@ impl CredentialFormatter for JsonLdClassic {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
-            signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
+            signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
@@ -319,7 +319,7 @@ impl CredentialFormatter for JsonLdClassic {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Es256],
+            verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             verification_key_storages: vec![
                 KeyStorageType::Internal,
                 KeyStorageType::AzureVault,
@@ -480,7 +480,7 @@ impl JsonLdClassic {
     ) -> Result<VcdmCredential, FormatterError> {
         let cryptosuite = match algorithm {
             "EDDSA" => "eddsa-rdfc-2022",
-            "ES256" => "ecdsa-rdfc-2019",
+            "ECDSA" => "ecdsa-rdfc-2019",
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported algorithm: {algorithm}"
@@ -639,8 +639,8 @@ pub(super) async fn verify_proof_signature(
     let algorithm = match cryptosuite {
         // todo: check if `eddsa-2022` is correct as the VCDM test suite is sending this
         "eddsa-rdfc-2022" | "eddsa-2022" => "Ed25519",
-        "ecdsa-rdfc-2019" => "ES256",
-        "ecdsa-xi-2023" => "ES256",
+        "ecdsa-rdfc-2019" => "ECDSA",
+        "ecdsa-xi-2023" => "ECDSA",
         _ => {
             return Err(FormatterError::CouldNotVerify(format!(
                 "Unsupported cryptosuite: {cryptosuite}"
