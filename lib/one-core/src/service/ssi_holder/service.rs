@@ -836,7 +836,7 @@ impl SSIHolderService {
                     let did = get_or_create_did(
                         &*self.did_method_provider,
                         &*self.did_repository,
-                        &None,
+                        &interaction.organisation,
                         &did_value,
                         DidRole::Verifier,
                     )
