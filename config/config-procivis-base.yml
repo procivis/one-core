@@ -266,7 +266,22 @@ datatype:
     display: "datatype.date"
     type: "DATE"
     order: 300
-    params: null
+    params:
+      public:
+        formats: ["date", "datetime"]
+  BIRTH_DATE:
+    display: "datatype.birth_date"
+    type: "DATE"
+    order: 310
+    params:
+      public:
+        formats: ["date", "datetime"]
+        preferredFormat: "date"
+        min: 1900-01-01
+        max: "NOW"
+        error:
+          de: "Bitte wählen Sie ein Datum zwischen 1900-1-1 und heute"
+          en: "Please choose a date between 1900-1-1 and today"
   EMAIL:
     display: "datatype.email"
     type: "STRING"
@@ -312,17 +327,6 @@ datatype:
         error:
           de: "Bitte wählen Sie eine Zahl zwischen 0 und 9999"
           en: "Please provide a number between 0 and 9999"
-  BIRTH_DATE:
-    display: "datatype.birth_date"
-    type: "DATE"
-    order: 310
-    params:
-      public:
-        min: 1900-01-01
-        max: "NOW"
-        error:
-          de: "Bitte wählen Sie ein Datum zwischen 1900-1-1 und heute"
-          en: "Please choose a date between 1900-1-1 and today"
   OBJECT:
     display: "datatype.object"
     type: "OBJECT"

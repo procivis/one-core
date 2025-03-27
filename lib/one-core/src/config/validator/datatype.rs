@@ -3,12 +3,15 @@ use std::str::ParseBoolError;
 
 use serde::Deserialize;
 use thiserror::Error;
-use time::error::{ComponentRange, Parse, TryFromParsed};
+use time::format_description::well_known::Rfc3339;
+use time::format_description::FormatItem;
 use time::macros::format_description;
-use time::{Date, Month, OffsetDateTime, PrimitiveDateTime};
+use time::{Date, OffsetDateTime};
 
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::config::ConfigValidationError;
+
+const DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
 #[derive(Debug, Error)]
 pub enum DatatypeValidationError {
@@ -36,13 +39,9 @@ pub enum DatatypeValidationError {
 
     // date
     #[error("Date parse failure: `{0}`")]
-    DateParseFailure(time::error::Parse),
-    #[error("Date params parsing: `{0}`")]
-    DateParamsParsing(serde_json::Error),
-    #[error("Date integer parse failure: `{0}`")]
-    DateIntegerParseFailure(ParseIntError),
-    #[error("Date component out of range: `{0}`")]
-    DateComponentOutOfRange(ComponentRange),
+    DateParseFailure(#[from] time::error::Parse),
+    #[error("Date params: `{0}`")]
+    DateParams(#[from] DateParamsError),
     #[error("Date too early: `{0}` < `{1}`")]
     DateTooEarly(String, String),
     #[error("Date too late: `{0}` > `{1}`")]
@@ -85,6 +84,14 @@ pub enum DatatypeValidationError {
     PathDoesntMatchClaimSchemaKey(String, String),
 }
 
+#[derive(Debug, Error)]
+pub enum DateParamsError {
+    #[error("At least one format must be provided")]
+    MissingFormats,
+    #[error("The preferred format must be defined inside the formats list")]
+    PreferredFormatNotAllowed,
+}
+
 pub fn validate_datatypes<'a>(
     query_datatypes: impl Iterator<Item = &'a str>,
     config: &DatatypeConfig,
@@ -106,11 +113,11 @@ pub fn validate_datatype_value(
     match fields.r#type {
         DatatypeType::String => validate_string(value, config.get(datatype)?)?,
         DatatypeType::Number => validate_number(value, config.get(datatype)?)?,
-        DatatypeType::Date => validate_date(value, config.get(datatype)?)?,
         DatatypeType::File => validate_file(value, config.get(datatype)?)?,
         DatatypeType::Object => validate_object(value, config.get(datatype)?)?,
         DatatypeType::Array => validate_array(value, config.get(datatype)?)?,
         DatatypeType::Boolean => validate_boolean(value, config.get(datatype)?)?,
+        DatatypeType::Date => validate_date(value, config.get(datatype)?)?,
     };
 
     Ok(())
@@ -178,37 +185,101 @@ fn validate_number(value: &str, params: NumberParams) -> Result<(), DatatypeVali
     Ok(())
 }
 
+#[derive(Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum DateFormat {
+    Date,
+    Datetime,
+}
+
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct DateParams {
+    pub formats: Vec<DateFormat>,
+    pub preferred_format: Option<DateFormat>,
     pub min: Option<String>,
     pub max: Option<String>,
 }
 
 fn validate_date(value: &str, params: DateParams) -> Result<(), DatatypeValidationError> {
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    let date = match PrimitiveDateTime::parse(value, &format) {
-        Ok(date) => Ok(date.assume_utc()),
-        Err(error) => Err(DatatypeValidationError::DateParseFailure(error)),
-    }?;
+    validate_date_params(&params)?;
 
-    if let Some(min) = &params.min {
-        let min_date = parse_min_max_date(min)?;
-        if date < min_date {
-            return Err(DatatypeValidationError::DateTooEarly(
-                value.to_string(),
-                min.to_owned(),
-            ));
+    let (valid, mut errors): (Vec<_>, Vec<_>) = params
+        .formats
+        .iter()
+        .map(|format| match format {
+            DateFormat::Date => {
+                let date = Date::parse(value, DATE_FORMAT)?;
+
+                if let Some(min) = &params.min {
+                    let min_date = parse_min_max_date(min)?;
+                    if date < min_date {
+                        return Err(DatatypeValidationError::DateTooEarly(
+                            value.to_string(),
+                            min.to_owned(),
+                        ));
+                    }
+                }
+
+                if let Some(max) = &params.max {
+                    let max_date = parse_min_max_date(max)?;
+                    if date > max_date {
+                        return Err(DatatypeValidationError::DateTooLate(
+                            value.to_string(),
+                            max.to_owned(),
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+            DateFormat::Datetime => {
+                let datetime = OffsetDateTime::parse(value, &Rfc3339)?;
+                if let Some(min) = &params.min {
+                    let min_date = parse_min_max_datetime(min)?;
+                    if datetime < min_date {
+                        return Err(DatatypeValidationError::DateTooEarly(
+                            value.to_string(),
+                            min.to_owned(),
+                        ));
+                    }
+                }
+
+                if let Some(max) = &params.max {
+                    let max_date = parse_min_max_datetime(max)?;
+                    if datetime > max_date {
+                        return Err(DatatypeValidationError::DateTooLate(
+                            value.to_string(),
+                            max.to_owned(),
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+        })
+        .partition(|r| r.is_ok());
+
+    if valid.is_empty() {
+        if let Some(last_error) = errors.pop() {
+            return last_error;
         }
     }
 
-    if let Some(max) = &params.max {
-        let max_date = parse_min_max_date(max)?;
-        if date > max_date {
-            return Err(DatatypeValidationError::DateTooLate(
-                value.to_string(),
-                max.to_owned(),
-            ));
-        }
+    Ok(())
+}
+
+fn validate_date_params(params: &DateParams) -> Result<(), DateParamsError> {
+    if params.formats.is_empty() {
+        return Err(DateParamsError::MissingFormats);
+    }
+
+    if params
+        .preferred_format
+        .as_ref()
+        .is_some_and(|f| !params.formats.contains(f))
+    {
+        return Err(DateParamsError::PreferredFormatNotAllowed);
     }
 
     Ok(())
@@ -305,33 +376,24 @@ fn validate_array(_value: &str, _params: ArrayParams) -> Result<(), DatatypeVali
     Err(DatatypeValidationError::ArrayValueShouldNotBeSpecifiedInRequest)
 }
 
-fn parse_min_max_date(value: &str) -> Result<OffsetDateTime, DatatypeValidationError> {
+fn parse_min_max_date(value: &str) -> Result<Date, DatatypeValidationError> {
+    if value == "NOW" {
+        return Ok(OffsetDateTime::now_utc().date());
+    }
+
+    Ok(Date::parse(value, DATE_FORMAT)?)
+}
+
+fn parse_min_max_datetime(value: &str) -> Result<OffsetDateTime, DatatypeValidationError> {
     if value == "NOW" {
         return Ok(OffsetDateTime::now_utc());
     }
 
-    let splits: Vec<&str> = value.split('-').collect();
-    if splits.len() != 3 {
-        return Err(DatatypeValidationError::DateParseFailure(
-            Parse::TryFromParsed(TryFromParsed::InsufficientInformation),
-        ));
+    if let Ok(date) = Date::parse(value, DATE_FORMAT) {
+        return Ok(date.midnight().assume_utc());
     }
 
-    let year = splits[0]
-        .parse::<i32>()
-        .map_err(DatatypeValidationError::DateIntegerParseFailure)?;
-    let month = splits[1]
-        .parse::<u8>()
-        .map_err(DatatypeValidationError::DateIntegerParseFailure)?;
-    let day = splits[2]
-        .parse::<u8>()
-        .map_err(DatatypeValidationError::DateIntegerParseFailure)?;
-
-    let month = Month::try_from(month).map_err(DatatypeValidationError::DateComponentOutOfRange)?;
-
-    let date = Date::from_calendar_date(year, month, day)
-        .map_err(DatatypeValidationError::DateComponentOutOfRange)?;
-    Ok(date.midnight().assume_utc())
+    Ok(OffsetDateTime::parse(value, &Rfc3339)?)
 }
 
 #[cfg(test)]
@@ -471,7 +533,7 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_values_date() {
+    fn test_date_validation_single_format() {
         let datatype_config = indoc! {"
                 DATE:
                     display: 'datatype.date'
@@ -479,34 +541,87 @@ mod tests {
                     order: 300
                     params:
                         public:
+                            formats: ['date']
                             min: '2022-12-31'
                             max: '2023-01-02'
         "};
         let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
 
-        let valid =
-            validate_datatype_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config);
-        assert!(valid.is_ok());
+        assert!(validate_datatype_value("2023-01-01", "DATE", &datatype_config).is_ok());
 
-        let too_early =
-            validate_datatype_value("2022-01-01T17:45:00.0123456Z", "DATE", &datatype_config);
-        assert!(too_early.is_err_and(|f| matches!(
-            f,
-            ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateTooEarly(_, _))
-        )));
+        let too_early = validate_datatype_value("2022-01-01", "DATE", &datatype_config);
+        assert2::assert!(let Err(ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateTooEarly(_, _))) = too_early);
 
-        let too_late =
-            validate_datatype_value("2023-01-02T17:45:00.0123456Z", "DATE", &datatype_config);
-        assert!(too_late.is_err_and(|f| matches!(
-            f,
-            ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateTooLate(_, _))
-        )));
+        let too_late = validate_datatype_value("2023-01-03", "DATE", &datatype_config);
+        assert2::assert!(let Err(ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateTooLate(_, _))) = too_late);
 
-        let invalid = validate_datatype_value("2023-01-01", "DATE", &datatype_config);
-        assert!(invalid.is_err_and(|f| matches!(
-            f,
-            ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParseFailure(_))
-        )));
+        assert2::assert!(
+            let Err( ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParseFailure(_))) =
+            validate_datatype_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config)
+        );
+    }
+
+    #[test]
+    fn test_date_validation_multiple_formats() {
+        let datatype_config = indoc! {"
+                DATE:
+                    display: 'datatype.date'
+                    type: 'DATE'
+                    order: 300
+                    params:
+                        public:
+                            formats: ['date', 'datetime']
+        "};
+        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+
+        assert!(validate_datatype_value("2023-01-01", "DATE", &datatype_config).is_ok());
+        assert!(
+            validate_datatype_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_date_params_preferred_format_must_be_in_formats() {
+        let datatype_config = indoc! {"
+                DATE:
+                    display: 'datatype.date'
+                    type: 'DATE'
+                    order: 300
+                    params:
+                        public:
+                            formats: ['datetime']
+                            preferredFormat: 'date'
+        "};
+        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+
+        assert2::assert!(
+            let Err( ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParams(
+                DateParamsError::PreferredFormatNotAllowed
+            ))) =
+            validate_datatype_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config)
+        );
+    }
+
+    #[test]
+    fn test_date_params_formats_must_be_non_empty() {
+        let datatype_config = indoc! {"
+                    DATE:
+                        display: 'datatype.date'
+                        type: 'DATE'
+                        order: 300
+                        params:
+                            public:
+                                formats: []
+            "};
+        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+
+        assert2::assert!(
+            let Err( ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParams(
+                DateParamsError::MissingFormats
+            ))) =
+            validate_datatype_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config)
+        );
     }
 
     #[test]

@@ -22,7 +22,10 @@ use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{CredentialSchemaId, DidValue};
-use time::{Duration, OffsetDateTime};
+use time::format_description::well_known::Rfc3339;
+use time::format_description::FormatItem;
+use time::macros::format_description;
+use time::{Date, Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
@@ -64,6 +67,8 @@ pub mod mdoc;
 
 #[cfg(test)]
 mod test;
+
+const FULL_DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
 static LAYOUT_NAMESPACE: &str = "ch.procivis.mdoc_layout.1";
 
@@ -1052,6 +1057,7 @@ fn build_ciborium_value(
 
 // full-date (ISO mDL 7.2.1)
 const FULL_DATE_TAG: u64 = 1004;
+const TDATE_TAG: u64 = 0;
 
 fn map_to_ciborium_value(
     claim: &PublishedClaim,
@@ -1075,7 +1081,17 @@ fn map_to_ciborium_value(
             ciborium::Value::from(value)
         }
         DatatypeType::Date => {
-            ciborium::Value::Tag(FULL_DATE_TAG, ciborium::Value::from(value_as_string).into())
+            let tag = if Date::parse(&value_as_string, FULL_DATE_FORMAT).is_ok() {
+                FULL_DATE_TAG
+            } else if OffsetDateTime::parse(&value_as_string, &Rfc3339).is_ok() {
+                TDATE_TAG
+            } else {
+                return Err(FormatterError::CouldNotFormat(format!(
+                    "Invalid mdoc date format. Expected tdate or full-date got: {value_as_string}"
+                )));
+            };
+
+            ciborium::Value::Tag(tag, ciborium::Value::from(value_as_string).into())
         }
         DatatypeType::Boolean => {
             let value: bool = match value_as_string.as_str() {
@@ -1322,15 +1338,26 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
             Ok(serde_json::Value::String(number_value.to_string()))
         }
         Value::Tag(tag, tag_value) => match tag {
-            FULL_DATE_TAG => Ok(serde_json::Value::String(
-                tag_value
-                    .as_text()
-                    .ok_or(FormatterError::Failed(format!(
-                        "Unexpected full-date value. Got: {:#?}",
-                        tag_value
-                    )))?
-                    .to_string(),
-            )),
+            TDATE_TAG => {
+                let datetime = tag_value.into_text().map_err(|v| {
+                    FormatterError::Failed(format!("Expected tdate value. Got: {v:#?}",))
+                })?;
+                OffsetDateTime::parse(&datetime, &Rfc3339).map_err(|err| {
+                    FormatterError::Failed(format!("Invalid tdate `{datetime}`: {err}",))
+                })?;
+
+                Ok(serde_json::Value::String(datetime))
+            }
+            FULL_DATE_TAG => {
+                let date = tag_value.into_text().map_err(|v| {
+                    FormatterError::Failed(format!("Expected tdate value. Got: {v:#?}",))
+                })?;
+                Date::parse(&date, FULL_DATE_FORMAT).map_err(|err| {
+                    FormatterError::Failed(format!("Invalid full-date `{date}`: {err}",))
+                })?;
+
+                Ok(serde_json::Value::String(date))
+            }
             _ => Err(FormatterError::Failed(format!(
                 "Unexpected CBOR tag: {tag}"
             ))),
