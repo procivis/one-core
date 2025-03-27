@@ -735,10 +735,11 @@ impl ProofService {
     /// Release resources consumed by the exchange protocol for this particular proof
     /// (e.g. BLE advertising).
     async fn exchange_retract_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
-        let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
-            ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
-        )?;
-        exchange_protocol.retract_proof(proof).await?;
+        // If the configuration is changed such that the exchange protocol of the proof no longer
+        // exists we can simply skip the retracting.
+        if let Some(exchange_protocol) = self.protocol_provider.get_protocol(&proof.exchange) {
+            exchange_protocol.retract_proof(proof).await?;
+        };
         Ok(())
     }
 

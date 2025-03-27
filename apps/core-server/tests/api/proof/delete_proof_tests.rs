@@ -256,3 +256,54 @@ async fn setup_proof_schema(context: &TestContext, organisation: &Organisation) 
         )
         .await
 }
+
+#[tokio::test]
+async fn test_delete_proof_old_exchange() {
+    // GIVEN
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+
+    let proof_schema = setup_proof_schema(&context, &organisation).await;
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "PROCIVIS_TEMPORARY", // this provider no longer exists
+            None,
+            key,
+        )
+        .await;
+
+    // WHEN
+    assert!(!context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await
+        .values
+        .is_empty());
+    let resp = context.api.proofs.delete_proof(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    let last_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await
+        .values
+        .first()
+        .cloned()
+        .unwrap();
+    assert_eq!(last_history.action, HistoryAction::Retracted);
+
+    let resp = context.api.proofs.get(proof.id).await;
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["state"], "RETRACTED");
+    assert!(!resp["completedDate"].as_str().unwrap().is_empty());
+}
