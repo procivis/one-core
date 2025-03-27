@@ -27,7 +27,6 @@ pub enum DidValueError {
 
 /// https://www.w3.org/TR/did-core/#did-syntax
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(try_from = "String", into = "String")]
 pub struct DidValue {
     url: Url,
@@ -46,9 +45,7 @@ impl DidValue {
     pub fn method(&self) -> &str {
         self.method.as_str()
     }
-}
 
-impl DidValue {
     /// https://www.w3.org/TR/did-core/#did-url-syntax
     pub fn from_did_url(url: impl AsRef<str>) -> Result<Self, anyhow::Error> {
         let url = url.as_ref();
@@ -63,6 +60,28 @@ impl DidValue {
 
         url.as_str().parse()
     }
+}
+
+#[cfg(feature = "utoipa")]
+mod utoipa_schema {
+    use utoipa::openapi::{KnownFormat, ObjectBuilder, RefOr, Schema, SchemaFormat, Type};
+    use utoipa::{PartialSchema, ToSchema};
+
+    use super::*;
+
+    impl PartialSchema for DidValue {
+        fn schema() -> RefOr<Schema> {
+            RefOr::T(Schema::Object(
+                ObjectBuilder::new()
+                    .schema_type(Type::String)
+                    .format(Some(SchemaFormat::KnownFormat(KnownFormat::Uri)))
+                    .examples(["did:key:z6MkqfAeg81kn2x4fns8j2rGq1bhdJhT6f3Wh88hLLEq24v2"])
+                    .build(),
+            ))
+        }
+    }
+
+    impl ToSchema for DidValue {}
 }
 
 impl FromStr for DidValue {
