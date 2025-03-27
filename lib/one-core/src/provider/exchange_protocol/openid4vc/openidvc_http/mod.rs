@@ -347,10 +347,6 @@ impl OpenID4VCHTTP {
                 }
             }
 
-            let state = interaction_data.state.ok_or(ExchangeProtocolError::Failed(
-                "Missing state in openid4vp".to_string(),
-            ))?;
-
             let vp_token = presentation_formatter
                 .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
                 .await
@@ -358,10 +354,10 @@ impl OpenID4VCHTTP {
 
             let payload = JwePayload {
                 aud: response_uri.clone(),
-                exp: (OffsetDateTime::now_utc() + Duration::minutes(10)),
+                exp: OffsetDateTime::now_utc() + Duration::minutes(10),
                 vp_token,
                 presentation_submission,
-                state,
+                state: interaction_data.state,
             };
 
             let response = mdoc::build_jwe(

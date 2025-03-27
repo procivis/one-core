@@ -73,7 +73,7 @@ pub struct JwePayload {
     pub exp: OffsetDateTime,
     pub vp_token: String,
     pub presentation_submission: PresentationSubmissionMappingDTO,
-    pub state: String,
+    pub state: Option<String>,
 }
 
 impl JwePayload {

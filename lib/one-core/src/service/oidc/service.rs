@@ -988,7 +988,12 @@ impl OIDCService {
                 Ok(RequestData {
                     presentation_submission: payload.presentation_submission,
                     vp_token: payload.vp_token,
-                    state: payload.state.parse()?,
+                    state: payload
+                        .state
+                        .ok_or(ServiceError::ValidationError(
+                            "missing state parameter".to_string(),
+                        ))?
+                        .parse()?,
                     mdoc_generated_nonce: Some(jwe_header.agreement_partyuinfo),
                     encryption_key: Some(key_id),
                 })
