@@ -507,7 +507,9 @@ pub enum OpenID4VpPresentationFormat {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPVcSdJwtAlgs {
+    #[serde(rename = "sd-jwt_alg_values")]
     pub sd_jwt_algorithms: Vec<String>,
+    #[serde(rename = "kb-jwt_alg_values")]
     pub kb_jwt_algorithms: Vec<String>,
 }
 

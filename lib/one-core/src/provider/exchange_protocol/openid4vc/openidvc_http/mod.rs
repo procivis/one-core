@@ -321,12 +321,31 @@ impl OpenID4VCHTTP {
                 ..Default::default()
             };
 
-            let client_metadata =
+            let mut client_metadata =
                 interaction_data
                     .client_metadata
                     .ok_or(ExchangeProtocolError::Failed(
                         "Missing client_metadata for MDOC openid4vp".to_string(),
                     ))?;
+
+            if client_metadata.jwks.keys.is_empty() {
+                if let Some(ref uri) = client_metadata.jwks_uri {
+                    let jwks = self
+                        .client
+                        .get(uri)
+                        .send()
+                        .await
+                        .context("send error")
+                        .map_err(ExchangeProtocolError::Transport)?
+                        .error_for_status()
+                        .context("status error")
+                        .map_err(ExchangeProtocolError::Transport)?;
+
+                    client_metadata.jwks = jwks
+                        .json()
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+                }
+            }
 
             let state = interaction_data.state.ok_or(ExchangeProtocolError::Failed(
                 "Missing state in openid4vp".to_string(),

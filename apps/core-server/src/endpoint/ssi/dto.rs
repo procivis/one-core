@@ -696,9 +696,17 @@ pub struct OpenID4VPAlgsRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPVcSdJwtAlgs)]
 pub struct OpenID4VPVcSdJwtAlgsRestDTO {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        rename = "sd-jwt_alg_values"
+    )]
     pub sd_jwt_algorithms: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        rename = "kb-jwt_alg_values"
+    )]
     pub kb_jwt_algorithms: Vec<String>,
 }
 
