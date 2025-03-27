@@ -469,15 +469,15 @@ impl ProofService {
 
         let exchange_params: OpenID4VCParams = self.config.exchange.get(&proof.exchange)?;
 
-        let client_id_schema = request
+        let client_id_scheme = request
             .params
             .unwrap_or_default()
-            .client_id_schema
+            .client_id_scheme
             .unwrap_or(
                 exchange_params
                     .presentation
                     .verifier
-                    .default_client_id_schema,
+                    .default_client_id_scheme,
             );
 
         let formats = create_open_id_for_vp_formats();
@@ -508,7 +508,7 @@ impl ProofService {
                 formats,
                 type_to_descriptor_mapper,
                 callback,
-                client_id_schema,
+                client_id_scheme,
             )
             .await?;
 

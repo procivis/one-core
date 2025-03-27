@@ -7,7 +7,7 @@ use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
-use crate::provider::exchange_protocol::openid4vc::model::ClientIdSchemaType;
+use crate::provider::exchange_protocol::openid4vc::model::ClientIdScheme;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
@@ -141,5 +141,5 @@ pub struct ShareProofRequestDTO {
 
 #[derive(Clone, Debug, Default)]
 pub struct ShareProofRequestParamsDTO {
-    pub client_id_schema: Option<ClientIdSchemaType>,
+    pub client_id_scheme: Option<ClientIdScheme>,
 }

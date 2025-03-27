@@ -8,7 +8,7 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::exchange_protocol::openid4vc::model::ClientIdSchemaType;
+use one_core::provider::exchange_protocol::openid4vc::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO,
@@ -347,14 +347,16 @@ pub struct ShareProofRequestBindingDTO {
 #[into(ShareProofRequestParamsDTO)]
 pub struct ShareProofRequestParamsBindingDTO {
     #[into(with_fn = "convert_inner")]
-    pub client_id_schema: Option<ShareProofRequestClientIdSchemaTypeBindingDTO>,
+    pub client_id_scheme: Option<ClientIdSchemeBindingEnum>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
-#[into(ClientIdSchemaType)]
-pub enum ShareProofRequestClientIdSchemaTypeBindingDTO {
+#[into(ClientIdScheme)]
+pub enum ClientIdSchemeBindingEnum {
     RedirectUri,
     VerifierAttestation,
+    Did,
+    X509SanDns,
 }
 
 #[derive(From, uniffi::Record)]

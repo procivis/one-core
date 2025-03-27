@@ -6,7 +6,7 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::exchange_protocol::openid4vc::model::ClientIdSchemaType;
+use one_core::provider::exchange_protocol::openid4vc::model::ClientIdScheme;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
@@ -387,14 +387,14 @@ pub struct ShareProofRequestRestDTO {
 pub struct ShareProofRequestParamsRestDTO {
     #[into(with_fn = "convert_inner")]
     #[serde(default)]
-    pub client_id_schema: Option<ClientIdSchemaTypeRestDTO>,
+    pub client_id_scheme: Option<ClientIdSchemeRestEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
-#[from(ClientIdSchemaType)]
-#[into(ClientIdSchemaType)]
+#[from(ClientIdScheme)]
+#[into(ClientIdScheme)]
 #[serde(rename_all = "snake_case")]
-pub enum ClientIdSchemaTypeRestDTO {
+pub enum ClientIdSchemeRestEnum {
     RedirectUri,
     VerifierAttestation,
     Did,

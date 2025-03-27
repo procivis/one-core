@@ -321,7 +321,7 @@ pub struct OpenID4VPClientMetadataJwks {
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
     pub client_id: String,
-    pub client_id_scheme: Option<ClientIdSchemaType>,
+    pub client_id_scheme: Option<ClientIdScheme>,
     pub state: Option<String>,
     pub nonce: Option<String>,
     pub response_type: Option<String>,
@@ -344,7 +344,7 @@ pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
 pub(crate) struct OpenID4VPAuthorizationRequestParams {
     pub client_id: String,
     #[serde(default)]
-    pub client_id_scheme: Option<ClientIdSchemaType>,
+    pub client_id_scheme: Option<ClientIdScheme>,
 
     #[serde(default)]
     pub state: Option<String>,
@@ -425,7 +425,7 @@ pub struct OpenID4VPVerifierInteractionContent {
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: OpenID4VPPresentationDefinition,
     pub client_id: String,
-    pub client_id_scheme: Option<ClientIdSchemaType>,
+    pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
 }
 
@@ -946,7 +946,7 @@ pub struct OpenID4VPHolderInteractionData {
     pub response_type: Option<String>,
     pub state: Option<String>,
     pub nonce: Option<String>,
-    pub client_id_scheme: ClientIdSchemaType,
+    pub client_id_scheme: ClientIdScheme,
     pub client_id: String,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
@@ -1114,20 +1114,20 @@ fn default_presentation_url_scheme() -> String {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCPresentationHolderParams {
-    pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
+    pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCPresentationVerifierParams {
-    pub default_client_id_schema: ClientIdSchemaType,
-    pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
+    pub default_client_id_scheme: ClientIdScheme,
+    pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
-pub enum ClientIdSchemaType {
+pub enum ClientIdScheme {
     RedirectUri,
     VerifierAttestation,
     Did,

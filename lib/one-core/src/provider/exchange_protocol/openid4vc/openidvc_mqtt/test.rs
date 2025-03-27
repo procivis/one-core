@@ -22,7 +22,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_format_map;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, InvitationResponseDTO, OpenID4VCIssuanceParams, OpenID4VCParams,
+    ClientIdScheme, InvitationResponseDTO, OpenID4VCIssuanceParams, OpenID4VCParams,
     OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
     OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams,
     OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
@@ -128,15 +128,15 @@ fn generic_presentation_params(url_scheme: Option<&str>) -> OpenID4VCPresentatio
         x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
-                ClientIdSchemaType::RedirectUri,
-                ClientIdSchemaType::VerifierAttestation,
+                ClientIdScheme::RedirectUri,
+                ClientIdScheme::VerifierAttestation,
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
-            default_client_id_schema: ClientIdSchemaType::RedirectUri,
+            default_client_id_scheme: ClientIdScheme::RedirectUri,
             supported_client_id_schemes: vec![
-                ClientIdSchemaType::RedirectUri,
-                ClientIdSchemaType::VerifierAttestation,
+                ClientIdScheme::RedirectUri,
+                ClientIdScheme::VerifierAttestation,
             ],
         },
         redirect_uri: OpenID4VCRedirectUriParams {
@@ -312,7 +312,7 @@ async fn test_handle_invitation_success() {
         }),
         response_type: None,
         response_mode: None,
-        client_id_scheme: Some(ClientIdSchemaType::Did),
+        client_id_scheme: Some(ClientIdScheme::Did),
         client_metadata: None,
         response_uri: None,
         state: None,

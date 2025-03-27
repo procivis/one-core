@@ -18,7 +18,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VCVerifierAttestationPayload, OpenID4VPAuthorizationRequestParams,
+    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPAuthorizationRequestParams,
     OpenID4VPClientMetadata, OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::exchange_protocol::openid4vc::service::{
@@ -40,7 +40,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri
         interaction_data,
         interaction_id,
         key_algorithm_provider,
-        ClientIdSchemaType::RedirectUri,
+        ClientIdScheme::RedirectUri,
     )?;
 
     let unsigned_jwt = Jwt {
@@ -85,7 +85,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         interaction_data,
         interaction_id,
         key_algorithm_provider.as_ref(),
-        ClientIdSchemaType::VerifierAttestation,
+        ClientIdScheme::VerifierAttestation,
     )?;
 
     let JWTSigner {
@@ -202,7 +202,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
         interaction_data,
         interaction_id,
         key_algorithm_provider.as_ref(),
-        ClientIdSchemaType::X509SanDns,
+        ClientIdScheme::X509SanDns,
     )?;
 
     let JWTSigner {
@@ -276,7 +276,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
         interaction_data,
         interaction_id,
         key_algorithm_provider.as_ref(),
-        ClientIdSchemaType::Did,
+        ClientIdScheme::Did,
     )?;
 
     let JWTSigner {
@@ -334,7 +334,7 @@ fn generate_authorization_request_params(
     interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    client_id_scheme: ClientIdSchemaType,
+    client_id_scheme: ClientIdScheme,
 ) -> Result<OpenID4VPAuthorizationRequestParams, ExchangeProtocolError> {
     let client_metadata = generate_client_metadata(proof, key_algorithm_provider)?;
 

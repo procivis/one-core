@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use super::error::OpenID4VCIError;
 use super::model::{
-    ClientIdSchemaType, CredentialSchemaBackgroundPropertiesRequestDTO,
+    ClientIdScheme, CredentialSchemaBackgroundPropertiesRequestDTO,
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
@@ -1223,7 +1223,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
     vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
-    client_id_scheme: ClientIdSchemaType,
+    client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
     did_method_provider: &dyn DidMethodProvider,
@@ -1232,7 +1232,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
         get_params_with_request_uri(base_url, proof.id, client_id, client_id_scheme)
     } else {
         match client_id_scheme {
-            ClientIdSchemaType::RedirectUri => get_params_for_redirect_uri(
+            ClientIdScheme::RedirectUri => get_params_for_redirect_uri(
                 base_url,
                 openidvc_params,
                 client_id,
@@ -1244,7 +1244,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
                 vp_formats,
                 interaction_data,
             )?,
-            ClientIdSchemaType::X509SanDns => {
+            ClientIdScheme::X509SanDns => {
                 let token = generate_authorization_request_client_id_scheme_x509_san_dns(
                     proof,
                     interaction_data.to_owned(),
@@ -1255,7 +1255,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
                 .await?;
                 get_params_with_request(token, client_id, client_id_scheme)
             }
-            ClientIdSchemaType::VerifierAttestation => {
+            ClientIdScheme::VerifierAttestation => {
                 let token = generate_authorization_request_client_id_scheme_verifier_attestation(
                     proof,
                     interaction_data.to_owned(),
@@ -1267,7 +1267,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
                 .await?;
                 get_params_with_request(token, client_id, client_id_scheme)
             }
-            ClientIdSchemaType::Did => {
+            ClientIdScheme::Did => {
                 let token = generate_authorization_request_client_id_scheme_did(
                     proof,
                     interaction_data.to_owned(),
@@ -1292,7 +1292,7 @@ fn get_params_with_request_uri(
     base_url: &str,
     proof_id: ProofId,
     client_id: String,
-    client_id_scheme: ClientIdSchemaType,
+    client_id_scheme: ClientIdScheme,
 ) -> OpenID4VPAuthorizationRequestQueryParams {
     OpenID4VPAuthorizationRequestQueryParams {
         client_id,
@@ -1318,7 +1318,7 @@ fn get_params_with_request_uri(
 fn get_params_with_request(
     request: String,
     client_id: String,
-    client_id_scheme: ClientIdSchemaType,
+    client_id_scheme: ClientIdScheme,
 ) -> OpenID4VPAuthorizationRequestQueryParams {
     OpenID4VPAuthorizationRequestQueryParams {
         client_id,
@@ -1385,7 +1385,7 @@ fn get_params_for_redirect_uri(
 
     Ok(OpenID4VPAuthorizationRequestQueryParams {
         client_id: client_id.to_string(),
-        client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
+        client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_type: Some("vp_token".to_string()),
         state: Some(interaction_id.to_string()),
         nonce: Some(nonce),
@@ -1420,7 +1420,7 @@ impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPHolderIntera
             client_id: value.client_id,
             client_id_scheme: value
                 .client_id_scheme
-                .unwrap_or(ClientIdSchemaType::RedirectUri),
+                .unwrap_or(ClientIdScheme::RedirectUri),
             response_type: value.response_type,
             response_mode: value.response_mode,
             response_uri: value.response_uri.map(url_parse).transpose()?,
@@ -1445,7 +1445,7 @@ impl From<OpenID4VPAuthorizationRequestParams> for OpenID4VPHolderInteractionDat
             client_id: value.client_id,
             client_id_scheme: value
                 .client_id_scheme
-                .unwrap_or(ClientIdSchemaType::RedirectUri),
+                .unwrap_or(ClientIdScheme::RedirectUri),
             response_type: value.response_type,
             response_mode: value.response_mode,
             response_uri: value.response_uri,

@@ -47,7 +47,7 @@ use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload,
+    ClientIdScheme, ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
@@ -172,7 +172,7 @@ impl OIDCService {
                     "missing client_id_scheme".to_string(),
                 ))?;
         Ok(match client_id_scheme {
-            ClientIdSchemaType::RedirectUri => {
+            ClientIdScheme::RedirectUri => {
                 generate_authorization_request_client_id_scheme_redirect_uri(
                     &proof,
                     interaction_data,
@@ -181,7 +181,7 @@ impl OIDCService {
                 )
                 .await?
             }
-            ClientIdSchemaType::VerifierAttestation => {
+            ClientIdScheme::VerifierAttestation => {
                 generate_authorization_request_client_id_scheme_verifier_attestation(
                     &proof,
                     interaction_data,
@@ -192,7 +192,7 @@ impl OIDCService {
                 )
                 .await?
             }
-            ClientIdSchemaType::Did => {
+            ClientIdScheme::Did => {
                 generate_authorization_request_client_id_scheme_did(
                     &proof,
                     interaction_data,
@@ -203,7 +203,7 @@ impl OIDCService {
                 )
                 .await?
             }
-            ClientIdSchemaType::X509SanDns => {
+            ClientIdScheme::X509SanDns => {
                 generate_authorization_request_client_id_scheme_x509_san_dns(
                     &proof,
                     interaction_data,

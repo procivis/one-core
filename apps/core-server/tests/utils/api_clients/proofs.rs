@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use core_server::endpoint::proof::dto::ClientIdSchemaTypeRestDTO;
+use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use shared_types::{ProofId, ProofSchemaId};
@@ -100,14 +100,14 @@ impl ProofsApi {
     pub async fn share(
         &self,
         id: impl Display,
-        client_id_scheme: Option<ClientIdSchemaTypeRestDTO>,
+        client_id_scheme: Option<ClientIdSchemeRestEnum>,
     ) -> Response {
         let url = format!("/api/proof-request/v1/{id}/share");
 
         let body = client_id_scheme.map(|scheme| {
             json!({
               "params": {
-                "clientIdSchema": scheme
+                "clientIdScheme": scheme
               }
             })
         });

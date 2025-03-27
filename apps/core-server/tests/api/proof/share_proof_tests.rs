@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use core_server::endpoint::proof::dto::ClientIdSchemaTypeRestDTO;
+use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use one_core::model::history::HistoryAction;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::Value;
@@ -380,7 +380,7 @@ async fn test_share_proof_client_id_scheme_redirect_uri() {
     let resp = context
         .api
         .proofs
-        .share(proof.id, Some(ClientIdSchemaTypeRestDTO::RedirectUri))
+        .share(proof.id, Some(ClientIdSchemeRestEnum::RedirectUri))
         .await;
 
     // THEN
@@ -405,7 +405,7 @@ async fn test_share_proof_client_id_scheme_did() {
     let resp = context
         .api
         .proofs
-        .share(proof.id, Some(ClientIdSchemaTypeRestDTO::Did))
+        .share(proof.id, Some(ClientIdSchemeRestEnum::Did))
         .await;
 
     // THEN
@@ -424,10 +424,7 @@ async fn test_share_proof_client_id_scheme_verifier_attestation() {
     let resp = context
         .api
         .proofs
-        .share(
-            proof.id,
-            Some(ClientIdSchemaTypeRestDTO::VerifierAttestation),
-        )
+        .share(proof.id, Some(ClientIdSchemeRestEnum::VerifierAttestation))
         .await;
 
     // THEN

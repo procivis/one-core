@@ -155,7 +155,7 @@ pub(crate) async fn post_proof(
     path = "/api/proof-request/v1/{id}/share",
     request_body(
         content((Option<ShareProofRequestRestDTO>)),
-        example = json!({ "params": { "clientIdSchema": "redirect_uri" } }),
+        example = json!({ "params": { "clientIdScheme": "redirect_uri" } }),
     ),
     responses(CreatedOrErrorResponse<EntityShareResponseRestDTO>),
     params(

@@ -11,7 +11,7 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use key_agreement_key::KeyAgreementKey;
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
-use model::{ClientIdSchemaType, OpenID4VPHolderInteractionData};
+use model::{ClientIdScheme, OpenID4VPHolderInteractionData};
 use one_dto_mapper::convert_inner;
 use openidvc_ble::model::BLEOpenID4VPInteractionData;
 use openidvc_ble::OpenID4VCBLE;
@@ -286,7 +286,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
-        client_id_schema: ClientIdSchemaType,
+        client_id_scheme: ClientIdScheme,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         let transport = get_transport(proof)?;
         let callback = callback.map(|fut| fut.shared());
@@ -323,7 +323,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     encryption_key_jwk,
                     vp_formats,
                     type_to_descriptor,
-                    client_id_schema,
+                    client_id_scheme,
                 )
                 .await
                 .map(|context| ShareResponse {
@@ -648,7 +648,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             .presentation
             .verifier
             .supported_client_id_schemes
-            .contains(&ClientIdSchemaType::X509SanDns)
+            .contains(&ClientIdScheme::X509SanDns)
         {
             verification_did_methods = vec!["MDL".to_owned()];
         }

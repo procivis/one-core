@@ -42,7 +42,7 @@ use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialF
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
     ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
@@ -3257,7 +3257,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     response_uri: None,
                     response_mode: None,
                     response_type: None,
-                    client_id_scheme: Some(ClientIdSchemaType::Did),
+                    client_id_scheme: Some(ClientIdScheme::Did),
                     client_metadata: None,
                     state: None,
                     nonce: Some("nonce".to_string()),

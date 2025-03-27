@@ -15,7 +15,7 @@ use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -95,7 +95,7 @@ pub async fn async_verifier_flow<C, T>(
         nonce: Some(nonce.to_owned()),
         presentation_definition: Some(params.presentation_definition.clone()),
         client_id: params.did.to_string(),
-        client_id_scheme: Some(ClientIdSchemaType::Did),
+        client_id_scheme: Some(ClientIdScheme::Did),
         ..Default::default()
     };
     let signed_request = request

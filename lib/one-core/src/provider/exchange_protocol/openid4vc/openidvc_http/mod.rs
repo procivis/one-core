@@ -24,8 +24,8 @@ use super::mapper::{
     get_credential_offer_url, map_offered_claims_to_credential_schema,
 };
 use super::model::{
-    ClientIdSchemaType, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
-    JwePayload, OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
+    ClientIdScheme, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
+    OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
@@ -881,7 +881,7 @@ impl OpenID4VCHTTP {
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-        client_id_scheme: ClientIdSchemaType,
+        client_id_scheme: ClientIdScheme,
     ) -> Result<ShareResponse<OpenID4VPVerifierInteractionContent>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
 
@@ -901,10 +901,10 @@ impl OpenID4VCHTTP {
         let nonce = utilities::generate_alphanumeric(32);
 
         let client_id = match client_id_scheme {
-            ClientIdSchemaType::RedirectUri | ClientIdSchemaType::VerifierAttestation => {
+            ClientIdScheme::RedirectUri | ClientIdScheme::VerifierAttestation => {
                 response_uri.to_owned()
             }
-            ClientIdSchemaType::X509SanDns => {
+            ClientIdScheme::X509SanDns => {
                 let base_url = Url::parse(base_url)
                     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -915,7 +915,7 @@ impl OpenID4VCHTTP {
                     ))?
                     .to_string()
             }
-            ClientIdSchemaType::Did => proof
+            ClientIdScheme::Did => proof
                 .verifier_did
                 .as_ref()
                 .ok_or(ExchangeProtocolError::Failed(

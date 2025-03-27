@@ -10,7 +10,7 @@ use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VCParams, OpenID4VCVerifierAttestationPayload,
+    ClientIdScheme, OpenID4VCParams, OpenID4VCVerifierAttestationPayload,
     OpenID4VPAuthorizationRequestParams, OpenID4VPAuthorizationRequestQueryParams,
     OpenID4VPHolderInteractionData, OpenID4VpPresentationFormat,
 };
@@ -117,7 +117,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     }
 
     Ok(OpenID4VPHolderInteractionData {
-        client_id_scheme: ClientIdSchemaType::X509SanDns,
+        client_id_scheme: ClientIdScheme::X509SanDns,
         verifier_did: Some(did_value.to_string()),
         ..response_content
     })
@@ -178,7 +178,7 @@ async fn parse_referenced_data_from_did_signed_token(
 
     Ok(OpenID4VPHolderInteractionData {
         client_id: client_id.clone(),
-        client_id_scheme: ClientIdSchemaType::Did,
+        client_id_scheme: ClientIdScheme::Did,
         verifier_did: Some(client_id),
         ..response_content
     })
@@ -266,7 +266,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
 
     Ok(OpenID4VPHolderInteractionData {
         client_id,
-        client_id_scheme: ClientIdSchemaType::VerifierAttestation,
+        client_id_scheme: ClientIdScheme::VerifierAttestation,
         verifier_did,
         ..response_content
     })
@@ -335,7 +335,7 @@ pub(crate) async fn interaction_data_from_query(
 
     let query_client_id_scheme = query_params.client_id_scheme;
     if let Some(client_id_scheme) = &query_client_id_scheme {
-        if request.is_none() && client_id_scheme != &ClientIdSchemaType::RedirectUri {
+        if request.is_none() && client_id_scheme != &ClientIdScheme::RedirectUri {
             return Err(ExchangeProtocolError::InvalidRequest(format!(
                 "request or request_uri missing for client_id_scheme {client_id_scheme}",
             )));
@@ -376,7 +376,7 @@ pub(crate) async fn interaction_data_from_query(
         }
 
         let referenced_params = match &interaction_data.client_id_scheme {
-            ClientIdSchemaType::VerifierAttestation => {
+            ClientIdScheme::VerifierAttestation => {
                 parse_referenced_data_from_verifier_attestation_token(
                     request_token,
                     key_algorithm_provider,
@@ -384,10 +384,8 @@ pub(crate) async fn interaction_data_from_query(
                 )
                 .await
             }
-            ClientIdSchemaType::RedirectUri => {
-                parse_referenced_data_from_unsigned_token(request_token)
-            }
-            ClientIdSchemaType::Did => {
+            ClientIdScheme::RedirectUri => parse_referenced_data_from_unsigned_token(request_token),
+            ClientIdScheme::Did => {
                 parse_referenced_data_from_did_signed_token(
                     request_token,
                     key_algorithm_provider,
@@ -395,7 +393,7 @@ pub(crate) async fn interaction_data_from_query(
                 )
                 .await
             }
-            ClientIdSchemaType::X509SanDns => {
+            ClientIdScheme::X509SanDns => {
                 parse_referenced_data_from_x509_san_dns_token(
                     request_token,
                     key_algorithm_provider,
@@ -610,7 +608,7 @@ pub fn validate_interaction_data(
 
     // If the Client Identifier scheme redirect_uri is used in conjunction with the Response Mode direct_post, and the response_uri parameter is present, the client_id value MUST be equal to the response_uri value.
     // <https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-6.2-9>
-    if interaction_data.client_id_scheme == ClientIdSchemaType::RedirectUri
+    if interaction_data.client_id_scheme == ClientIdScheme::RedirectUri
         && Some(interaction_data.client_id.as_str())
             != interaction_data
                 .response_uri

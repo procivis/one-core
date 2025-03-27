@@ -97,7 +97,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         presentation:
                             verifier:
                                 supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
-                                defaultClientIdSchema: verifier_attestation
+                                defaultClientIdScheme: verifier_attestation
                             holder:
                                 supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
                             redirectUri:

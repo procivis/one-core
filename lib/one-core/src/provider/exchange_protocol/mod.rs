@@ -7,7 +7,7 @@ use futures::future::BoxFuture;
 use indexmap::IndexMap;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
-    ClientIdSchemaType, OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
+    ClientIdScheme, OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VPPresentationDefinitionInputDescriptorFormat,
     OpenID4VpPresentationFormat,
 };
@@ -122,12 +122,12 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     .presentation
                     .holder
                     .supported_client_id_schemes
-                    .contains(&ClientIdSchemaType::X509SanDns)
+                    .contains(&ClientIdScheme::X509SanDns)
                     || params
                         .presentation
                         .verifier
                         .supported_client_id_schemes
-                        .contains(&ClientIdSchemaType::X509SanDns)
+                        .contains(&ClientIdScheme::X509SanDns)
                 {
                     params
                         .presentation
@@ -440,7 +440,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
-        client_id_schema: ClientIdSchemaType,
+        client_id_scheme: ClientIdScheme,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError>;
 
     /// Checks if the submitted presentation complies with the given proof request.
@@ -605,7 +605,7 @@ where
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
-        client_id_schema: ClientIdSchemaType,
+        client_id_scheme: ClientIdScheme,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         self.inner
             .verifier_share_proof(
@@ -616,7 +616,7 @@ where
                 vp_formats,
                 type_to_descriptor,
                 callback,
-                client_id_schema,
+                client_id_scheme,
             )
             .await
             .map(|resp| ShareResponse {

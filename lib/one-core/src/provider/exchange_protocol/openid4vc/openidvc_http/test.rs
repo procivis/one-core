@@ -39,7 +39,7 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     get_parent_claim_paths, map_offered_claims_to_credential_schema,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, InvitationResponseDTO, OpenID4VCICredentialOfferClaim,
+    ClientIdScheme, InvitationResponseDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialValueDetails, OpenID4VCIssuanceParams,
     OpenID4VCParams, OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
     OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPAlgs,
@@ -101,29 +101,27 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
+            presentation: generic_presentation_params(ClientIdScheme::RedirectUri),
         }),
     )
 }
 
-fn generic_presentation_params(
-    client_id_schema: ClientIdSchemaType,
-) -> OpenID4VCPresentationParams {
+fn generic_presentation_params(client_id_scheme: ClientIdScheme) -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
         disabled: false,
         url_scheme: "openid4vp".to_string(),
         x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
-                ClientIdSchemaType::RedirectUri,
-                ClientIdSchemaType::VerifierAttestation,
+                ClientIdScheme::RedirectUri,
+                ClientIdScheme::VerifierAttestation,
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
-            default_client_id_schema: client_id_schema,
+            default_client_id_scheme: client_id_scheme,
             supported_client_id_schemes: vec![
-                ClientIdSchemaType::RedirectUri,
-                ClientIdSchemaType::VerifierAttestation,
+                ClientIdScheme::RedirectUri,
+                ClientIdScheme::VerifierAttestation,
             ],
         },
         redirect_uri: OpenID4VCRedirectUriParams {
@@ -382,7 +380,7 @@ async fn test_generate_share_credentials_offer_by_value() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
+            presentation: generic_presentation_params(ClientIdScheme::RedirectUri),
         }),
         ..Default::default()
     });
@@ -446,7 +444,7 @@ async fn test_share_proof() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
-            ClientIdSchemaType::RedirectUri,
+            ClientIdScheme::RedirectUri,
         )
         .await
         .unwrap();
@@ -545,7 +543,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
-            ClientIdSchemaType::RedirectUri,
+            ClientIdScheme::RedirectUri,
         )
         .await
         .unwrap();
@@ -629,7 +627,7 @@ async fn test_share_proof_with_use_request_uri() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
+            presentation: generic_presentation_params(ClientIdScheme::RedirectUri),
         }),
         ..Default::default()
     });
@@ -717,7 +715,7 @@ async fn test_share_proof_with_use_request_uri() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
-            ClientIdSchemaType::Did,
+            ClientIdScheme::Did,
         )
         .await
         .unwrap();
@@ -758,7 +756,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::Did),
+            presentation: generic_presentation_params(ClientIdScheme::Did),
         }),
         ..Default::default()
     });
@@ -820,7 +818,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
-            ClientIdSchemaType::RedirectUri,
+            ClientIdScheme::RedirectUri,
         )
         .await
         .unwrap();
@@ -1126,7 +1124,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
+            presentation: generic_presentation_params(ClientIdScheme::RedirectUri),
         }),
         ..Default::default()
     });
@@ -1208,7 +1206,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::RedirectUri),
+            presentation: generic_presentation_params(ClientIdScheme::RedirectUri),
         }),
         did_method_provider,
         key_algorithm_provider,
@@ -1246,7 +1244,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         .withf(move |interaction| {
             let data: OpenID4VPHolderInteractionData =
                 deserialize_interaction_data(interaction.data.as_ref()).unwrap();
-            data.client_id_scheme == ClientIdSchemaType::Did
+            data.client_id_scheme == ClientIdScheme::Did
                 && data.verifier_did == Some(client_id.to_string())
         })
         .returning(move |request| Ok(request.id));
@@ -1413,7 +1411,7 @@ async fn test_handle_invitation_proof_failed() {
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
-            presentation: generic_presentation_params(ClientIdSchemaType::Did),
+            presentation: generic_presentation_params(ClientIdScheme::Did),
         }),
         ..Default::default()
     });
@@ -2364,7 +2362,7 @@ async fn test_share_proof_custom_scheme() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
-            ClientIdSchemaType::RedirectUri,
+            ClientIdScheme::RedirectUri,
         )
         .await
         .unwrap();
@@ -2396,15 +2394,15 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
             x509_ca_certificate: None,
             holder: OpenID4VCPresentationHolderParams {
                 supported_client_id_schemes: vec![
-                    ClientIdSchemaType::RedirectUri,
-                    ClientIdSchemaType::VerifierAttestation,
+                    ClientIdScheme::RedirectUri,
+                    ClientIdScheme::VerifierAttestation,
                 ],
             },
             verifier: OpenID4VCPresentationVerifierParams {
-                default_client_id_schema: ClientIdSchemaType::RedirectUri,
+                default_client_id_scheme: ClientIdScheme::RedirectUri,
                 supported_client_id_schemes: vec![
-                    ClientIdSchemaType::RedirectUri,
-                    ClientIdSchemaType::VerifierAttestation,
+                    ClientIdScheme::RedirectUri,
+                    ClientIdScheme::VerifierAttestation,
                 ],
             },
             redirect_uri: OpenID4VCRedirectUriParams {
