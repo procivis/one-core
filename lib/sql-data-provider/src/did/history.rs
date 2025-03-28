@@ -20,21 +20,23 @@ impl DidRepository for DidHistoryDecorator {
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {
         let did_id = self.inner.create_did(request.clone()).await?;
 
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: request.created_date,
-                action: HistoryAction::Created,
-                entity_id: Some(did_id.into()),
-                entity_type: HistoryEntityType::Did,
-                metadata: None,
-                organisation_id: request.organisation.ok_or(DataLayerError::MappingError)?.id,
-            })
-            .await;
+        if let Some(organisation) = request.organisation {
+            let result = self
+                .history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    created_date: request.created_date,
+                    action: HistoryAction::Created,
+                    entity_id: Some(did_id.into()),
+                    entity_type: HistoryEntityType::Did,
+                    metadata: None,
+                    organisation_id: organisation.id,
+                })
+                .await;
 
-        if let Err(err) = result {
-            tracing::debug!("failed to insert did history event: {err:?}");
+            if let Err(err) = result {
+                tracing::warn!("failed to insert did history event: {err:?}");
+            }
         }
 
         Ok(did_id)
@@ -79,21 +81,25 @@ impl DidRepository for DidHistoryDecorator {
             .await?
             .context("did is missing")?;
 
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                action: HistoryAction::Deactivated,
-                entity_id: Some(request.id.into()),
-                entity_type: HistoryEntityType::Did,
-                metadata: None,
-                organisation_id: did.organisation.ok_or(DataLayerError::MappingError)?.id,
-            })
-            .await;
+        if let Some(organisation) = did.organisation {
+            let result = self
+                .history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    action: HistoryAction::Deactivated,
+                    entity_id: Some(request.id.into()),
+                    entity_type: HistoryEntityType::Did,
+                    metadata: None,
+                    organisation_id: organisation.id,
+                })
+                .await;
 
-        if let Err(err) = result {
-            tracing::debug!("failed to insert did history event: {err:?}");
+            if let Err(err) = result {
+                tracing::warn!("failed to insert did history event: {err:?}");
+            }
+        } else {
+            tracing::warn!("did (id: {}) missing organisation", request.id);
         }
 
         Ok(())
