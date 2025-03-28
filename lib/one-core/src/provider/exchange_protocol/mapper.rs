@@ -129,7 +129,12 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 // In case of JSON_LD we could have different crypto suits as separate formats.
                 // This will work as long as we have common part as allowed format. In this case
                 // it translates ldp_vc to JSON_LD that could be a common part of JSON_LD_CS1 and JSON_LD_CS2
-                .any(|allowed_schema_format| schema.format.starts_with(allowed_schema_format))
+                .any(|allowed_schema_format| {
+                    schema
+                        .format
+                        .to_string()
+                        .starts_with(allowed_schema_format.to_string().as_str())
+                })
             {
                 continue;
             }

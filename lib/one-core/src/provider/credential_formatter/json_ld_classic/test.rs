@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -381,10 +380,6 @@ async fn test_format_presentation_multi_tokens() {
             Box::new(auth_fn),
             FormatPresentationCtx {
                 token_formats: Some(vec!["JWT".to_owned(), "JSON_LD_CLASSIC".to_owned()]),
-                vc_format_map: HashMap::from_iter(vec![
-                    ("JSON_LD_CLASSIC".to_string(), "ldp_vc".to_string()),
-                    ("JWT".to_string(), "jwt_vc_json".to_string()),
-                ]),
                 ..Default::default()
             },
         )

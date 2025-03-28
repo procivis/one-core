@@ -44,9 +44,9 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, OpenID4VCParams, OpenID4VpPresentationFormat, PresentedCredential,
     ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
+use crate::util::oidc::OID4VP_TO_FORMATTER_MAP;
 
 mod async_verifier_flow;
 pub mod dto;
@@ -177,8 +177,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format_map: HashMap<String, String>,
-        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
@@ -193,8 +191,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         holder_did,
                         key,
                         jwk_key_id,
-                        format_map,
-                        presentation_format_map,
                     )
                     .await
             }
@@ -206,8 +202,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         holder_did,
                         key,
                         jwk_key_id,
-                        format_map,
-                        presentation_format_map,
                     )
                     .await
             }
@@ -222,8 +216,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         holder_did,
                         key,
                         jwk_key_id,
-                        format_map,
-                        presentation_format_map,
                     )
                     .await
             }
@@ -239,7 +231,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
         format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
-        map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.openid_http
             .holder_accept_credential(
@@ -250,7 +241,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 format,
                 storage_access,
                 tx_code,
-                map_oidc_format_to_external,
             )
             .await
     }
@@ -425,7 +415,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
-        format_map: HashMap<String, String>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
@@ -519,12 +508,12 @@ impl ExchangeProtocolImpl for OpenID4VC {
         let allowed_schema_formats: HashSet<_> = allowed_oidc_formats
             .iter()
             .map(|oidc_format| {
-                format_map
-                    .get(oidc_format)
-                    .ok_or_else(|| {
-                        ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
-                    })
-                    .map(String::as_str)
+                OID4VP_TO_FORMATTER_MAP
+                    .get(oidc_format.as_str())
+                    .ok_or(ExchangeProtocolError::Failed(format!(
+                        "unknown format {oidc_format}"
+                    )))
+                    .copied()
             })
             .collect::<Result<_, _>>()?;
 

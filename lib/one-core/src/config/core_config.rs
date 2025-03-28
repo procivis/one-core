@@ -180,7 +180,18 @@ where
 pub type FormatConfig = ConfigBlock<FormatType>;
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    Hash,
 )]
 pub enum FormatType {
     #[serde(rename = "JWT")]

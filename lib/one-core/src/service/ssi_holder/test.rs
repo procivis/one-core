@@ -261,12 +261,12 @@ async fn test_submit_proof_succeeds() {
     exchange_protocol
         .inner
         .expect_holder_get_presentation_definition()
-        .withf(move |proof, _, _, _| {
+        .withf(move |proof, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -297,12 +297,12 @@ async fn test_submit_proof_succeeds() {
     exchange_protocol
         .inner
         .expect_holder_submit_proof()
-        .withf(move |proof, _, _, _, _, _, _| {
+        .withf(move |proof, _, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _, _, _, _| Ok(Default::default()));
 
     let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
@@ -434,12 +434,12 @@ async fn test_submit_proof_repeating_claims() {
     exchange_protocol
         .inner
         .expect_holder_get_presentation_definition()
-        .withf(move |proof, _, _, _| {
+        .withf(move |proof, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -497,12 +497,12 @@ async fn test_submit_proof_repeating_claims() {
     exchange_protocol
         .inner
         .expect_holder_submit_proof()
-        .withf(move |proof, _, _, _, _, _, _| {
+        .withf(move |proof, _, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _, _, _, _| Ok(Default::default()));
 
     let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
@@ -625,7 +625,7 @@ async fn test_accept_credential() {
         .inner
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),

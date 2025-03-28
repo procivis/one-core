@@ -36,7 +36,7 @@ use super::model::{
     ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use super::proof_formatter::OpenID4VCIProofJWTFormatter;
-use super::service::{create_credential_offer, FnMapExternalFormatToExternalDetailed};
+use super::service::create_credential_offer;
 use super::{
     ExchangeProtocolError, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
@@ -69,6 +69,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oidc::service::credentials_format;
 use crate::util::key_verification::KeyVerification;
+use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
 pub mod mappers;
 mod mdoc;
@@ -205,10 +206,6 @@ impl OpenID4VCHTTP {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        // LOCAL_CREDENTIAL_FORMAT -> oidc_vc_format
-        format_map: HashMap<String, String>,
-        // oidc_vp_format -> LOCAL_PRESENTATION_FORMAT
-        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let interaction = proof
             .interaction
@@ -226,34 +223,12 @@ impl OpenID4VCHTTP {
             .map(|presented_credential| presented_credential.presentation.to_owned())
             .collect();
 
-        let formats: HashMap<&str, &str> = credential_presentations
-            .iter()
-            .map(|presented_credential| {
-                format_map
-                    .get(presented_credential.credential_schema.format.as_str())
-                    .map(|mapped| {
-                        (
-                            mapped.as_str(),
-                            presented_credential.credential_schema.format.as_str(),
-                        )
-                    })
-            })
-            .collect::<Option<_>>()
-            .ok_or_else(|| ExchangeProtocolError::Failed("missing format mapping".into()))?;
-
-        let (_has_mdoc, format, oidc_format) =
-            map_credential_formats_to_presentation_format(&formats, &format_map)?;
-
-        let presentation_format =
-            presentation_format_map
-                .get(&oidc_format)
-                .ok_or(ExchangeProtocolError::Failed(format!(
-                    "Missing presentation format for `{oidc_format}`"
-                )))?;
+        let (format, oidc_format) =
+            map_credential_formats_to_presentation_format(&credential_presentations)?;
 
         let presentation_formatter = self
             .formatter_provider
-            .get_formatter(presentation_format)
+            .get_formatter(&format)
             .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = self
@@ -283,7 +258,6 @@ impl OpenID4VCHTTP {
             presentation_definition_id,
             credential_presentations,
             &oidc_format,
-            format_map.clone(),
         )?;
 
         let mut params: HashMap<&str, String> = HashMap::new();
@@ -377,7 +351,6 @@ impl OpenID4VCHTTP {
             let ctx = FormatPresentationCtx {
                 nonce: Some(nonce.clone()),
                 token_formats: Some(token_formats),
-                vc_format_map: format_map,
                 ..Default::default()
             };
 
@@ -446,7 +419,6 @@ impl OpenID4VCHTTP {
         credential_format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
-        map_external_format_to_external_detailed: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         let schema = credential
             .schema
@@ -659,8 +631,21 @@ impl OpenID4VCHTTP {
             .context("parsing error")
             .map_err(ExchangeProtocolError::Transport)?;
 
+        fn detect_format_with_crypto_suite(
+            credential_schema_format: &str,
+            credential_content: &str,
+        ) -> anyhow::Result<String> {
+            let format = if credential_schema_format.starts_with("JSON_LD") {
+                map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
+                    .map_err(|_| anyhow::anyhow!("Credential format not resolved"))?
+            } else {
+                credential_schema_format.to_owned()
+            };
+            Ok(format)
+        }
+
         let real_format =
-            map_external_format_to_external_detailed(&schema.format, &response_value.credential)
+            detect_format_with_crypto_suite(&schema.format, &response_value.credential)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let formatter = self

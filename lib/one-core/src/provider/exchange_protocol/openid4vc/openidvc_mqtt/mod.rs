@@ -56,7 +56,6 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::create_core_to_oicd_format_map;
 
 pub mod model;
 mod oidc_mqtt_verifier;
@@ -360,8 +359,6 @@ impl OpenId4VcMqtt {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format_map: HashMap<String, String>,
-        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         tracing::debug!("Called submit proof");
 
@@ -382,35 +379,15 @@ impl OpenId4VcMqtt {
             .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
             .collect();
 
-        let formats: HashMap<&str, &str> = credential_presentations
-            .iter()
-            .map(|presented_credential| {
-                format_map
-                    .get(presented_credential.credential_schema.format.as_str())
-                    .map(|mapped| {
-                        (
-                            mapped.as_str(),
-                            presented_credential.credential_schema.format.as_str(),
-                        )
-                    })
-            })
-            .collect::<Option<_>>()
-            .ok_or_else(|| ExchangeProtocolError::Failed("missing format mapping".into()))?;
+        let (format, oidc_format) =
+            map_credential_formats_to_presentation_format(&credential_presentations)?;
 
-        let (_, format, oidc_format) =
-            map_credential_formats_to_presentation_format(&formats, &format_map)?;
-
-        let presentation_format =
-            presentation_format_map
-                .get(&oidc_format)
-                .ok_or(ExchangeProtocolError::Failed(format!(
-                    "Missing presentation format for `{oidc_format}`"
-                )))?;
-
-        let presentation_formatter = self
-            .formatter_provider
-            .get_formatter(presentation_format)
-            .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
+        let presentation_formatter =
+            self.formatter_provider
+                .get_formatter(&format)
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Formatter not found".to_string(),
+                ))?;
 
         let auth_fn = self
             .key_provider
@@ -430,13 +407,11 @@ impl OpenId4VcMqtt {
             presentation_definition_id,
             credential_presentations,
             &oidc_format,
-            create_core_to_oicd_format_map(),
         )?;
 
         let mut ctx = FormatPresentationCtx {
             nonce: Some(interaction_data.nonce.clone()),
             token_formats: Some(token_formats),
-            vc_format_map: format_map,
             ..Default::default()
         };
 

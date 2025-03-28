@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::FormatType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -15,7 +16,7 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::openid4vc::mapper::get_parent_claim_paths;
 use crate::provider::exchange_protocol::openid4vc::model::{
     DatatypeType, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialOfferCredentialDTO,
-    OpenID4VCICredentialValueDetails,
+    OpenID4VCICredentialValueDetails, PresentedCredential,
 };
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::service::credential::dto::{
@@ -562,26 +563,26 @@ fn find_schema_for_path(
 }
 
 pub fn map_credential_formats_to_presentation_format(
-    formats: &HashMap<&str, &str>,
-    credential_formats: &HashMap<String, String>,
-) -> Result<(bool, String, String), ExchangeProtocolError> {
-    let mut has_mdoc = false;
-    if let Some(value) = formats.get("mso_mdoc") {
-        has_mdoc = true;
-        if formats.len() == 1 {
-            return Ok((has_mdoc, value.to_string(), "mso_mdoc".to_owned()));
-        }
-    };
-
-    if let Some(&value) = formats.get("ldp_vc") {
-        Ok((has_mdoc, value.to_owned(), "ldp_vp".to_owned()))
-    } else {
-        credential_formats
+    presented: &[PresentedCredential],
+) -> Result<(String, String), ExchangeProtocolError> {
+    // MDOC credential(s) are sent as a MDOC presentation, using the MDOC formatter
+    if presented.len() == 1
+        && presented
             .iter()
-            .find(|(_, v)| v.as_str() == "jwt_vc_json" || v.as_str() == "vc+sd-jwt")
-            .map(|(k, _)| (has_mdoc, k.to_owned(), "jwt_vp_json".to_owned()))
-            .ok_or_else(|| ExchangeProtocolError::Failed("no jwt_vp_json format in map".into()))
+            .all(|cred| cred.credential_schema.format == FormatType::Mdoc.to_string())
+    {
+        return Ok((FormatType::Mdoc.to_string(), "mso_mdoc".to_owned()));
     }
+
+    if presented.iter().all(|cred| {
+        cred.credential_schema.format == FormatType::JsonLdClassic.to_string()
+            || cred.credential_schema.format == FormatType::JsonLdBbsPlus.to_string()
+    }) {
+        return Ok((FormatType::JsonLdClassic.to_string(), "ldp_vp".to_owned()));
+    }
+
+    // Fallback, handle all other formats via enveloped JWT
+    Ok((FormatType::Jwt.to_string(), "jwt_vp_json".to_owned()))
 }
 
 pub fn credential_offer_from_metadata(

@@ -20,8 +20,8 @@ use super::dto::{
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
 use super::{
-    ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
-    FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
+    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
+    StorageAccess, TypeToDescriptorMapper,
 };
 use crate::common_mapper::{decode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::CoreConfig;
@@ -151,8 +151,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         holder_did: &Did,
         key: &Key,
         _jwk_key_id: Option<String>,
-        _format_map: HashMap<String, String>,
-        _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
@@ -235,7 +233,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         _format: &str,
         _storage_access: &StorageAccess,
         _tx_code: Option<String>,
-        _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -286,7 +283,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
-        _format_map: HashMap<String, String>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let interaction_data: MdocBleHolderInteractionData =
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;

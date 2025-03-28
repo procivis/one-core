@@ -42,7 +42,7 @@ use crate::util::history::log_history_event_credential;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
-use crate::util::oidc::{detect_format_with_crypto_suite, map_core_to_oidc_format};
+use crate::util::oidc::{detect_format_with_crypto_suite, OID4VP_FORMAT_MAP};
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
 impl CredentialService {
@@ -447,8 +447,13 @@ impl CredentialService {
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
                 .r#type;
 
-            map_core_to_oidc_format(&format_type)
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+            OID4VP_FORMAT_MAP
+                .get(&format_type)
+                .ok_or(ExchangeProtocolError::Failed(format!(
+                    "Unknown credential format type: {}",
+                    format_type
+                )))
+                .map(|s| s.to_string())?
         } else {
             credential_schema.format.to_owned()
         };

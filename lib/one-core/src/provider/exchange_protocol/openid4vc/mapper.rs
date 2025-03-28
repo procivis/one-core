@@ -86,7 +86,7 @@ use crate::service::oidc::proof_request::{
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
-use crate::util::oidc::{determine_response_mode, map_core_to_oidc_format};
+use crate::util::oidc::{determine_response_mode, OID4VP_FORMAT_MAP};
 
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
@@ -714,8 +714,13 @@ pub fn create_format_map(
 ) -> Result<HashMap<String, OpenID4VpPresentationFormat>, ExchangeProtocolError> {
     match format_type {
         FormatType::Jwt | FormatType::Mdoc => {
-            let key = map_core_to_oidc_format(format_type)
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            let key = OID4VP_FORMAT_MAP
+                .get(format_type)
+                .ok_or(ExchangeProtocolError::Failed(format!(
+                    "Missing credential format for `{}`",
+                    format_type
+                )))?
+                .to_string();
             Ok(HashMap::from([(
                 key,
                 OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
@@ -724,8 +729,13 @@ pub fn create_format_map(
             )]))
         }
         FormatType::SdJwt | FormatType::SdJwtVc => {
-            let key = map_core_to_oidc_format(format_type)
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            let key = OID4VP_FORMAT_MAP
+                .get(format_type)
+                .ok_or(ExchangeProtocolError::Failed(format!(
+                    "Missing credential format for `{}`",
+                    format_type
+                )))?
+                .to_string();
             Ok(HashMap::from([(
                 key,
                 OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
@@ -1185,9 +1195,8 @@ pub(crate) fn create_presentation_submission(
     presentation_definition_id: String,
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
-    format_map: HashMap<String, String>,
 ) -> Result<PresentationSubmissionMappingDTO, ExchangeProtocolError> {
-    let path_nested = format != "mso_mdoc" || credential_presentations.len() > 1;
+    let path_nested_supported = format == "jwt_vp_json" || format == "ldp_vp";
     Ok(PresentationSubmissionMappingDTO {
         id: Uuid::new_v4().to_string(),
         definition_id: presentation_definition_id,
@@ -1199,14 +1208,24 @@ pub(crate) fn create_presentation_submission(
                     id: presented_credential.request.id,
                     format: format.to_owned(),
                     path: "$".to_string(),
-                    path_nested: if path_nested {
+                    path_nested: if path_nested_supported {
                         Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: format_map
-                                .get(&presented_credential.credential_schema.format)
+                            format: OID4VP_FORMAT_MAP
+                                .get(
+                                    &presented_credential
+                                        .credential_schema
+                                        .format
+                                        .parse()
+                                        .map_err(|_| {
+                                            ExchangeProtocolError::Failed(
+                                                "format not found".to_string(),
+                                            )
+                                        })?,
+                                )
                                 .ok_or_else(|| {
                                     ExchangeProtocolError::Failed("format not found".to_string())
                                 })?
-                                .to_owned(),
+                                .to_string(),
                             path: format!("$.vp.verifiableCredential[{index}]"),
                         })
                     } else {
@@ -1782,8 +1801,10 @@ pub(super) fn credentials_supported_mdoc(
 
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         wallet_storage_type: schema.wallet_storage_type,
-        format: map_core_to_oidc_format(&format_type)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+        format: OID4VP_FORMAT_MAP
+            .get(&format_type)
+            .ok_or(ExchangeProtocolError::Failed("TODO".to_string()))?
+            .to_string(),
         // We only take objects from the initial structure as arrays are not allowed on the first level
         claims: claim_schema.claims,
         order: if element_order.len() > 1 {

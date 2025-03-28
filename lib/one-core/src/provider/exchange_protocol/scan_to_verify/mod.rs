@@ -9,8 +9,8 @@ use url::Url;
 
 use super::dto::{ExchangeProtocolCapabilities, Operation, PresentationDefinitionResponseDTO};
 use super::{
-    ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
-    FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
+    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
+    StorageAccess, TypeToDescriptorMapper,
 };
 use crate::model::credential::Credential;
 use crate::model::did::{Did, KeyRole};
@@ -82,8 +82,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
-        _format_map: HashMap<String, String>,
-        _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -97,7 +95,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _format: &str,
         _storage_access: &StorageAccess,
         _tx_code: Option<String>,
-        _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -114,7 +111,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _proof: &Proof,
         _interaction_data: Self::VPInteractionContext,
         _storage_access: &StorageAccess,
-        _format_map: HashMap<String, String>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }

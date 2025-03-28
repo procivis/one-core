@@ -58,6 +58,7 @@ use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::key_verification::KeyVerification;
+use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
 pub fn create_issuer_metadata_response(
     base_url: &str,
@@ -272,7 +273,6 @@ pub(crate) async fn oidc_verifier_direct_post(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
-    map_oidc_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
     throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
         .or(throw_if_latest_proof_state_not_eq(
@@ -289,7 +289,6 @@ pub(crate) async fn oidc_verifier_direct_post(
         formatter_provider,
         key_algorithm_provider,
         revocation_method_provider,
-        map_oidc_to_external,
     )
     .await?;
     let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
@@ -312,7 +311,6 @@ async fn process_proof_submission(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
-    map_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let interaction_data = parse_interaction_content(interaction_data)?;
 
@@ -350,7 +348,6 @@ async fn process_proof_submission(
         &presentation_strings,
         presentation_submission,
         formatter_provider,
-        map_oidc_format_to_external,
     )
     .await?;
 
@@ -403,7 +400,6 @@ async fn process_proof_submission(
                 key_algorithm_provider.clone(),
             ),
             context,
-            map_oidc_format_to_external,
         )
         .await?;
 
@@ -465,7 +461,7 @@ async fn process_proof_submission(
 
         let (credential, mso) = validate_credential(
             presentation,
-            path_nested,
+            presentation_submitted,
             &extracted_lvvcs,
             proof_schema_input,
             formatter_provider,
@@ -476,7 +472,6 @@ async fn process_proof_submission(
             ),
             did_method_provider,
             revocation_method_provider,
-            map_oidc_format_to_external,
             holder_binding_ctx,
         )
         .await?;
@@ -498,7 +493,6 @@ async fn extract_lvvcs(
     presentation_strings: &[String],
     presentation_submission: &PresentationSubmissionMappingDTO,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
-    map_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<Vec<DetailCredential>, OpenID4VCError> {
     let mut result = vec![];
 
@@ -513,7 +507,6 @@ async fn extract_lvvcs(
             presentation_string,
             &presentation_submitted.format,
             formatter_provider,
-            map_oidc_format_to_external,
         )
         .await?;
 
@@ -529,7 +522,7 @@ async fn extract_lvvcs(
             .ok_or(OpenID4VCIError::InvalidRequest)?;
 
         let oidc_format = &path_nested.format;
-        let format = map_oidc_format_to_external(oidc_format, Some(credential))?;
+        let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential))?;
         let formatter = formatter_provider
             .get_formatter(&format)
             .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;

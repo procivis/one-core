@@ -3545,6 +3545,7 @@ dependencies = [
  "json-syntax",
  "jsonptr",
  "jsonschema",
+ "lazy_static",
  "maplit",
  "mime",
  "mockall",

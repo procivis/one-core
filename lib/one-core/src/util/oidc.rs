@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use thiserror::Error;
 
 use crate::config::core_config::FormatType;
@@ -15,66 +16,22 @@ pub enum FormatError {
     MappingError(String),
 }
 
-pub fn map_core_to_oidc_format(format: &FormatType) -> Result<String, FormatError> {
-    match format {
-        FormatType::Jwt => Ok("jwt_vc_json".to_string()),
-        FormatType::SdJwt | FormatType::SdJwtVc => Ok("vc+sd-jwt".to_string()),
-        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok("ldp_vc".to_string()),
-        FormatType::Mdoc => Ok("mso_mdoc".to_string()),
-        _ => Err(FormatError::MappingError(
-            "Credential format is invalid!".to_string(),
-        )),
-    }
-}
-
-pub fn create_core_to_oicd_format_map() -> HashMap<String, String> {
-    [
-        ("JWT", "jwt_vc_json"),
-        ("SD_JWT", "vc+sd-jwt"),
-        ("SD_JWT_VC", "vc+sd-jwt"),
-        ("JSON_LD_CLASSIC", "ldp_vc"),
-        ("JSON_LD_BBSPLUS", "ldp_vc"),
-        ("JSON_LD", "ldp_vc"),
-        ("MDOC", "mso_mdoc"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.to_owned(), v.to_owned()))
-    .collect()
-}
-
-pub fn create_core_to_oicd_presentation_format_map() -> HashMap<String, String> {
-    [
-        ("jwt_vp_json", "JWT"),
-        ("ldp_vp", "JSON_LD_CLASSIC"),
-        ("mso_mdoc", "MDOC"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.to_owned(), v.to_owned()))
-    .collect()
-}
-
-pub fn create_oicd_to_core_format_map() -> HashMap<String, String> {
-    [
+lazy_static! {
+    pub static ref OID4VP_FORMAT_MAP: HashMap<FormatType, &'static str> = HashMap::from([
+        (FormatType::Jwt, "jwt_vc_json"),
+        (FormatType::SdJwt, "vc+sd-jwt"),
+        (FormatType::SdJwtVc, "vc+sd-jwt"),
+        (FormatType::JsonLdClassic, "ldp_vc"),
+        (FormatType::JsonLdBbsPlus, "ldp_vc"),
+        (FormatType::Mdoc, "mso_mdoc"),
+    ]);
+    pub static ref OID4VP_TO_FORMATTER_MAP: HashMap<&'static str, &'static str> = HashMap::from([
         ("jwt_vc_json", "JWT"),
+        ("dc+sd-jwt", "SD_JWT"),
         ("vc+sd-jwt", "SD_JWT"),
         ("ldp_vc", "JSON_LD"),
         ("mso_mdoc", "MDOC"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.to_owned(), v.to_owned()))
-    .collect()
-}
-
-pub fn map_from_oidc_format_to_core(format: &str) -> Result<String, OpenID4VCError> {
-    match format {
-        "jwt_vc_json" => Ok("JWT".to_string()),
-        "vc+sd-jwt" => Ok("SD_JWT".to_string()),
-        "ldp_vc" => Ok("JSON_LD".to_string()),
-        "mso_mdoc" => Ok("MDOC".to_string()),
-        _ => Err(OpenID4VCError::OpenID4VCI(
-            OpenID4VCIError::UnsupportedCredentialFormat,
-        )),
-    }
+    ]);
 }
 
 pub fn map_from_oidc_format_to_core_detailed(
@@ -83,7 +40,7 @@ pub fn map_from_oidc_format_to_core_detailed(
 ) -> Result<String, OpenID4VCError> {
     match format {
         "jwt_vc_json" => Ok("JWT".to_string()),
-        "vc+sd-jwt" => {
+        "vc+sd-jwt" | "dc+sd-jwt" => {
             if let Some(token) = token {
                 match detect_sdjwt_type_from_token(token).map_err(|_| {
                     OpenID4VCError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)

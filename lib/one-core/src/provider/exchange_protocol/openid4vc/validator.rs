@@ -7,6 +7,7 @@ use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
 use time::OffsetDateTime;
 
+use super::model::PresentationSubmissionDescriptorDTO;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::interaction::Interaction;
@@ -22,24 +23,22 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::vec_last_position_from_token_path;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCITokenRequestDTO, ValidatedProofClaimDTO,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCITokenRequestDTO, ValidatedProofClaimDTO,
 };
-use crate::provider::exchange_protocol::openid4vc::service::FnMapOidcFormatToExternalDetailed;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::util::key_verification::KeyVerification;
+use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
 pub(super) async fn peek_presentation(
     presentation_string: &str,
     oidc_format: &str,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
-    map_from_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<Presentation, OpenID4VCError> {
-    let format = map_from_oidc_format_to_external(oidc_format, None)?;
+    let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))?;
     let formatter = formatter_provider
         .get_formatter(&format)
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
@@ -65,9 +64,8 @@ pub(super) async fn validate_presentation(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<dyn TokenVerifier>,
     context: ExtractPresentationCtx,
-    map_from_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<Presentation, OpenID4VCError> {
-    let format = map_from_oidc_format_to_external(oidc_format, None)?;
+    let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))?;
     let formatter = formatter_provider
         .get_formatter(&format)
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
@@ -108,14 +106,13 @@ fn is_revocation_credential(credential: &DetailCredential) -> bool {
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
     presentation: Presentation,
-    path_nested: Option<&NestedPresentationSubmissionDescriptorDTO>,
+    presentation_submitted: &PresentationSubmissionDescriptorDTO,
     extracted_lvvcs: &[DetailCredential],
     proof_schema_input: &ProofInputSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
-    map_from_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
     holder_binding_ctx: HolderBindingCtx,
 ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
     let holder_did = presentation
@@ -125,7 +122,9 @@ pub(super) async fn validate_credential(
             "Presentation missing holder id".to_string(),
         ))?;
 
-    let credential_index = path_nested
+    let credential_index = presentation_submitted
+        .path_nested
+        .as_ref()
         .map(|p| vec_last_position_from_token_path(&p.path))
         .transpose()?
         .unwrap_or(0);
@@ -135,8 +134,16 @@ pub(super) async fn validate_credential(
         .get(credential_index)
         .ok_or(OpenID4VCIError::InvalidRequest)?;
 
-    let oidc_format = path_nested.map(|p| p.format.as_str()).unwrap_or("mso_mdoc");
-    let format = map_from_oidc_format_to_external(oidc_format, Some(credential_token))?;
+    let oidc_format = match &presentation_submitted
+        .path_nested
+        .as_ref()
+        .map(|p| p.format.as_str())
+    {
+        Some(format) => format,
+        None => presentation_submitted.format.as_str(),
+    };
+
+    let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential_token))?;
     let formatter = formatter_provider
         .get_formatter(&format)
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;

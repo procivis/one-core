@@ -46,10 +46,7 @@ use crate::service::error::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_proof;
-use crate::util::oidc::{
-    create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
-    create_oicd_to_core_format_map, detect_format_with_crypto_suite, map_core_to_oidc_format,
-};
+use crate::util::oidc::{detect_format_with_crypto_suite, OID4VP_FORMAT_MAP};
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -288,12 +285,7 @@ impl SSIHolderService {
         );
 
         let presentation_definition = exchange_protocol
-            .holder_get_presentation_definition(
-                &proof,
-                interaction_data.clone(),
-                &storage_access,
-                create_oicd_to_core_format_map(),
-            )
+            .holder_get_presentation_definition(&proof, interaction_data.clone(), &storage_access)
             .await?;
 
         let requested_credentials: Vec<_> = presentation_definition
@@ -496,8 +488,6 @@ impl SSIHolderService {
                 &holder_did,
                 selected_key,
                 Some(holder_jwk_key_id),
-                create_core_to_oicd_format_map(),
-                create_core_to_oicd_presentation_format_map(),
             )
             .map_err(ServiceError::from)
             .and_then(|submit_result| async {
@@ -642,8 +632,10 @@ impl SSIHolderService {
                     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
                     .r#type;
 
-                map_core_to_oidc_format(&format_type)
-                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                OID4VP_FORMAT_MAP
+                    .get(&format_type)
+                    .map(|s| s.to_string())
+                    .ok_or(ExchangeProtocolError::Failed("TODO".to_string()))?
             } else {
                 schema.format.to_owned()
             };
@@ -662,7 +654,6 @@ impl SSIHolderService {
                     &format,
                     &storage_access,
                     tx_code.clone(),
-                    detect_format_with_crypto_suite,
                 )
                 .await?;
 

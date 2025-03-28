@@ -371,8 +371,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format_map: HashMap<String, String>,
-        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError>;
 
     /// Accepts an offered credential.
@@ -387,8 +385,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
-        // This helps map to correct formatter key if crypto suite hast o be scanned.
-        map_external_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError>;
 
     /// Rejects an offered credential.
@@ -406,7 +402,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         proof: &Proof,
         context: Self::VPInteractionContext,
         storage_access: &StorageAccess,
-        format_map: HashMap<String, String>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError>;
 
     /// Takes the VP interaction context and returns a holder binding context, if any.
@@ -512,19 +507,9 @@ where
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format_map: HashMap<String, String>,
-        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         self.inner
-            .holder_submit_proof(
-                proof,
-                credential_presentations,
-                holder_did,
-                key,
-                jwk_key_id,
-                format_map,
-                presentation_format_map,
-            )
+            .holder_submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
             .await
     }
 
@@ -537,7 +522,6 @@ where
         format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
-        map_external_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.inner
             .holder_accept_credential(
@@ -548,7 +532,6 @@ where
                 format,
                 storage_access,
                 tx_code,
-                map_external_format_to_external,
             )
             .await
     }
@@ -565,12 +548,11 @@ where
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
-        format_map: HashMap<String, String>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let interaction_data =
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;
         self.inner
-            .holder_get_presentation_definition(proof, interaction_data, storage_access, format_map)
+            .holder_get_presentation_definition(proof, interaction_data, storage_access)
             .await
     }
 

@@ -1,7 +1,6 @@
 //! OpenID4VP over BLE implementation
 //! https://openid.net/specs/openid-4-verifiable-presentations-over-ble-1_0.html
 
-use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{anyhow, Result};
@@ -53,7 +52,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::ble_resource::{Abort, BleWaiter};
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::create_core_to_oicd_format_map;
 
 pub mod mappers;
 pub mod model;
@@ -349,8 +347,6 @@ impl OpenID4VCBLE {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format_map: HashMap<String, String>,
-        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
@@ -393,34 +389,12 @@ impl OpenID4VCBLE {
             .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
             .collect();
 
-        let formats: HashMap<&str, &str> = credential_presentations
-            .iter()
-            .map(|presented_credential| {
-                format_map
-                    .get(presented_credential.credential_schema.format.as_str())
-                    .map(|mapped| {
-                        (
-                            mapped.as_str(),
-                            presented_credential.credential_schema.format.as_str(),
-                        )
-                    })
-            })
-            .collect::<Option<_>>()
-            .ok_or_else(|| ExchangeProtocolError::Failed("missing format mapping".into()))?;
-
-        let (_, format, oidc_format) =
-            map_credential_formats_to_presentation_format(&formats, &format_map)?;
-
-        let presentation_format =
-            presentation_format_map
-                .get(&oidc_format)
-                .ok_or(ExchangeProtocolError::Failed(format!(
-                    "Missing presentation format for `{oidc_format}`"
-                )))?;
+        let (format, oidc_format) =
+            map_credential_formats_to_presentation_format(&credential_presentations)?;
 
         let presentation_formatter = self
             .formatter_provider
-            .get_formatter(presentation_format)
+            .get_formatter(&format)
             .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = self
@@ -441,7 +415,6 @@ impl OpenID4VCBLE {
             presentation_definition_id,
             credential_presentations,
             &oidc_format,
-            create_core_to_oicd_format_map(),
         )?;
 
         let nonce = openid_request
@@ -452,7 +425,6 @@ impl OpenID4VCBLE {
         let mut ctx = FormatPresentationCtx {
             nonce: Some(nonce.to_owned()),
             token_formats: Some(token_formats),
-            vc_format_map: format_map,
             ..Default::default()
         };
 

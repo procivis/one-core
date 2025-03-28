@@ -42,6 +42,7 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::oidc::OID4VP_FORMAT_MAP;
 
 #[cfg(test)]
 mod test;
@@ -188,9 +189,9 @@ impl CredentialFormatter for JsonLdClassic {
             formats
                 .into_iter()
                 .filter_map(|format| {
-                    ctx.vc_format_map
-                        .get(&format)
-                        .map(|format: &String| format.to_owned())
+                    OID4VP_FORMAT_MAP
+                        .get(&format.parse().ok()?)
+                        .map(|format| format.to_string())
                 })
                 .collect::<Vec<String>>()
         });

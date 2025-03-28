@@ -30,8 +30,7 @@ use crate::provider::exchange_protocol::{
 use crate::provider::http_client::HttpClient;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
-use crate::util::oidc::map_from_oidc_format_to_core;
-
+use crate::util::oidc::OID4VP_TO_FORMATTER_MAP;
 pub struct HandleInvitationOperationsImpl {
     pub organisation: Organisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
@@ -232,8 +231,12 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     Err(_) => (LayoutType::Card, None, None),
                 };
 
-                let credential_format = map_from_oidc_format_to_core(&credential_config.format)
-                    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+                let credential_format = OID4VP_TO_FORMATTER_MAP
+                    .get(credential_config.format.as_str())
+                    .ok_or(ExchangeProtocolError::Failed(format!(
+                        "Missing credential format for `{}`",
+                        credential_config.format
+                    )))?;
 
                 let metadata_credential = issuer_metadata
                     .credential_configurations_supported
@@ -259,7 +262,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 let credential_schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
                         name,
-                        format: credential_format,
+                        format: credential_format.to_string(),
                         revocation_method: "NONE".to_string(),
                         organisation_id: self.organisation.id,
                         claims: if let Some(schemas) = claim_schemas {
@@ -307,8 +310,13 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             _ => {
                 let credential_format = match credential_config.format.as_str() {
                     "vc+sd-jwt" if credential_config.vct.is_some() => "SD_JWT_VC".to_string(),
-                    other => map_from_oidc_format_to_core(other)
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+                    other => OID4VP_TO_FORMATTER_MAP
+                        .get(other)
+                        .ok_or(ExchangeProtocolError::Failed(format!(
+                            "Missing credential format for `{}`",
+                            other
+                        )))?
+                        .to_string(),
                 };
 
                 let (claim_schemas, claims): (Vec<_>, Vec<_>) =

@@ -72,7 +72,6 @@ use crate::util::history::log_history_event_proof;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
-use crate::util::oidc::create_oicd_to_core_format_map;
 
 impl ProofService {
     /// Returns details of a proof
@@ -226,12 +225,7 @@ impl ProofService {
         );
 
         exchange
-            .holder_get_presentation_definition(
-                &proof,
-                interaction_data,
-                &storage_access,
-                create_oicd_to_core_format_map(),
-            )
+            .holder_get_presentation_definition(&proof, interaction_data, &storage_access)
             .await
             .map_err(Into::into)
     }
