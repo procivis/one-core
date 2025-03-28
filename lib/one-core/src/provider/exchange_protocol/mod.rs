@@ -8,8 +8,7 @@ use indexmap::IndexMap;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
     ClientIdScheme, OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VPPresentationDefinitionInputDescriptorFormat,
-    OpenID4VpPresentationFormat,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VpPresentationFormat,
 };
 use openid4vc::openidvc_ble::OpenID4VCBLE;
 use openid4vc::openidvc_http::OpenID4VCHTTP;
@@ -235,10 +234,8 @@ pub type FormatMapper =
 pub type TypeToDescriptorMapper = Arc<
     dyn Fn(
             &FormatType,
-        ) -> Result<
-            HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
-            ExchangeProtocolError,
-        > + Send
+        ) -> Result<HashMap<String, OpenID4VpPresentationFormat>, ExchangeProtocolError>
+        + Send
         + Sync,
 >;
 pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String, OpenID4VCError>;

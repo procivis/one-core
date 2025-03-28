@@ -142,9 +142,8 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
             },
             "vp_formats": {
                 "vc+sd-jwt": {
-                    "alg": [
-                        "EdDSA"
-                    ]
+                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
                 },
                 "jwt_vp_json": {
                     "alg": [
@@ -491,9 +490,8 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                 },
                 "vp_formats": {
                     "vc+sd-jwt": {
-                        "alg": [
-                            "EdDSA"
-                        ]
+                        "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                        "sd-jwt_alg_values": ["EdDSA", "ES256"]
                     },
                     "jwt_vp_json": {
                         "alg": [
@@ -765,9 +763,8 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                     },
                     "vp_formats": {
                         "vc+sd-jwt": {
-                            "alg": [
-                                "EdDSA"
-                            ]
+                            "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                            "sd-jwt_alg_values": ["EdDSA", "ES256"]
                         },
                         "jwt_vp_json": {
                             "alg": [

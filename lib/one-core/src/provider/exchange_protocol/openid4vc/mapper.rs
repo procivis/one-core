@@ -19,16 +19,17 @@ use super::model::{
     ClientIdScheme, CredentialSchemaBackgroundPropertiesRequestDTO,
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAlgs,
-    OpenID4VPAuthorizationRequestParams, OpenID4VPAuthorizationRequestQueryParams,
-    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    DidListItemResponseDTO, LdpVcAlgs, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialSubjectItem, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCParams, OpenID4VPAlgs, OpenID4VPAuthorizationRequestParams,
+    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
+    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
-    ProvedCredential,
+    OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVcSdJwtAlgs,
+    OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::{value_to_model_claims, NESTED_CLAIM_MARKER};
@@ -65,9 +66,8 @@ use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, NestedPresentationSubmissionDescriptorDTO,
-    OpenID4VCICredentialValueDetails, OpenID4VPPresentationDefinitionInputDescriptorFormat,
-    OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO, PresentedCredential,
+    OpenID4VCICredentialValueDetails, OpenID4VpPresentationFormat,
+    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, PresentedCredential,
 };
 use crate::provider::exchange_protocol::openid4vc::{
     ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
@@ -194,20 +194,21 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresen
         alg: vec!["EdDSA".to_owned(), "ES256".to_owned()],
     });
 
+    let sd_jwt_algorithms = OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+        sd_jwt_algorithms: vec!["EdDSA".to_owned(), "ES256".to_owned()],
+        kb_jwt_algorithms: vec!["EdDSA".to_owned(), "ES256".to_owned()],
+    });
+
     formats.insert("jwt_vp_json".to_owned(), algorithms.clone());
     formats.insert("jwt_vc_json".to_owned(), algorithms.clone());
-    formats.insert("ldp_vp".to_owned(), algorithms.clone());
     formats.insert(
-        "ldp_vc".to_owned(),
-        OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
-            alg: vec![
-                "EdDSA".to_owned(),
-                "ES256".to_owned(),
-                "BLS12-381G1-SHA256".to_owned(),
-            ],
+        "ldp_vp".to_owned(),
+        OpenID4VpPresentationFormat::LdpVcAlgs(LdpVcAlgs {
+            proof_type: vec!["DataIntegrityProof".to_owned()],
         }),
     );
-    formats.insert("vc+sd-jwt".to_owned(), algorithms.clone());
+    formats.insert("vc+sd-jwt".to_owned(), sd_jwt_algorithms.clone());
+    formats.insert("dc+sd-jwt".to_owned(), sd_jwt_algorithms);
     formats.insert("mso_mdoc".to_owned(), algorithms);
     formats
 }
@@ -710,20 +711,27 @@ fn unnest_claim_schemas_inner(
 
 pub fn create_format_map(
     format_type: &FormatType,
-) -> Result<
-    HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
-    ExchangeProtocolError,
-> {
+) -> Result<HashMap<String, OpenID4VpPresentationFormat>, ExchangeProtocolError> {
     match format_type {
-        FormatType::Jwt | FormatType::SdJwt | FormatType::Mdoc | FormatType::SdJwtVc => {
+        FormatType::Jwt | FormatType::Mdoc => {
             let key = map_core_to_oidc_format(format_type)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
             Ok(HashMap::from([(
                 key,
-                OpenID4VPPresentationDefinitionInputDescriptorFormat {
+                OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
                     alg: vec!["EdDSA".to_string(), "ES256".to_string()],
-                    proof_type: vec![],
-                },
+                }),
+            )]))
+        }
+        FormatType::SdJwt | FormatType::SdJwtVc => {
+            let key = map_core_to_oidc_format(format_type)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            Ok(HashMap::from([(
+                key,
+                OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+                    sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                }),
             )]))
         }
         FormatType::PhysicalCard => {
@@ -731,10 +739,9 @@ pub fn create_format_map(
         }
         FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok(HashMap::from([(
             "ldp_vc".to_string(),
-            OpenID4VPPresentationDefinitionInputDescriptorFormat {
-                alg: vec![],
+            OpenID4VpPresentationFormat::LdpVcAlgs(LdpVcAlgs {
                 proof_type: vec!["DataIntegrityProof".to_string()],
-            },
+            }),
         )])),
     }
 }

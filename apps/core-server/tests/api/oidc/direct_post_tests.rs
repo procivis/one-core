@@ -641,7 +641,8 @@ async fn test_direct_post_wrong_claim_format() {
             "input_descriptors": [{
                 "format": {
                     "vc+sd-jwt": {
-                        "alg": ["EdDSA", "ES256"]
+                        "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                        "sd-jwt_alg_values": ["EdDSA", "ES256"]
                     }
                 },
                 "id": "input_0",

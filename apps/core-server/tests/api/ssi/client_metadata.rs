@@ -78,17 +78,19 @@ async fn test_get_client_metadata() {
                 "jwt_vp_json": {
                     "alg": ["EdDSA", "ES256"]
                 },
-                "ldp_vc": {
-                    "alg": ["EdDSA", "ES256", "BLS12-381G1-SHA256"]
-                },
                 "ldp_vp": {
-                    "alg": ["EdDSA", "ES256"]
+                    "proof_type": ["DataIntegrityProof"]
                 },
                 "mso_mdoc": {
                     "alg": ["EdDSA", "ES256"]
                 },
+                "dc+sd-jwt": {
+                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
+                },
                 "vc+sd-jwt": {
-                    "alg": ["EdDSA", "ES256"]
+                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
                 }
             },
             "authorization_encrypted_response_alg": "ECDH-ES",

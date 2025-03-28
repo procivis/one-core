@@ -125,16 +125,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
                             "alg":["EdDSA"]
                         },
                         "ldp_vp":{
-                            "alg":["EdDSA"]
-                        },
-                        "ldp_vc":{
-                            "alg":["EdDSA"]
+                            "proof_type":["DataIntegrityProof"]
                         },
                         "mso_mdoc":{
                             "alg":["EdDSA"]
                         },
-                        "vc+sd-jwt":{
-                            "alg":["EdDSA"]
+                        "vc+sd-jwt": {
+                            "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                            "sd-jwt_alg_values": ["EdDSA", "ES256"]
                         }
                     }
                 },
@@ -357,16 +355,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
                             "alg":["EdDSA"]
                         },
                         "ldp_vp":{
-                            "alg":["EdDSA"]
-                        },
-                        "ldp_vc":{
-                            "alg":["EdDSA"]
+                            "proof_type":["DataIntegrityProof"]
                         },
                         "mso_mdoc":{
                             "alg":["EdDSA"]
                         },
-                        "vc+sd-jwt":{
-                            "alg":["EdDSA"]
+                        "vc+sd-jwt": {
+                            "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                            "sd-jwt_alg_values": ["EdDSA", "ES256"]
                         }
                     },
                     "client_id_scheme":"redirect_uri"

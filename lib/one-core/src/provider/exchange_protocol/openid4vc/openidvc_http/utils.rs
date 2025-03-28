@@ -520,18 +520,17 @@ pub fn validate_interaction_data(
                 "client_metadata is None".to_string(),
             ))?;
 
+    let mso_vp = client_metadata.vp_formats.get("mso_mdoc");
     let jwt_vp = client_metadata.vp_formats.get("jwt_vp_json");
-
+    let ldp_vp = client_metadata.vp_formats.get("ldp_vp");
     let sd_jwt_vp = client_metadata
         .vp_formats
         .get("dc+sd-jwt")
         .or(client_metadata.vp_formats.get("vc+sd-jwt"));
 
-    let mso_vp = client_metadata.vp_formats.get("mso_mdoc");
-
-    if jwt_vp.is_none() && sd_jwt_vp.is_none() && mso_vp.is_none() {
+    if jwt_vp.is_none() && sd_jwt_vp.is_none() && mso_vp.is_none() && ldp_vp.is_none() {
         Err(ExchangeProtocolError::InvalidRequest(
-            "unsupported client_metadata.vp_format must contain 'jwt_vp_json', 'vc+sd-jwt', 'dc+sd-jwt', or 'mso_mdoc'".to_string(),
+            "unsupported client_metadata.vp_format must contain 'jwt_vp_json', 'vc+sd-jwt', 'dc+sd-jwt', 'mso_mdoc', or 'ldp_vp'".to_string(),
         ))?;
     }
 
@@ -549,6 +548,36 @@ pub fn validate_interaction_data(
             ))?;
         }
     };
+
+    if let Some(ldp_vp) = ldp_vp {
+        match ldp_vp {
+            OpenID4VpPresentationFormat::LdpVcAlgs(ldp_vp_json) => {
+                if !ldp_vp_json
+                    .proof_type
+                    .contains(&"DataIntegrityProof".to_string())
+                {
+                    Err(ExchangeProtocolError::InvalidRequest(
+                        "client_metadata.vp_formats[\"ldp_vp\"] must contain 'DataIntegrityProof' proof type"
+                            .to_string(),
+                    ))?;
+                }
+            }
+            // TODO: Backwards compatibility,previous core versions incorrectly encoded the ldp_vp as a GenericAlgList
+            OpenID4VpPresentationFormat::GenericAlgList(algs) => {
+                if !algs.alg.contains(&"EdDSA".to_string()) {
+                    Err(ExchangeProtocolError::InvalidRequest(
+                        "client_metadata.vp_formats[\"ldp_vp\"] must contain 'EdDSA' algorithm"
+                            .to_string(),
+                    ))?;
+                }
+            }
+            _ => {
+                return Err(ExchangeProtocolError::InvalidRequest(
+                    "invalid client_metadata.vp_formats[\"ldp_vp\"] structure".to_string(),
+                ))
+            }
+        }
+    }
 
     // TODO: Backwards compatibility, see ONE-5021
     if let Some(sd_jwt_vp) = sd_jwt_vp {

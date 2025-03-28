@@ -441,16 +441,8 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
+    pub format: HashMap<String, OpenID4VpPresentationFormat>,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct OpenID4VPPresentationDefinitionInputDescriptorFormat {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub alg: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub proof_type: Vec<String>,
 }
 
 #[skip_serializing_none]
@@ -500,22 +492,30 @@ pub struct OpenID4VPClientMetadataJwkDTO {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum OpenID4VpPresentationFormat {
-    GenericAlgList(OpenID4VPAlgs),
     SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs),
+    LdpVcAlgs(LdpVcAlgs),
+    GenericAlgList(OpenID4VPAlgs),
     Other(serde_json::Value),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPVcSdJwtAlgs {
-    #[serde(rename = "sd-jwt_alg_values")]
+    #[serde(rename = "sd-jwt_alg_values", skip_serializing_if = "Vec::is_empty")]
     pub sd_jwt_algorithms: Vec<String>,
-    #[serde(rename = "kb-jwt_alg_values")]
+    #[serde(rename = "kb-jwt_alg_values", skip_serializing_if = "Vec::is_empty")]
     pub kb_jwt_algorithms: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub alg: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct LdpVcAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub proof_type: Vec<String>,
 }
 
 #[derive(Debug)]

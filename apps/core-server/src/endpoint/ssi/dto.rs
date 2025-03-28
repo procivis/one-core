@@ -9,7 +9,7 @@ use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use one_core::provider::exchange_protocol::openid4vc::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ExtendedSubjectClaimsDTO,
-    ExtendedSubjectDTO, NestedPresentationSubmissionDescriptorDTO,
+    ExtendedSubjectDTO, LdpVcAlgs, NestedPresentationSubmissionDescriptorDTO,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
@@ -20,8 +20,7 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionInputDescriptorFormat, OpenID4VPVcSdJwtAlgs,
+    OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVcSdJwtAlgs,
     OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
@@ -634,17 +633,8 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
-    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO>,
+    pub format: HashMap<String, OpenID4VPFormatRestDTO>,
     pub constraints: OpenID4VPPresentationDefinitionConstraintRestDTO,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VPPresentationDefinitionInputDescriptorFormat)]
-pub struct OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub alg: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub proof_type: Vec<String>,
 }
 
 #[skip_serializing_none]
@@ -682,31 +672,32 @@ pub struct OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO {
 #[from(OpenID4VpPresentationFormat)]
 #[serde(untagged)]
 pub enum OpenID4VPFormatRestDTO {
-    GenericAlgList(OpenID4VPAlgsRestDTO),
     SdJwtVcAlgs(OpenID4VPVcSdJwtAlgsRestDTO),
+    LdpVcAlgs(LdpVcAlgsRestDTO),
+    GenericAlgList(OpenID4VPAlgsRestDTO),
     Other(serde_json::Value),
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(LdpVcAlgs)]
+pub struct LdpVcAlgsRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub proof_type: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPAlgs)]
 pub struct OpenID4VPAlgsRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub alg: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPVcSdJwtAlgs)]
 pub struct OpenID4VPVcSdJwtAlgsRestDTO {
-    #[serde(
-        default,
-        skip_serializing_if = "Vec::is_empty",
-        rename = "sd-jwt_alg_values"
-    )]
+    #[serde(skip_serializing_if = "Vec::is_empty", rename = "sd-jwt_alg_values")]
     pub sd_jwt_algorithms: Vec<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Vec::is_empty",
-        rename = "kb-jwt_alg_values"
-    )]
+    #[serde(skip_serializing_if = "Vec::is_empty", rename = "kb-jwt_alg_values")]
     pub kb_jwt_algorithms: Vec<String>,
 }
 

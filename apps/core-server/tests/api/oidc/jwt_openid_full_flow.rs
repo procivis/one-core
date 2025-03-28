@@ -253,9 +253,8 @@ async fn test_openid4vc_jwt_flow(
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
-                    "alg": [
-                        "EdDSA"
-                    ]
+                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
                 },
                 "jwt_vp_json": {
                     "alg": [
@@ -267,14 +266,9 @@ async fn test_openid4vc_jwt_flow(
                         "EdDSA"
                     ]
                 },
-                "ldp_vc": {
-                    "alg": [
-                        "EdDSA"
-                    ]
-                },
                 "ldp_vp": {
-                    "alg": [
-                        "EdDSA"
+                    "proof_type": [
+                        "DataIntegrityProof"
                     ]
                 },
                 "mso_mdoc": {
@@ -631,9 +625,8 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
-                    "alg": [
-                        "EdDSA"
-                    ]
+                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
                 },
                 "jwt_vp_json": {
                     "alg": [
@@ -645,14 +638,9 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
                         "EdDSA"
                     ]
                 },
-                "ldp_vc": {
-                    "alg": [
-                        "EdDSA"
-                    ]
-                },
                 "ldp_vp": {
-                    "alg": [
-                        "EdDSA"
+                    "proof_type": [
+                        "DataIntegrityProof"
                     ]
                 },
                 "mso_mdoc": {

@@ -102,7 +102,8 @@ async fn test_openid4vc_sdjwt_vc_flow(
             "input_descriptors": [{
                 "format": {
                     "vc+sd-jwt": {
-                        "alg": [ "EdDSA", "ES256K" ]
+                        "kb-jwt_alg_values": ["EdDSA", "ES256K"],
+                        "sd-jwt_alg_values": ["EdDSA", "ES256K"]
                     }
                 },
                 "id": "input_0",
@@ -252,9 +253,8 @@ async fn test_openid4vc_sdjwt_vc_flow(
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
-                    "alg": [
-                        "EdDSA"
-                    ]
+                    "kb-jwt_alg_values": ["EdDSA", "ES256K"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256K"]
                 },
             },
             "client_id_scheme": "redirect_uri",
@@ -266,7 +266,8 @@ async fn test_openid4vc_sdjwt_vc_flow(
             "input_descriptors": [{
                 "format": {
                     "vc+sd-jwt": {
-                        "alg": [ "EdDSA", "ES256K" ]
+                        "kb-jwt_alg_values": ["EdDSA", "ES256K"],
+                        "sd-jwt_alg_values": ["EdDSA", "ES256K"]
                     }
                 },
                 "id": "input_0",

@@ -349,9 +349,8 @@ async fn test_openid4vc_jwt_mdoc_flow() {
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
-                    "alg": [
-                        "EdDSA"
-                    ]
+                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
                 },
                 "jwt_vp_json": {
                     "alg": [
@@ -363,14 +362,9 @@ async fn test_openid4vc_jwt_mdoc_flow() {
                         "EdDSA"
                     ]
                 },
-                "ldp_vc": {
-                    "alg": [
-                        "EdDSA"
-                    ]
-                },
                 "ldp_vp": {
-                    "alg": [
-                        "EdDSA"
+                    "proof_type": [
+                        "DataIntegrityProof"
                     ]
                 },
                 "mso_mdoc": {
