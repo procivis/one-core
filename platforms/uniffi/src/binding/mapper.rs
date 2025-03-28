@@ -296,6 +296,7 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             action: value.action.into(),
+            name: value.name,
             entity_id: value.entity_id.map(|id| id.to_string()),
             entity_type: value.entity_type.into(),
             metadata: convert_inner(value.metadata),

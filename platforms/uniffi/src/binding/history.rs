@@ -190,6 +190,7 @@ pub struct HistoryListItemBindingDTO {
     pub id: String,
     pub created_date: String,
     pub action: HistoryActionBindingEnum,
+    pub name: String,
     pub entity_id: Option<String>,
     pub entity_type: HistoryEntityTypeBindingEnum,
     pub metadata: Option<HistoryMetadataBinding>,
