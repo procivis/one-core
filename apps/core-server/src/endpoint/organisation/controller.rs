@@ -26,7 +26,7 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Retrieve organization",
-    description = "Returns information on an organization",
+    description = "Returns information on an organization.",
 )]
 pub(crate) async fn get_organisation(
     state: State<AppState>,
@@ -72,8 +72,11 @@ pub(crate) async fn get_organisations(
     ),
     summary = "Create organization",
     description = indoc::formatdoc! {"
-        Creates an organisation. All entities and transactions belong to one organisation. The system
-        supports the creation of as many organisations as is needed.
+        Creates an organization. If no UUID is passed, one will be created.
+        If no name is passed, the UUID will be used.
+
+        All entities and transactions belong to one organization. The system
+        supports the creation of as many organizations as is needed.
     "},
 )]
 #[axum::debug_handler]
@@ -106,7 +109,8 @@ pub(crate) async fn post_organisation(
     ),
     summary = "Update or insert organization",
     description = indoc::formatdoc! {"
-        Updates the name of an organisation if it exists, otherwise creates a new one with that id and name.
+        Updates the name of an organization if it exists, otherwise creates
+        a new organization using the provided UUID and name.
     "},
 )]
 #[axum::debug_handler]
