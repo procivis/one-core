@@ -16,6 +16,7 @@ use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::CredentialSchemaId;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
@@ -461,7 +462,7 @@ async fn test_delete_credential_schema_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .delete_credential_schema(&credential_schema.id)
+        .delete_credential_schema(&credential_schema)
         .await;
     assert!(result.is_ok());
 
@@ -478,7 +479,25 @@ async fn test_delete_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
     let result = repository
-        .delete_credential_schema(&Uuid::new_v4().into())
+        .delete_credential_schema(&CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "Test".to_string(),
+            format: "MDOC".to_string(),
+            revocation_method: "NONE".to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Document,
+            layout_properties: None,
+            schema_id: "Test_schema_id".to_string(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            imported_source_url: "".to_string(),
+            allow_suspension: false,
+            external_schema: false,
+            claim_schemas: None,
+            organisation: None,
+        })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }

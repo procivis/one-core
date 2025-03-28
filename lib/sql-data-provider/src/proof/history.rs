@@ -61,6 +61,7 @@ impl ProofHistoryDecorator {
     async fn write_history_entry(
         &self,
         proof_id: &ProofId,
+        proof_schema_name: String,
         action: HistoryAction,
         error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
@@ -72,6 +73,7 @@ impl ProofHistoryDecorator {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 action,
+                name: proof_schema_name,
                 entity_id: Some((*proof_id).into()),
                 entity_type: HistoryEntityType::Proof,
                 metadata: error_info.map(HistoryMetadata::ErrorMetadata),
@@ -89,9 +91,15 @@ impl ProofHistoryDecorator {
 #[async_trait::async_trait]
 impl ProofRepository for ProofHistoryDecorator {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
+        let proof_schema_name = request
+            .schema
+            .as_ref()
+            .map(|s| s.name.to_string())
+            .unwrap_or_default();
         let history_action = HistoryAction::from(request.state.clone());
         let proof_id = self.inner.create_proof(request).await?;
-        self.write_history_entry(&proof_id, history_action, None)
+
+        self.write_history_entry(&proof_id, proof_schema_name, history_action, None)
             .await?;
         Ok(proof_id)
     }
@@ -130,9 +138,15 @@ impl ProofRepository for ProofHistoryDecorator {
     }
 
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
+        let proof_schema_name = get_proof_schema_name(proof_id, &*self.inner).await?;
         self.inner.delete_proof_claims(proof_id).await?;
-        self.write_history_entry(proof_id, HistoryAction::ClaimsRemoved, None)
-            .await?;
+        self.write_history_entry(
+            proof_id,
+            proof_schema_name,
+            HistoryAction::ClaimsRemoved,
+            None,
+        )
+        .await?;
         Ok(())
     }
 
@@ -151,10 +165,30 @@ impl ProofRepository for ProofHistoryDecorator {
         error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
         if let Some(ref state) = proof.state {
+            let proof_schema_name = get_proof_schema_name(proof_id, &*self.inner).await?;
             let action = HistoryAction::from(state.clone());
-            self.write_history_entry(proof_id, action, error_info)
+            self.write_history_entry(proof_id, proof_schema_name, action, error_info)
                 .await?;
         }
         self.inner.update_proof(proof_id, proof, None).await
     }
+}
+
+async fn get_proof_schema_name(
+    proof_id: &ProofId,
+    repo: &dyn ProofRepository,
+) -> Result<String, DataLayerError> {
+    let proof = repo
+        .get_proof(
+            proof_id,
+            &ProofRelations {
+                schema: Some(Default::default()),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+    Ok(proof
+        .and_then(|p| p.schema.map(|s| s.name))
+        .unwrap_or_default())
 }

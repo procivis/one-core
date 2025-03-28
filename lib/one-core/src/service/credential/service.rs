@@ -199,7 +199,10 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations::default()),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
@@ -238,7 +241,7 @@ impl CredentialService {
         }
 
         self.credential_repository
-            .delete_credential(credential_id)
+            .delete_credential(&credential)
             .await
             .map_err(|error| match error {
                 // credential not found or already deleted
@@ -246,7 +249,9 @@ impl CredentialService {
                     EntityNotFoundError::Credential(*credential_id).into()
                 }
                 error => ServiceError::from(error),
-            })
+            })?;
+
+        Ok(())
     }
 
     /// Returns details of a credential
@@ -427,7 +432,6 @@ impl CredentialService {
         }
 
         let credential_exchange = &credential.exchange;
-
         let credential_schema = credential
             .schema
             .as_ref()
@@ -474,13 +478,13 @@ impl CredentialService {
             .issuer_share_credential(&credential, &format)
             .await?;
 
-        let organisation = if let Some(organisation) = credential
-            .schema
-            .as_ref()
-            .and_then(|schema| schema.organisation.as_ref())
-        {
-            organisation
-        } else {
+        let Some(credential_schema) = credential.schema.as_ref() else {
+            return Err(ServiceError::MappingError(
+                "Missing credential schema".to_string(),
+            ));
+        };
+
+        let Some(organisation) = &credential_schema.organisation else {
             return Err(ServiceError::MappingError(
                 "Missing organisation".to_string(),
             ));
@@ -739,9 +743,9 @@ impl CredentialService {
 
         let current_state = credential.state;
 
-        let formatter = self.formatter_provider.get_formatter(&format).ok_or(
-            MissingProviderError::Formatter(credential_schema.format.clone()),
-        )?;
+        let Some(formatter) = self.formatter_provider.get_formatter(&format) else {
+            return Err(MissingProviderError::Formatter(credential_schema.format).into());
+        };
 
         let detail_credential = formatter
             .extract_credentials_unverified(&credential_str)

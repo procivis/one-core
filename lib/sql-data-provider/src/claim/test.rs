@@ -71,7 +71,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     .await
     .unwrap();
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         credential_schema_id,
         CredentialStateEnum::Created,
@@ -89,7 +89,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             claim_schema_repository,
         }),
         db,
-        credential_id,
+        credential_id: credential.id,
         claim_schemas: claim_schema_ids
             .into_iter()
             .map(|id| ClaimSchema {
@@ -212,7 +212,8 @@ async fn test_delete_claims_for_credentials() {
         None,
     )
     .await
-    .unwrap();
+    .unwrap()
+    .id;
 
     repository
         .create_claim_list(

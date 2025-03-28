@@ -158,4 +158,5 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
     )
     .await
     .unwrap()
+    .id
 }

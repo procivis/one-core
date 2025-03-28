@@ -327,7 +327,7 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
     context
         .db
         .credential_schemas
-        .delete(&credential_schema.id)
+        .delete(&credential_schema)
         .await;
 
     let claims = credential_schema

@@ -31,6 +31,7 @@ pub struct HistoryResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     pub action: HistoryAction,
+    pub name: String,
     #[from(with_fn = convert_inner)]
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
@@ -50,6 +51,8 @@ pub struct HistoryResponseDetailRestDTO {
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
     pub action: HistoryAction,
+    #[try_from(infallible)]
+    pub name: String,
     #[try_from(with_fn = convert_inner, infallible)]
     pub entity_id: Option<Uuid>,
     #[try_from(infallible)]

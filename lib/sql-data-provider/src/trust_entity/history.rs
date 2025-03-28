@@ -60,8 +60,14 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
     }
 
     async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {
+        let name = self
+            .inner
+            .get(id, &TrustEntityRelations::default())
+            .await?
+            .map(|t| t.name)
+            .unwrap_or_default();
         self.inner.delete(id).await?;
-        if let Err(err) = self.create_history(id, HistoryAction::Created).await {
+        if let Err(err) = self.create_history(id, name, HistoryAction::Created).await {
             tracing::warn!("failed to insert trust entity history event: {err:?}");
         }
         Ok(())
@@ -95,7 +101,13 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         });
 
         if let Some(action) = history_action {
-            if let Err(err) = self.create_history(id, action).await {
+            let name = self
+                .inner
+                .get(id, &TrustEntityRelations::default())
+                .await?
+                .map(|t| t.name)
+                .unwrap_or_default();
+            if let Err(err) = self.create_history(id, name, action).await {
                 tracing::warn!("failed to insert trust entity history event: {err:?}");
             }
         }
@@ -130,6 +142,7 @@ impl TrustEntityHistoryDecorator {
     async fn create_history(
         &self,
         id: TrustEntityId,
+        name: String,
         action: HistoryAction,
     ) -> Result<HistoryId, DataLayerError> {
         let trust_entity = self.get_trust_entity_by_id(id).await?;
@@ -138,6 +151,7 @@ impl TrustEntityHistoryDecorator {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 action,
+                name,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
@@ -156,6 +170,7 @@ impl TrustEntityHistoryDecorator {
                 id: Uuid::new_v4().into(),
                 created_date: entity.created_date,
                 action: HistoryAction::Created,
+                name: entity.name.clone(),
                 entity_id: Some(trust_entity_id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,

@@ -14,8 +14,10 @@ pub trait CredentialSchemaRepository: Send + Sync {
         request: CredentialSchema,
     ) -> Result<CredentialSchemaId, DataLayerError>;
 
-    async fn delete_credential_schema(&self, id: &CredentialSchemaId)
-        -> Result<(), DataLayerError>;
+    async fn delete_credential_schema(
+        &self,
+        credential_schema: &CredentialSchema,
+    ) -> Result<(), DataLayerError>;
 
     async fn get_credential_schema(
         &self,

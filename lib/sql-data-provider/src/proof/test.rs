@@ -787,7 +787,7 @@ async fn test_set_proof_claims_success() {
     .await
     .unwrap();
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         &credential_schema_id,
         CredentialStateEnum::Created,
@@ -801,7 +801,7 @@ async fn test_set_proof_claims_success() {
 
     let claim = Claim {
         id: Uuid::new_v4(),
-        credential_id,
+        credential_id: credential.id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "value".to_string(),
@@ -812,7 +812,7 @@ async fn test_set_proof_claims_success() {
     // necessary to pass db consistency checks
     claim::ActiveModel {
         id: Set(claim.id.into()),
-        credential_id: Set(credential_id),
+        credential_id: Set(credential.id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set("value".into()),
         created_date: Set(get_dummy_date()),

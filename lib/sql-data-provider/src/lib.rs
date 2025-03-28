@@ -128,8 +128,8 @@ impl DataLayer {
         });
 
         let credential_schema_repository = Arc::new(CredentialSchemaHistoryDecorator {
-            inner: credential_schema_repository,
             history_repository: history_repository.clone(),
+            inner: credential_schema_repository,
         });
 
         let key_repository = Arc::new(KeyProvider {

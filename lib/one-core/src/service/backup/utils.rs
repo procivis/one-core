@@ -141,6 +141,7 @@ pub(super) fn load_db_from_zip<T: Read + Seek, K: Write + Seek>(
 
 pub(super) fn create_backup_history_event(
     organisation_id: OrganisationId,
+    name: String,
     action: HistoryAction,
     metadata: Option<HistoryMetadata>,
 ) -> History {
@@ -148,6 +149,7 @@ pub(super) fn create_backup_history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
+        name,
         entity_id: None,
         entity_type: HistoryEntityType::Backup,
         metadata,

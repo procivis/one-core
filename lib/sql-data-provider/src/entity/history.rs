@@ -17,6 +17,7 @@ pub struct Model {
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub metadata: Option<String>,
+    pub name: String,
 
     pub organisation_id: OrganisationId,
 }

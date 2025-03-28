@@ -200,6 +200,7 @@ impl KeyService {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 action: HistoryAction::CsrGenerated,
+                name: key.name,
                 entity_id: Some(key.id.into()),
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
@@ -208,7 +209,7 @@ impl KeyService {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert key history event: {err:?}");
+            tracing::warn!("failed to insert key history event: {err:?}");
         }
 
         Ok(KeyGenerateCSRResponseDTO { content })

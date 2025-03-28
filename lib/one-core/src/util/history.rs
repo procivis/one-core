@@ -12,6 +12,7 @@ use crate::repository::history_repository::HistoryRepository;
 
 pub(crate) fn history_event(
     entity_id: impl Into<EntityId>,
+    name: String,
     organisation_id: OrganisationId,
     entity_type: HistoryEntityType,
     action: HistoryAction,
@@ -20,6 +21,7 @@ pub(crate) fn history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
+        name,
         entity_id: Some(entity_id.into()),
         entity_type,
         metadata: None,
@@ -59,9 +61,15 @@ pub(crate) async fn log_history_event_credential(
         return;
     };
 
+    let credential_schema_name = credential
+        .schema
+        .as_ref()
+        .map(|s| s.name.to_string())
+        .unwrap_or_default();
     let result = history_repository
         .create_history(history_event(
             credential.id,
+            credential_schema_name,
             organisation_id,
             HistoryEntityType::Credential,
             event.clone(),
@@ -88,6 +96,7 @@ pub(crate) async fn log_history_event_credential_schema(
     let result = history_repository
         .create_history(history_event(
             schema.id,
+            schema.name.clone(),
             organisation.id,
             HistoryEntityType::CredentialSchema,
             event.clone(),
@@ -142,6 +151,11 @@ pub(crate) async fn log_history_event_proof(
     let result = history_repository
         .create_history(history_event(
             proof.id,
+            proof
+                .schema
+                .as_ref()
+                .map(|s| s.name.to_string())
+                .unwrap_or_default(),
             organisation_id,
             HistoryEntityType::Proof,
             event.clone(),
@@ -168,6 +182,7 @@ pub(crate) async fn log_history_event_proof_schema(
     let result = history_repository
         .create_history(history_event(
             proof_schema.id,
+            proof_schema.name.clone(),
             organisation.id,
             HistoryEntityType::ProofSchema,
             event.clone(),

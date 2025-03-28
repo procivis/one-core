@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof_schema::{
@@ -9,7 +9,7 @@ use one_core::model::proof_schema::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
-use shared_types::ProofSchemaId;
+use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -38,6 +38,31 @@ impl ProofSchemaHistoryDecorator {
         proof_schema
             .organisation
             .ok_or_else(|| anyhow::anyhow!("organisation is None").into())
+    }
+
+    async fn insert_history(
+        &self,
+        id: ProofSchemaId,
+        name: String,
+        organisation_id: OrganisationId,
+        action: HistoryAction,
+    ) {
+        if let Err(error) = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                action,
+                name,
+                entity_id: Some(id.into()),
+                entity_type: HistoryEntityType::ProofSchema,
+                metadata: None,
+                organisation_id,
+            })
+            .await
+        {
+            tracing::warn!(%error, "failed to insert proof schema history event");
+        }
     }
 }
 
@@ -71,25 +96,22 @@ impl ProofSchemaRepository for ProofSchemaHistoryDecorator {
         deleted_at: OffsetDateTime,
     ) -> Result<(), DataLayerError> {
         self.inner.delete_proof_schema(id, deleted_at).await?;
-
+        let proof_schema = self
+            .inner
+            .get_proof_schema(id, &ProofSchemaRelations::default())
+            .await?
+            .ok_or_else(|| {
+                DataLayerError::Db(anyhow!("We cannot find proof schema we just updated: {id}"))
+            })?;
         let organisation = self.get_organisation_for_proof_schema(id).await?;
 
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                action: HistoryAction::Deleted,
-                entity_id: Some((*id).into()),
-                entity_type: HistoryEntityType::ProofSchema,
-                metadata: None,
-                organisation_id: organisation.id,
-            })
-            .await;
-
-        if let Err(err) = result {
-            tracing::debug!("failed to insert proof schema history event: {err:?}");
-        }
+        self.insert_history(
+            *id,
+            proof_schema.name,
+            organisation.id,
+            HistoryAction::Deleted,
+        )
+        .await;
 
         Ok(())
     }

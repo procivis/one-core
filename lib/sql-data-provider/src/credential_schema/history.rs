@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaList,
     GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -17,29 +15,6 @@ use uuid::Uuid;
 pub struct CredentialSchemaHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn CredentialSchemaRepository>,
-}
-
-impl CredentialSchemaHistoryDecorator {
-    async fn get_organisation_for_credential_schema(
-        &self,
-        schema_id: &CredentialSchemaId,
-    ) -> Result<Organisation, DataLayerError> {
-        let schema = self
-            .inner
-            .get_credential_schema(
-                schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .context("credential schema is missing")?;
-
-        schema
-            .organisation
-            .ok_or_else(|| anyhow::anyhow!("organisation is None").into())
-    }
 }
 
 #[async_trait::async_trait]
@@ -53,11 +28,18 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
 
     async fn delete_credential_schema(
         &self,
-        id: &CredentialSchemaId,
+        credential_schema: &CredentialSchema,
     ) -> Result<(), DataLayerError> {
-        self.inner.delete_credential_schema(id).await?;
+        self.inner
+            .delete_credential_schema(credential_schema)
+            .await?;
 
-        let organisation = self.get_organisation_for_credential_schema(id).await?;
+        let Some(organisation) = &credential_schema.organisation else {
+            tracing::warn!(
+                "failed to insert credential schema history event. missing organisation"
+            );
+            return Ok(());
+        };
 
         let result = self
             .history_repository
@@ -65,7 +47,8 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 action: HistoryAction::Deleted,
-                entity_id: Some((*id).into()),
+                name: credential_schema.name.to_owned(),
+                entity_id: Some(credential_schema.id.into()),
                 entity_type: HistoryEntityType::CredentialSchema,
                 metadata: None,
                 organisation_id: organisation.id,
@@ -73,7 +56,7 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert credential schema history event: {err:?}");
+            tracing::warn!("failed to insert credential schema history event: {err:?}");
         }
 
         Ok(())

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::interaction::InteractionId;
 use one_core::model::organisation::Organisation;
 use sea_orm::ActiveValue::NotSet;
@@ -39,7 +39,7 @@ pub async fn insert_credential(
     did_id: DidId,
     deleted_at: Option<OffsetDateTime>,
     suspend_end_date: Option<OffsetDateTime>,
-) -> Result<CredentialId, DbErr> {
+) -> Result<Credential, DbErr> {
     let now = OffsetDateTime::now_utc();
 
     let credential = credential::ActiveModel {
@@ -64,7 +64,7 @@ pub async fn insert_credential(
     .insert(db)
     .await?;
 
-    Ok(credential.id)
+    Ok(credential.into())
 }
 
 pub async fn update_credential_state(
@@ -484,6 +484,7 @@ pub async fn insert_history(
     entity_id: EntityId,
     entity_type: HistoryEntityType,
     organisation_id: OrganisationId,
+    name: String,
 ) -> Result<HistoryId, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -491,6 +492,7 @@ pub async fn insert_history(
         id: Set(Uuid::new_v4().into()),
         created_date: Set(now),
         action: Set(action),
+        name: Set(name),
         entity_id: Set(Some(entity_id)),
         entity_type: Set(entity_type),
         metadata: Set(None),

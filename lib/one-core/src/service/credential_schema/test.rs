@@ -263,16 +263,17 @@ async fn test_delete_credential_schema() {
     let mut history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
-    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema = generic_credential_schema();
+    let schema_id: CredentialSchemaId = credential_schema.id;
 
     repository
         .expect_get_credential_schema()
-        .returning(|_, _| Ok(Some(generic_credential_schema())));
+        .returning(move |_, _| Ok(Some(credential_schema.clone())));
 
     repository
         .expect_delete_credential_schema()
         .times(1)
-        .with(eq(schema_id))
+        .withf(move |schema| schema.id == schema_id)
         .returning(move |_| Ok(()));
 
     history_repository

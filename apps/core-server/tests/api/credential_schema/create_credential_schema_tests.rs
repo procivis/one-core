@@ -167,7 +167,7 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     context
         .db
         .credential_schemas
-        .delete(&credential_schema.id)
+        .delete(&credential_schema)
         .await;
 
     // WHEN

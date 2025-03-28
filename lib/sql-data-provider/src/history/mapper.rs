@@ -25,6 +25,7 @@ impl TryFrom<history::Model> for History {
             entity_type: value.entity_type.into(),
             metadata,
             organisation_id: value.organisation_id,
+            name: value.name,
         })
     }
 }
@@ -48,6 +49,7 @@ impl TryFrom<History> for history::ActiveModel {
             entity_type: Set(value.entity_type.into()),
             metadata: Set(metadata),
             organisation_id: Set(value.organisation_id),
+            name: Set(value.name),
         })
     }
 }

@@ -865,8 +865,11 @@ impl CredentialSchemasDB {
             .unwrap()
     }
 
-    pub async fn delete(&self, id: &CredentialSchemaId) {
-        self.repository.delete_credential_schema(id).await.unwrap();
+    pub async fn delete(&self, credential_schema: &CredentialSchema) {
+        self.repository
+            .delete_credential_schema(credential_schema)
+            .await
+            .unwrap();
     }
 
     pub async fn list(&self) -> Vec<CredentialSchema> {

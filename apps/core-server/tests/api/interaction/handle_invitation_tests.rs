@@ -1085,7 +1085,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not
     context
         .db
         .credential_schemas
-        .delete(&deleted_credential_schema.id)
+        .delete(&deleted_credential_schema)
         .await;
 
     let credential_issuer = format!(

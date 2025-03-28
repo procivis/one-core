@@ -24,6 +24,7 @@ impl KeyRepository for KeyHistoryDecorator {
                 id: Uuid::new_v4().into(),
                 created_date: request.created_date,
                 action: HistoryAction::Created,
+                name: request.name,
                 entity_id: Some(key_id.into()),
                 entity_type: HistoryEntityType::Key,
                 metadata: None,

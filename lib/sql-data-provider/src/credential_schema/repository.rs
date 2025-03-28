@@ -75,12 +75,12 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
     async fn delete_credential_schema(
         &self,
-        id: &CredentialSchemaId,
+        credential_schema: &CredentialSchema,
     ) -> Result<(), DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
         let credential_schema = credential_schema::ActiveModel {
-            id: Unchanged(*id),
+            id: Unchanged(credential_schema.id),
             deleted_at: Set(Some(now)),
             ..Default::default()
         };

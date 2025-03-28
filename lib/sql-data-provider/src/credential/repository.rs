@@ -374,11 +374,11 @@ impl CredentialRepository for CredentialProvider {
         Ok(request.id)
     }
 
-    async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError> {
+    async fn delete_credential(&self, credential: &Credential) -> Result<(), DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
         let credential = credential::ActiveModel {
-            id: Unchanged(*id),
+            id: Unchanged(credential.id),
             deleted_at: Set(Some(now)),
             ..Default::default()
         };

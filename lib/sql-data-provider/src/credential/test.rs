@@ -171,7 +171,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         ..
     } = setup_empty().await;
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
@@ -185,7 +185,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
 
     TestSetupWithCredential {
         did,
-        credential_id,
+        credential_id: credential.id,
         credential_schema,
         db,
     }
@@ -461,7 +461,7 @@ async fn test_delete_credential_success() {
         ..
     } = setup_empty().await;
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
@@ -475,10 +475,10 @@ async fn test_delete_credential_success() {
 
     let provider = credential_repository(db, None);
 
-    provider.delete_credential(&credential_id).await.unwrap();
+    provider.delete_credential(&credential).await.unwrap();
 
     let credential = provider
-        .get_credential(&credential_id, &CredentialRelations::default())
+        .get_credential(&credential.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();
@@ -489,11 +489,30 @@ async fn test_delete_credential_success() {
 async fn test_delete_credential_failed_not_found() {
     let TestSetup { db, .. } = setup_empty().await;
 
-    let credential_id = Uuid::new_v4().into();
-
     let provider = credential_repository(db, None);
 
-    let result = provider.delete_credential(&credential_id).await;
+    let result = provider
+        .delete_credential(&Credential {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            issuance_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            credential: vec![],
+            exchange: "OPENID4VC".to_string(),
+            redirect_uri: None,
+            role: CredentialRole::Issuer,
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
+            claims: None,
+            issuer_did: None,
+            holder_did: None,
+            schema: None,
+            interaction: None,
+            revocation_list: None,
+            key: None,
+        })
+        .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
@@ -539,7 +558,8 @@ async fn test_get_credential_list_success() {
         None,
     )
     .await
-    .unwrap();
+    .unwrap()
+    .id;
 
     let provider = credential_repository(db, None);
 
@@ -740,7 +760,8 @@ async fn test_get_credential_success() {
         None,
     )
     .await
-    .unwrap();
+    .unwrap()
+    .id;
 
     let claim_schema1 = credential_schema.claim_schemas.as_ref().unwrap()[1]
         .to_owned()
@@ -921,7 +942,8 @@ async fn test_update_credential_success() {
         None,
     )
     .await
-    .unwrap();
+    .unwrap()
+    .id;
 
     let mut interaction_repository = MockInteractionRepository::default();
     interaction_repository
@@ -1034,7 +1056,7 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
@@ -1051,7 +1073,7 @@ async fn test_get_credential_by_claim_id_success() {
         .schema;
     let claim = Claim {
         id: ClaimId::new_v4(),
-        credential_id,
+        credential_id: credential.id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "value1".to_string(),
@@ -1061,7 +1083,7 @@ async fn test_get_credential_by_claim_id_success() {
 
     claim::ActiveModel {
         id: Set(claim.id.into()),
-        credential_id: Set(credential_id),
+        credential_id: Set(credential.id),
         claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
         value: Set(claim.value.as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
@@ -1074,13 +1096,13 @@ async fn test_get_credential_by_claim_id_success() {
 
     let provider = credential_repository(db, None);
 
-    let credential = provider
+    let expected_credential = provider
         .get_credential_by_claim_id(&claim.id, &CredentialRelations::default())
-        .await;
+        .await
+        .unwrap()
+        .unwrap();
 
-    assert!(credential.is_ok());
-    let credential = credential.unwrap().unwrap();
-    assert_eq!(credential_id, credential.id);
+    assert_eq!(credential.id, expected_credential.id);
 }
 
 #[tokio::test]
@@ -1092,7 +1114,7 @@ async fn test_delete_credential_blobs_success() {
         ..
     } = setup_empty().await;
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
@@ -1104,7 +1126,7 @@ async fn test_delete_credential_blobs_success() {
     .await
     .unwrap();
 
-    let credential_id_two = insert_credential(
+    let credential_two = insert_credential(
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
@@ -1119,33 +1141,33 @@ async fn test_delete_credential_blobs_success() {
     let provider = credential_repository(db, None);
 
     let credential = provider
-        .get_credential(&credential_id, &CredentialRelations::default())
+        .get_credential(&credential.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();
     assert!(!credential.credential.is_empty());
 
     let credential_two = provider
-        .get_credential(&credential_id_two, &CredentialRelations::default())
+        .get_credential(&credential_two.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();
     assert!(!credential_two.credential.is_empty());
 
     provider
-        .delete_credential_blobs(HashSet::from([credential_id, credential_id_two]))
+        .delete_credential_blobs(HashSet::from([credential.id, credential_two.id]))
         .await
         .unwrap();
 
     let credential = provider
-        .get_credential(&credential_id, &CredentialRelations::default())
+        .get_credential(&credential.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();
     assert!(credential.credential.is_empty());
 
     let credential_two = provider
-        .get_credential(&credential_id_two, &CredentialRelations::default())
+        .get_credential(&credential_two.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();

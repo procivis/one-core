@@ -66,6 +66,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         organisation.id.into(),
         HistoryEntityType::Organisation.into(),
         organisation.id,
+        organisation.name.clone(),
     )
     .await
     .unwrap();
@@ -87,6 +88,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         credential_schema_id.into(),
         HistoryEntityType::CredentialSchema.into(),
         organisation.id,
+        credential_schema_name.to_string(),
     )
     .await
     .unwrap();
@@ -109,6 +111,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         did_id.into(),
         HistoryEntityType::Did.into(),
         organisation.id,
+        did_name.to_string(),
     )
     .await
     .unwrap();
@@ -129,6 +132,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         key_id.into(),
         HistoryEntityType::Key.into(),
         organisation.id,
+        "key".to_string(),
     )
     .await
     .unwrap();
@@ -137,7 +141,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .await
         .unwrap();
 
-    let credential_id = insert_credential(
+    let credential = insert_credential(
         &db,
         &credential_schema_id,
         CredentialStateEnum::Created,
@@ -151,9 +155,10 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     insert_history(
         &db,
         HistoryAction::Issued.into(),
-        credential_id.into(),
+        credential.id.into(),
         HistoryEntityType::Credential.into(),
         organisation.id,
+        credential_schema_name.to_string(),
     )
     .await
     .unwrap();
@@ -183,7 +188,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     let claims: Vec<(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>, String)> = vec![(
         Uuid::new_v4().into(),
         new_claim_schemas[0].id,
-        credential_id,
+        credential.id,
         claim_value.as_bytes().to_vec(),
         new_claim_schemas[0].key.to_string(),
     )];
@@ -191,12 +196,13 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .await
         .unwrap();
 
+    let proof_schema_name = "proof schema";
     let proof_schema_id = insert_proof_schema_with_claims_to_database(
         &db,
         None,
         vec![&claim_input],
         organisation.id,
-        "proof schema",
+        proof_schema_name,
     )
     .await
     .unwrap();
@@ -207,6 +213,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         proof_schema_id.into(),
         HistoryEntityType::ProofSchema.into(),
         organisation.id,
+        proof_schema_name.to_string(),
     )
     .await
     .unwrap();
@@ -226,6 +233,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         proof_id.into(),
         HistoryEntityType::Proof.into(),
         organisation.id,
+        proof_schema_name.to_string(),
     )
     .await
     .unwrap();
@@ -240,7 +248,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         did_value,
         claim_schema_name,
         claim_value,
-        credential_id,
+        credential_id: credential.id,
         proof_schema_id,
     }
 }
@@ -284,6 +292,7 @@ async fn test_create_history() {
             id,
             created_date: get_dummy_date(),
             action: HistoryAction::Created,
+            name: "test_key".to_string(),
             entity_id: Some(Uuid::new_v4().into()),
             entity_type: HistoryEntityType::Key,
             metadata: None,
@@ -314,6 +323,7 @@ async fn test_get_history_list_simple() {
             Uuid::new_v4().into(),
             HistoryEntityType::Organisation.into(),
             organisation.id,
+            organisation.name.clone(),
         )
         .await
         .unwrap();
@@ -352,6 +362,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         organisation.id.into(),
         HistoryEntityType::Organisation.into(),
         organisation.id,
+        organisation.name.clone(),
     )
     .await
     .unwrap();
@@ -366,6 +377,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         credential_schema_id.into(),
         HistoryEntityType::CredentialSchema.into(),
         organisation.id,
+        organisation.name.clone(),
     )
     .await
     .unwrap();
@@ -386,13 +398,14 @@ async fn test_get_history_list_schema_joins_credentials() {
         did_id.into(),
         HistoryEntityType::Did.into(),
         organisation.id,
+        organisation.name.clone(),
     )
     .await
     .unwrap();
 
     let credentials_count = 10;
     for _ in 0..credentials_count {
-        let credential_id = insert_credential(
+        let credential = insert_credential(
             &db,
             &credential_schema_id,
             CredentialStateEnum::Created,
@@ -406,9 +419,10 @@ async fn test_get_history_list_schema_joins_credentials() {
         insert_history(
             &db,
             HistoryAction::Issued.into(),
-            credential_id.into(),
+            credential.id.into(),
             HistoryEntityType::Credential.into(),
             organisation.id,
+            organisation.name.clone(),
         )
         .await
         .unwrap();

@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::path::Path;
 
 use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
@@ -54,6 +55,7 @@ impl BackupService {
 
         let history_event = create_backup_history_event(
             organisation.id,
+            filename(&db_copy),
             HistoryAction::Created,
             Some(unexportable.clone().into()),
         );
@@ -129,8 +131,11 @@ impl BackupService {
         Ok(metadata)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn finalize_import(&self) -> Result<(), ServiceError> {
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub async fn finalize_import(
+        &self,
+        backup_db_path: impl AsRef<Path>,
+    ) -> Result<(), ServiceError> {
         self.organisation_repository
             .get_organisation_list()
             .map(|result| {
@@ -145,6 +150,7 @@ impl BackupService {
                 self.history_repository
                     .create_history(create_backup_history_event(
                         organisation.id,
+                        filename(backup_db_path),
                         HistoryAction::Restored,
                         None,
                     ))
@@ -163,4 +169,11 @@ impl BackupService {
             &self.config,
         )
     }
+}
+
+fn filename(p: impl AsRef<Path>) -> String {
+    p.as_ref()
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }

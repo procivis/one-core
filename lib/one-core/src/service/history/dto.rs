@@ -30,6 +30,7 @@ pub struct HistoryResponseDTO {
     pub created_date: OffsetDateTime,
     pub id: HistoryId,
     pub action: HistoryAction,
+    pub name: String,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: OrganisationId,
