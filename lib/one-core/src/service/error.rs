@@ -28,7 +28,6 @@ use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::repository::error::DataLayerError;
-use crate::util::oidc::FormatError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -1028,14 +1027,6 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Empty value not allowed")]
     BR_0204,
-}
-
-impl From<FormatError> for ServiceError {
-    fn from(value: FormatError) -> Self {
-        match value {
-            FormatError::MappingError(value) => Self::MappingError(value),
-        }
-    }
 }
 
 impl From<uuid::Error> for ServiceError {

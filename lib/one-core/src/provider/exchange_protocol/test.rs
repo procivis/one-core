@@ -257,7 +257,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["JWT"]),
+        &HashSet::from(["JWT".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )
@@ -323,7 +323,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["JWT"]),
+        &HashSet::from(["JWT".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )
@@ -359,7 +359,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["JWT"]),
+        &HashSet::from(["JWT".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )
@@ -396,7 +396,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["SD_JWT"]),
+        &HashSet::from(["SD_JWT".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )
@@ -503,7 +503,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["MDOC"]),
+        &HashSet::from(["MDOC".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )
@@ -539,7 +539,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["MDOC"]),
+        &HashSet::from(["MDOC".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )
@@ -643,7 +643,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_missing_object
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["MDOC"]),
+        &HashSet::from(["MDOC".to_string()]),
         &object_datatypes(),
         Uuid::new_v4().into(),
     )

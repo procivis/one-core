@@ -34,7 +34,9 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
-use crate::provider::credential_formatter::model::{AuthenticationFn, FormatPresentationCtx};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, FormatPresentationCtx, TokenVerifier,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
@@ -223,9 +225,10 @@ impl OpenId4VcMqtt {
             .decrypt(&presentation_request_bytes)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+        let verification_fn: Box<dyn TokenVerifier> = verification_fn;
         let presentation_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
             &presentation_request,
-            Some(verification_fn),
+            Some(&verification_fn),
         )
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

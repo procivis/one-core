@@ -8,6 +8,7 @@ use url::Url;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdScheme, OpenID4VCParams, OpenID4VCVerifierAttestationPayload,
@@ -196,7 +197,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
             "attestation JWT missing".to_string(),
         ))?;
 
-    let key_verification = Box::new(KeyVerification {
+    let key_verification: Box<dyn TokenVerifier> = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.to_owned(),
         did_method_provider: did_method_provider.to_owned(),
         key_role: KeyRole::AssertionMethod,
@@ -208,7 +209,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
      */
     let attestation_jwt = Jwt::<OpenID4VCVerifierAttestationPayload>::build_from_token(
         &attestation_jwt,
-        Some(key_verification),
+        Some(&key_verification),
     )
     .await
     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

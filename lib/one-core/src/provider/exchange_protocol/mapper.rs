@@ -100,7 +100,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
     storage_access: &StorageAccess,
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
-    allowed_schema_formats: &HashSet<&str>,
+    allowed_schema_formats: &HashSet<String>,
     object_datatypes: &HashSet<&str>,
     organisation_id: OrganisationId,
 ) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
@@ -130,10 +130,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 // This will work as long as we have common part as allowed format. In this case
                 // it translates ldp_vc to JSON_LD that could be a common part of JSON_LD_CS1 and JSON_LD_CS2
                 .any(|allowed_schema_format| {
-                    schema
-                        .format
-                        .to_string()
-                        .starts_with(allowed_schema_format.to_string().as_str())
+                    schema.format.to_string().starts_with(allowed_schema_format)
                 })
             {
                 continue;

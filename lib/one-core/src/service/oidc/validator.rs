@@ -10,25 +10,22 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::service::error::ServiceError;
-use crate::util::oidc::OID4VP_TO_FORMATTER_MAP;
+use crate::util::oidc::map_from_openid4vp_format;
 
 pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
 ) -> Result<(), ServiceError> {
-    let requested_format = OID4VP_TO_FORMATTER_MAP.get(request.format.as_str()).ok_or(
-        ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(
-            OpenID4VCIError::UnsupportedCredentialFormat,
-        )),
-    )?;
+    let requested_format = map_from_openid4vp_format(request.format.as_str())
+        .map_err(|e| ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(e)))?;
 
-    if !schema.format.starts_with(requested_format) {
+    if !schema.format.starts_with(&requested_format) {
         return Err(ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         ));
     }
 
-    match *requested_format {
+    match requested_format.as_str() {
         "MDOC" => {
             if let Some(doctype) = &request.doctype {
                 if &schema.schema_id != doctype {

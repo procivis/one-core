@@ -75,7 +75,7 @@ use crate::service::oidc::validator::{
 };
 use crate::service::ssi_validator::validate_exchange_type;
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::OID4VP_FORMAT_MAP;
+use crate::util::oidc::map_to_openid4vp_format;
 
 impl OIDCService {
     pub async fn oidc_issuer_get_issuer_metadata(
@@ -114,10 +114,7 @@ impl OIDCService {
             .get_fields(&schema.format)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
             .r#type;
-        let oidc_format = OID4VP_FORMAT_MAP
-            .get(&format_type)
-            .map(|s| s.to_string())
-            .ok_or(OpenID4VCIError::UnsupportedCredentialFormat)?;
+        let oidc_format = map_to_openid4vp_format(&format_type).map(|s| s.to_string())?;
 
         create_issuer_metadata_response(&base_url, &oidc_format, &schema, &self.config)
             .map_err(Into::into)

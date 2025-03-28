@@ -46,7 +46,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
-use crate::util::oidc::OID4VP_TO_FORMATTER_MAP;
+use crate::util::oidc::map_from_openid4vp_format;
 
 mod async_verifier_flow;
 pub mod dto;
@@ -516,20 +516,13 @@ impl ExchangeProtocolImpl for OpenID4VC {
             allowed_oidc_input_descriptor_formats
                 .iter()
                 .map(|oidc_format| {
-                    OID4VP_TO_FORMATTER_MAP
-                        .get(oidc_format.as_str())
-                        .ok_or_else(|| {
-                            ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
-                        })
-                        .copied()
+                    map_from_openid4vp_format(oidc_format)
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
                 })
                 .collect::<Result<_, _>>()?;
 
-        let allowed_schema_formats = extract_common_formats(
-            allowed_schema_input_descriptor_formats,
-            &client_metadata,
-            &OID4VP_TO_FORMATTER_MAP,
-        )?;
+        let allowed_schema_formats =
+            extract_common_formats(allowed_schema_input_descriptor_formats, &client_metadata)?;
 
         let organisation = proof
             .interaction
@@ -707,33 +700,24 @@ fn merge_query_params(mut first: Url, second: Url) -> Url {
     first
 }
 
-fn extract_common_formats<'a>(
-    allowed_schema_input_descriptor_formats: HashSet<&'a str>,
-    client_metadata: &'a Option<OpenID4VPClientMetadata>,
-    format_map: &'a HashMap<&'static str, &'static str>,
-) -> Result<HashSet<&'a str>, ExchangeProtocolError> {
+fn extract_common_formats(
+    allowed_schema_input_descriptor_formats: HashSet<String>,
+    client_metadata: &Option<OpenID4VPClientMetadata>,
+) -> Result<HashSet<String>, ExchangeProtocolError> {
     if let Some(client_metadata) = client_metadata {
-        let oidc_formats = client_metadata
-            .vp_formats
-            .keys()
-            .map(|k| k.as_str())
-            .collect::<HashSet<&str>>();
+        let oidc_formats = client_metadata.vp_formats.keys().collect::<HashSet<_>>();
 
-        let schema_formats: HashSet<_> = oidc_formats
+        let schema_formats: HashSet<String> = oidc_formats
             .iter()
             .map(|oidc_format| {
-                format_map
-                    .get(*oidc_format)
-                    .ok_or_else(|| {
-                        ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
-                    })
-                    .copied()
+                map_from_openid4vp_format(oidc_format)
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
             })
             .collect::<Result<_, _>>()?;
 
         Ok(allowed_schema_input_descriptor_formats
             .intersection(&schema_formats)
-            .copied()
+            .cloned()
             .collect())
     } else {
         Ok(allowed_schema_input_descriptor_formats)

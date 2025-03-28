@@ -162,7 +162,8 @@ async fn test_openid4vc_sdjwt_vc_flow(
         )
         .await;
 
-    let jwt = proof_jwt_for(&holder_key, &holder_did.did.to_string()).await;
+    let holder_key_id = "did:key:z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5#z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5";
+    let jwt = proof_jwt_for(&holder_key, holder_key_id).await;
 
     let proof = server_context
         .db
@@ -236,6 +237,7 @@ async fn test_openid4vc_sdjwt_vc_flow(
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
                 role: Some(CredentialRole::Holder),
+                key: Some(local_key.to_owned()),
                 ..Default::default()
             },
         )

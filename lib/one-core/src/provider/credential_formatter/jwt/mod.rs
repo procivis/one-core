@@ -12,6 +12,7 @@ use serde::Serialize;
 use shared_types::DidValue;
 
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
+use super::model::VerificationFn;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -75,7 +76,7 @@ impl<Payload> Jwt<Payload> {
 impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
     pub async fn build_from_token(
         token: &str,
-        verification: Option<Box<dyn TokenVerifier>>,
+        verification: Option<&VerificationFn>,
     ) -> Result<Jwt<Payload>, FormatterError> {
         let DecomposedToken {
             header,

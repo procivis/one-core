@@ -574,6 +574,15 @@ pub fn map_credential_formats_to_presentation_format(
         return Ok((FormatType::Mdoc.to_string(), "mso_mdoc".to_owned()));
     }
 
+    // The SD_JWT presentations can contains only one credential
+    if presented.len() == 1
+        && presented
+            .iter()
+            .all(|cred| cred.credential_schema.format == FormatType::SdJwt.to_string())
+    {
+        return Ok((FormatType::SdJwt.to_string(), "vc+sd-jwt".to_owned()));
+    }
+
     if presented.iter().all(|cred| {
         cred.credential_schema.format == FormatType::JsonLdClassic.to_string()
             || cred.credential_schema.format == FormatType::JsonLdBbsPlus.to_string()

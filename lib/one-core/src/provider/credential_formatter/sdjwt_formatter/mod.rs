@@ -30,6 +30,7 @@ use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 #[cfg(test)]
 mod test;
 
+use super::jwt::model::JWTPayload;
 use super::model::CredentialData;
 use super::vcdm::VcdmCredential;
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
@@ -110,14 +111,16 @@ impl CredentialFormatter for SDJWTFormatter {
         verification: VerificationFn,
         holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(
+        let (credential, _) = extract_credentials_internal(
             token,
-            Some(verification),
+            Some(&(verification)),
             &*self.crypto,
             holder_binding_ctx,
             Duration::seconds(self.get_leeway() as i64),
         )
-        .await
+        .await?;
+
+        Ok(credential)
     }
 
     async fn format_credential_presentation(
@@ -139,52 +142,56 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(
+        let (credential, _) = extract_credentials_internal(
             token,
             None,
             &*self.crypto,
             None,
             Duration::seconds(self.get_leeway() as i64),
         )
-        .await
+        .await?;
+
+        Ok(credential)
     }
 
     async fn format_presentation(
         &self,
-        _credentials: &[String],
+        credentials: &[String],
         _holder_did: &DidValue,
         _algorithm: &str,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        // for presentation the JWT formatter is used
-        unreachable!()
+        if credentials.len() != 1 {
+            return Err(FormatterError::Failed(
+                "SD-JWT formatter only supports single credential presentations".to_string(),
+            ));
+        }
+
+        let credential = credentials.first().ok_or(FormatterError::Failed(
+            "Empty credential list passed to format_presentation".to_string(),
+        ))?;
+
+        Ok(credential.to_string())
     }
 
     async fn extract_presentation(
         &self,
         token: &str,
         verification: VerificationFn,
-        _context: ExtractPresentationCtx,
+        context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        // Build fails if verification fails
-        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, Some(verification)).await?;
-
-        jwt.try_into()
-            .context("SDVP mapping failed")
-            .map_err(|_| FormatterError::Failed("Jwt mapping error".to_string()))
+        self.extract_presentation_internal(token, Some(&verification), context)
+            .await
     }
 
     async fn extract_presentation_unverified(
         &self,
         token: &str,
-        _context: ExtractPresentationCtx,
+        context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, None).await?;
-
-        jwt.try_into()
-            .context("SDVP mapping failed")
-            .map_err(|_| FormatterError::Failed("Jwt mapping error".to_string()))
+        self.extract_presentation_internal(token, None, context)
+            .await
     }
 
     fn get_leeway(&self) -> u64 {
@@ -256,19 +263,20 @@ impl SDJWTFormatter {
 
 pub(super) async fn extract_credentials_internal(
     token: &str,
-    verification: Option<VerificationFn>,
+    verification: Option<&VerificationFn>,
     crypto: &dyn CryptoProvider,
     holder_binding_ctx: Option<HolderBindingCtx>,
     leeway: Duration,
-) -> Result<DetailCredential, FormatterError> {
-    let jwt: Jwt<VcClaim> = Jwt::build_from_token_with_disclosures(
-        token,
-        crypto,
-        verification,
-        holder_binding_ctx,
-        leeway,
-    )
-    .await?;
+) -> Result<(DetailCredential, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
+    let (jwt, key_binding_payload): (Jwt<VcClaim>, Option<JWTPayload<KeyBindingPayload>>) =
+        Jwt::build_from_token_with_disclosures(
+            token,
+            crypto,
+            verification,
+            holder_binding_ctx,
+            leeway,
+        )
+        .await?;
     let credential_subject = jwt
         .payload
         .custom
@@ -304,28 +312,76 @@ pub(super) async fn extract_credentials_internal(
         }
     };
 
-    Ok(DetailCredential {
-        id: jwt.payload.jwt_id,
-        valid_from: jwt.payload.issued_at,
-        valid_until: jwt.payload.expires_at,
-        update_at: None,
-        invalid_before: jwt.payload.invalid_before,
-        issuer_did: Some(issuer_did),
-        subject: jwt
-            .payload
-            .subject
-            .map(|did| did.parse().context("did parsing error"))
-            .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?,
-        claims,
-        status: jwt.payload.custom.vc.credential_status,
-        credential_schema: jwt
-            .payload
-            .custom
-            .vc
-            .credential_schema
-            .and_then(|schema| schema.into_iter().next()),
-    })
+    Ok((
+        DetailCredential {
+            id: jwt.payload.jwt_id,
+            valid_from: jwt.payload.issued_at,
+            valid_until: jwt.payload.expires_at,
+            update_at: None,
+            invalid_before: jwt.payload.invalid_before,
+            issuer_did: Some(issuer_did),
+            subject: jwt
+                .payload
+                .subject
+                .map(|did| did.parse().context("did parsing error"))
+                .transpose()
+                .map_err(|e| FormatterError::Failed(e.to_string()))?,
+            claims,
+            status: jwt.payload.custom.vc.credential_status,
+            credential_schema: jwt
+                .payload
+                .custom
+                .vc
+                .credential_schema
+                .and_then(|schema| schema.into_iter().next()),
+        },
+        key_binding_payload,
+    ))
+}
+
+impl SDJWTFormatter {
+    async fn extract_presentation_internal(
+        &self,
+        token: &str,
+        verification: Option<&VerificationFn>,
+        _context: ExtractPresentationCtx,
+    ) -> Result<Presentation, FormatterError> {
+        // W3C VP SD-JWT tokens and SD-JWT tokens.
+        let as_jwt_vp: Result<Jwt<Sdvp>, FormatterError> =
+            Jwt::build_from_token(token, verification)
+                .await
+                .map_err(|e| FormatterError::Failed(format!("Failed to build Jwt<Sdvp>: {e}")));
+
+        if let Ok(jwt_vp) = as_jwt_vp {
+            return jwt_vp.try_into().map_err(|e| {
+                FormatterError::Failed(format!("Failed to convert Jwt<Sdvp> to Presentation: {e}"))
+            });
+        }
+
+        let (credential, proof_of_key_possesion) = extract_credentials_internal(
+            token,
+            verification,
+            &*self.crypto,
+            None,
+            Duration::seconds(self.get_leeway() as i64),
+        )
+        .await?;
+
+        let proof_of_key_possesion = proof_of_key_possesion.ok_or(FormatterError::Failed(
+            "Missing proof of key possesion".to_string(),
+        ))?;
+
+        let presentation = Presentation {
+            id: proof_of_key_possesion.jwt_id,
+            issued_at: proof_of_key_possesion.issued_at,
+            expires_at: proof_of_key_possesion.expires_at,
+            issuer_did: credential.subject,
+            nonce: Some(proof_of_key_possesion.custom.nonce),
+            credentials: vec![token.to_string()],
+        };
+
+        Ok(presentation)
+    }
 }
 
 fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterError> {

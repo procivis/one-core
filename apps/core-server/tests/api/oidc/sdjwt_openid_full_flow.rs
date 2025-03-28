@@ -168,7 +168,8 @@ async fn test_openid4vc_sdjwt_flow(
         )
         .await;
 
-    let jwt = proof_jwt_for(&holder_key, &holder_did.did.to_string()).await;
+    let holder_key_id = "did:key:z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5#z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5";
+    let jwt = proof_jwt_for(&holder_key, holder_key_id).await;
 
     let proof = server_context
         .db
@@ -240,6 +241,7 @@ async fn test_openid4vc_sdjwt_flow(
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
                 role: Some(CredentialRole::Holder),
+                key: Some(local_key.to_owned()),
                 ..Default::default()
             },
         )
@@ -544,9 +546,8 @@ async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKe
         )
         .await;
 
-    let holder_did_value = holder_did.did;
-
-    let jwt = proof_jwt_for(&holder_key, &holder_did_value.to_string()).await;
+    let holder_key_id = "did:key:z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5#z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5";
+    let jwt = proof_jwt_for(&holder_key, holder_key_id).await;
 
     let resp = server_context
         .api
@@ -613,6 +614,7 @@ async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKe
                     (new_claim_schemas[1].0, "root/array/1", "Value2"),
                     (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
                 ]),
+                key: Some(local_key.to_owned()),
                 ..Default::default()
             },
         )
@@ -627,8 +629,8 @@ async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKe
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
-                    "kb-jwt_alg_values": ["EdDSA", "ES256"],
-                    "sd-jwt_alg_values": ["EdDSA", "ES256"]
+                    "sd-jwt_alg_values": [ "EdDSA", "ES256" ],
+                    "kd-jwt_alg_values": [ "EdDSA", "ES256" ]
                 },
                 "jwt_vp_json": {
                     "alg": [
@@ -662,8 +664,8 @@ async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKe
             "input_descriptors": [{
                 "format": {
                     "vc+sd-jwt": {
-                        "kb-jwt_alg_values": ["EdDSA", "ES256"],
-                        "sd-jwt_alg_values": ["EdDSA", "ES256"]
+                        "sd-jwt_alg_values": [ "EdDSA", "ES256" ],
+                        "kd-jwt_alg_values": [ "EdDSA", "ES256" ]
                     }
                 },
                 "id": "input_0",

@@ -22,7 +22,7 @@ use super::json_ld::{
 use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
-    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    DidType, ExchangeType, FormatType, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -42,8 +42,7 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::util::oidc::OID4VP_FORMAT_MAP;
-
+use crate::util::oidc::map_to_openid4vp_format;
 #[cfg(test)]
 mod test;
 
@@ -189,11 +188,12 @@ impl CredentialFormatter for JsonLdClassic {
             formats
                 .into_iter()
                 .filter_map(|format| {
-                    OID4VP_FORMAT_MAP
-                        .get(&format.parse().ok()?)
-                        .map(|format| format.to_string())
+                    format
+                        .parse::<FormatType>()
+                        .ok()
+                        .and_then(|f| map_to_openid4vp_format(&f).ok())
                 })
-                .collect::<Vec<String>>()
+                .collect::<Vec<_>>()
         });
 
         let verifiable_credential: VerifiableCredential = match formats {
@@ -201,10 +201,10 @@ impl CredentialFormatter for JsonLdClassic {
             Some(formats) => tokens
                 .iter()
                 .zip(formats)
-                .map(|(token, format)| match format.as_str() {
+                .map(|(token, format)| match format {
                     "ldp_vc" => serde_json::from_str(token),
                     _ => {
-                        let enveloped = CredentialEnvelope::new(&format, token);
+                        let enveloped = CredentialEnvelope::new(format, token);
                         let json_value = serde_json::to_value(enveloped)?;
                         let map = json_value
                             .as_object()

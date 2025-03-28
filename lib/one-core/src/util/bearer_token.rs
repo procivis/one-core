@@ -7,6 +7,7 @@ use crate::common_validator::validate_expiration_time;
 use crate::model::did::{Did, KeyRole};
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -84,8 +85,11 @@ pub(crate) async fn validate_bearer_token(
         key_role: KeyRole::Authentication,
     });
 
-    let jwt: Jwt<BearerTokenPayload> =
-        Jwt::build_from_token(bearer_token, Some(token_signature_verification)).await?;
+    let jwt: Jwt<BearerTokenPayload> = Jwt::build_from_token(
+        bearer_token,
+        Some(&(token_signature_verification as Box<dyn TokenVerifier>)),
+    )
+    .await?;
 
     // checking timestamp to prevent replay attack
     validate_expiration_time(&Some(jwt.payload.custom.timestamp), 60)

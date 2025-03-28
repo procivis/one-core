@@ -46,7 +46,7 @@ use crate::service::error::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_proof;
-use crate::util::oidc::{detect_format_with_crypto_suite, OID4VP_FORMAT_MAP};
+use crate::util::oidc::{detect_format_with_crypto_suite, map_to_openid4vp_format};
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -632,10 +632,9 @@ impl SSIHolderService {
                     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
                     .r#type;
 
-                OID4VP_FORMAT_MAP
-                    .get(&format_type)
+                map_to_openid4vp_format(&format_type)
                     .map(|s| s.to_string())
-                    .ok_or(ExchangeProtocolError::Failed("TODO".to_string()))?
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
             } else {
                 schema.format.to_owned()
             };

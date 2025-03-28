@@ -8,7 +8,7 @@ use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
 use super::jwt::model::{JWTPayload, ProofOfPossessionKey};
-use super::model::{AuthenticationFn, HolderBindingCtx, TokenVerifier};
+use super::model::{AuthenticationFn, HolderBindingCtx, TokenVerifier, VerificationFn};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
@@ -210,10 +210,10 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
     pub async fn build_from_token_with_disclosures(
         token: &str,
         crypto: &dyn CryptoProvider,
-        verification: Option<Box<dyn TokenVerifier>>,
+        verification: Option<&VerificationFn>,
         key_binding_context: Option<HolderBindingCtx>,
         leeway: Duration,
-    ) -> Result<Jwt<Payload>, FormatterError> {
+    ) -> Result<(Jwt<Payload>, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
         let DecomposedTokenWithDisclosures {
             jwt,
             disclosures,
@@ -234,18 +234,21 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             )
         })?;
 
-        if let Some(ref cnf) = decomposed_token.payload.proof_of_possession_key {
-            Self::verify_holder_binding(
-                cnf,
-                token,
-                key_binding_token,
-                &*hasher,
-                &verification,
-                key_binding_context,
-                leeway,
-            )
-            .await?;
-        };
+        let key_binding_payload =
+            if let Some(ref cnf) = decomposed_token.payload.proof_of_possession_key {
+                Self::verify_holder_binding(
+                    cnf,
+                    token,
+                    key_binding_token,
+                    &*hasher,
+                    verification,
+                    key_binding_context,
+                    leeway,
+                )
+                .await?
+            } else {
+                None
+            };
         let issuer = decomposed_token
             .payload
             .issuer
@@ -292,7 +295,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         };
 
         if let Some(verification) = verification {
-            Self::verify_token_signature(&decomposed_token, &issuer_did, &verification).await?;
+            Self::verify_token_signature(&decomposed_token, &issuer_did, verification).await?;
         };
 
         let disclosures_with_hashes = disclosures
@@ -332,10 +335,13 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             proof_of_possession_key: decomposed_token.payload.proof_of_possession_key,
         };
 
-        Ok(Jwt {
-            header: decomposed_token.header.clone(),
-            payload: new_payload,
-        })
+        Ok((
+            Jwt {
+                header: decomposed_token.header.clone(),
+                payload: new_payload,
+            },
+            key_binding_payload,
+        ))
     }
 
     async fn verify_holder_binding(
@@ -343,20 +349,27 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         token: &str,
         key_binding_token: Option<&str>,
         hasher: &dyn Hasher,
-        verification: &Option<Box<dyn TokenVerifier>>,
+        verification: Option<&VerificationFn>,
         holder_binding_context: Option<HolderBindingCtx>,
         leeway: Duration,
-    ) -> Result<(), FormatterError> {
+    ) -> Result<Option<JWTPayload<KeyBindingPayload>>, FormatterError> {
+        let decomposed_kb_token = key_binding_token.map(Jwt::<KeyBindingPayload>::decompose_token);
+
         let Some(holder_binding_context) = holder_binding_context else {
-            // if the key binding context is not supplied, the caller does not intend to check
-            // holder binding (e.g. in the case of a holder validating a token on issuance)
-            return Ok(());
+            if let Some(decomposed_kb_token) = decomposed_kb_token {
+                let token = decomposed_kb_token?;
+                return Ok(Some(token.payload));
+            } else {
+                return Ok(None);
+            }
         };
 
-        let key_binding_token = key_binding_token.ok_or(
-            FormatterError::CouldNotExtractCredentials("Missing key binding token".to_string()),
-        )?;
-        let decomposed_kb_token = Jwt::<KeyBindingPayload>::decompose_token(key_binding_token)?;
+        let decomposed_kb_token =
+            decomposed_kb_token
+                .transpose()?
+                .ok_or(FormatterError::CouldNotExtractCredentials(
+                    "Missing key binding token".to_string(),
+                ))?;
 
         if let Some(verification) = verification {
             let kb_issuer = encode_to_did(&cnf.jwk).map_err(|err| {
@@ -427,7 +440,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 holder_binding_context.nonce, kb_payload.custom.nonce
             )));
         }
-        Ok(())
+        Ok(Some(kb_payload))
     }
 
     async fn verify_token_signature<AnyPayload>(

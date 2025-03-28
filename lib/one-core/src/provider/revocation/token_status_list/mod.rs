@@ -13,7 +13,7 @@ use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::model::{CredentialStatus, TokenVerifier};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -200,13 +200,13 @@ impl RevocationMethod for TokenStatusList {
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
 
         let response_content = String::from_utf8(response.content)?;
-        let key_verification = Box::new(KeyVerification {
+        let key_verification: Box<dyn TokenVerifier> = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
         });
         let jwt: Jwt<TokenStatusListContent> =
-            Jwt::build_from_token(&response_content, Some(key_verification)).await?;
+            Jwt::build_from_token(&response_content, Some(&key_verification)).await?;
 
         Ok(util::extract_state_from_token(
             &jwt.payload.custom.status_list,

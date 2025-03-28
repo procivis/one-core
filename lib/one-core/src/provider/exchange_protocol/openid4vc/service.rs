@@ -406,7 +406,8 @@ async fn process_proof_submission(
         let path_nested = presentation_submitted.path_nested.as_ref();
         if path_nested.is_none()
             && (presentation_submission.descriptor_map.len() > 1
-                || presentation_submitted.format != "mso_mdoc")
+                && presentation_submitted.format != "ldp_vp"
+                && presentation_submitted.format != "jwt_vp_json")
         {
             return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest));
         }

@@ -86,7 +86,7 @@ use crate::service::oidc::proof_request::{
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
-use crate::util::oidc::{determine_response_mode, OID4VP_FORMAT_MAP};
+use crate::util::oidc::{determine_response_mode, map_to_openid4vp_format};
 
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
@@ -714,12 +714,8 @@ pub fn create_format_map(
 ) -> Result<HashMap<String, OpenID4VpPresentationFormat>, ExchangeProtocolError> {
     match format_type {
         FormatType::Jwt | FormatType::Mdoc => {
-            let key = OID4VP_FORMAT_MAP
-                .get(format_type)
-                .ok_or(ExchangeProtocolError::Failed(format!(
-                    "Missing credential format for `{}`",
-                    format_type
-                )))?
+            let key = map_to_openid4vp_format(format_type)
+                .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?
                 .to_string();
             Ok(HashMap::from([(
                 key,
@@ -729,12 +725,8 @@ pub fn create_format_map(
             )]))
         }
         FormatType::SdJwt | FormatType::SdJwtVc => {
-            let key = OID4VP_FORMAT_MAP
-                .get(format_type)
-                .ok_or(ExchangeProtocolError::Failed(format!(
-                    "Missing credential format for `{}`",
-                    format_type
-                )))?
+            let key = map_to_openid4vp_format(format_type)
+                .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?
                 .to_string();
             Ok(HashMap::from([(
                 key,
@@ -1209,22 +1201,16 @@ pub(crate) fn create_presentation_submission(
                     format: format.to_owned(),
                     path: "$".to_string(),
                     path_nested: if path_nested_supported {
+                        let credential_format = presented_credential
+                            .credential_schema
+                            .format
+                            .parse()
+                            .map_err(|_| {
+                                ExchangeProtocolError::Failed("format not found".to_string())
+                            })?;
                         Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: OID4VP_FORMAT_MAP
-                                .get(
-                                    &presented_credential
-                                        .credential_schema
-                                        .format
-                                        .parse()
-                                        .map_err(|_| {
-                                            ExchangeProtocolError::Failed(
-                                                "format not found".to_string(),
-                                            )
-                                        })?,
-                                )
-                                .ok_or_else(|| {
-                                    ExchangeProtocolError::Failed("format not found".to_string())
-                                })?
+                            format: map_to_openid4vp_format(&credential_format)
+                                .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?
                                 .to_string(),
                             path: format!("$.vp.verifiableCredential[{index}]"),
                         })
@@ -1801,9 +1787,8 @@ pub(super) fn credentials_supported_mdoc(
 
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         wallet_storage_type: schema.wallet_storage_type,
-        format: OID4VP_FORMAT_MAP
-            .get(&format_type)
-            .ok_or(ExchangeProtocolError::Failed("TODO".to_string()))?
+        format: map_to_openid4vp_format(&format_type)
+            .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?
             .to_string(),
         // We only take objects from the initial structure as arrays are not allowed on the first level
         claims: claim_schema.claims,
