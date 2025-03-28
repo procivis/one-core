@@ -63,6 +63,7 @@ exceptions = [
     { allow = ["MPL-2.0"], name = "uniffi_internal_macros", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_macros", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_meta", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_pipeline", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_udl", version = "*" },
     { allow = ["MPL-2.0"], name = "bitmaps", version = "*" },
     { allow = ["MPL-2.0"], name = "im", version = "*" },

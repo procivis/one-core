@@ -4,4 +4,6 @@ cdylib_name  = "procivis_one_core"
 package_name = "ch.procivis.one.core"
 
 [bindings.swift]
-module_name = "ProcivisOneCore"
+generate_case_iterable_conformance = true
+generate_codable_conformance       = true
+module_name                        = "ProcivisOneCore"
