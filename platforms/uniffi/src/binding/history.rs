@@ -131,6 +131,7 @@ impl OneCoreBinding {
 pub enum HistoryActionBindingEnum {
     Accepted,
     Created,
+    CsrGenerated,
     Deactivated,
     Deleted,
     Errored,

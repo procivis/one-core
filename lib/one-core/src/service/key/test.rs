@@ -15,6 +15,7 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -31,6 +32,7 @@ fn setup_service(
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
     key_algorithm_provider: MockKeyAlgorithmProvider,
+    history_repository: MockHistoryRepository,
 ) -> KeyService {
     let mut storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
     storages.insert("INTERNAL".to_string(), Arc::new(key_storage));
@@ -44,6 +46,7 @@ fn setup_service(
         Arc::new(provider),
         Arc::new(config),
         Arc::new(key_algorithm_provider),
+        Arc::new(history_repository),
     )
 }
 
@@ -68,6 +71,7 @@ async fn test_create_key_success() {
     let mut organisation_repository = MockOrganisationRepository::default();
     let mut key_storage = MockKeyStorage::default();
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let history_repository = MockHistoryRepository::default();
 
     let org_id = Uuid::new_v4();
 
@@ -101,6 +105,7 @@ async fn test_create_key_success() {
         key_storage,
         generic_config().core,
         key_algorithm_provider,
+        history_repository,
     );
 
     let result = service
@@ -124,6 +129,7 @@ async fn test_get_key_success() {
     let organisation_repository = MockOrganisationRepository::default();
     let key_storage = MockKeyStorage::default();
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let history_repository = MockHistoryRepository::default();
 
     let org_id: Uuid = Uuid::new_v4();
     let key = generic_key("NAME", org_id);
@@ -142,6 +148,7 @@ async fn test_get_key_success() {
         key_storage,
         generic_config().core,
         key_algorithm_provider,
+        history_repository,
     );
 
     let result = service.get_key(&key.id).await;
@@ -158,6 +165,7 @@ async fn test_get_key_list() {
     let org_id: Uuid = Uuid::new_v4();
     let keys = vec![generic_key("NAME1", org_id), generic_key("NAME2", org_id)];
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let history_repository = MockHistoryRepository::default();
 
     let moved_keys = keys.clone();
     repository.expect_get_key_list().once().returning(move |_| {
@@ -175,6 +183,7 @@ async fn test_get_key_list() {
         key_storage,
         generic_config().core,
         key_algorithm_provider,
+        history_repository,
     );
 
     let query = KeyListQuery {
@@ -225,6 +234,8 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
     let key_storage = MockKeyStorage::default();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let mut key_alg = MockKeyAlgorithm::default();
+    let history_repository = MockHistoryRepository::default();
+
     key_alg
         .expect_get_capabilities()
         .once()
@@ -259,6 +270,7 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
         key_storage,
         generic_config().core,
         key_algorithm_provider,
+        history_repository,
     );
 
     let result = service.generate_csr(&key.id, generic_csr_request()).await;

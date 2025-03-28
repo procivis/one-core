@@ -43,6 +43,7 @@ pub struct History {
 pub enum HistoryAction {
     Accepted,
     Created,
+    CsrGenerated,
     Deactivated,
     Deleted,
     Errored,

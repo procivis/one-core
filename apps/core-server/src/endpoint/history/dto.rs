@@ -98,6 +98,7 @@ pub struct HistoryErrorMetadataRestDTO {
 pub enum HistoryAction {
     Accepted,
     Created,
+    CsrGenerated,
     Deactivated,
     Deleted,
     Errored,

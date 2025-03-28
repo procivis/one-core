@@ -4,6 +4,7 @@ use crate::config::core_config;
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
@@ -21,6 +22,7 @@ pub struct KeyService {
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    history_repository: Arc<dyn HistoryRepository>,
 }
 
 impl KeyService {
@@ -31,6 +33,7 @@ impl KeyService {
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
             key_repository,
@@ -39,6 +42,7 @@ impl KeyService {
             key_provider,
             config,
             key_algorithm_provider,
+            history_repository,
         }
     }
 }

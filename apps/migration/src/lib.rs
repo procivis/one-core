@@ -87,6 +87,7 @@ mod m20250220_131625_add_proof_state_retracted;
 mod m20250314_114529_rename_transport_to_exchange;
 mod m20250317_133346_add_org_name;
 mod m20250319_101601_add_updated_history_action;
+mod m20250327_141601_add_new_history_action;
 
 pub struct Migrator;
 
@@ -175,6 +176,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250314_114529_rename_transport_to_exchange::Migration),
             Box::new(m20250317_133346_add_org_name::Migration),
             Box::new(m20250319_101601_add_updated_history_action::Migration),
+            Box::new(m20250327_141601_add_new_history_action::Migration),
         ]
     }
 }

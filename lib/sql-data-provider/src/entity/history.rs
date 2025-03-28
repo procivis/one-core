@@ -64,6 +64,8 @@ pub enum HistoryAction {
     Accepted,
     #[sea_orm(string_value = "CREATED")]
     Created,
+    #[sea_orm(string_value = "CSR_GENERATED")]
+    CsrGenerated,
     #[sea_orm(string_value = "DEACTIVATED")]
     Deactivated,
     #[sea_orm(string_value = "DELETED")]

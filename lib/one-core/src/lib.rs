@@ -536,6 +536,7 @@ impl OneCore {
                 key_provider.clone(),
                 config.clone(),
                 key_algorithm_provider.clone(),
+                data_provider.get_history_repository(),
             ),
             proof_schema_service: ProofSchemaService::new(
                 data_provider.get_proof_schema_repository(),
