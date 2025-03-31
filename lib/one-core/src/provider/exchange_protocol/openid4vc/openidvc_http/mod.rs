@@ -24,16 +24,17 @@ use super::mapper::{
     get_credential_offer_url, map_offered_claims_to_credential_schema,
 };
 use super::model::{
-    ClientIdScheme, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
-    OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
+    AuthorizationEncryptedResponseAlgorithm, ClientIdScheme, ExtendedSubjectDTO,
+    HolderInteractionData, InvitationResponseDTO, JwePayload, OpenID4VCICredential,
+    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
+    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VCParams,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PresentedCredential,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
+    PresentationSubmissionMappingDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
+    UpdateResponse,
 };
 use super::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::service::create_credential_offer;
@@ -49,19 +50,17 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    OID4VPHandover, SessionTranscript,
-};
 use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::error::TxCodeError;
-use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::jwe_presentation::ec_key_from_metadata;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::mdoc::mdoc_presentation_context;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -71,11 +70,12 @@ use crate::service::oidc::service::credentials_format;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
+mod jwe_presentation;
 pub mod mappers;
-mod mdoc;
 mod utils;
 mod x509;
 
+mod mdoc;
 #[cfg(test)]
 mod test;
 
@@ -260,116 +260,60 @@ impl OpenID4VCHTTP {
             &oidc_format,
         )?;
 
-        let mut params: HashMap<&str, String> = HashMap::new();
-
         let response_uri =
             interaction_data
                 .response_uri
-                .as_ref()
+                .clone()
                 .ok_or(ExchangeProtocolError::Failed(
                     "response_uri is None".to_string(),
                 ))?;
-        let nonce = interaction_data
+        let verifier_nonce = interaction_data
             .nonce
-            .as_ref()
+            .clone()
             .ok_or(ExchangeProtocolError::Failed("nonce is None".to_string()))?;
 
-        if format == "MDOC" {
-            let mdoc_generated_nonce = utilities::generate_nonce();
-
-            let ctx = FormatPresentationCtx {
-                mdoc_session_transcript: Some(
-                    to_cbor(&SessionTranscript {
-                        handover: OID4VPHandover::compute(
-                            interaction_data.client_id.as_str().trim_end_matches('/'),
-                            response_uri.as_str().trim_end_matches('/'),
-                            nonce,
-                            &mdoc_generated_nonce,
-                        )
-                        .into(),
-                        device_engagement_bytes: None,
-                        e_reader_key_bytes: None,
-                    })
-                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
-                ),
-                ..Default::default()
-            };
-
-            let mut client_metadata =
-                interaction_data
-                    .client_metadata
-                    .ok_or(ExchangeProtocolError::Failed(
-                        "Missing client_metadata for MDOC openid4vp".to_string(),
-                    ))?;
-
-            if client_metadata.jwks.keys.is_empty() {
-                if let Some(ref uri) = client_metadata.jwks_uri {
-                    let jwks = self
-                        .client
-                        .get(uri)
-                        .send()
-                        .await
-                        .context("send error")
-                        .map_err(ExchangeProtocolError::Transport)?
-                        .error_for_status()
-                        .context("status error")
-                        .map_err(ExchangeProtocolError::Transport)?;
-
-                    client_metadata.jwks = jwks
-                        .json()
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-                }
-            }
-
-            let vp_token = presentation_formatter
-                .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
-                .await
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-            let payload = JwePayload {
-                aud: response_uri.clone(),
-                exp: OffsetDateTime::now_utc() + Duration::minutes(10),
-                vp_token,
-                presentation_submission,
-                state: interaction_data.state,
-            };
-
-            let response = mdoc::build_jwe(
-                payload,
-                client_metadata,
-                &mdoc_generated_nonce,
-                nonce,
-                &*self.key_algorithm_provider,
-            )
-            .await
-            .map_err(|err| {
-                ExchangeProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
-            })?;
-
-            params.insert("response", response);
+        let holder_nonce = utilities::generate_nonce();
+        let ctx = if format == "MDOC" {
+            mdoc_presentation_context(
+                &interaction_data,
+                &response_uri,
+                &verifier_nonce,
+                &holder_nonce,
+            )?
         } else {
-            let ctx = FormatPresentationCtx {
-                nonce: Some(nonce.clone()),
+            FormatPresentationCtx {
+                nonce: Some(verifier_nonce.clone()),
                 token_formats: Some(token_formats),
                 ..Default::default()
-            };
-
-            let vp_token = presentation_formatter
-                .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
-                .await
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-            params.insert("vp_token", vp_token);
-            params.insert(
-                "presentation_submission",
-                serde_json::to_string(&presentation_submission)
-                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
-            );
-
-            if let Some(state) = interaction_data.state {
-                params.insert("state", state);
             }
+        };
+        let vp_token = presentation_formatter
+            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let verifier_enc_key = self
+            .ec_verifier_key_from_metadata(&interaction_data)
+            .await?;
+        if verifier_enc_key.is_none() && format == "MDOC" {
+            return Err(ExchangeProtocolError::Failed(
+                "MDOC presentation requires encryption but no verifier EC keys are available"
+                    .to_string(),
+            ));
         }
+        let params = if let Some(verifier_key) = verifier_enc_key {
+            encrypted_params(
+                interaction_data,
+                presentation_submission,
+                &holder_nonce,
+                vp_token,
+                verifier_key,
+                &*self.key_algorithm_provider,
+            )
+            .await?
+        } else {
+            unencrypted_params(interaction_data, &presentation_submission, vp_token)?
+        };
 
         let response = self
             .client
@@ -407,6 +351,47 @@ impl OpenID4VCHTTP {
                 update_credential_schema: None,
             })
         }
+    }
+
+    async fn ec_verifier_key_from_metadata(
+        &self,
+        interaction_data: &OpenID4VPHolderInteractionData,
+    ) -> Result<Option<OpenID4VPClientMetadataJwkDTO>, ExchangeProtocolError> {
+        let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
+            // metadata_uri (if any) has been resolved before, no need to check
+            return Ok(None);
+        };
+
+        if !matches!(
+            client_metadata.authorization_encrypted_response_alg,
+            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
+        ) {
+            // Encrypted presentations not supported
+            return Ok(None);
+        }
+
+        if client_metadata.jwks.keys.is_empty() {
+            if let Some(ref uri) = client_metadata.jwks_uri {
+                let jwks = self
+                    .client
+                    .get(uri)
+                    .send()
+                    .await
+                    .context("send error")
+                    .map_err(ExchangeProtocolError::Transport)?
+                    .error_for_status()
+                    .context("status error")
+                    .map_err(ExchangeProtocolError::Transport)?;
+
+                client_metadata.jwks = jwks
+                    .json()
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            }
+        }
+        let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
+            return Ok(None);
+        };
+        Ok(Some(verifier_key))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -957,6 +942,63 @@ impl OpenID4VCHTTP {
     pub fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
         unimplemented!()
     }
+}
+
+fn unencrypted_params(
+    interaction_data: OpenID4VPHolderInteractionData,
+    presentation_submission: &PresentationSubmissionMappingDTO,
+    vp_token: String,
+) -> Result<HashMap<&'static str, String>, ExchangeProtocolError> {
+    let mut params: HashMap<&str, String> = HashMap::new();
+    params.insert("vp_token", vp_token);
+    params.insert(
+        "presentation_submission",
+        serde_json::to_string(&presentation_submission)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+    );
+
+    if let Some(state) = interaction_data.state {
+        params.insert("state", state);
+    }
+    Ok(params)
+}
+
+async fn encrypted_params(
+    interaction_data: OpenID4VPHolderInteractionData,
+    presentation_submission: PresentationSubmissionMappingDTO,
+    holder_nonce: &str,
+    vp_token: String,
+    verifier_key: OpenID4VPClientMetadataJwkDTO,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<HashMap<&'static str, String>, ExchangeProtocolError> {
+    let aud = interaction_data
+        .response_uri
+        .ok_or(ExchangeProtocolError::Failed(
+            "response_uri is None".to_string(),
+        ))?;
+    let verifier_nonce = interaction_data
+        .nonce
+        .ok_or(ExchangeProtocolError::Failed("nonce is None".to_string()))?;
+    let payload = JwePayload {
+        aud,
+        exp: OffsetDateTime::now_utc() + Duration::minutes(10),
+        vp_token,
+        presentation_submission,
+        state: interaction_data.state,
+    };
+
+    let response = jwe_presentation::build_jwe(
+        payload,
+        verifier_key,
+        holder_nonce,
+        &verifier_nonce,
+        key_algorithm_provider,
+    )
+    .await
+    .map_err(|err| {
+        ExchangeProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
+    })?;
+    Ok(HashMap::from_iter([("response", response)]))
 }
 
 async fn handle_credential_invitation(

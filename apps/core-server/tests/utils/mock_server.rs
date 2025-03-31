@@ -6,7 +6,7 @@ use serde_json::json;
 use time::OffsetDateTime;
 use wiremock::http::Method;
 use wiremock::matchers::{body_string_contains, header, method, path};
-use wiremock::{Mock, ResponseTemplate};
+use wiremock::{Mock, MockBuilder, ResponseTemplate};
 
 pub struct MockServer {
     mock: wiremock::MockServer,
@@ -103,6 +103,22 @@ impl MockServer {
         Mock::given(method(Method::GET))
             .and(path(format!("/ssi/schema/v1/{id}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn ssi_request_uri_endpoint(
+        &self,
+        matcher: Option<impl Fn(MockBuilder) -> MockBuilder>,
+    ) {
+        let mut mock_builder = Mock::given(method(Method::POST))
+            .and(path("/ssi/oidc-verifier/v1/response".to_owned()));
+        if let Some(matcher) = matcher {
+            mock_builder = matcher(mock_builder);
+        }
+        mock_builder
+            .respond_with(ResponseTemplate::new(200))
             .expect(1)
             .mount(&self.mock)
             .await;

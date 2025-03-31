@@ -19,3 +19,31 @@ fn test_jwk_to_bytes() {
         Es256.parse_jwk(&jwk).unwrap().public_key_as_raw()
     )
 }
+
+#[tokio::test]
+async fn test_generate_key() {
+    let es256_alg = Es256 {};
+    let key = es256_alg.generate_key().unwrap();
+
+    let recipient_jwk = RemoteJwk {
+        kty: "EC".to_string(),
+        crv: "P-256".to_string(),
+        x: "KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo".to_string(),
+        y: Some("d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU".to_string()),
+    };
+
+    // verify if it succeeds for given JWK
+    let _shared_secret = key
+        .key
+        .key_agreement()
+        .unwrap()
+        .private()
+        .unwrap()
+        .shared_secret(&recipient_jwk)
+        .await
+        .unwrap();
+
+    let remote_jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
+    assert_eq!("EC", remote_jwk.kty);
+    assert_eq!("P-256", remote_jwk.crv);
+}

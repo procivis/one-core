@@ -19,3 +19,31 @@ fn test_jwk_to_bytes() {
         Eddsa.parse_jwk(&jwk).unwrap().public_key_as_raw()
     )
 }
+
+#[tokio::test]
+async fn test_generate_ed25519() {
+    let eddsa = Eddsa {};
+    let key = eddsa.generate_key().unwrap();
+
+    let recipient_jwk = RemoteJwk {
+        kty: "OKP".to_string(),
+        crv: "Ed25519".to_string(),
+        x: "0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM".to_string(),
+        y: None,
+    };
+
+    // verify if it succeeds for given JWK
+    let _shared_secret = key
+        .key
+        .key_agreement()
+        .unwrap()
+        .private()
+        .unwrap()
+        .shared_secret(&recipient_jwk)
+        .await
+        .unwrap();
+
+    let remote_jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
+    assert_eq!("OKP", remote_jwk.kty);
+    assert_eq!("X25519", remote_jwk.crv);
+}
