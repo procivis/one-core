@@ -3,6 +3,7 @@ use std::fmt;
 
 use anyhow::Context;
 use indexmap::IndexMap;
+use one_crypto::jwe::EncryptionAlgorithm;
 use one_dto_mapper::{convert_inner, Into};
 use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
@@ -281,7 +282,8 @@ pub enum AuthorizationEncryptedResponseAlgorithm {
 }
 
 // https://datatracker.ietf.org/doc/html/rfc7518#section-5.1
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, Into)]
+#[into(EncryptionAlgorithm)]
 pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
     // AES GCM using 256-bit key
     A256GCM,

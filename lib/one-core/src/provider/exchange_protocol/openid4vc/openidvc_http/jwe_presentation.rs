@@ -2,7 +2,8 @@ use anyhow::anyhow;
 use one_crypto::jwe::Header;
 
 use crate::provider::exchange_protocol::openid4vc::model::{
-    JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -12,6 +13,7 @@ pub(crate) async fn build_jwe(
     verifier_key: OpenID4VPClientMetadataJwkDTO,
     holder_nonce: &str,
     nonce: &str, // nonce from the authorization request object
+    encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> anyhow::Result<String> {
     let payload = payload.try_into_json_base64_encode()?;
@@ -49,6 +51,7 @@ pub(crate) async fn build_jwe(
         },
         shared_secret,
         local_jwk,
+        encryption_algorithm.into(),
     )?)
 }
 

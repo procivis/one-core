@@ -1,16 +1,23 @@
 use std::str::FromStr;
 
+use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::{BlockDecryptMut, BlockEncryptMut};
+use aes::Aes128;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use hmac::Mac;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::skip_serializing_none;
+use strum::Display;
 
 use crate::encryption::EncryptionError;
+use crate::utilities::generate_random_seed_16;
+use crate::HmacSha256;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Header {
@@ -27,6 +34,7 @@ pub struct Header {
 pub struct JweHeader<T> {
     #[serde(rename = "kid")]
     pub key_id: String,
+    pub enc: EncryptionAlgorithm,
     // apu param
     #[serde(rename = "apu")]
     pub agreement_partyuinfo: String,
@@ -46,12 +54,25 @@ pub struct RemoteJwk {
     pub y: Option<String>,
 }
 
+/// Encryption algorithms as defined in the IANA registry:
+/// https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Display)]
+pub enum EncryptionAlgorithm {
+    // AES GCM using 256-bit key
+    A256GCM,
+    #[serde(rename = "A128CBC-HS256")]
+    #[strum(to_string = "A128CBC-HS256")]
+    // AES CBC using 128-bit key and HMAC SHA-256
+    A128CBCHS256,
+}
+
 /// Construct JWE using AES256GCM encryption
 pub fn build_jwe(
     payload: &[u8],
     header: Header,
     shared_secret: SecretSlice<u8>,
     remote_jwk: RemoteJwk,
+    encryption_alg: EncryptionAlgorithm,
 ) -> Result<String, EncryptionError> {
     let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyuinfo)
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {}", e)))?;
@@ -59,7 +80,7 @@ pub fn build_jwe(
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode apv: {}", e)))?;
     let protected_header = json!({
         "kid": header.key_id,
-        "enc": "A256GCM",
+        "enc": encryption_alg,
         "alg": "ECDH-ES",
         "apu": apu_b64,
         "apv": apv_b64,
@@ -73,34 +94,164 @@ pub fn build_jwe(
             EncryptionError::Crypto(format!("failed to encode protected JWE header: {}", e))
         })?;
 
-    let encryption_key = derive_encryption_key_aes256gcm(
+    let encryption_key = derive_encryption_key(
         &shared_secret,
         header.agreement_partyuinfo.as_bytes(),
         header.agreement_partyvinfo.as_bytes(),
+        &encryption_alg,
     )?;
 
-    let nonce = Aes256Gcm::generate_nonce(&mut ChaCha20Rng::from_entropy());
     let mut encrypted = payload.to_vec();
-    let cipher = Aes256Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
-    let tag = cipher
-        .encrypt_in_place_detached(&nonce, protected_header_b64.as_bytes(), &mut encrypted)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {}", e)))?;
-
-    let nonce_b64 = Base64UrlSafeNoPadding::encode_to_string(nonce)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE nonce: {}", e)))?;
+    let AeadOutput { tag_b64, iv_b64 } = match encryption_alg {
+        EncryptionAlgorithm::A256GCM => encrypt_in_place_aes_gcm(
+            &mut encrypted,
+            protected_header_b64.as_bytes(),
+            &encryption_key,
+        )?,
+        EncryptionAlgorithm::A128CBCHS256 => encrypt_in_place_aes_cbc_hs256(
+            &mut encrypted,
+            protected_header_b64.as_bytes(),
+            &encryption_key,
+        )?,
+    };
     let encrypted_b64 = Base64UrlSafeNoPadding::encode_to_string(encrypted)
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE payload: {}", e)))?;
-    let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {}", e)))?;
 
     Ok([
         protected_header_b64,
         "".to_string(),
-        nonce_b64,
+        iv_b64,
         encrypted_b64,
         tag_b64,
     ]
     .join("."))
+}
+
+struct AeadOutput {
+    tag_b64: String,
+    iv_b64: String,
+}
+
+fn encrypt_in_place_aes_gcm(
+    buf: &mut [u8],
+    associated_data: &[u8],
+    key: &SecretSlice<u8>,
+) -> Result<AeadOutput, EncryptionError> {
+    let iv = Aes256Gcm::generate_nonce(&mut ChaCha20Rng::from_entropy());
+    let cipher = Aes256Gcm::new(GenericArray::from_slice(key.expose_secret()));
+    let tag = cipher
+        .encrypt_in_place_detached(&iv, associated_data, buf)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {}", e)))?;
+    let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {}", e)))?;
+    let iv_b64 = Base64UrlSafeNoPadding::encode_to_string(iv)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE iv: {}", e)))?;
+    Ok(AeadOutput { tag_b64, iv_b64 })
+}
+
+type Aes128CbcEnc = cbc::Encryptor<Aes128>;
+fn encrypt_in_place_aes_cbc_hs256(
+    buf: &mut Vec<u8>,
+    associated_data: &[u8],
+    key: &SecretSlice<u8>,
+) -> Result<AeadOutput, EncryptionError> {
+    use aes::cipher::KeyIvInit;
+    let secret = key.expose_secret();
+    if secret.len() != 32 {
+        return Err(EncryptionError::Crypto(format!(
+            "wrong key size: expected 32, got {}",
+            secret.len()
+        )));
+    }
+    let hmac_key = &secret[..16];
+    let aes_key = &secret[16..32];
+
+    // CBC requires padding
+    let msg_len = buf.len();
+    let padding = 16 - msg_len % 16; // AES uses 16 byte blocks
+    if padding != 0 {
+        buf.append(&mut vec![0u8; padding]);
+    }
+
+    let iv = generate_random_seed_16();
+    let cipher128 = Aes128CbcEnc::new(
+        GenericArray::from_slice(aes_key),
+        GenericArray::from_slice(&iv),
+    );
+    cipher128
+        .encrypt_padded_mut::<Pkcs7>(buf, msg_len)
+        .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {}", err)))?;
+
+    let tag = calculate_tag_aes_cbc_hs256(buf, associated_data, &iv, hmac_key)?;
+    let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {}", e)))?;
+    let iv_b64 = Base64UrlSafeNoPadding::encode_to_string(iv)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE iv: {}", e)))?;
+    Ok(AeadOutput { tag_b64, iv_b64 })
+}
+
+type Aes128CbcDec = cbc::Decryptor<Aes128>;
+fn decrypt_in_place_aes_cbc_hs256<'a>(
+    buf: &'a mut [u8],
+    associated_data: &[u8],
+    iv: &[u8],
+    tag: &[u8],
+    key: &SecretSlice<u8>,
+) -> Result<&'a [u8], EncryptionError> {
+    use aes::cipher::KeyIvInit;
+    let secret = key.expose_secret();
+    if secret.len() != 32 {
+        return Err(EncryptionError::Crypto(format!(
+            "wrong key size: expected 32, got {}",
+            secret.len()
+        )));
+    }
+    let hmac_key = &secret[..16];
+    let aes_key = &secret[16..32];
+    if iv.len() != 16 {
+        return Err(EncryptionError::Crypto(format!(
+            "wrong iv size: expected 16, got {}",
+            secret.len()
+        )));
+    }
+
+    let calculated_tag = calculate_tag_aes_cbc_hs256(buf, associated_data, iv, hmac_key)?;
+    if tag != calculated_tag {
+        return Err(EncryptionError::Crypto(
+            "Data could not be authenticated".to_string(),
+        ));
+    }
+
+    let cipher128 = Aes128CbcDec::new(
+        GenericArray::from_slice(aes_key),
+        GenericArray::from_slice(iv),
+    );
+    let plaintext = cipher128
+        .decrypt_padded_mut::<Pkcs7>(buf)
+        .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {}", err)))?;
+
+    Ok(plaintext)
+}
+
+fn calculate_tag_aes_cbc_hs256(
+    buf: &[u8],
+    associated_data: &[u8],
+    iv: &[u8],
+    hmac_key: &[u8],
+) -> Result<Vec<u8>, EncryptionError> {
+    let mut mac = <HmacSha256 as Mac>::new_from_slice(hmac_key)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to create mac: {}", e)))?;
+    Mac::update(&mut mac, associated_data);
+    Mac::update(&mut mac, iv);
+    Mac::update(&mut mac, buf);
+
+    // length of associated data in _bits_
+    let ad_len = ((associated_data.len() * 8) as u64).to_be_bytes();
+    Mac::update(&mut mac, &ad_len);
+
+    // the tag is defined as only the first 16 bytes of the hash
+    let calculated_tag = mac.finalize_reset().into_bytes()[..16].to_vec();
+    Ok(calculated_tag)
 }
 
 pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
@@ -159,21 +310,44 @@ impl EncryptedJWE {
         &self,
         private_key_handle: &dyn PrivateKeyAgreementHandle,
     ) -> Result<Vec<u8>, EncryptionError> {
+        let header: JweHeader<RemoteJwk> = serde_json::from_slice(&self.protected_header)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
+
         let shared_secret = self.derive_shared_secret(private_key_handle).await?;
+        let encryption_key = self.derive_encryption_key(&shared_secret, &header)?;
 
-        let encryption_key = self.derive_encryption_key(&shared_secret)?;
+        let decrypted = match header.enc {
+            EncryptionAlgorithm::A256GCM => {
+                let cipher =
+                    Aes256Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
+                let mut buf = self.payload.clone();
+                cipher
+                    .decrypt_in_place_detached(
+                        GenericArray::from_slice(&self.nonce),
+                        self.protected_header_b64.as_bytes(),
+                        &mut buf,
+                        GenericArray::from_slice(&self.tag),
+                    )
+                    .map_err(|e| {
+                        EncryptionError::Crypto(format!("Failed to decrypt JWE: {}", e))
+                    })?;
+                buf
+            }
+            EncryptionAlgorithm::A128CBCHS256 => {
+                let mut buf = self.payload.clone();
+                decrypt_in_place_aes_cbc_hs256(
+                    &mut buf,
+                    self.protected_header_b64.as_bytes(),
+                    &self.nonce,
+                    &self.tag,
+                    &encryption_key,
+                )
+                .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {}", e)))?
+                .to_vec()
+            }
+        };
 
-        let cipher = Aes256Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
-        let mut plaintext = self.payload.clone();
-        cipher
-            .decrypt_in_place_detached(
-                GenericArray::from_slice(&self.nonce),
-                self.protected_header_b64.as_bytes(),
-                &mut plaintext,
-                GenericArray::from_slice(&self.tag),
-            )
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {}", e)))?;
-        Ok(plaintext)
+        Ok(decrypted)
     }
 
     async fn derive_shared_secret(
@@ -193,33 +367,35 @@ impl EncryptedJWE {
     fn derive_encryption_key(
         &self,
         shared_secret: &SecretSlice<u8>,
+        header: &JweHeader<RemoteJwk>,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
-        let header: JweHeader<RemoteJwk> = serde_json::from_slice(&self.protected_header)
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
-
         let apu = decode_b64(header.agreement_partyuinfo.as_str(), "apu")?;
         let apv = decode_b64(header.agreement_partyvinfo.as_str(), "apv")?;
 
-        derive_encryption_key_aes256gcm(shared_secret, &apu, &apv)
+        derive_encryption_key(shared_secret, &apu, &apv, &header.enc)
     }
 }
 
-fn derive_encryption_key_aes256gcm(
+fn derive_encryption_key(
     shared_secret: &SecretSlice<u8>,
     apu: &[u8],
     apv: &[u8],
+    alg: &EncryptionAlgorithm,
 ) -> Result<SecretSlice<u8>, EncryptionError> {
-    const ALG: &[u8] = b"A256GCM";
-    const KEY_LENGTH: u32 = 256;
+    let key_len: u32 = match alg {
+        EncryptionAlgorithm::A256GCM => 256,
+        EncryptionAlgorithm::A128CBCHS256 => 128,
+    };
 
+    let alg = alg.to_string();
     let mut other_info = vec![];
-    other_info.extend((ALG.len() as u32).to_be_bytes());
-    other_info.extend(ALG);
+    other_info.extend((alg.len() as u32).to_be_bytes());
+    other_info.extend(alg.as_bytes());
     other_info.extend((apu.len() as u32).to_be_bytes());
     other_info.extend(apu);
     other_info.extend((apv.len() as u32).to_be_bytes());
     other_info.extend(apv);
-    other_info.extend(KEY_LENGTH.to_be_bytes());
+    other_info.extend(key_len.to_be_bytes());
 
     let mut encryption_key = SecretSlice::from(vec![0u8; 32]);
     concat_kdf::derive_key_into::<sha2::Sha256>(
@@ -269,6 +445,7 @@ pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, Encr
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::jwe::EncryptionAlgorithm::{A128CBCHS256, A256GCM};
     use crate::signer::eddsa::EDDSASigner;
     use crate::signer::es256::ES256Signer;
 
@@ -402,7 +579,7 @@ mod test {
             y: Some("J9BMexfC9wE_3-E5Z-EbDFUKEIMwBOBReKT9bEx2KdU".to_string()),
         };
 
-        let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk).unwrap();
+        let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk, A256GCM).unwrap();
         let extracted_header = extract_jwe_header(&jwe).unwrap();
         assert_eq!(header, extracted_header);
 
@@ -442,7 +619,7 @@ mod test {
             y: None,
         };
 
-        let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk).unwrap();
+        let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk, A256GCM).unwrap();
         let extracted_header = extract_jwe_header(&jwe).unwrap();
         assert_eq!(header, extracted_header);
 
@@ -451,5 +628,77 @@ mod test {
                 .await
                 .unwrap();
         assert_eq!(payload.as_slice(), decrypted_payload_bytes);
+    }
+
+    #[tokio::test]
+    async fn test_jwe_round_trip_eddsa_aes128_cbc_hs256() {
+        let payload = b"test_payload";
+        let header = Header {
+            key_id: "9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string(),
+            agreement_partyuinfo: "BJ\"ûzw\u{11}\u{93}\u{7}Ç>»Ý%\nÁk&âÌÕ°\u{6}\u{9e}Õ_\u{8a}Ö%#Za"
+                .to_string(),
+            agreement_partyvinfo: "e4xmMaGk6O2UX25eq7Opc46LU7PdzUXp".to_string(),
+        };
+
+        // shared_secret and remote_jwk were generated from this recipient_jwk
+        // let recipient_jwk = RemoteJwk {
+        //     kty: "OKP".to_string(),
+        //     crv: "Ed25519".to_string(),
+        //     x: "0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM".to_string(),
+        //     y: None,
+        // };
+
+        let shared_secret = SecretSlice::from(vec![
+            15, 180, 14, 191, 235, 127, 224, 178, 119, 167, 9, 251, 183, 199, 13, 60, 54, 14, 104,
+            238, 55, 240, 60, 67, 165, 233, 126, 97, 200, 236, 182, 114,
+        ]);
+        let remote_jwk = RemoteJwk {
+            kty: "OKP".to_string(),
+            crv: "X25519".to_string(),
+            x: "RIAzhfGXIA-OtO-0fWhNKykMRNn8n14US7otIAN_eSM".to_string(),
+            y: None,
+        };
+
+        let jwe = build_jwe(
+            payload,
+            header.clone(),
+            shared_secret,
+            remote_jwk,
+            A128CBCHS256,
+        )
+        .unwrap();
+        let extracted_header = extract_jwe_header(&jwe).unwrap();
+        assert_eq!(header, extracted_header);
+
+        let decrypted_payload_bytes =
+            decrypt_jwe_payload(&jwe, &wrap_ed25519_private_key(PRIVATE_JWK_ED25519))
+                .await
+                .unwrap();
+        assert_eq!(payload.as_slice(), decrypted_payload_bytes);
+    }
+
+    /// Test case: https://datatracker.ietf.org/doc/html/rfc7518#appendix-B.1
+    #[tokio::test]
+    async fn test_decrypt_aes128_cbc_hs256() {
+        let expected_plaintext = b"A cipher system must not be required to be secret, and it must be able to fall into the hands of the enemy without inconvenience";
+        let associated_data = b"The second principle of Auguste Kerckhoffs";
+
+        let key = SecretSlice::from(
+            hex::decode("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+                .unwrap(),
+        );
+        let tag = hex::decode("652c3fa36b0a7c5b3219fab3a30bc1c4").unwrap();
+        let iv = hex::decode("1af38c2dc2b96ffdd86694092341bc04").unwrap();
+        let mut ciphertext = hex::decode("c80edfa32ddf39d5ef00c0b468834279a2e46a1b8049f792f76bfe54b903a9c9a94ac9b47ad2655c5f10f9aef71427e2fc6f9b3f399a221489f16362c703233609d45ac69864e3321cf82935ac4096c86e133314c54019e8ca7980dfa4b9cf1b384c486f3a54c51078158ee5d79de59fbd34d848b3d69550a67646344427ade54b8851ffb598f7f80074b9473c82e2db").unwrap();
+
+        let decrypted = decrypt_in_place_aes_cbc_hs256(
+            &mut ciphertext,
+            associated_data.as_slice(),
+            &iv,
+            &tag,
+            &key,
+        )
+        .unwrap();
+        assert_eq!(decrypted, expected_plaintext);
     }
 }

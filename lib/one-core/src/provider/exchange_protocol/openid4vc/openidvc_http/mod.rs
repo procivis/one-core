@@ -24,7 +24,8 @@ use super::mapper::{
     get_credential_offer_url, map_offered_claims_to_credential_schema,
 };
 use super::model::{
-    AuthorizationEncryptedResponseAlgorithm, ClientIdScheme, ExtendedSubjectDTO,
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, ExtendedSubjectDTO,
     HolderInteractionData, InvitationResponseDTO, JwePayload, OpenID4VCICredential,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
@@ -292,22 +293,23 @@ impl OpenID4VCHTTP {
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        let verifier_enc_key = self
-            .ec_verifier_key_from_metadata(&interaction_data)
+        let encryption_info = self
+            .encryption_info_from_metadata(&interaction_data)
             .await?;
-        if verifier_enc_key.is_none() && format == "MDOC" {
+        if encryption_info.is_none() && format == "MDOC" {
             return Err(ExchangeProtocolError::Failed(
                 "MDOC presentation requires encryption but no verifier EC keys are available"
                     .to_string(),
             ));
         }
-        let params = if let Some(verifier_key) = verifier_enc_key {
+        let params = if let Some((verifier_key, alg)) = encryption_info {
             encrypted_params(
                 interaction_data,
                 presentation_submission,
                 &holder_nonce,
                 vp_token,
                 verifier_key,
+                alg,
                 &*self.key_algorithm_provider,
             )
             .await?
@@ -353,10 +355,16 @@ impl OpenID4VCHTTP {
         }
     }
 
-    async fn ec_verifier_key_from_metadata(
+    async fn encryption_info_from_metadata(
         &self,
         interaction_data: &OpenID4VPHolderInteractionData,
-    ) -> Result<Option<OpenID4VPClientMetadataJwkDTO>, ExchangeProtocolError> {
+    ) -> Result<
+        Option<(
+            OpenID4VPClientMetadataJwkDTO,
+            AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+        )>,
+        ExchangeProtocolError,
+    > {
         let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
             // metadata_uri (if any) has been resolved before, no need to check
             return Ok(None);
@@ -369,6 +377,12 @@ impl OpenID4VCHTTP {
             // Encrypted presentations not supported
             return Ok(None);
         }
+
+        let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
+            // Encrypted presentations not supported
+            None => return Ok(None),
+            Some(alg) => alg,
+        };
 
         if client_metadata.jwks.keys.is_empty() {
             if let Some(ref uri) = client_metadata.jwks_uri {
@@ -391,7 +405,7 @@ impl OpenID4VCHTTP {
         let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
             return Ok(None);
         };
-        Ok(Some(verifier_key))
+        Ok(Some((verifier_key, encryption_alg)))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -969,6 +983,7 @@ async fn encrypted_params(
     holder_nonce: &str,
     vp_token: String,
     verifier_key: OpenID4VPClientMetadataJwkDTO,
+    encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<HashMap<&'static str, String>, ExchangeProtocolError> {
     let aud = interaction_data
@@ -992,6 +1007,7 @@ async fn encrypted_params(
         verifier_key,
         holder_nonce,
         &verifier_nonce,
+        encryption_algorithm,
         key_algorithm_provider,
     )
     .await
