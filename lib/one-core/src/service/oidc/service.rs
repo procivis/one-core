@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
@@ -798,6 +799,29 @@ impl OIDCService {
         .await
         {
             Ok((accept_proof_result, response)) => {
+                // store holder did on proof if it is not ambiguous
+                let holder_did_value = accept_proof_result
+                    .proved_credentials
+                    .iter()
+                    .map(|cred| &cred.holder_did_value)
+                    .all_equal_value()
+                    .ok();
+                let holder_did_id = if let Some(holder_did_value) = holder_did_value {
+                    Some(
+                        get_or_create_did(
+                            &*self.did_method_provider,
+                            &*self.did_repository,
+                            &Some(organisation.to_owned()),
+                            holder_did_value,
+                            DidRole::Holder,
+                        )
+                        .await?
+                        .id,
+                    )
+                } else {
+                    None
+                };
+
                 for proved_credential in accept_proof_result.proved_credentials {
                     let credential_id = proved_credential.credential.id;
                     let mdoc_mso = proved_credential.mdoc_mso.to_owned();
@@ -842,6 +866,7 @@ impl OIDCService {
                         &proof.id,
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
+                            holder_did_id,
                             ..Default::default()
                         },
                         None,

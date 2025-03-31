@@ -15,6 +15,8 @@ use shared_types::{CredentialId, DidId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::credential::mapper::target_from_credential;
+
 pub struct CredentialHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn CredentialRepository>,
@@ -30,6 +32,8 @@ impl CredentialHistoryDecorator {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
+                    issuer_did: Some(Default::default()),
+                    holder_did: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -74,6 +78,7 @@ impl CredentialHistoryDecorator {
             created_date: OffsetDateTime::now_utc(),
             action,
             name: credential_schema.name.to_owned(),
+            target: target_from_credential(credential),
             entity_id: Some(credential.id.into()),
             entity_type: HistoryEntityType::Credential,
             metadata: None,

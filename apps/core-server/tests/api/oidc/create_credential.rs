@@ -221,7 +221,7 @@ async fn test_post_issuer_credential_with(
         )
         .await;
 
-    let jwt = proof_jwt().await;
+    let (jwt, did) = proof_jwt().await;
     let resp = context
         .api
         .ssi
@@ -229,6 +229,23 @@ async fn test_post_issuer_credential_with(
         .await;
 
     assert_eq!(200, resp.status());
+
+    let credential_history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    assert_eq!(
+        credential_history
+            .values
+            .first()
+            .as_ref()
+            .unwrap()
+            .target
+            .as_ref()
+            .unwrap(),
+        &did
+    );
 
     (context, credential.id)
 }
@@ -325,7 +342,7 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
-    let jwt = proof_jwt().await;
+    let (jwt, _) = proof_jwt().await;
     let resp = context
         .api
         .ssi

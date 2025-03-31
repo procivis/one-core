@@ -30,6 +30,7 @@ impl DidHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                target: None,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Did,
                 metadata: None,

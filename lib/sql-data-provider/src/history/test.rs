@@ -293,6 +293,7 @@ async fn test_create_history() {
             created_date: get_dummy_date(),
             action: HistoryAction::Created,
             name: "test_key".to_string(),
+            target: None,
             entity_id: Some(Uuid::new_v4().into()),
             entity_type: HistoryEntityType::Key,
             metadata: None,

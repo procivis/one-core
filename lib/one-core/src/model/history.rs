@@ -34,6 +34,7 @@ pub struct History {
     pub created_date: OffsetDateTime,
     pub action: HistoryAction,
     pub name: String,
+    pub target: Option<String>,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub metadata: Option<HistoryMetadata>,

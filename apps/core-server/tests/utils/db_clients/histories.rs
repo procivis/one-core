@@ -21,6 +21,7 @@ pub struct TestingHistoryParams {
     pub entity_type: Option<HistoryEntityType>,
     pub metadata: Option<HistoryMetadata>,
     pub name: Option<String>,
+    pub target: Option<String>,
 }
 
 pub struct HistoriesDB {
@@ -49,6 +50,7 @@ impl HistoriesDB {
             metadata: params.metadata,
             organisation_id: organisation.id,
             name: params.name.unwrap_or_default(),
+            target: params.target,
         };
 
         self.repository

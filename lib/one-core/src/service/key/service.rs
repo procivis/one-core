@@ -201,6 +201,7 @@ impl KeyService {
                 created_date: OffsetDateTime::now_utc(),
                 action: HistoryAction::CsrGenerated,
                 name: key.name,
+                target: None,
                 entity_id: Some(key.id.into()),
                 entity_type: HistoryEntityType::Key,
                 metadata: None,

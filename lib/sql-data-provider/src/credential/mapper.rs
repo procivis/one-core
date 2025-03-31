@@ -1,4 +1,4 @@
-use one_core::model::credential::{Credential, SortableCredentialColumn};
+use one_core::model::credential::{Credential, CredentialRole, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
@@ -207,4 +207,18 @@ pub(super) fn credentials_to_repository(
     }
 
     Ok(result)
+}
+
+pub(crate) fn target_from_credential(credential: &Credential) -> Option<String> {
+    match credential.role {
+        CredentialRole::Holder => credential
+            .issuer_did
+            .as_ref()
+            .map(|did| did.did.to_string()),
+        CredentialRole::Issuer => credential
+            .holder_did
+            .as_ref()
+            .map(|did| did.did.to_string()),
+        CredentialRole::Verifier => None,
+    }
 }

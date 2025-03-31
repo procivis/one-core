@@ -36,6 +36,7 @@ pub struct HistoryResponseRestDTO {
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: OrganisationId,
+    pub target: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -61,6 +62,8 @@ pub struct HistoryResponseDetailRestDTO {
     pub organisation_id: OrganisationId,
     #[try_from(with_fn = try_convert_inner)]
     pub metadata: Option<HistoryMetadataRestEnum>,
+    #[try_from(infallible)]
+    pub target: Option<String>,
 }
 
 #[derive(Serialize, ToSchema, TryFrom)]

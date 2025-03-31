@@ -89,6 +89,7 @@ mod m20250317_133346_add_org_name;
 mod m20250319_101601_add_updated_history_action;
 mod m20250324_150815_add_name_to_history_table;
 mod m20250327_141601_add_new_history_action;
+mod m20250331_115152_add_history_target;
 mod m20250331_143210_rename_es256_to_ecdsa;
 
 pub struct Migrator;
@@ -181,6 +182,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250327_141601_add_new_history_action::Migration),
             Box::new(m20250324_150815_add_name_to_history_table::Migration),
             Box::new(m20250331_143210_rename_es256_to_ecdsa::Migration),
+            Box::new(m20250331_115152_add_history_target::Migration),
         ]
     }
 }

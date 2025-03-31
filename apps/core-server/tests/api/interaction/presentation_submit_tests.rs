@@ -20,7 +20,6 @@ use crate::utils::server::run_server;
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc() {
     let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
-    let verifier_did = fixtures::create_did(&context.db.db_conn, &organisation, None).await;
 
     let client_metadata = json!(
     {
@@ -56,14 +55,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         }
     });
 
-    let (holder_did, credential, interaction, proof) = setup_submittable_presentation(
-        &context,
-        &organisation,
-        &issuer_did,
-        &verifier_did,
-        &client_metadata.to_string(),
-    )
-    .await;
+    let (holder_did, verifier_did, credential, interaction, proof) =
+        setup_submittable_presentation(
+            &context,
+            &organisation,
+            &issuer_did,
+            &client_metadata.to_string(),
+        )
+        .await;
 
     context
         .server_mock
@@ -118,12 +117,27 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .any(|c| c.claim.value == "test"));
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
     assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
+    let proof_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await;
+    assert_eq!(
+        proof_history
+            .values
+            .first()
+            .as_ref()
+            .unwrap()
+            .target
+            .as_ref()
+            .unwrap(),
+        &verifier_did.did.to_string()
+    )
 }
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
     let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
-    let verifier_did = fixtures::create_did(&context.db.db_conn, &organisation, None).await;
 
     let client_metadata = json!({
         "authorization_encrypted_response_alg": "ECDH-ES",
@@ -160,14 +174,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
         }
     });
 
-    let (holder_did, credential, interaction, proof) = setup_submittable_presentation(
-        &context,
-        &organisation,
-        &issuer_did,
-        &verifier_did,
-        &client_metadata.to_string(),
-    )
-    .await;
+    let (holder_did, verifier_did, credential, interaction, proof) =
+        setup_submittable_presentation(
+            &context,
+            &organisation,
+            &issuer_did,
+            &client_metadata.to_string(),
+        )
+        .await;
 
     context
         .server_mock
@@ -221,9 +235,33 @@ async fn setup_submittable_presentation(
     context: &TestContext,
     organisation: &Organisation,
     issuer_did: &Did,
-    verifier_did: &Did,
     client_metadata: &str,
-) -> (Did, Credential, Interaction, Proof) {
+) -> (Did, Did, Credential, Interaction, Proof) {
+    let verifier_key = context
+        .db
+        .keys
+        .create(organisation, Default::default())
+        .await;
+    let verifier_did = context
+        .db
+        .dids
+        .create(
+            organisation,
+            TestingDidParams {
+                keys: Some(vec![
+                    RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: verifier_key.clone(),
+                    },
+                    RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: verifier_key.clone(),
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
     let holder_key = fixtures::create_key(
         &context.db.db_conn,
         organisation,
@@ -341,17 +379,21 @@ async fn setup_submittable_presentation(
     )
     .await;
 
-    let proof = fixtures::create_proof(
-        &context.db.db_conn,
-        verifier_did,
-        None,
-        None,
-        ProofStateEnum::Requested,
-        "OPENID4VC",
-        Some(&interaction),
-    )
-    .await;
-    (holder_did, credential, interaction, proof)
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_did,
+            None,
+            None,
+            ProofStateEnum::Requested,
+            "OPENID4VC",
+            Some(&interaction),
+            verifier_key,
+        )
+        .await;
+    (holder_did, verifier_did, credential, interaction, proof)
 }
 
 #[tokio::test]

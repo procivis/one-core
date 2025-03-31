@@ -48,6 +48,7 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action: HistoryAction::Deleted,
                 name: credential_schema.name.to_owned(),
+                target: None,
                 entity_id: Some(credential_schema.id.into()),
                 entity_type: HistoryEntityType::CredentialSchema,
                 metadata: None,

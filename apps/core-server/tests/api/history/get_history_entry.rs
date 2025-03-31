@@ -112,3 +112,30 @@ async fn test_fail_to_get_history_entry_unknown_id() {
     assert_eq!(resp.status(), 404);
     assert_eq!("BR_0100", resp.error_code().await);
 }
+
+#[tokio::test]
+async fn test_get_history_entry_with_target() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let history = context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                target: Some("Foo".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.histories.get(history.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&history.id);
+    resp["target"].assert_eq(&"Foo".to_string());
+}

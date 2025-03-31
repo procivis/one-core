@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use one_core::model::credential::{Credential, CredentialStateEnum};
+use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
 use one_core::model::organisation::Organisation;
 use sea_orm::ActiveValue::NotSet;
@@ -497,6 +498,7 @@ pub async fn insert_history(
         entity_type: Set(entity_type),
         metadata: Set(None),
         organisation_id: Set(organisation_id),
+        target: Set(None),
     }
     .insert(database)
     .await?;
@@ -521,6 +523,21 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+    }
+}
+
+pub fn dummy_did() -> Did {
+    Did {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "John".to_string(),
+        did: "did:example:123".parse().unwrap(),
+        did_type: one_core::model::did::DidType::Local,
+        did_method: "INTERNAL".to_string(),
+        keys: None,
+        organisation: Some(dummy_organisation(None)),
+        deactivated: false,
     }
 }
 

@@ -36,6 +36,7 @@ pub struct HistoryResponseDTO {
     pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub metadata: Option<HistoryMetadataResponse>,
+    pub target: Option<String>,
 }
 
 pub type GetHistoryListResponseDTO = GetListResponse<HistoryResponseDTO>;

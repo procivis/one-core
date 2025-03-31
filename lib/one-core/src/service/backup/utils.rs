@@ -150,6 +150,7 @@ pub(super) fn create_backup_history_event(
         created_date: OffsetDateTime::now_utc(),
         action,
         name,
+        target: None,
         entity_id: None,
         entity_type: HistoryEntityType::Backup,
         metadata,

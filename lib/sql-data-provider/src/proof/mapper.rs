@@ -6,7 +6,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
-use shared_types::ProofId;
+use shared_types::{OrganisationId, ProofId};
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
@@ -200,5 +200,31 @@ pub(super) fn get_proof_claim_active_model(
     proof_claim::ActiveModel {
         proof_id: Set(proof_id.to_string()),
         claim_id: Set(claim.id.to_string()),
+    }
+}
+
+pub(crate) fn organisation_id_from_proof(proof: &Proof) -> Result<OrganisationId, DataLayerError> {
+    if let Some(organisation) = proof
+        .schema
+        .as_ref()
+        .and_then(|schema| schema.organisation.as_ref())
+    {
+        Ok(organisation.id)
+    } else if let Some(organisation) = proof
+        .interaction
+        .as_ref()
+        .and_then(|interaction| interaction.organisation.as_ref())
+    {
+        Ok(organisation.id)
+    } else {
+        Err(anyhow::anyhow!("organisation is None").into())
+    }
+}
+
+pub(crate) fn target_from_proof(proof: &Proof) -> Option<String> {
+    use one_core::model::proof::ProofRole as Role;
+    match proof.role {
+        Role::Holder => proof.verifier_did.as_ref().map(|did| did.did.to_string()),
+        Role::Verifier => proof.holder_did.as_ref().map(|did| did.did.to_string()),
     }
 }

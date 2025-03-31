@@ -195,6 +195,7 @@ pub struct HistoryListItemBindingDTO {
     pub entity_type: HistoryEntityTypeBindingEnum,
     pub metadata: Option<HistoryMetadataBinding>,
     pub organisation_id: String,
+    pub target: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

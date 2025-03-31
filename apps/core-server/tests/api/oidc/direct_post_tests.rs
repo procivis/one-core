@@ -8,6 +8,7 @@ use crate::fixtures::{
     self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
 };
 use crate::utils;
+use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::server::run_server;
 
@@ -48,11 +49,7 @@ vOFJHUHJrN3A0Y0diNFdOQlEiXX19.uD-PTubYXem7PtYT0R7KsSNvMDLQgHMRHGPUqZdZExg2c3-yge
 #[tokio::test]
 async fn test_direct_post_one_credential_correct() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
+    let (context, organisation, verifier_did, _) = TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -61,7 +58,7 @@ async fn test_direct_post_one_credential_correct() {
     ];
 
     let credential_schema = create_credential_schema_with_claims(
-        &db_conn,
+        &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
         "NONE",
@@ -70,7 +67,7 @@ async fn test_direct_post_one_credential_correct() {
     .await;
 
     let proof_schema = create_proof_schema(
-        &db_conn,
+        &context.db.db_conn,
         "Schema1",
         &organisation,
         &[CreateProofInputSchema::from((
@@ -79,8 +76,6 @@ async fn test_direct_post_one_credential_correct() {
         ))],
     )
     .await;
-
-    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let interaction_data = json!({
         "nonce": nonce,
@@ -121,8 +116,9 @@ async fn test_direct_post_one_credential_correct() {
         "response_uri": "response_uri"
     });
 
+    let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
-        &db_conn,
+        &context.db.db_conn,
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
@@ -130,7 +126,7 @@ async fn test_direct_post_one_credential_correct() {
     .await;
 
     let proof = create_proof(
-        &db_conn,
+        &context.db.db_conn,
         &verifier_did,
         None,
         Some(&proof_schema),
@@ -166,10 +162,7 @@ async fn test_direct_post_one_credential_correct() {
     ];
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
-
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -180,8 +173,25 @@ async fn test_direct_post_one_credential_correct() {
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let proof = get_proof(&db_conn, &proof.id).await;
+    let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
+
+    let proof_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await;
+    assert_eq!(
+        proof_history
+            .values
+            .first()
+            .as_ref()
+            .unwrap()
+            .target
+            .as_ref()
+            .unwrap(),
+        "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n" // hardcoded in TOKEN2
+    );
 
     let claims = proof.claims.unwrap();
     assert!(new_claim_schemas

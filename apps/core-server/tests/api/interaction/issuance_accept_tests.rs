@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use serde_json::json;
@@ -124,6 +124,7 @@ async fn test_issuance_accept_openid4vc() {
             "OPENID4VC",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -153,6 +154,15 @@ async fn test_issuance_accept_openid4vc() {
     assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
 
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    assert_eq!(
+        history.values.first().unwrap().target.as_ref().unwrap(),
+        issuer_did.did.to_string().as_str()
+    );
 }
 
 #[tokio::test]

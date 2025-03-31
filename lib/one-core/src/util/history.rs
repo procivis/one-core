@@ -22,6 +22,7 @@ pub(crate) fn history_event(
         created_date: OffsetDateTime::now_utc(),
         action,
         name,
+        target: None,
         entity_id: Some(entity_id.into()),
         entity_type,
         metadata: None,

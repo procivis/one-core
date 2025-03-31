@@ -254,12 +254,18 @@ async fn test_create_credential_success() {
     schema_repository
         .expect_get_credential_schema()
         .return_once(move |_, _| credential_schema_result);
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .times(1)
+        .returning(move |_, _| Ok(Some(dummy_did())));
 
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
             claim_repository: Arc::new(claim_repository),
             credential_schema_repository: Arc::new(schema_repository),
+            did_repository: Arc::new(did_repository),
             ..Repositories::default()
         }),
     );
@@ -351,14 +357,18 @@ async fn test_create_credential_empty_claims() {
         .expect_get_credential_schema()
         .times(1)
         .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .times(1)
+        .returning(move |_, _| Ok(Some(dummy_did())));
 
-    let provider = credential_repository(
-        db.clone(),
-        Some(Repositories {
-            credential_schema_repository: Arc::new(credential_schema_repository),
-            ..Repositories::default()
-        }),
-    );
+    let repositories = Repositories {
+        credential_schema_repository: Arc::new(credential_schema_repository),
+        did_repository: Arc::new(did_repository),
+        ..Repositories::default()
+    };
+    let provider = credential_repository(db.clone(), Some(repositories));
 
     let credential_id = Uuid::new_v4().into();
     let result = provider
@@ -918,7 +928,11 @@ async fn test_get_credential_fail_not_found() {
 #[tokio::test]
 async fn test_update_credential_success() {
     let claim_repository = MockClaimRepository::default();
-    let did_repository = MockDidRepository::default();
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .times(1)
+        .returning(move |_, _| Ok(Some(dummy_did())));
 
     let TestSetup {
         credential_schema,
