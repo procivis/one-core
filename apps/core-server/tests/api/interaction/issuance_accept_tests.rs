@@ -4,6 +4,7 @@ use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_core::model::history::HistoryAction;
 use serde_json::json;
 use shared_types::DidValue;
 use time::macros::datetime;
@@ -159,10 +160,21 @@ async fn test_issuance_accept_openid4vc() {
         .histories
         .get_by_entity_id(&credential.id.into())
         .await;
-    assert_eq!(
-        history.values.first().unwrap().target.as_ref().unwrap(),
-        issuer_did.did.to_string().as_str()
-    );
+    assert_eq!(history.values.len(), 3); // one per state: Pending, Accepted, Issued
+    assert!(history
+        .values
+        .iter()
+        .all(|entry| entry.target == Some(issuer_did.did.to_string())),);
+    assert!(history
+        .values
+        .iter()
+        .take(2)
+        .any(|x| x.action == HistoryAction::Accepted));
+    assert!(history
+        .values
+        .iter()
+        .take(2)
+        .any(|x| x.action == HistoryAction::Issued));
 }
 
 #[tokio::test]

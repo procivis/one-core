@@ -765,6 +765,16 @@ impl CredentialService {
                 self.credential_repository
                     .update_credential(credential_id, update_request)
                     .await?;
+                if current_state == CredentialStateEnum::Suspended
+                    && new_state == CredentialStateEnum::Accepted
+                {
+                    log_history_event_credential(
+                        &*self.history_repository,
+                        &credential,
+                        HistoryAction::Reactivated,
+                    )
+                    .await;
+                }
             }
 
             //Mdoc flow ends here. Nothing else to do for MDOC
@@ -881,6 +891,16 @@ impl CredentialService {
                     },
                 )
                 .await?;
+            if current_state == CredentialStateEnum::Suspended
+                && detected_state == CredentialStateEnum::Accepted
+            {
+                log_history_event_credential(
+                    &*self.history_repository,
+                    &credential,
+                    HistoryAction::Reactivated,
+                )
+                .await;
+            }
         }
 
         Ok(CredentialRevocationCheckResponseDTO {

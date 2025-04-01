@@ -106,6 +106,8 @@ pub enum HistoryAction {
     Retracted,
     #[sea_orm(string_value = "UPDATED")]
     Updated,
+    #[sea_orm(string_value = "REACTIVATED")]
+    Reactivated,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

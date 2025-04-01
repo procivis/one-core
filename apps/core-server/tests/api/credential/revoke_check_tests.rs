@@ -1,5 +1,6 @@
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::history::HistoryAction;
 use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::jwt::mapper::{
     bin_to_b64url_string, string_to_b64url_string,
@@ -442,14 +443,152 @@ fn sign_jwt_helper(jwt_header_json: &str, payload_json: &str, key_pair: &KeyPair
 #[tokio::test]
 async fn test_revoke_check_success_lvvc() {
     // GIVEN
-    // contains id=http://0.0.0.0:4445/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf
-    let credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDc0MDk2ODksImV4cCI6MTc3MDQ4MTY4OSwibmJmIjoxNzA3NDA5NjI5LCJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6ImRpZDprZXk6ejZNa2hodHVjWjY3Uzh5QXZIUG9KdE1WeDI4ejNCZmNQTjFncGpmbmk1RFQ3cVNlIiwianRpIjoiODhmYjlhZDItZWZlMC00YWRlLTgyNTEtMmIzOTc4NjQ5MGFmIiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvYXBpL2NyZWRlbnRpYWwvdjEvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmIiwiY3JlZGVudGlhbFN1YmplY3QiOnsiYWdlIjoiNTUifSwiY3JlZGVudGlhbFN0YXR1cyI6eyJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvc3NpL3Jldm9jYXRpb24vdjEvbHZ2Yy8yODgwZDhkZC1jZTNmLTRkNzQtYjQ2My1hMmMwZGEwN2E1Y2YiLCJ0eXBlIjoiTFZWQyJ9fX0.-r0uxZCI2DAaxO8VHZOsZdcP9oMQhCeGjxOtQyDqITu_SPhuVGg2RZXvQT1C9r1p3CyG3bQRV0W0JOnN0QXtBA";
-    let lvvc_credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDc0MDk2ODksImV4cCI6MTc3MDQ4MTY4OSwibmJmIjoxNzA3NDA5NjI5LCJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6ImRpZDprZXk6ejZNa2hodHVjWjY3Uzh5QXZIUG9KdE1WeDI4ejNCZmNQTjFncGpmbmk1RFQ3cVNlIiwianRpIjoiODhmYjlhZDItZWZlMC00YWRlLTgyNTEtMmIzOTc4NjQ5MGFmIiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvc3NpL3Jldm9jYXRpb24vdjEvbHZ2Yy8yODgwZDhkZC1jZTNmLTRkNzQtYjQ2My1hMmMwZGEwN2E1Y2YiLCJjcmVkZW50aWFsU3ViamVjdCI6eyJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvYXBpL2NyZWRlbnRpYWwvdjEvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmIiwic3RhdHVzIjoiQUNDRVBURUQifX19.Z5PVZfjoLwkKUlJ-2EQN7QWip8S10NbbaatRpfuEgK2EYT2V0c__9Z_4zBJ5mtFvHyucxTb5r8wVcTNo-A0-DA";
+    let (context, _mock_server, credential) =
+        setup_lvvc_revoke_check_valid(CredentialStateEnum::Accepted).await;
 
-    let mock_server = MockServer::builder()
-        .listener(std::net::TcpListener::bind("127.0.0.1:4445").unwrap())
-        .start()
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id, None)
         .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+}
+
+#[tokio::test]
+async fn test_revoke_check_success_lvvc_initially_suspended() {
+    // GIVEN
+    let (context, _mock_server, credential) =
+        setup_lvvc_revoke_check_valid(CredentialStateEnum::Suspended).await;
+    let history_previous = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    // unsuspend added two new history entries
+    assert_eq!(history.values.len(), history_previous.values.len() + 2);
+    // Within the first two entries there needs to be one Reactivated and one Accepted
+    assert!(history
+        .values
+        .iter()
+        .take(2)
+        .any(|x| x.action == HistoryAction::Accepted));
+    assert!(history
+        .values
+        .iter()
+        .take(2)
+        .any(|x| x.action == HistoryAction::Reactivated));
+}
+
+async fn setup_lvvc_revoke_check_valid(
+    initial_state: CredentialStateEnum,
+) -> (TestContext, MockServer, Credential) {
+    let key_pair = EDDSASigner::generate_key_pair();
+    let issuer_did = format!(
+        "did:key:{}",
+        Eddsa
+            .reconstruct_key(&key_pair.public, None, None)
+            .unwrap()
+            .signature()
+            .unwrap()
+            .public()
+            .as_multibase()
+            .unwrap()
+    );
+
+    let mock_server = MockServer::builder().start().await;
+    let base_url = mock_server.uri();
+    let jwt_header = json!({
+      "alg": "EDDSA",
+      "typ": "JWT"
+    });
+    let credential_payload = json!({
+      "iat": 1707409689,
+      "exp": 1770481689,
+      "nbf": 1707409629,
+      "iss": issuer_did,
+      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
+      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": [
+          "VerifiableCredential"
+        ],
+        "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+        "credentialSubject": {
+          "age": "55"
+        },
+        "credentialStatus": {
+          "id":  format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+          "type": "LVVC"
+        }
+      }
+    });
+
+    let lvvc_payload = json!({
+      "iat": 1707409689,
+      "exp": 1770481689,
+      "nbf": 1707409629,
+      "iss": issuer_did,
+      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
+      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": [
+          "VerifiableCredential"
+        ],
+        "id": format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+        "credentialSubject": {
+          "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+          "status": "ACCEPTED"
+        }
+      }
+    });
+
+    let credential_jwt = sign_jwt_helper(
+        &jwt_header.to_string(),
+        &credential_payload.to_string(),
+        &key_pair,
+    );
+    let lvvc_credential_jwt = sign_jwt_helper(
+        &jwt_header.to_string(),
+        &lvvc_payload.to_string(),
+        &key_pair,
+    );
 
     let (context, organisation) = TestContext::new_with_organisation(None).await;
     let holder_key = context
@@ -505,11 +644,11 @@ async fn test_revoke_check_success_lvvc() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Accepted,
+            initial_state,
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                credential: Some(credential_jwt),
+                credential: Some(&credential_jwt),
                 holder_did: Some(holder_did),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
@@ -534,22 +673,7 @@ async fn test_revoke_check_success_lvvc() {
         .expect(1)
         .mount(&mock_server)
         .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .credentials
-        .revocation_check(credential.id, None)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-
-    resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("ACCEPTED", resp[0]["status"]);
-    assert_eq!(true, resp[0]["success"]);
-    assert!(resp[0]["reason"].is_null());
+    (context, mock_server, credential)
 }
 
 static CREDENTIAL_CONTENT_OUTDATED: &str = "ompuYW1lU3BhY2VzomRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIJjSKig920Ai2ntgdAfGnRb-s0TORYA9W8b4mYjhw3u5cWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdHgZY2gucHJvY2l2aXMubWRvY19sYXlvdXQuMYPYGFhqpGhkaWdlc3RJRAFmcmFuZG9tWCBKbY7V0w4TKYTcJrmG_d1W6VU5Jb4_HCvN9RblZeaECXFlbGVtZW50SWRlbnRpZmllcmJpZGxlbGVtZW50VmFsdWVzb3JnLmlzby4yMzIyMC4xLm1JRNgYWMikaGRpZ2VzdElEAmZyYW5kb21YIG2uLPgrFExjiexjLUr5tMOSlDeiUnlxfyOLHuWUn6mVcWVsZW1lbnRJZGVudGlmaWVycGxheW91dFByb3BlcnRpZXNsZWxlbWVudFZhbHVlpmpiYWNrZ3JvdW5komVjb2xvcmVjb2xvcmVpbWFnZfZkbG9nb_ZwcHJpbWFyeUF0dHJpYnV0ZfZyc2Vjb25kYXJ5QXR0cmlidXRl9nBwaWN0dXJlQXR0cmlidXRl9mRjb2Rl9tgYWGOkaGRpZ2VzdElEA2ZyYW5kb21YIO7RwQ0lUbZZQPJ-2o4eru1n4Z3u1-KxfZvj5uo8dM_bcWVsZW1lbnRJZGVudGlmaWVyamxheW91dFR5cGVsZWxlbWVudFZhbHVlZENBUkRqaXNzdWVyQXV0aIRDoQEmoRghWQOLMIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0LhlkB99gYWQHypmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiZHJvb3ShAFggNe0Hk1dWKLOZJepp994MYA8ysT8FjnF2-z2Rl1jr9yB4GWNoLnByb2NpdmlzLm1kb2NfbGF5b3V0LjGjAVgg9LozcGRnhO0Oo_YkKFP00rQFY3TDzA9YoGXLs2iK_U0CWCBA6eF3OEgUB0VRtK3wxZX51_vkkvuI_gptomPDOPL8tANYILkTzzl3N4tq_nfykJWMmem_zZg7RYhR20zigE0ax8grbWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggcd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yciWCCJpCY9SCKvzQjZcIWqfb8o-p1YfQ_EzMII_xbe4_GVQGdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMTAtMjNUMDY6NTQ6MTZaaXZhbGlkRnJvbcB0MjAyNC0xMC0yM1QwNjo1NDoxNlpqdmFsaWRVbnRpbMB0MjAyNC0xMC0yM1QwNjo1NDozNlpuZXhwZWN0ZWRVcGRhdGXAdDIwMjQtMTAtMjNUMDY6NTQ6MjZaWEATHzcmg9pVWNf_lExfcVRKLYWmDTKMpX6iDAvVWYmDRadG0dgLntcyufhqWZi6J7DO_wfbpFgS6YNVEUjkRhO5";
@@ -1352,7 +1476,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
 }
 
 #[tokio::test]
-async fn test_suspended_to_valid() {
+async fn test_suspended_to_valid_mdoc() {
     // GIVEN
     let additional_config = indoc::formatdoc! {"
         did:
@@ -1478,6 +1602,11 @@ async fn test_suspended_to_valid() {
             1,
         )
         .await;
+    let history_previous = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
 
     // WHEN
     let resp = context
@@ -1501,6 +1630,24 @@ async fn test_suspended_to_valid() {
         CREDENTIAL_CONTENT_VALID.as_bytes()
     );
     assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    // unsuspend added two new history entries
+    assert_eq!(history.values.len(), history_previous.values.len() + 2);
+    // Within the first two entries there needs to be one Reactivated and one Accepted
+    assert!(history
+        .values
+        .iter()
+        .take(2)
+        .any(|x| x.action == HistoryAction::Accepted));
+    assert!(history
+        .values
+        .iter()
+        .take(2)
+        .any(|x| x.action == HistoryAction::Reactivated));
 }
 
 #[tokio::test]

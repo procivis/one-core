@@ -3,10 +3,10 @@ use time::OffsetDateTime;
 use tracing::warn;
 use uuid::Uuid;
 
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialRole};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofRole};
 use crate::model::proof_schema::ProofSchema;
 use crate::repository::history_repository::HistoryRepository;
 
@@ -16,13 +16,14 @@ pub(crate) fn history_event(
     organisation_id: OrganisationId,
     entity_type: HistoryEntityType,
     action: HistoryAction,
+    target: Option<String>,
 ) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
         name,
-        target: None,
+        target,
         entity_id: Some(entity_id.into()),
         entity_type,
         metadata: None,
@@ -74,6 +75,7 @@ pub(crate) async fn log_history_event_credential(
             organisation_id,
             HistoryEntityType::Credential,
             event.clone(),
+            target_from_credential(credential),
         ))
         .await;
     if let Err(err) = result {
@@ -101,6 +103,7 @@ pub(crate) async fn log_history_event_credential_schema(
             organisation.id,
             HistoryEntityType::CredentialSchema,
             event.clone(),
+            None,
         ))
         .await;
     if let Err(err) = result {
@@ -160,6 +163,7 @@ pub(crate) async fn log_history_event_proof(
             organisation_id,
             HistoryEntityType::Proof,
             event.clone(),
+            target_from_proof(proof),
         ))
         .await;
     if let Err(err) = result {
@@ -187,6 +191,7 @@ pub(crate) async fn log_history_event_proof_schema(
             organisation.id,
             HistoryEntityType::ProofSchema,
             event.clone(),
+            None,
         ))
         .await;
     if let Err(err) = result {
@@ -194,5 +199,26 @@ pub(crate) async fn log_history_event_proof_schema(
             "failed to create history event {event:#?} for proof schema {}: {err}",
             proof_schema.id
         );
+    }
+}
+
+pub(crate) fn target_from_proof(proof: &Proof) -> Option<String> {
+    match proof.role {
+        ProofRole::Holder => proof.verifier_did.as_ref().map(|did| did.did.to_string()),
+        ProofRole::Verifier => proof.holder_did.as_ref().map(|did| did.did.to_string()),
+    }
+}
+
+pub(crate) fn target_from_credential(credential: &Credential) -> Option<String> {
+    match credential.role {
+        CredentialRole::Holder => credential
+            .issuer_did
+            .as_ref()
+            .map(|did| did.did.to_string()),
+        CredentialRole::Issuer => credential
+            .holder_did
+            .as_ref()
+            .map(|did| did.did.to_string()),
+        CredentialRole::Verifier => None,
     }
 }

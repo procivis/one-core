@@ -45,7 +45,7 @@ use crate::service::error::{
     ValidationError,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::log_history_event_proof;
+use crate::util::history::{log_history_event_credential, log_history_event_proof};
 use crate::util::oidc::{detect_format_with_crypto_suite, map_to_openid4vp_format};
 
 impl SSIHolderService {
@@ -675,6 +675,12 @@ impl SSIHolderService {
                     },
                 )
                 .await?;
+            log_history_event_credential(
+                &*self.history_repository,
+                &credential,
+                HistoryAction::Issued,
+            )
+            .await;
         }
 
         Ok(())

@@ -12,7 +12,6 @@ impl MigrationTrait for Migration {
         add_enum_variant::<UpdatedHistoryAction>(manager, "history", "action").await
     }
 }
-
 #[derive(Iden, EnumIter)]
 pub enum UpdatedHistoryAction {
     #[iden = "ACCEPTED"]
@@ -59,4 +58,6 @@ pub enum UpdatedHistoryAction {
     Updated,
     #[iden = "CSR_GENERATED"]
     CsrGenerated,
+    #[iden = "REACTIVATED"]
+    Reactivated,
 }

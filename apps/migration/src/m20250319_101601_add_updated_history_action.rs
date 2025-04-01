@@ -1,7 +1,7 @@
-use sea_orm::{EnumIter, Iterable};
+use sea_orm::EnumIter;
 use sea_orm_migration::prelude::*;
 
-use crate::m20240130_105023_add_history::{History, HistoryAction};
+use crate::migrate_enum::add_enum_variant;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,24 +9,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        match manager.get_database_backend() {
-            sea_orm::DatabaseBackend::MySql => {
-                manager
-                    .alter_table(
-                        Table::alter()
-                            .table(History::Table)
-                            .modify_column(
-                                ColumnDef::new(History::Action)
-                                    .enumeration(HistoryAction::Table, UpdatedHistoryAction::iter())
-                                    .not_null(),
-                            )
-                            .to_owned(),
-                    )
-                    .await?;
-            }
-            sea_orm::DatabaseBackend::Postgres | sea_orm::DatabaseBackend::Sqlite => {}
-        };
-        Ok(())
+        add_enum_variant::<UpdatedHistoryAction>(manager, "history", "action").await
     }
 }
 
