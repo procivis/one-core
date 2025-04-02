@@ -67,7 +67,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
             .map(|t| t.name)
             .unwrap_or_default();
         self.inner.delete(id).await?;
-        if let Err(err) = self.create_history(id, name, HistoryAction::Created).await {
+        if let Err(err) = self.create_history(id, name, HistoryAction::Deleted).await {
             tracing::warn!("failed to insert trust entity history event: {err:?}");
         }
         Ok(())
