@@ -662,6 +662,7 @@ async fn read_presentation_request(
     let authz_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
         &decrypted_request_jwt,
         Some(&verification_fn),
+        None,
     )
     .await
     .map_err(|e| {

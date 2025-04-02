@@ -139,7 +139,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
-        let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None).await?;
+        let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None, None).await?;
         let hasher = self
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;

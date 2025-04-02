@@ -146,6 +146,7 @@ async fn test_build_from_token() {
                 key_algorithm_provider,
             }) as Box<dyn TokenVerifier>),
         ),
+        None,
     )
     .await
     .unwrap();

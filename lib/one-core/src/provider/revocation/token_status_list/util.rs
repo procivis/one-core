@@ -36,7 +36,7 @@ pub(crate) fn extract_state_from_token(
 ) -> Result<CredentialRevocationState, TokenError> {
     let entry_size = status_list.bits;
 
-    let compressed = Base64UrlSafeNoPadding::decode_to_vec(&status_list.value, None)
+    let compressed = Base64UrlSafeNoPadding::decode_to_vec(&status_list.value, Some(&[b'='; 4]))
         .map_err(TokenError::Base64Decoding)?;
 
     let decoder = ZlibDecoder::new(&compressed[..]);

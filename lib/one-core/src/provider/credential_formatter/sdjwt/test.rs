@@ -152,7 +152,7 @@ async fn test_prepare_sd_presentation_with_kb() {
     println!("{kb_token}");
     assert!(!kb_token.is_empty());
     assert!(kb_token.ends_with(".AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")); // fake sig: vec![0;32]
-    let kb_jwt = Jwt::<KeyBindingPayload>::build_from_token(kb_token, None)
+    let kb_jwt = Jwt::<KeyBindingPayload>::build_from_token(kb_token, None, None)
         .await
         .unwrap();
     assert_eq!(kb_jwt.header.key_id, Some(key_id.to_string()));

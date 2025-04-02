@@ -162,7 +162,7 @@ impl RevocationMethod for TokenStatusList {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        _issuer_did: &DidValue,
+        issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
@@ -205,8 +205,12 @@ impl RevocationMethod for TokenStatusList {
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
         });
-        let jwt: Jwt<TokenStatusListContent> =
-            Jwt::build_from_token(&response_content, Some(&key_verification)).await?;
+        let jwt: Jwt<TokenStatusListContent> = Jwt::build_from_token(
+            &response_content,
+            Some(&key_verification),
+            Some(issuer_did.clone()),
+        )
+        .await?;
 
         Ok(util::extract_state_from_token(
             &jwt.payload.custom.status_list,

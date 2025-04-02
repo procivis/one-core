@@ -210,6 +210,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     let attestation_jwt = Jwt::<OpenID4VCVerifierAttestationPayload>::build_from_token(
         &attestation_jwt,
         Some(&key_verification),
+        None,
     )
     .await
     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

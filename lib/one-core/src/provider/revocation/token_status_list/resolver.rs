@@ -29,7 +29,13 @@ impl Resolver for StatusListResolver {
         url: &str,
         _previous: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let response = self.client.get(url).send().await?.error_for_status()?;
+        let response = self
+            .client
+            .get(url)
+            .header("Accept", "application/statuslist+jwt")
+            .send()
+            .await?
+            .error_for_status()?;
         let content_type = response
             .header_get("Content-Type")
             .ok_or_else(|| RevocationError::MappingError("Content-Type not present".to_string()))?

@@ -229,6 +229,7 @@ impl OpenId4VcMqtt {
         let presentation_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
             &presentation_request,
             Some(&verification_fn),
+            None,
         )
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

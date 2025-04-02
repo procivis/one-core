@@ -77,6 +77,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
     pub async fn build_from_token(
         token: &str,
         verification: Option<&VerificationFn>,
+        issuer_did: Option<DidValue>,
     ) -> Result<Jwt<Payload>, FormatterError> {
         let DecomposedToken {
             header,
@@ -84,6 +85,14 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
             signature,
             unverified_jwt,
         } = Jwt::decompose_token(token)?;
+
+        if let (Some(issuer), Some(issuer_did)) = (&payload.issuer, &issuer_did) {
+            if issuer != issuer_did.as_str() {
+                return Err(FormatterError::CouldNotVerify(format!(
+                    "Token issuer `{issuer}` does not match credential issuer `{issuer_did}`",
+                )));
+            }
+        }
 
         payload.issuer = payload.issuer.map(|issuer| {
             if issuer.starts_with("did:") {
@@ -112,7 +121,8 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                         .as_ref()
                         .map(|did| did.parse().context("did parsing error"))
                         .transpose()
-                        .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                        .map_err(|e| FormatterError::Failed(e.to_string()))?
+                        .or(issuer_did),
                     header.key_id.as_deref(),
                     &algorithm.algorithm_id(),
                     unverified_jwt.as_bytes(),

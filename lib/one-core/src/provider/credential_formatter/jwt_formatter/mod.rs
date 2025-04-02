@@ -217,7 +217,7 @@ impl CredentialFormatter for JWTFormatter {
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(&verification)).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(&verification), None).await?;
 
         DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
@@ -226,7 +226,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None, None).await?;
 
         DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
@@ -289,7 +289,7 @@ impl CredentialFormatter for JWTFormatter {
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VP> = Jwt::build_from_token(token, Some(&verification)).await?;
+        let jwt: Jwt<VP> = Jwt::build_from_token(token, Some(&verification), None).await?;
 
         jwt.try_into()
     }
@@ -348,7 +348,7 @@ impl CredentialFormatter for JWTFormatter {
         token: &str,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let jwt: Jwt<VP> = Jwt::build_from_token(token, None).await?;
+        let jwt: Jwt<VP> = Jwt::build_from_token(token, None, None).await?;
 
         jwt.try_into()
     }

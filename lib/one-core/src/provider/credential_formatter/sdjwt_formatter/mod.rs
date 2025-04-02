@@ -130,7 +130,7 @@ impl CredentialFormatter for SDJWTFormatter {
         holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let model::DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None, None).await?;
         let hasher = self
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
@@ -348,7 +348,7 @@ impl SDJWTFormatter {
     ) -> Result<Presentation, FormatterError> {
         // W3C VP SD-JWT tokens and SD-JWT tokens.
         let as_jwt_vp: Result<Jwt<Sdvp>, FormatterError> =
-            Jwt::build_from_token(token, verification)
+            Jwt::build_from_token(token, verification, None)
                 .await
                 .map_err(|e| FormatterError::Failed(format!("Failed to build Jwt<Sdvp>: {e}")));
 

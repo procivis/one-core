@@ -88,6 +88,7 @@ pub(crate) async fn validate_bearer_token(
     let jwt: Jwt<BearerTokenPayload> = Jwt::build_from_token(
         bearer_token,
         Some(&(token_signature_verification as Box<dyn TokenVerifier>)),
+        None,
     )
     .await?;
 
