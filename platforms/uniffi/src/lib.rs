@@ -224,7 +224,7 @@ async fn initialize(
                     HashMap::new();
 
                 for (name, fields) in config.iter() {
-                    if fields.disabled.is_some_and(|value| value) {
+                    if fields.enabled.is_some_and(|value| !value) {
                         continue;
                     }
                     let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
@@ -242,7 +242,7 @@ async fn initialize(
             let key_storage_creator: KeyStorageCreator = Box::new(move |config, providers| {
                 let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
-                for (name, field) in config.iter().filter(|(_, field)| !field.disabled()) {
+                for (name, field) in config.iter().filter(|(_, field)| field.enabled()) {
                     let provider = match field.r#type {
                         KeyStorageType::SecureElement => {
                             let native_storage = native_secure_element
@@ -637,7 +637,7 @@ async fn initialize(
                         .expect("Credential formatter provider is mandatory");
 
                     for (key, fields) in config.iter() {
-                        if fields.disabled() {
+                        if !fields.enabled() {
                             continue;
                         }
 

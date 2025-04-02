@@ -619,10 +619,10 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
         let mut operations = vec![];
-        if !self.params.issuance.disabled {
+        if self.params.issuance.enabled {
             operations.push(Operation::ISSUANCE)
         }
-        if !self.params.presentation.disabled {
+        if self.params.presentation.enabled {
             operations.push(Operation::VERIFICATION)
         }
 

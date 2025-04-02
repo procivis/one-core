@@ -109,7 +109,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
         for (name, fields) in config.iter() {
-            if fields.disabled.is_some_and(|value| value) {
+            if fields.enabled.is_some_and(|value| !value) {
                 continue;
             }
             let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
@@ -532,7 +532,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                 .expect("Credential formatter provider is mandatory");
 
             for (key, fields) in config.iter() {
-                if fields.disabled() {
+                if !fields.enabled() {
                     continue;
                 }
 

@@ -306,7 +306,7 @@ async fn test_create_proof_fail_with_operation_disabled() {
                 params:
                     public:
                         presentation:
-                            disabled: true
+                            enabled: false
     "}
         .to_string(),
     );

@@ -1082,8 +1082,8 @@ pub struct OpenID4VCParams {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCIssuanceParams {
-    #[serde(default)]
-    pub disabled: bool,
+    #[serde(default = "default_operation_enabled")]
+    pub enabled: bool,
     #[serde(default = "default_issuance_url_scheme")]
     pub url_scheme: String,
 
@@ -1093,8 +1093,8 @@ pub struct OpenID4VCIssuanceParams {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCPresentationParams {
-    #[serde(default)]
-    pub disabled: bool,
+    #[serde(default = "default_operation_enabled")]
+    pub enabled: bool,
     #[serde(default = "default_presentation_url_scheme")]
     pub url_scheme: String,
     #[serde(default)]
@@ -1111,6 +1111,10 @@ fn default_issuance_url_scheme() -> String {
 
 fn default_presentation_url_scheme() -> String {
     "openid4vp".to_string()
+}
+
+fn default_operation_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1139,7 +1143,7 @@ pub enum ClientIdScheme {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCRedirectUriParams {
-    pub disabled: bool,
+    pub enabled: bool,
     pub allowed_schemes: Vec<String>,
 }
 

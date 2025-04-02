@@ -70,7 +70,7 @@ exchange:
         useRequestUri: true
         issuance:
           redirectUri:
-            disabled: false
+            enabled: true
             allowedSchemes: ["https"]
         presentation:
           verifier:
@@ -79,7 +79,7 @@ exchange:
           holder:
             supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
           redirectUri:
-            disabled: false
+            enabled: true
             allowedSchemes: ["https"]
   MDOC_OPENID4VP:
     display: "exchange.mdocOpenid"
@@ -92,9 +92,9 @@ exchange:
         refreshExpiresIn: 7776000
         useRequestUri: true
         issuance:
-          disabled: true
+          enabled: false
           redirectUri:
-            disabled: false
+            enabled: true
             allowedSchemes: ["https"]
         presentation:
           urlScheme: mdoc-openid4vp
@@ -105,13 +105,13 @@ exchange:
           holder:
             supportedClientIdSchemes: [x509_san_dns]
           redirectUri:
-            disabled: false
+            enabled: true
             allowedSchemes: ["https"]
 transport:
   HTTP:
     type: "HTTP"
     display: "transport.http"
-    disabled: false
+    enabled: true
     order: 0
     params: {}
 revocation:
@@ -123,7 +123,7 @@ revocation:
   BITSTRINGSTATUSLIST:
     display: "revocation.bitStringStatusList"
     order: 1
-    disabled: false
+    enabled: true
     type: "BITSTRINGSTATUSLIST"
     params:
       public:
@@ -131,7 +131,7 @@ revocation:
   MDOC_MSO_UPDATE_SUSPENSION:
     display: "revocation.mdocMsoUpdateSuspension"
     order: 3
-    disabled: false
+    enabled: true
     type: "MDOC_MSO_UPDATE_SUSPENSION"
     params: null
   LVVC:
@@ -145,7 +145,7 @@ revocation:
   TOKENSTATUSLIST:
     display: "revocation.tokenList"
     order: 5
-    disabled: false
+    enabled: true
     type: "TOKENSTATUSLIST"
     params:
       public:
@@ -189,12 +189,12 @@ did:
     type: "X509"
     display: "did.x509"
     order: 3
-    disabled: true
+    enabled: false
     params: null
   ION:
     display: "did.ion"
     order: 4
-    disabled: true
+    enabled: false
     type: "UNIVERSAL_RESOLVER"
     params:
       public:
@@ -338,7 +338,7 @@ keyStorage:
   PKCS11:
     display: "keyStorage.pkcs11"
     type: "PKCS11"
-    disabled: true
+    enabled: false
     order: 2
     params: null
 task:
@@ -388,7 +388,7 @@ trustManagement:
     display: "trustManagement.simpleTrustList"
     type: "SIMPLE_TRUST_LIST"
     order: 1
-    disabled: false
+    enabled: true
     params:
       public:
         enablePublishing: true

@@ -136,14 +136,14 @@ pub(crate) fn exchange_protocol_providers_from_config(
                 };
 
                 // URL schemes are used to select provider, hence must not be duplicated
-                if !params.issuance.disabled {
+                if params.issuance.enabled {
                     validate_url_scheme_unique(
                         &mut openid_url_schemes,
                         name,
                         params.issuance.url_scheme.to_string(),
                     )?
                 }
-                if !params.presentation.disabled {
+                if params.presentation.enabled {
                     validate_url_scheme_unique(
                         &mut openid_url_schemes,
                         name,

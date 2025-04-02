@@ -1,6 +1,6 @@
 keyStorage:
   AZURE_VAULT:
-    disabled: true
+    enabled: false
     type: AZURE_VAULT
     params:
       private:

@@ -94,10 +94,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
             use_request_uri: false,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -108,7 +108,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
 
 fn generic_presentation_params(client_id_scheme: ClientIdScheme) -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
-        disabled: false,
+        enabled: true,
         url_scheme: "openid4vp".to_string(),
         x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
@@ -125,7 +125,7 @@ fn generic_presentation_params(client_id_scheme: ClientIdScheme) -> OpenID4VCPre
             ],
         },
         redirect_uri: OpenID4VCRedirectUriParams {
-            disabled: false,
+            enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
     }
@@ -373,10 +373,10 @@ async fn test_generate_share_credentials_offer_by_value() {
             use_request_uri: false,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -620,10 +620,10 @@ async fn test_share_proof_with_use_request_uri() {
             use_request_uri: true,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -749,10 +749,10 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
             use_request_uri: true,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -1117,10 +1117,10 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
             use_request_uri: true,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -1199,10 +1199,10 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
             use_request_uri: true,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -1404,10 +1404,10 @@ async fn test_handle_invitation_proof_failed() {
             use_request_uri: false,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: "openid-credential-offer".to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -2381,15 +2381,15 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
         use_request_uri: false,
         encryption: SecretSlice::from(vec![0; 32]),
         issuance: OpenID4VCIssuanceParams {
-            disabled: false,
+            enabled: true,
             url_scheme: issuance_url_scheme.to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
-                disabled: false,
+                enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
         },
         presentation: OpenID4VCPresentationParams {
-            disabled: false,
+            enabled: true,
             url_scheme: presentation_url_scheme.to_string(),
             x509_ca_certificate: None,
             holder: OpenID4VCPresentationHolderParams {
@@ -2406,7 +2406,7 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
                 ],
             },
             redirect_uri: OpenID4VCRedirectUriParams {
-                disabled: false,
+                enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
         },

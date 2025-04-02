@@ -130,7 +130,7 @@ impl OpenID4VCHTTP {
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType> {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
-        if !self.params.issuance.disabled
+        if self.params.issuance.enabled
             && self.params.issuance.url_scheme == url.scheme()
             && (query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY))
@@ -138,7 +138,7 @@ impl OpenID4VCHTTP {
             return Some(InvitationType::CredentialIssuance);
         }
 
-        if !self.params.presentation.disabled
+        if self.params.presentation.enabled
             && self.params.presentation.url_scheme == url.scheme()
             && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)

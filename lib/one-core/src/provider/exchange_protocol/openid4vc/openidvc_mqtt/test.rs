@@ -72,7 +72,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
             r#type: TransportType::Mqtt,
             display: "".into(),
             order: None,
-            disabled: Some(false),
+            enabled: Some(true),
             capabilities: None,
             params: None,
         },
@@ -100,13 +100,13 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
             use_request_uri: false,
             encryption: SecretSlice::from(vec![0; 32]),
             issuance: OpenID4VCIssuanceParams {
-                disabled: false,
+                enabled: true,
                 url_scheme: inputs
                     .issuance_url_scheme
                     .unwrap_or("openid-credential-offer")
                     .to_string(),
                 redirect_uri: OpenID4VCRedirectUriParams {
-                    disabled: false,
+                    enabled: true,
                     allowed_schemes: vec!["https".to_string()],
                 },
             },
@@ -123,7 +123,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
 }
 fn generic_presentation_params(url_scheme: Option<&str>) -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
-        disabled: false,
+        enabled: true,
         url_scheme: url_scheme.unwrap_or("openid4vp").to_string(),
         x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
@@ -140,7 +140,7 @@ fn generic_presentation_params(url_scheme: Option<&str>) -> OpenID4VCPresentatio
             ],
         },
         redirect_uri: OpenID4VCRedirectUriParams {
-            disabled: false,
+            enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
     }

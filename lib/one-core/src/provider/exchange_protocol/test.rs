@@ -934,7 +934,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             r#type: FormatType::Mdoc,
             display: Value::String("display".to_string()),
             order: None,
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({
@@ -1016,7 +1016,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             r#type: FormatType::Mdoc,
             display: Value::String("display".to_string()),
             order: None,
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({
@@ -1063,7 +1063,7 @@ fn dummy_config() -> CoreConfig {
             r#type: DatatypeType::String,
             display: Value::String("display".to_string()),
             order: None,
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: None,
         },

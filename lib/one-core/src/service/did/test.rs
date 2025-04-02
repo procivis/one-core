@@ -78,7 +78,7 @@ fn get_did_config() -> DidConfig {
             r#type: core_config::DidType::Key,
             display: Value::String("translation".to_string()),
             order: None,
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: None,
         },

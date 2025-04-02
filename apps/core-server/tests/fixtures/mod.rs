@@ -68,7 +68,7 @@ pub fn create_config(
                 ION:
                     display: \"did.ion\"
                     order: 9
-                    disabled: true
+                    enabled: false
                     type: \"UNIVERSAL_RESOLVER\"
                     params:
                         public:

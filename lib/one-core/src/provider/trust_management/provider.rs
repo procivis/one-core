@@ -60,7 +60,7 @@ pub(crate) fn from_config(
     let mut providers: HashMap<String, Arc<dyn TrustManagement>> = HashMap::new();
 
     for (key, fields) in config.iter() {
-        if fields.disabled() {
+        if !fields.enabled() {
             continue;
         }
 

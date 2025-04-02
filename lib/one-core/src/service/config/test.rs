@@ -13,7 +13,7 @@ fn convert_internal_structure_to_dto() {
             r#type: DatatypeType::String,
             display: Value::String("display".to_string()),
             order: None,
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({
@@ -64,7 +64,7 @@ fn do_not_serialize_private_parameters() {
             r#type: DatatypeType::String,
             display: Value::String("display".to_string()),
             order: None,
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: Some(Params {
                 public: None,

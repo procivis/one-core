@@ -16,7 +16,7 @@ transport:
   MQTT:
     type: "MQTT"
     display: "transport.mqtt"
-    disabled: false
+    enabled: true
     order: 1
     params:
       private:

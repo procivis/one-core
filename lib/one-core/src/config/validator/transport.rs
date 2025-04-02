@@ -217,7 +217,7 @@ mod test {
                     r#type: TransportType::try_from(*transport).unwrap(),
                     display: "".into(),
                     order: Some(order as u64),
-                    disabled: Some(false),
+                    enabled: Some(true),
                     capabilities: None,
                     params: None,
                 },

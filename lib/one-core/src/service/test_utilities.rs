@@ -35,7 +35,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
             HTTP:
                 type: 'HTTP'
                 display: 'transport.http'
-                disabled: false
+                enabled: true
                 order: 0
                 params: {}
         format:
@@ -92,7 +92,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         refreshExpiresIn: 886400
                         issuance:
                             redirectUri:
-                                disabled: false
+                                enabled: true
                                 allowedSchemes: [ https ]
                         presentation:
                             verifier:
@@ -101,7 +101,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                             holder:
                                 supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
                             redirectUri:
-                                disabled: false
+                                enabled: true
                                 allowedSchemes: [ https ]
                     private:
                         encryption: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'

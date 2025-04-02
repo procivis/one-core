@@ -47,7 +47,7 @@ rusty_fork_test! {
                 HTTP:
                     type: 'HTTP'
                     display: 'transport.http'
-                    disabled: false
+                    enabled: true
                     order: 0
                     params: {}
             exchange:

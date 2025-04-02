@@ -20,7 +20,7 @@ pub(super) fn validate_generate_request(
             .ok_or(ValidationError::InvalidKeyAlgorithm(
                 request.key_type.clone(),
             ))?;
-    if algorithm_config.disabled.is_some_and(|value| value) {
+    if algorithm_config.enabled.is_some_and(|value| !value) {
         return Err(ValidationError::InvalidKeyAlgorithm(
             "algorithm is disabled".to_string(),
         ));

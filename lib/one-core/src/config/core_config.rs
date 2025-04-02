@@ -365,7 +365,7 @@ pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;
 pub struct KeyAlgorithmFields {
     pub display: Value,
     pub order: Option<u64>,
-    pub disabled: Option<bool>,
+    pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
 }
@@ -510,7 +510,7 @@ where
     pub fn get_if_enabled(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError> {
         let fields = self.get_fields(key)?;
 
-        if fields.disabled() {
+        if !fields.enabled() {
             return Err(ConfigValidationError::EntryDisabled(key.to_owned()));
         }
 
@@ -518,7 +518,7 @@ where
     }
 
     pub fn get_first_enabled(&self) -> Option<(&str, &Fields<T>)> {
-        let mut enabled: Vec<_> = self.iter().filter(|(_, f)| !f.disabled()).collect();
+        let mut enabled: Vec<_> = self.iter().filter(|(_, f)| f.enabled()).collect();
         enabled.sort_by_key(|(_, fields)| fields.order);
 
         enabled.into_iter().next()
@@ -542,7 +542,7 @@ impl ConfigBlock<TransportType> {
     fn transport_enabled_for(&self, key: &str, transport: &TransportType) -> bool {
         self.get_fields(key)
             .ok()
-            .is_some_and(|fields| fields.r#type() == transport && !fields.disabled())
+            .is_some_and(|fields| fields.r#type() == transport && fields.enabled())
     }
 
     pub fn get_enabled_transport_type(
@@ -551,7 +551,7 @@ impl ConfigBlock<TransportType> {
     ) -> Result<&str, ConfigValidationError> {
         Ok(self
             .iter()
-            .find(|(_, fields)| fields.r#type == r#type && !fields.disabled())
+            .find(|(_, fields)| fields.r#type == r#type && fields.enabled())
             .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
             .0)
     }
@@ -570,7 +570,7 @@ pub struct Fields<T> {
     pub r#type: T,
     pub display: Value,
     pub order: Option<u64>,
-    pub disabled: Option<bool>,
+    pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
     #[serde(default, deserialize_with = "deserialize_params")]
@@ -585,8 +585,8 @@ where
         &self.r#type
     }
 
-    pub fn disabled(&self) -> bool {
-        self.disabled == Some(true)
+    pub fn enabled(&self) -> bool {
+        self.enabled != Some(false)
     }
 
     /// Deserialize current fields into a type.
@@ -707,7 +707,7 @@ mod tests {
             r#type: "JWT".to_string(),
             display: Value::String("jwt".to_string()),
             order: Some(0),
-            disabled: None,
+            enabled: None,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({ "leeway": 60 })),

@@ -111,7 +111,7 @@ pub(super) fn validate_redirect_uri(
             if let Some(redirect_uri) = redirect_uri {
                 let exchange_params: OpenID4VCParams = config.get(exchange)?;
 
-                if exchange_params.presentation.redirect_uri.disabled {
+                if !exchange_params.presentation.redirect_uri.enabled {
                     return Err(ValidationError::InvalidRedirectUri.into());
                 }
 

@@ -49,7 +49,7 @@ pub(crate) fn tasks_from_config(
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
     for (name, field) in config.iter() {
-        if field.disabled() {
+        if !field.enabled() {
             continue;
         }
 

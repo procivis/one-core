@@ -17,7 +17,7 @@ keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"
     type: "AZURE_VAULT"
-    disabled: true
+    enabled: false
     order: 1
     params:
       private:

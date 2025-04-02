@@ -62,7 +62,7 @@ transport:
   MQTT:
     type: "MQTT"
     display: "transport.mqtt"
-    disabled: false
+    enabled: true
     order: 1
     params:
       private:
@@ -77,7 +77,7 @@ trustManagement:
     display: "trustManagement.simpleTrustList"
     type: "SIMPLE_TRUST_LIST"
     order: 1
-    disabled: false
+    enabled: true
     params:
       public:
         enablePublishing: true
