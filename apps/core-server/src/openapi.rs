@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use utoipa::openapi::extensions::Extensions;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{Contact, ExternalDocs, Server, Tag};
@@ -5,17 +7,40 @@ use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
 use crate::build_info::{build, APP_VERSION};
+use crate::ServerConfig;
 
-pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
+pub fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
     #[derive(OpenApi)]
     #[openapi(
         components(schemas(shared_types::EntityId)),
-        modifiers(&SecurityAddon)
+        modifiers(&SecurityAddon),
     )]
     struct ApiDoc;
 
+    struct ApiDocModifier {
+        config: Arc<ServerConfig>,
+    }
+
     struct SecurityAddon;
+
+    impl Modify for ApiDocModifier {
+        fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+            if !self.config.enable_management_endpoints || !self.config.enable_external_endpoints {
+                openapi.paths.paths.retain(|path, _| {
+                    if path.starts_with("/ssi") {
+                        return self.config.enable_external_endpoints;
+                    }
+
+                    if path.starts_with("/api") {
+                        return self.config.enable_management_endpoints;
+                    }
+
+                    true
+                });
+            }
+        }
+    }
 
     impl Modify for SecurityAddon {
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
@@ -54,6 +79,10 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
     }
 
     let mut docs = ApiDoc::openapi();
+    let modifier = ApiDocModifier {
+        config: config.clone(),
+    };
+    modifier.modify(&mut docs);
     docs.info.title = "Procivis One Core API".into();
     docs.info.description = Some(indoc::formatdoc! {"
             The Procivis One Core API enables the full lifecycle of credentials.
@@ -79,7 +108,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             .description(Some("Generated server url"))
             .build(),
     ]);
-    docs.tags = Some(get_tags());
+    docs.tags = Some(get_tags(config));
     docs.external_docs = Some(
         ExternalDocs::builder()
             .url("https://docs.procivis.ch/")
@@ -94,24 +123,25 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
     docs
 }
 
-fn get_tags() -> Vec<Tag> {
-    vec![
-        Tag::builder()
-            .name("other")
-            .description(Some(indoc::formatdoc! {"
+fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
+    let mut tags = vec![Tag::builder()
+        .name("other")
+        .description(Some(indoc::formatdoc! {"
                 Returns the system configuration, along with other system information.
 
                 Related guide: [Configuration](/configure)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "System information")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("organisation_management")
-            .description(Some(indoc::formatdoc! {"
+        .extensions(Some(
+            Extensions::builder()
+                .add("x-displayName", "System information")
+                .build(),
+        ))
+        .build()];
+
+    if config.enable_management_endpoints {
+        tags.append(& mut vec![Tag::builder()
+                       .name("organisation_management")
+                       .description(Some(indoc::formatdoc! {"
                 The **Organization** is the fundamental unit of _Procivis One_. All actions
                 related to issuing, holding and verifying are taken _by_ an organization. This
                 means that keys, DIDs, credentials and proofs belong to the organization used
@@ -119,15 +149,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Organizations](/organizations)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Organizations")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("key")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Organizations")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("key")
+                       .description(Some(indoc::formatdoc! {"
                 Create cryptographic keys using different key algorithms and storage types.
                 The public key can be seen in the system (`publicKey`) and is used to verify
                 credentials. The private key is stored in the system and used to sign credentials,
@@ -141,15 +171,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Keys](/keys)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Keys")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("did_management")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Keys")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("did_management")
+                       .description(Some(indoc::formatdoc! {"
                 Create and manage DIDs (Decentralized Identifiers), a type of globally unique
                 identifier for an entity. The DID is a URI that can be resolved to
                 a DID document which offers metadata about the identified entity.
@@ -162,15 +192,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [DIDs](/dids)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "DIDs")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("credential_schema_management")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "DIDs")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("credential_schema_management")
+                       .description(Some(indoc::formatdoc! {"
                 A credential schema defines the structure and format of a credential, including
                 the attributes about which issuers make claims. Schemas carry information about
                 issued credentials such as how an issued credential should be presented in a
@@ -181,15 +211,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Credential schemas](/credential-schemas)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Credential schemas")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("credential_management")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Credential schemas")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("credential_management")
+                       .description(Some(indoc::formatdoc! {"
                 Issue credentials and manage the lifecycle of issued credentials, including
                 suspension, reactivation, revocation and status check for holders and verifiers.
 
@@ -199,15 +229,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Issuance](/issue)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Credentials")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("proof_schema_management")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Credentials")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("proof_schema_management")
+                       .description(Some(indoc::formatdoc! {"
                 A proof schema defines the attributes a verifier requests from a credentials holder.
                 It is the collection of items of information to be requested.
 
@@ -222,15 +252,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Proof schemas](/proof-schemas)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Proof schemas")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("proof_management")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Proof schemas")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("proof_management")
+                       .description(Some(indoc::formatdoc! {"
                 A proof request is a request of one or more claims from a wallet holder.
 
                 Create a proof request then create a share endpoint URL for the holder
@@ -242,15 +272,15 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Verify](/verify)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Proof requests")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("interaction")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Proof requests")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("interaction")
+                       .description(Some(indoc::formatdoc! {"
                 For wallet agents, handle interactions with issuers and verifiers.
 
                 When the holder scans the QR code offered by an issuer or a verifier, the
@@ -261,89 +291,91 @@ fn get_tags() -> Vec<Tag> {
 
                 Related guide: [Wallet interaction](/hold/wallet-interaction)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Wallet interaction")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("history_management")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Wallet interaction")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("history_management")
+                       .description(Some(indoc::formatdoc! {"
                 Retrieve event history.
 
                 Related guide: [History](/history)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "History")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("trust_anchor")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "History")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("trust_anchor")
+                       .description(Some(indoc::formatdoc! {"
                 Manage trust anchors as a publisher or subscribe to trust anchors as a consumer.
 
                 Related guide: [Trust](/trust)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Trust anchors")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("trust_entity")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Trust anchors")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("trust_entity")
+                       .description(Some(indoc::formatdoc! {"
                 Manage trust entities on an anchor.
 
                 Related guide: [Trust](/trust)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Trust entities")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("jsonld")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Trust entities")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("jsonld")
+                       .description(Some(indoc::formatdoc! {"
                 Operations for credentials formatted with JSON-LD.
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "JSON-LD")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("task")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "JSON-LD")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("task")
+                       .description(Some(indoc::formatdoc! {"
                 Run tasks.
 
                 Related guide: [Configuration](/configure)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Task")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
-            .name("cache")
-            .description(Some(indoc::formatdoc! {"
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Task")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("cache")
+                       .description(Some(indoc::formatdoc! {"
                 Manage cached entities.
 
                 Related guide: [Configuration](/configure)
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "Cache")
-                    .build(),
-            ))
-            .build(),
-        Tag::builder()
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Cache")
+                               .build(),
+                       ))
+                       .build()]);
+    }
+    if config.enable_external_endpoints {
+        tags.append(&mut vec![Tag::builder()
             .name("ssi")
             .description(Some(indoc::formatdoc! {"
 
@@ -360,6 +392,7 @@ fn get_tags() -> Vec<Tag> {
                     .add("x-displayName", "(Advanced) SSI")
                     .build(),
             ))
-            .build(),
-    ]
+            .build()]);
+    }
+    tags
 }

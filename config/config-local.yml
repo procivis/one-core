@@ -12,6 +12,8 @@ app:
   enableMetrics: true
   enableServerInfo: true
   enableOpenApi: true
+  enableExternalEndpoints: true
+  enableManagementEndpoints: true
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

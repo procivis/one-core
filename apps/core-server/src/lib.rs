@@ -44,4 +44,6 @@ pub struct ServerConfig {
     pub enable_server_info: bool,
     /// whether swagger and openapi endpoints are available
     pub enable_open_api: bool,
+    pub enable_external_endpoints: bool,
+    pub enable_management_endpoints: bool,
 }
