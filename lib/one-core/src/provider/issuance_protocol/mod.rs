@@ -4,8 +4,10 @@ use std::sync::Arc;
 use dto::IssuanceProtocolCapabilities;
 use error::IssuanceProtocolError;
 use indexmap::IndexMap;
-use openid4vc::model::{OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO};
-use openid4vc::openidvc_http::OpenID4VCHTTP;
+use openid4vci_draft13::model::{
+    OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO,
+};
+use openid4vci_draft13::openidvc_http::OpenID4VCHTTP;
 use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::CredentialId;
@@ -22,10 +24,10 @@ use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
-use crate::provider::issuance_protocol::openid4vc::model::{
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, OpenID4VCIParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::openid4vc::OpenID4VC;
+use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VC;
 use crate::provider::issuance_protocol::provider::{IssuanceProtocol, IssuanceProtocolProvider};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -35,7 +37,7 @@ use crate::service::storage_proxy::StorageAccess;
 pub mod dto;
 pub mod error;
 mod mapper;
-pub mod openid4vc;
+pub mod openid4vci_draft13;
 pub(crate) mod provider;
 
 #[cfg(test)]
@@ -140,7 +142,7 @@ pub(crate) trait HandleInvitationOperations: Send + Sync {
     /// type and id from credential offer
     fn find_schema_data(
         &self,
-        credential_config: &openid4vc::model::OpenID4VCICredentialConfigurationData,
+        credential_config: &openid4vci_draft13::model::OpenID4VCICredentialConfigurationData,
         offer_id: &str,
     ) -> Result<BasicSchemaData, IssuanceProtocolError>;
 
@@ -151,7 +153,7 @@ pub(crate) trait HandleInvitationOperations: Send + Sync {
         schema_data: BasicSchemaData,
         claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
         credential_id: &CredentialId,
-        credential_config: &openid4vc::model::OpenID4VCICredentialConfigurationData,
+        credential_config: &openid4vci_draft13::model::OpenID4VCICredentialConfigurationData,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         organisation: Organisation,
     ) -> Result<BuildCredentialSchemaResponse, IssuanceProtocolError>;

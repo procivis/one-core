@@ -26,7 +26,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::openid4vc::model::OpenID4VCIParams;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;

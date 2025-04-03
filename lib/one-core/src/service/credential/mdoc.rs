@@ -12,11 +12,11 @@ use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vc::model::{
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     HolderInteractionData, OpenID4VCICredential, OpenID4VCIParams, OpenID4VCIProof,
     OpenID4VCITokenResponseDTO,
 };
-use crate::provider::issuance_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;

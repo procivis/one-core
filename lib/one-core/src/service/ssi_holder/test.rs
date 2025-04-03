@@ -23,7 +23,9 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
-use crate::provider::issuance_protocol::openid4vc::model::{SubmitIssuerResponse, UpdateResponse};
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+    SubmitIssuerResponse, UpdateResponse,
+};
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;

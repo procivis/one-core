@@ -21,7 +21,7 @@ use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::openid4vc::model::{
+use crate::provider::verification_protocol::openid4vp_draft20::model::{
     ClientIdScheme, InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential,
     ShareResponse, UpdateResponse,
 };

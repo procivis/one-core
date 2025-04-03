@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use one_core::provider::issuance_protocol::openid4vc::model::{
+use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
 use one_core::service::proof::dto::ProposeProofResponseDTO;

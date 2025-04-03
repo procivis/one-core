@@ -24,16 +24,18 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::issuance_protocol::openid4vc::model::{
+use crate::provider::issuance_protocol::openid4vci_draft13::error::{
+    OpenID4VCIError, OpenIDIssuanceError,
+};
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
 };
-use crate::provider::issuance_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::provider::issuance_protocol::openid4vc::service::{
+use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::issuance_protocol::openid4vci_draft13::service::{
     create_credential_offer, create_issuer_metadata_response, create_service_discovery_response,
     get_credential_schema_base_url, parse_access_token, parse_refresh_token,
 };
@@ -407,7 +409,7 @@ impl OIDCService {
         let interaction_data = interaction_data_to_dto(&interaction)?;
 
         let mut response =
-            crate::provider::issuance_protocol::openid4vc::service::oidc_issuer_create_token(
+            crate::provider::issuance_protocol::openid4vci_draft13::service::oidc_issuer_create_token(
                 &interaction_data,
                 &convert_inner(credentials.to_owned()),
                 &interaction,

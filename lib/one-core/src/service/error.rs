@@ -20,7 +20,9 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::did_method::mdl::DidMdlValidationError;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
-use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
+use crate::provider::issuance_protocol::openid4vci_draft13::error::{
+    OpenID4VCIError, OpenIDIssuanceError,
+};
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
@@ -28,7 +30,7 @@ use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vc::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp_draft20::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
 
 #[derive(Debug, Error)]

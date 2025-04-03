@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use shared_types::{CredentialId, DidId, KeyId, ProofId};
 
 use crate::model::interaction::InteractionId;
-use crate::provider::issuance_protocol::openid4vc::model::OpenID4VCITxCode;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCITxCode;
 
 #[derive(Clone, Debug)]
 pub struct PresentationSubmitRequestDTO {

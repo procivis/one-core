@@ -56,10 +56,12 @@ use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgr
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
-use crate::provider::verification_protocol::openid4vc::mapper::{
+use crate::provider::verification_protocol::openid4vp_draft20::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::verification_protocol::openid4vc::model::{OpenID4VpParams, ShareResponse};
+use crate::provider::verification_protocol::openid4vp_draft20::model::{
+    OpenID4VpParams, ShareResponse,
+};
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,

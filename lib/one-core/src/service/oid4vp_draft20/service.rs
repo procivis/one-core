@@ -36,16 +36,16 @@ use crate::model::proof_schema::{
 use crate::model::validity_credential::Mdoc;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vc::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
-use crate::provider::verification_protocol::openid4vc::model::{
+use crate::provider::verification_protocol::openid4vp_draft20::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp_draft20::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp_draft20::mapper::create_open_id_for_vp_formats;
+use crate::provider::verification_protocol::openid4vp_draft20::model::{
     ClientIdScheme, JwePayload, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
     OpenID4VPVerifierInteractionContent, RequestData,
 };
-use crate::provider::verification_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vc::openidvc_mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
-use crate::provider::verification_protocol::openid4vc::service::{
+use crate::provider::verification_protocol::openid4vp_draft20::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
+use crate::provider::verification_protocol::openid4vp_draft20::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_direct_post,
 };
 use crate::service::error::ErrorCode::BR_0000;
@@ -518,7 +518,7 @@ impl OIDCService {
 
         let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
 
-        crate::provider::verification_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, interaction_data.presentation_definition).map_err(Into::into)
+        crate::provider::verification_protocol::openid4vp_draft20::service::oidc_verifier_presentation_definition(&proof, interaction_data.presentation_definition).map_err(Into::into)
     }
 
     async fn mark_proof_as_failed(&self, id: &ProofId, error_metadata: HistoryErrorMetadata) {

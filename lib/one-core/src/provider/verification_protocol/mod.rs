@@ -4,10 +4,10 @@ use std::sync::Arc;
 use dto::{PresentationDefinitionResponseDTO, VerificationProtocolCapabilities};
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
-use openid4vc::model::{ClientIdScheme, OpenID4VpPresentationFormat};
-use openid4vc::openidvc_ble::OpenID4VCBLE;
-use openid4vc::openidvc_http::OpenID4VCHTTP;
-use openid4vc::openidvc_mqtt::OpenId4VcMqtt;
+use openid4vp_draft20::ble::OpenID4VCBLE;
+use openid4vp_draft20::http::OpenID4VCHTTP;
+use openid4vp_draft20::model::{ClientIdScheme, OpenID4VpPresentationFormat};
+use openid4vp_draft20::mqtt::OpenId4VcMqtt;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
 use serde_json::json;
@@ -30,10 +30,10 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
-use crate::provider::verification_protocol::openid4vc::model::{
+use crate::provider::verification_protocol::openid4vp_draft20::model::{
     InvitationResponseDTO, OpenID4VpParams, PresentedCredential, ShareResponse, UpdateResponse,
 };
-use crate::provider::verification_protocol::openid4vc::OpenID4VC;
+use crate::provider::verification_protocol::openid4vp_draft20::OpenID4VC;
 use crate::provider::verification_protocol::provider::{
     VerificationProtocol, VerificationProtocolProvider,
 };
@@ -47,7 +47,7 @@ pub mod dto;
 pub mod error;
 pub mod iso_mdl;
 mod mapper;
-pub mod openid4vc;
+pub mod openid4vp_draft20;
 pub(crate) mod provider;
 pub mod scan_to_verify;
 

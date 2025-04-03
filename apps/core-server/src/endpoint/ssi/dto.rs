@@ -5,8 +5,8 @@ use one_core::common_mapper::{opt_secret_string, secret_string};
 use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
-use one_core::provider::issuance_protocol::openid4vc::error::OpenID4VCIError;
-use one_core::provider::issuance_protocol::openid4vc::model::{
+use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
@@ -16,7 +16,7 @@ use one_core::provider::issuance_protocol::openid4vc::model::{
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
-use one_core::provider::verification_protocol::openid4vc::model::{
+use one_core::provider::verification_protocol::openid4vp_draft20::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, LdpVcAlgs,
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPAlgs, OpenID4VPClientMetadata,

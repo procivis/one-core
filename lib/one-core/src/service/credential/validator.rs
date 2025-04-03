@@ -14,7 +14,7 @@ use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
-use crate::provider::issuance_protocol::openid4vc::model::OpenID4VCIParams;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};

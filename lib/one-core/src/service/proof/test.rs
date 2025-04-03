@@ -49,12 +49,12 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
-use crate::provider::verification_protocol::openid4vc::model::{
+use crate::provider::verification_protocol::openid4vp_draft20::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp_draft20::ble::BLEPeer;
+use crate::provider::verification_protocol::openid4vp_draft20::model::{
     ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
     ShareResponse,
 };
-use crate::provider::verification_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::claim_repository::MockClaimRepository;

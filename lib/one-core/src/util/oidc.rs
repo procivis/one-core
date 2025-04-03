@@ -2,7 +2,9 @@ use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::sdjwt::{detect_sdjwt_type_from_token, SdJwtType};
-use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
+use crate::provider::issuance_protocol::openid4vci_draft13::error::{
+    OpenID4VCIError, OpenIDIssuanceError,
+};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::service::error::ServiceError;
 

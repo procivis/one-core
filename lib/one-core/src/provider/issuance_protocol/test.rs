@@ -26,7 +26,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatu
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::issuance_protocol::openid4vc::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::provider::{
     IssuanceProtocolProviderCoreImpl, IssuanceProtocolProviderExtra,
     MockIssuanceProtocolProviderExtra,

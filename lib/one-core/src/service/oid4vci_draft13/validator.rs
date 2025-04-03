@@ -5,8 +5,10 @@ use time::OffsetDateTime;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchema;
-use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::issuance_protocol::openid4vc::model::{
+use crate::provider::issuance_protocol::openid4vci_draft13::error::{
+    OpenID4VCIError, OpenIDIssuanceError,
+};
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::service::error::ServiceError;

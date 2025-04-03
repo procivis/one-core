@@ -1,5 +1,5 @@
 use crate::model::interaction::Interaction;
-use crate::provider::issuance_protocol::openid4vc::model::OpenID4VCIIssuerInteractionDataDTO;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::service::error::ServiceError;
 
 pub(crate) fn interaction_data_to_dto(

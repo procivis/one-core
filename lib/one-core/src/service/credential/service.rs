@@ -21,7 +21,7 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vc::model::ShareResponse;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,

@@ -7,7 +7,7 @@ use crate::config::core_config::{
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::verification_protocol::openid4vc::model::OpenID4VpParams;
+use crate::provider::verification_protocol::openid4vp_draft20::model::OpenID4VpParams;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };

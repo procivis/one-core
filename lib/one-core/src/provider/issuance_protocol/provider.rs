@@ -26,8 +26,8 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::mapper::get_issued_credential_update;
-use crate::provider::issuance_protocol::openid4vc::error::OpenID4VCIError;
-use crate::provider::issuance_protocol::openid4vc::model::SubmitIssuerResponse;
+use crate::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::SubmitIssuerResponse;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list::Params;

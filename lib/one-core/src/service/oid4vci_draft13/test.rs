@@ -23,8 +23,10 @@ use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::issuance_protocol::openid4vc::model::*;
+use crate::provider::issuance_protocol::openid4vci_draft13::error::{
+    OpenID4VCIError, OpenIDIssuanceError,
+};
+use crate::provider::issuance_protocol::openid4vci_draft13::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;

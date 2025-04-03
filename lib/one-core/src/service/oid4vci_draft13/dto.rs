@@ -1,7 +1,7 @@
 use one_dto_mapper::Into;
 use serde::Deserialize;
 
-use crate::provider::issuance_protocol::openid4vc::model::SubmitIssuerResponse;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::SubmitIssuerResponse;
 
 #[derive(Clone, Debug, Deserialize, Into)]
 #[into(SubmitIssuerResponse)]

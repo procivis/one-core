@@ -21,8 +21,8 @@ use crate::model::history::HistoryAction;
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
-use crate::provider::issuance_protocol::openid4vc::model::{
+use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::provider::IssuanceProtocol;
