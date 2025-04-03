@@ -29,6 +29,8 @@ use super::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::service::create_credential_offer;
 use super::{HandleInvitationOperationsAccess, IssuanceProtocolError, StorageAccess};
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
+use crate::config::core_config::DatatypeType;
+use crate::model::claim::Claim;
 use crate::model::credential::{Clearable, Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
 use crate::model::did::{Did, DidType, KeyRole};
@@ -645,7 +647,7 @@ async fn handle_credential_invitation(
     .await?;
     let interaction_id = interaction.id;
 
-    let claim_keys = build_claim_keys(credential_config, &credential_offer.credential_subject)?;
+    let claim_keys = build_claim_keys(credential_config, &credential_offer.credential_subject);
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match storage_access
@@ -658,11 +660,44 @@ async fn handle_credential_invitation(
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
 
-            let claims = map_offered_claims_to_credential_schema(
-                &credential_schema,
-                credential_id,
-                &claim_keys,
-            )?;
+            let claims_with_values = claim_keys.and_then(|claim_keys| {
+                map_offered_claims_to_credential_schema(
+                    &credential_schema,
+                    credential_id,
+                    &claim_keys,
+                )
+            });
+
+            let claims = match (claims_with_values, credential_schema.external_schema) {
+                (Ok(claims_with_values), _) => claims_with_values,
+                (Err(_), true) => {
+                    let claim_schemas = credential_schema.claim_schemas.as_ref().ok_or(
+                        IssuanceProtocolError::Failed(
+                            "Missing claim schemas for existing credential schema".to_string(),
+                        ),
+                    )?;
+
+                    claim_schemas
+                        .iter()
+                        .filter_map(|claim_schema| {
+                            if claim_schema.schema.data_type != DatatypeType::Object.to_string() {
+                                Some(Claim {
+                                    id: Uuid::new_v4(),
+                                    credential_id,
+                                    created_date: OffsetDateTime::now_utc(),
+                                    last_modified: OffsetDateTime::now_utc(),
+                                    value: "".to_string(),
+                                    path: claim_schema.schema.key.clone(),
+                                    schema: Some(claim_schema.schema.clone()),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                }
+                (Err(e), false) => Err(e)?,
+            };
 
             (claims, credential_schema)
         }
@@ -670,7 +705,7 @@ async fn handle_credential_invitation(
             let response = handle_invitation_operations
                 .create_new_schema(
                     schema_data,
-                    &claim_keys,
+                    &claim_keys?,
                     &credential_id,
                     credential_config,
                     &issuer_metadata,

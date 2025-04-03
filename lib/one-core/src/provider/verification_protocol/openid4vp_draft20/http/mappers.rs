@@ -16,9 +16,10 @@ pub(crate) fn map_credential_formats_to_presentation_format(
 
     // The SD_JWT presentations can contains only one credential
     if presented.len() == 1
-        && presented
-            .iter()
-            .all(|cred| cred.credential_schema.format == FormatType::SdJwt.to_string())
+        && presented.iter().all(|cred| {
+            cred.credential_schema.format == FormatType::SdJwt.to_string()
+                || cred.credential_schema.format == FormatType::SdJwtVc.to_string()
+        })
     {
         return Ok((FormatType::SdJwt.to_string(), "vc+sd-jwt".to_owned()));
     }
