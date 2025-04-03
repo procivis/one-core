@@ -20,8 +20,8 @@ use super::dto::{
     VerificationProtocolCapabilities,
 };
 use super::{
-    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
-    VerificationProtocolImpl,
+    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
+    VerificationProtocolError,
 };
 use crate::common_mapper::{decode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{CoreConfig, DidType};
@@ -84,9 +84,7 @@ impl IsoMdl {
 }
 
 #[async_trait]
-impl VerificationProtocolImpl for IsoMdl {
-    type InteractionContext = serde_json::Value;
-
+impl VerificationProtocol for IsoMdl {
     fn holder_can_handle(&self, _url: &Url) -> bool {
         false
     }
@@ -236,14 +234,14 @@ impl VerificationProtocolImpl for IsoMdl {
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _client_id_scheme: ClientIdScheme,
-    ) -> Result<ShareResponse<Self::InteractionContext>, VerificationProtocolError> {
+    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         unimplemented!()
     }
 
     async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
-        interaction_data: Self::InteractionContext,
+        interaction_data: serde_json::Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: MdocBleHolderInteractionData =

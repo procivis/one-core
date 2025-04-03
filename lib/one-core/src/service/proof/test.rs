@@ -2039,14 +2039,12 @@ async fn test_create_proof_using_invalid_did_method() {
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
 
-        protocol
-            .inner
-            .expect_get_capabilities()
-            .times(1)
-            .returning(|| VerificationProtocolCapabilities {
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
                 did_methods: vec![crate::config::core_config::DidType::Key],
-            });
+            }
+        });
 
         Some(Arc::new(protocol))
     });
@@ -2167,14 +2165,12 @@ async fn test_create_proof_without_related_key() {
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
 
-        protocol
-            .inner
-            .expect_get_capabilities()
-            .times(1)
-            .returning(|| VerificationProtocolCapabilities {
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
                 did_methods: vec![crate::config::core_config::DidType::Key],
-            });
+            }
+        });
 
         Some(Arc::new(protocol))
     });
@@ -2290,14 +2286,12 @@ async fn test_create_proof_with_related_key() {
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
 
-        protocol
-            .inner
-            .expect_get_capabilities()
-            .times(1)
-            .returning(|| VerificationProtocolCapabilities {
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
                 did_methods: vec![crate::config::core_config::DidType::Key],
-            });
+            }
+        });
 
         Some(Arc::new(protocol))
     });
@@ -2810,14 +2804,13 @@ async fn test_share_proof_created_success() {
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
     protocol
-        .inner
         .expect_verifier_share_proof()
         .once()
         .returning(move |_, _, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
-                context: (),
+                context: Default::default(),
             })
         });
 
@@ -2924,14 +2917,13 @@ async fn test_share_proof_pending_success() {
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
     protocol
-        .inner
         .expect_verifier_share_proof()
         .once()
         .returning(move |_, _, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
-                context: (),
+                context: Default::default(),
             })
         });
 
@@ -3042,7 +3034,6 @@ async fn test_delete_proof_ok_for_allowed_state(
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
         protocol
-            .inner
             .expect_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
@@ -3114,7 +3105,6 @@ async fn test_delete_proof_ok_for_requested_state() {
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
         protocol
-            .inner
             .expect_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
@@ -3277,7 +3267,6 @@ async fn test_retract_proof_with_bluetooth_ok() {
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
         protocol
-            .inner
             .expect_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
@@ -3361,7 +3350,6 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     protocol_provider.expect_get_protocol().return_once(|_| {
         let mut protocol = MockVerificationProtocol::default();
         protocol
-            .inner
             .expect_retract_proof()
             .times(1)
             .returning(|_| Ok(()));

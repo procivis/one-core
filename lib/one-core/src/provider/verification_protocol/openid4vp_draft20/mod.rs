@@ -26,7 +26,7 @@ use uuid::Uuid;
 use super::dto::{PresentationDefinitionResponseDTO, VerificationProtocolCapabilities};
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
-    VerificationProtocolError, VerificationProtocolImpl,
+    VerificationProtocolError,
 };
 use crate::config::core_config::{CoreConfig, DidType, TransportType};
 use crate::model::did::Did;
@@ -87,9 +87,7 @@ impl OpenID4VC {
 }
 
 #[async_trait]
-impl VerificationProtocolImpl for OpenID4VC {
-    type InteractionContext = serde_json::Value;
-
+impl VerificationProtocol for OpenID4VC {
     fn holder_can_handle(&self, url: &Url) -> bool {
         self.openid_http.can_handle(url)
             || self.openid_ble.holder_can_handle(url)
@@ -222,7 +220,7 @@ impl VerificationProtocolImpl for OpenID4VC {
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         client_id_scheme: ClientIdScheme,
-    ) -> Result<ShareResponse<Self::InteractionContext>, VerificationProtocolError> {
+    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let transport = get_transport(proof)?;
         let callback = callback.map(|fut| fut.shared());
 
@@ -358,7 +356,7 @@ impl VerificationProtocolImpl for OpenID4VC {
     async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
-        interaction_data: Self::InteractionContext,
+        interaction_data: serde_json::Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
@@ -498,7 +496,7 @@ impl VerificationProtocolImpl for OpenID4VC {
     fn holder_get_holder_binding_context(
         &self,
         proof: &Proof,
-        context: Self::InteractionContext,
+        context: serde_json::Value,
     ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
@@ -583,8 +581,6 @@ impl VerificationProtocolImpl for OpenID4VC {
         }
     }
 }
-
-impl VerificationProtocol for OpenID4VC {}
 
 fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {
     let transport = if proof.transport.is_empty() {

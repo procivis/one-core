@@ -30,7 +30,7 @@ use crate::provider::verification_protocol::iso_mdl::ble_holder::{
 use crate::provider::verification_protocol::iso_mdl::common::{
     to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
 };
-use crate::provider::verification_protocol::VerificationProtocolImpl;
+use crate::provider::verification_protocol::VerificationProtocol;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 use crate::util::ble_resource::{BleWaiter, OnConflict};

@@ -9,8 +9,8 @@ use url::Url;
 
 use super::dto::{PresentationDefinitionResponseDTO, VerificationProtocolCapabilities};
 use super::{
-    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
-    VerificationProtocolImpl,
+    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
+    VerificationProtocolError,
 };
 use crate::config::core_config::DidType;
 use crate::model::did::{Did, KeyRole};
@@ -52,9 +52,7 @@ impl ScanToVerify {
 }
 
 #[async_trait]
-impl VerificationProtocolImpl for ScanToVerify {
-    type InteractionContext = ();
-
+impl VerificationProtocol for ScanToVerify {
     fn holder_can_handle(&self, _url: &Url) -> bool {
         false
     }
@@ -87,7 +85,7 @@ impl VerificationProtocolImpl for ScanToVerify {
     async fn holder_get_presentation_definition(
         &self,
         _proof: &Proof,
-        _interaction_data: Self::InteractionContext,
+        _interaction_data: serde_json::Value,
         _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         unimplemented!()
@@ -107,7 +105,7 @@ impl VerificationProtocolImpl for ScanToVerify {
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _client_id_scheme: ClientIdScheme,
-    ) -> Result<ShareResponse<Self::InteractionContext>, VerificationProtocolError> {
+    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         unimplemented!()
     }
 

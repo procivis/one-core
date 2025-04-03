@@ -17,9 +17,8 @@ use provider::mqtt_client::MqttClient;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
 use provider::trust_management::provider::TrustManagementProviderImpl;
-use provider::verification_protocol::{
-    verification_protocol_providers_from_config, VerificationProtocolProviderImpl,
-};
+use provider::verification_protocol::provider::VerificationProtocolProviderImpl;
+use provider::verification_protocol::verification_protocol_providers_from_config;
 use repository::DataRepository;
 use service::backup::BackupService;
 use service::config::ConfigService;

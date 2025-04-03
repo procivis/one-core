@@ -97,7 +97,6 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 
     let mut verification_protocol_mock = MockVerificationProtocol::default();
     verification_protocol_mock
-        .inner
         .expect_holder_reject_proof()
         .withf(move |proof| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -263,7 +262,6 @@ async fn test_submit_proof_succeeds() {
 
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
-        .inner
         .expect_holder_get_presentation_definition()
         .withf(move |proof, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -299,7 +297,6 @@ async fn test_submit_proof_succeeds() {
         });
 
     verification_protocol
-        .inner
         .expect_holder_submit_proof()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -307,6 +304,10 @@ async fn test_submit_proof_succeeds() {
         })
         .once()
         .returning(|_, _, _, _, _| Ok(Default::default()));
+
+    verification_protocol
+        .expect_holder_get_holder_binding_context()
+        .returning(|_, _| Ok(None));
 
     let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
     verification_protocol_provider
@@ -436,7 +437,6 @@ async fn test_submit_proof_repeating_claims() {
 
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
-        .inner
         .expect_holder_get_presentation_definition()
         .withf(move |proof, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -499,7 +499,6 @@ async fn test_submit_proof_repeating_claims() {
         });
 
     verification_protocol
-        .inner
         .expect_holder_submit_proof()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -507,6 +506,10 @@ async fn test_submit_proof_repeating_claims() {
         })
         .once()
         .returning(|_, _, _, _, _| Ok(Default::default()));
+
+    verification_protocol
+        .expect_holder_get_holder_binding_context()
+        .returning(|_, _| Ok(None));
 
     let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
     verification_protocol_provider

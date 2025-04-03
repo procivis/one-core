@@ -8,8 +8,7 @@ use openid4vp_draft20::ble::OpenID4VCBLE;
 use openid4vp_draft20::http::OpenID4VCHTTP;
 use openid4vp_draft20::model::{ClientIdScheme, OpenID4VpPresentationFormat};
 use openid4vp_draft20::mqtt::OpenId4VcMqtt;
-use serde::de::{Deserialize, DeserializeOwned};
-use serde::Serialize;
+use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::KeyId;
 use url::Url;
@@ -34,9 +33,6 @@ use crate::provider::verification_protocol::openid4vp_draft20::model::{
     InvitationResponseDTO, OpenID4VpParams, PresentedCredential, ShareResponse, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp_draft20::OpenID4VC;
-use crate::provider::verification_protocol::provider::{
-    VerificationProtocol, VerificationProtocolProvider,
-};
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -64,7 +60,7 @@ pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
 }
 
 #[cfg(test)]
-pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
+pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
     dto: &DataDTO,
 ) -> Result<Vec<u8>, VerificationProtocolError> {
     serde_json::to_vec(&dto).map_err(VerificationProtocolError::JsonError)
@@ -91,11 +87,11 @@ pub(crate) fn verification_protocol_providers_from_config(
     for (name, fields) in exchange_config.iter_mut() {
         match fields.r#type {
             VerificationProtocolType::ScanToVerify => {
-                let protocol = Arc::new(VerificationProtocolWrapper::new(ScanToVerify::new(
+                let protocol = Arc::new(ScanToVerify::new(
                     formatter_provider.clone(),
                     key_algorithm_provider.clone(),
                     did_method_provider.clone(),
-                )));
+                ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
@@ -176,13 +172,13 @@ pub(crate) fn verification_protocol_providers_from_config(
                 providers.insert(name.to_string(), protocol);
             }
             VerificationProtocolType::IsoMdl => {
-                let protocol = Arc::new(VerificationProtocolWrapper::new(IsoMdl::new(
+                let protocol = Arc::new(IsoMdl::new(
                     config.clone(),
                     formatter_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     ble.clone(),
-                )));
+                ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
@@ -218,14 +214,11 @@ pub(crate) type TypeToDescriptorMapper = Arc<
         + Sync,
 >;
 
-/// This trait contains methods for exchanging credentials between issuers,
-/// holders, and verifiers.
-#[cfg_attr(any(test, feature = "mock"), mockall::automock(type InteractionContext = ();))]
+/// This trait contains methods for exchanging credentials between holders and verifiers.
+#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 #[allow(clippy::too_many_arguments)]
-pub(crate) trait VerificationProtocolImpl: Send + Sync {
-    type InteractionContext: Clone;
-
+pub(crate) trait VerificationProtocol: Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the necessary URLs.
     fn holder_can_handle(&self, url: &Url) -> bool;
@@ -261,7 +254,7 @@ pub(crate) trait VerificationProtocolImpl: Send + Sync {
     async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
-        context: Self::InteractionContext,
+        context: serde_json::Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError>;
 
@@ -269,7 +262,7 @@ pub(crate) trait VerificationProtocolImpl: Send + Sync {
     fn holder_get_holder_binding_context(
         &self,
         _proof: &Proof,
-        _context: Self::InteractionContext,
+        _context: serde_json::Value,
     ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
         Ok(None)
     }
@@ -285,7 +278,7 @@ pub(crate) trait VerificationProtocolImpl: Send + Sync {
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         client_id_scheme: ClientIdScheme,
-    ) -> Result<ShareResponse<Self::InteractionContext>, VerificationProtocolError>;
+    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError>;
 
     /// Checks if the submitted presentation complies with the given proof request.
     async fn verifier_handle_proof(
@@ -299,151 +292,4 @@ pub(crate) trait VerificationProtocolImpl: Send + Sync {
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError>;
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities;
-}
-
-#[cfg(test)]
-pub(crate) type MockVerificationProtocol =
-    VerificationProtocolWrapper<MockVerificationProtocolImpl>;
-
-#[derive(Default)]
-pub(crate) struct VerificationProtocolWrapper<T> {
-    pub inner: T,
-}
-
-impl<T> VerificationProtocolWrapper<T> {
-    pub(crate) fn new(inner: T) -> Self {
-        Self { inner }
-    }
-}
-
-#[async_trait::async_trait]
-impl<T> VerificationProtocolImpl for VerificationProtocolWrapper<T>
-where
-    T: VerificationProtocolImpl,
-    T::InteractionContext: Serialize + DeserializeOwned,
-{
-    type InteractionContext = serde_json::Value;
-
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        self.inner.holder_can_handle(url)
-    }
-
-    async fn holder_handle_invitation(
-        &self,
-        url: Url,
-        organisation: Organisation,
-        storage_access: &StorageAccess,
-        transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
-        self.inner
-            .holder_handle_invitation(url, organisation, storage_access, transport)
-            .await
-    }
-
-    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        self.inner.holder_reject_proof(proof).await
-    }
-
-    async fn holder_submit_proof(
-        &self,
-        proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
-        self.inner
-            .holder_submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
-            .await
-    }
-
-    async fn holder_get_presentation_definition(
-        &self,
-        proof: &Proof,
-        interaction_data: Self::InteractionContext,
-        storage_access: &StorageAccess,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data = serde_json::from_value(interaction_data)
-            .map_err(VerificationProtocolError::JsonError)?;
-        self.inner
-            .holder_get_presentation_definition(proof, interaction_data, storage_access)
-            .await
-    }
-
-    async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        self.inner.retract_proof(proof).await
-    }
-
-    async fn verifier_share_proof(
-        &self,
-        proof: &Proof,
-        format_to_type_mapper: FormatMapper,
-        key_id: KeyId,
-        encryption_key_jwk: PublicKeyJwkDTO,
-        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
-        type_to_descriptor: TypeToDescriptorMapper,
-        callback: Option<BoxFuture<'static, ()>>,
-        client_id_scheme: ClientIdScheme,
-    ) -> Result<ShareResponse<Self::InteractionContext>, VerificationProtocolError> {
-        self.inner
-            .verifier_share_proof(
-                proof,
-                format_to_type_mapper,
-                key_id,
-                encryption_key_jwk,
-                vp_formats,
-                type_to_descriptor,
-                callback,
-                client_id_scheme,
-            )
-            .await
-            .map(|resp| ShareResponse {
-                url: resp.url,
-                interaction_id: resp.interaction_id,
-                context: serde_json::json!(resp.context),
-            })
-    }
-
-    async fn verifier_handle_proof(
-        &self,
-        proof: &Proof,
-        submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
-        self.inner.verifier_handle_proof(proof, submission).await
-    }
-
-    fn get_capabilities(&self) -> VerificationProtocolCapabilities {
-        self.inner.get_capabilities()
-    }
-}
-
-impl<T> VerificationProtocol for VerificationProtocolWrapper<T>
-where
-    T: VerificationProtocolImpl,
-    T::InteractionContext: Serialize + DeserializeOwned,
-{
-}
-
-pub(crate) struct VerificationProtocolProviderImpl {
-    protocols: HashMap<String, Arc<dyn VerificationProtocol>>,
-}
-
-impl VerificationProtocolProviderImpl {
-    pub(crate) fn new(protocols: HashMap<String, Arc<dyn VerificationProtocol>>) -> Self {
-        Self { protocols }
-    }
-}
-
-#[async_trait::async_trait]
-impl VerificationProtocolProvider for VerificationProtocolProviderImpl {
-    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn VerificationProtocol>> {
-        self.protocols.get(protocol_id).cloned()
-    }
-
-    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn VerificationProtocol>)> {
-        self.protocols
-            .iter()
-            .find(|(_, protocol)| protocol.holder_can_handle(url))
-            .map(|(id, protocol)| (id.to_owned(), protocol.to_owned()))
-    }
 }

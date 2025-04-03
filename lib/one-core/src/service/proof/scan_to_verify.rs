@@ -14,7 +14,7 @@ use crate::model::proof_schema::ProofSchema;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
-use crate::provider::verification_protocol::provider::VerificationProtocol;
+use crate::provider::verification_protocol::VerificationProtocol;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
