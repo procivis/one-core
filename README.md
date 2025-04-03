@@ -69,6 +69,50 @@ makers run
 
 We can use `Makefile.toml` to add and fine tune build/run targets later in the project.
 
+### Configuration override
+
+The base configuration does not provide encryption keys to encrypt
+sensitive data such as private keys. Create a .yml file and provide
+encryption keys for each instance of OpenID4VC exchange protocol and
+internal key storage:
+
+- `exchange.[instanceName].type: 'OPENID4VC'`
+- `keyStorage.[instanceName].type: 'INTERNAL'`
+
+Encryption keys must be a 32 byte hex-encoded value. Use:
+
+```shell
+openssl rand -hex 32
+```
+
+or another qualified tool to generate a cryptographically-secure key.
+For each instance, put its encryption key in `params.private.encryption`
+of the override configuration.
+
+Your override configuration file should look something like this:
+
+```yml
+exchange:
+  OPENID4VC:
+    params:
+      private:
+        encryption: '93d9182795...'
+  MDOC_OPENID4VP:
+    params:
+      private:
+        encryption: 'af57619a85...'
+keyStorage:
+  INTERNAL:
+    params:
+      private:
+        encryption: 'd783157dac...'
+```
+
+Alternatively you can put your encryption keys in environment variables.
+
+See [environment variables](https://docs.procivis.ch/configure#environment-variables)
+in the docs.
+
 ### Tests
 
 To run only the unit tests
