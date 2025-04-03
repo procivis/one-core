@@ -22,59 +22,6 @@ use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingKeyParams};
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
-
-// old CA cert matching pre-generated did:mdl
-pub(super) static IACA_CERTIFICATE: &str = "MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmgwCgYIKoZIzj0EAwQwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTIyMDExMjEyMDAwMFoXDTMyMDExMDEyMDAwMFowYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaRFtZbpYHFlPgGyZCt6bGKS0hEekPVxiBHRXImo8_NUR-czg-DI2KTE3ikRVNgq2rICatkvkV2jaM2frPEOl1qNmMGQwEgYDVR0TAQH_BAgwBgEB_wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFO0asJ3iYEVQADvaWjQyGpi-LbfFMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMAoGCCqGSM49BAMEA0gAMEUCIQD9kfI800DOj76YsiW4lUNRZowH07j152M3UKHKEaIjUAIgZNINukb4SFKEC4A0qEKgpPEZM7_Vh5aNro-PQn3_rgA";
-
-pub(super) async fn prepare_dids_for_mdoc(
-    context: &TestContext,
-    organisation: &Organisation,
-    local_key_params: TestKey,
-    remote_key_params: TestKey,
-) -> (Did, Did, Key) {
-    let local_key = context
-        .db
-        .keys
-        .create(organisation, local_key_params.params)
-        .await;
-
-    let did_value: DidValue = match local_key.key_type.as_str() {
-        "EDDSA" => "did:mdl:certificate:MIIDRjCCAuygAwIBAgIUcD-tZOWr65vnTr0OWGIVIzWOPscwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDgxMjA2MzMwMFoXDTI1MTExMDAwMDAwMFowRTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxEjAQBgNVBAMMCWxvY2FsLW9uZTAqMAUGAytlcAMhAEoEScmT7ovJTy1wxJgjDya-jToTZbglVNJlE_Ulq-9fo4IByjCCAcYwDgYDVR0PAQH_BAQDAgeAMBUGA1UdJQEB_wQLMAkGByiBjF0FAQIwDAYDVR0TAQH_BAIwADAfBgNVHSMEGDAWgBTtGrCd4mBFUAA72lo0MhqYvi23xTBaBgNVHR8EUzBRME-gTaBLhklodHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20vY3JsLzQwQ0QyMjU0N0YzODM0QzUyNkM1QzIyRTFBMjZDN0UyMDMzMjQ2NjgvMIHKBggrBgEFBQcBAQSBvTCBujBbBggrBgEFBQcwAoZPaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBbBggrBgEFBQcwAYZPaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL29jc3AvNDBDRDIyNTQ3RjM4MzRDNTI2QzVDMjJFMUEyNkM3RTIwMzMyNDY2OC9jZXJ0LzAmBgNVHRIEHzAdhhtodHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20wHQYDVR0OBBYEFBe08Q4Q6zU6zYq2bTwW5BCiIuYEMAoGCCqGSM49BAMCA0gAMEUCIEQ8701fOGH_pskm_9G4EdzWRGY6jGOfHgoZc5nTBaCeAiEAsWoDCLnmgEudfmbqXoiDCBYUmNabrVJo6GiBeczXVoU",
-        "ECDSA" => "did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg",
-        other => panic!("did:mdl:certificate is not supported for kty: {other}"),
-    }
-    .parse()
-    .unwrap();
-
-    let local_did = context
-        .db
-        .dids
-        .create(
-            organisation,
-            TestingDidParams {
-                did_type: Some(DidType::Local),
-                did_method: Some("MDL".to_owned()),
-                did: Some(did_value),
-                ..key_to_did_params(Some(&local_key), &local_key_params.multibase)
-            },
-        )
-        .await;
-
-    let remote_did = context
-        .db
-        .dids
-        .create(
-            organisation,
-            TestingDidParams {
-                did_type: Some(DidType::Remote),
-                ..key_to_did_params(None, &remote_key_params.multibase)
-            },
-        )
-        .await;
-
-    (local_did, remote_did, local_key)
-}
 
 pub(super) async fn prepare_dids(
     context: &TestContext,
@@ -178,20 +125,6 @@ pub(super) fn eddsa_key_1() -> TestKey {
     }
 }
 
-pub(super) fn eddsa_key_for_did_mdl() -> TestKey {
-    TestKey {
-        multibase: "adasasd".to_string(),
-        params: eddsa_testing_params(),
-    }
-}
-
-pub(super) fn ecdsa_key_for_did_mdl() -> TestKey {
-    TestKey {
-        multibase: "asdasdasd".to_string(),
-        params: ecdsa_testing_params(),
-    }
-}
-
 pub(super) fn eddsa_key_2() -> TestKey {
     TestKey {
         multibase: "z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5".to_string(),
@@ -215,47 +148,6 @@ pub(super) fn eddsa_key_2() -> TestKey {
     }
 }
 
-pub(super) fn ecdsa_key_1() -> TestKey {
-    TestKey {
-        multibase: "zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6".to_string(),
-        params: TestingKeyParams {
-            key_type: Some("ECDSA".to_string()),
-            storage_type: Some("INTERNAL".to_string()),
-            public_key: Some(vec![
-                2, 41, 83, 61, 165, 86, 37, 125, 46, 237, 61, 7, 255, 169, 76, 11, 51, 20, 151,
-                189, 221, 246, 169, 103, 136, 2, 114, 144, 254, 4, 26, 202, 33,
-            ]),
-            key_reference: Some(vec![
-                214, 40, 173, 242, 210, 229, 35, 49, 245, 164, 136, 170, 0, 0, 0, 0, 0, 0, 0, 32,
-                168, 61, 62, 181, 162, 142, 116, 226, 190, 20, 146, 183, 17, 166, 110, 17, 207, 54,
-                243, 166, 143, 172, 23, 72, 196, 139, 42, 147, 222, 122, 234, 133, 236, 18, 64,
-                113, 85, 218, 233, 136, 236, 48, 86, 184, 249, 54, 210, 76,
-            ]),
-            ..Default::default()
-        },
-    }
-}
-
-pub(super) fn ecdsa_key_2() -> TestKey {
-    TestKey {
-        multibase: "zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ".to_string(),
-        params: TestingKeyParams {
-            key_type: Some("ECDSA".to_string()),
-            storage_type: Some("INTERNAL".to_string()),
-            public_key: Some(vec![
-                2, 113, 223, 203, 78, 208, 144, 157, 171, 118, 94, 112, 196, 150, 233, 175, 129, 0,
-                12, 229, 151, 39, 80, 197, 83, 144, 248, 160, 227, 159, 2, 215, 39,
-            ]),
-            key_reference: Some(vec![
-                191, 117, 227, 19, 61, 61, 70, 152, 133, 158, 83, 244, 0, 0, 0, 0, 0, 0, 0, 32, 1,
-                0, 223, 243, 57, 200, 101, 206, 133, 43, 169, 194, 153, 38, 105, 35, 100, 79, 106,
-                61, 68, 62, 9, 96, 48, 202, 28, 74, 43, 89, 96, 100, 154, 148, 140, 180, 17, 135,
-                78, 216, 169, 229, 27, 196, 181, 163, 95, 116,
-            ]),
-            ..Default::default()
-        },
-    }
-}
 pub(super) fn bbs_key_1() -> TestKey {
     TestKey {
         multibase: "zUC77bqRWgmZNzUQHeSSuQTiMc2Pqv3uTp1oWgbwrXushHz4Y5CbCG3WRZVo93qMwqKqizMbA6ntv\
@@ -281,58 +173,6 @@ pub(super) fn bbs_key_1() -> TestKey {
             ..Default::default()
         },
     }
-}
-
-pub(super) fn get_simple_context(
-    schema_id: &CredentialSchemaId,
-    schema_name_pascal: &str,
-    base_url: &str,
-) -> (String, String) {
-    let url = format!("{base_url}/ssi/context/v1/{schema_id}");
-    let context = json!(
-        {
-            "@context": {
-                "@version": 1.1,
-                "@protected": true,
-                "id": "@id",
-                "type": "@type",
-                "ProcivisOneSchema2024": {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#ProcivisOneSchema2024"),
-                    "@context": {
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type",
-                        "metadata": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#metadata"),
-                            "@type": "@json"
-                        }
-                    }
-                },
-                schema_name_pascal: {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}")
-                },
-                "TestSubject": {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#TestSubject"),
-                    "@context": {
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type",
-                        "Key": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Key")
-                        },
-                        "Name": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Name")
-                        },
-                        "Address": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#Address")
-                        }
-                    }
-                }
-            }
-        }
-    )
-    .to_string();
-    (url, context)
 }
 
 pub(super) fn get_simple_context_bbsplus(
@@ -395,65 +235,6 @@ pub(super) fn get_simple_context_bbsplus(
         }
     ).to_string();
 
-    (url, context)
-}
-
-pub(super) fn get_array_context(
-    schema_id: &CredentialSchemaId,
-    schema_name_pascal: &str,
-    base_url: &str,
-) -> (String, String) {
-    let url = format!("{base_url}/ssi/context/v1/{schema_id}");
-    let context = json!(
-        {
-            "@context": {
-                "@version": 1.1,
-                "@protected": true,
-                "id": "@id",
-                "type": "@type",
-                "ProcivisOneSchema2024": {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#ProcivisOneSchema2024"),
-                    "@context": {
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type",
-                        "metadata": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#metadata"),
-                            "@type": "@json"
-                        }
-                    }
-                },
-                schema_name_pascal: {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential")
-                },
-                "root": {
-                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#root"),
-                    "@context": {
-                        "@protected": true,
-                        "id": "@id",
-                        "type": "@type",
-                        "array": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#array"),
-                        },
-                        "object_array": {
-                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#object_array"),
-                            "@context": {
-                                "@protected": true,
-                                "id": "@id",
-                                "type": "@type",
-                                "field1": {
-                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#field1")
-                                },
-                                "field2": {
-                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#field2")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    ).to_string();
     (url, context)
 }
 
