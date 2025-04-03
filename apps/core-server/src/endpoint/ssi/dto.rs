@@ -5,17 +5,21 @@ use one_core::common_mapper::{opt_secret_string, secret_string};
 use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
-use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
-use one_core::provider::exchange_protocol::openid4vc::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ExtendedSubjectClaimsDTO,
-    ExtendedSubjectDTO, LdpVcAlgs, NestedPresentationSubmissionDescriptorDTO,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+use one_core::provider::issuance_protocol::openid4vc::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::openid4vc::model::{
+    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPAlgs, OpenID4VPClientMetadata,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
+};
+use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
+use one_core::provider::verification_protocol::openid4vc::model::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, LdpVcAlgs,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VPAlgs, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
@@ -24,13 +28,12 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
-use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::{
     PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
     PublicKeyJwkRsaDataDTO,
 };
-use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
+use one_core::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
     JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
@@ -344,8 +347,6 @@ pub enum OpenID4VCIErrorRestEnum {
     InvalidOrMissingProof,
     UnsupportedCredentialFormat,
     UnsupportedCredentialType,
-    VPFormatsNotSupported,
-    VCFormatsNotSupported,
     CredentialRequestDenied,
     RuntimeError(String),
 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{CredentialSchemaId, DidId, DidValue, OrganisationId};
+use shared_types::{DidValue, OrganisationId};
 
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::model::claim::ClaimRelations;
@@ -13,13 +13,53 @@ use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::StorageProxy;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
-pub struct StorageProxyImpl {
+/// Interface to be implemented in order to use an exchange protocol.
+///
+/// The exchange protocol provider relies on storage of data for interactions,
+/// credentials, credential schemas, and DIDs. A storage layer must be
+/// chosen and implemented for the exchange protocol to be enabled.
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait::async_trait]
+pub(crate) trait StorageProxy: Send + Sync {
+    /// Store an interaction with a chosen storage layer.
+    async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId>;
+
+    /// Store an interaction with a chosen storage layer.
+    async fn update_interaction(&self, request: UpdateInteractionRequest) -> anyhow::Result<()>;
+
+    /// Get a credential schema from a chosen storage layer.
+    async fn get_schema(
+        &self,
+        schema_id: &str,
+        schema_type: &str,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<CredentialSchema>>;
+
+    /// Get credentials from a specified schema ID, from a chosen storage layer.
+    async fn get_credentials_by_credential_schema_id(
+        &self,
+        schema_id: &str,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Vec<Credential>>;
+
+    /// Obtain a DID by its address, from a chosen storage layer.
+    async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>>;
+
+    async fn get_or_create_did(
+        &self,
+        organisation: &Option<Organisation>,
+        did_value: &DidValue,
+        did_role: DidRole,
+    ) -> anyhow::Result<Did>;
+}
+pub(crate) type StorageAccess = dyn StorageProxy;
+
+pub(crate) struct StorageProxyImpl {
     pub interactions: Arc<dyn InteractionRepository>,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub credentials: Arc<dyn CredentialRepository>,
@@ -28,7 +68,7 @@ pub struct StorageProxyImpl {
 }
 
 impl StorageProxyImpl {
-    pub fn new(
+    pub(crate) fn new(
         interactions: Arc<dyn InteractionRepository>,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
@@ -115,23 +155,6 @@ impl StorageProxy for StorageProxyImpl {
                 })
             })
             .collect::<Vec<_>>())
-    }
-
-    async fn create_credential_schema(
-        &self,
-        schema: CredentialSchema,
-    ) -> anyhow::Result<CredentialSchemaId> {
-        self.credential_schemas
-            .create_credential_schema(schema)
-            .await
-            .context("Create credential schema error")
-    }
-
-    async fn create_did(&self, did: Did) -> anyhow::Result<DidId> {
-        self.dids
-            .create_did(did)
-            .await
-            .context("Could not create did")
     }
 
     async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>> {

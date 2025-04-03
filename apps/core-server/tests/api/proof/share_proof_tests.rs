@@ -52,7 +52,7 @@ async fn test_share_proof_success() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         None,
     )
     .await;
@@ -140,7 +140,7 @@ async fn test_share_proof_success_mdoc() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )
@@ -265,7 +265,7 @@ async fn test_share_proof_success_jsonld() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )
@@ -350,7 +350,7 @@ async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         None,
     )
     .await;

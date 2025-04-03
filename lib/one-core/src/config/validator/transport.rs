@@ -1,15 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::config::core_config::{Fields, TransportConfig, TransportType};
-use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
+use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
 use crate::service::error::ValidationError;
 
-pub enum SelectedTransportType {
+pub(crate) enum SelectedTransportType {
     Single(String),
     Multiple(Vec<String>),
 }
 
-pub fn get_first_available_transport_type(
+pub(crate) fn get_first_available_transport_type(
     config: &TransportConfig,
 ) -> Result<(&str, TransportType), ValidationError> {
     config
@@ -18,10 +18,10 @@ pub fn get_first_available_transport_type(
         .ok_or(ValidationError::MissingDefaultTransport)
 }
 
-pub fn validate_and_select_transport_type(
+pub(crate) fn validate_and_select_transport_type(
     transport: &Option<Vec<String>>,
     config: &TransportConfig,
-    exchange_protocol_capabilities: &ExchangeProtocolCapabilities,
+    exchange_protocol_capabilities: &VerificationProtocolCapabilities,
 ) -> Result<SelectedTransportType, ValidationError> {
     let check_transport_capabilities = |transport| {
         if !exchange_protocol_capabilities
@@ -97,17 +97,15 @@ mod test {
     use super::validate_and_select_transport_type;
     use crate::config::core_config::{CoreConfig, Fields, TransportType};
     use crate::config::validator::transport::SelectedTransportType;
-    use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
+    use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
     use crate::service::error::ValidationError;
 
     #[test]
     fn test_selects_first_in_order_transport_from_config_if_transport_is_none() {
         let config = config(&["BLE", "MQTT"]);
-        let capabilities = ExchangeProtocolCapabilities {
+        let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec!["BLE".into(), "MQTT".into()],
-            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            issuance_did_methods: vec![],
-            verification_did_methods: vec![],
+            did_methods: vec![],
         };
 
         let selected =
@@ -121,11 +119,9 @@ mod test {
     #[test]
     fn test_selects_one_transport() {
         let config = config(&["MQTT"]);
-        let capabilities = ExchangeProtocolCapabilities {
+        let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec!["MQTT".into()],
-            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            issuance_did_methods: vec![],
-            verification_did_methods: vec![],
+            did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -143,11 +139,9 @@ mod test {
     #[test]
     fn test_selects_multiple_transports() {
         let config = config(&["BLE", "MQTT"]);
-        let capabilities = ExchangeProtocolCapabilities {
+        let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec!["BLE".into(), "MQTT".into()],
-            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            issuance_did_methods: vec![],
-            verification_did_methods: vec![],
+            did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -166,11 +160,9 @@ mod test {
     #[test]
     fn test_fails_if_capability_is_missing() {
         let config = config(&["MQTT"]);
-        let capabilities = ExchangeProtocolCapabilities {
+        let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec![],
-            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            issuance_did_methods: vec![],
-            verification_did_methods: vec![],
+            did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -188,11 +180,9 @@ mod test {
     #[test]
     fn test_fails_when_transport_combination_is_not_allowed() {
         let config = config(&["BLE", "MQTT", "HTTP"]);
-        let capabilities = ExchangeProtocolCapabilities {
+        let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec!["BLE".into(), "MQTT".into(), "HTTP".into()],
-            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            issuance_did_methods: vec![],
-            verification_did_methods: vec![],
+            did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(

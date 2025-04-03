@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::did::DidType;
-use one_core::provider::exchange_protocol::openid4vc::model::{
+use one_core::provider::verification_protocol::openid4vc::model::{
     OpenID4VPAlgs, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
     OpenID4VpPresentationFormat,
 };

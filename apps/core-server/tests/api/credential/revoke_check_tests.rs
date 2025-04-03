@@ -65,7 +65,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Issuer),
                 ..Default::default()
@@ -80,7 +80,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Verifier),
                 ..Default::default()
@@ -145,7 +145,7 @@ async fn test_revoke_check_success_statuslist2021() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(credential_jwt),
                 role: Some(CredentialRole::Holder),
@@ -393,7 +393,7 @@ async fn setup_bitstring_status_list_success(
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(&credential_jwt),
                 role: Some(CredentialRole::Holder),
@@ -646,7 +646,7 @@ async fn setup_lvvc_revoke_check_valid(
             &credential_schema,
             initial_state,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(&credential_jwt),
                 holder_did: Some(holder_did),
@@ -776,7 +776,7 @@ async fn test_revoke_check_mdoc_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -911,7 +911,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -1057,7 +1057,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -1196,7 +1196,7 @@ async fn test_revoke_check_token_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),
@@ -1321,7 +1321,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -1443,7 +1443,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),
@@ -1575,7 +1575,7 @@ async fn test_suspended_to_valid_mdoc() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -1739,7 +1739,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -1821,7 +1821,7 @@ async fn test_revoke_check_failed_deleted_credential() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(credential_jwt),
                 deleted_at: Some(OffsetDateTime::now_utc()),

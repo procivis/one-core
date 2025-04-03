@@ -18,7 +18,8 @@ use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
 use super::model::{CredentialData, HolderBindingCtx, Issuer};
 use super::CredentialFormatter;
 use crate::config::core_config::{
-    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    VerificationProtocolType,
 };
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -310,8 +311,8 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
-            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             revocation_methods: vec![
                 RevocationType::None,
                 RevocationType::BitstringStatusList,

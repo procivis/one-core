@@ -9,18 +9,18 @@ use crate::model::credential::{
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::exchange_protocol::deserialize_interaction_data;
-use crate::provider::exchange_protocol::error::ExchangeProtocolError;
-use crate::provider::exchange_protocol::openid4vc::model::{
-    HolderInteractionData, OpenID4VCICredential, OpenID4VCIProof, OpenID4VCITokenResponseDTO,
-    OpenID4VCParams,
-};
-use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::deserialize_interaction_data;
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
+use crate::provider::issuance_protocol::openid4vc::model::{
+    HolderInteractionData, OpenID4VCICredential, OpenID4VCIParams, OpenID4VCIProof,
+    OpenID4VCITokenResponseDTO,
+};
+use crate::provider::issuance_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
-use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
+use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 use crate::util::key_verification::KeyVerification;
 
 impl CredentialService {
@@ -102,7 +102,7 @@ impl CredentialService {
         let auth_fn = self
             .key_provider
             .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url.clone(),
@@ -112,12 +112,12 @@ impl CredentialService {
             auth_fn,
         )
         .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let schema = credential
             .schema
             .as_ref()
-            .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
+            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
         let body = OpenID4VCICredential {
             proof: OpenID4VCIProof {
@@ -136,24 +136,24 @@ impl CredentialService {
             .bearer_auth(access_token.expose_secret())
             .json(&body)
             .context("json error")
-            .map_err(ExchangeProtocolError::Transport)?
+            .map_err(IssuanceProtocolError::Transport)?
             .send()
             .await
             .context("send error")
-            .map_err(ExchangeProtocolError::Transport)?;
+            .map_err(IssuanceProtocolError::Transport)?;
         let response = response
             .error_for_status()
             .context("status error")
-            .map_err(ExchangeProtocolError::Transport)?;
+            .map_err(IssuanceProtocolError::Transport)?;
 
         let result: OpenID4VCICredentialResponseDTO =
-            serde_json::from_slice(&response.body).map_err(ExchangeProtocolError::JsonError)?;
+            serde_json::from_slice(&response.body).map_err(IssuanceProtocolError::JsonError)?;
 
         let formatter = self
             .formatter_provider
             .get_formatter(schema.format.as_str())
             .ok_or_else(|| {
-                ExchangeProtocolError::Failed(format!("{} formatter not found", schema.format))
+                IssuanceProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?;
 
         let verification_fn = Box::new(KeyVerification {
@@ -164,7 +164,7 @@ impl CredentialService {
         formatter
             .extract_credentials(&result.credential, verification_fn, None)
             .await
-            .map_err(|e| ExchangeProtocolError::CredentialVerificationFailed(e.into()))?;
+            .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 
         // Update credential value
         let update_request = UpdateCredentialRequest {
@@ -189,8 +189,8 @@ fn encryption_key_from_config(
     config: &core_config::CoreConfig,
     credential: &Credential,
 ) -> Result<SecretSlice<u8>, ServiceError> {
-    let params: OpenID4VCParams = config
-        .exchange
+    let params: OpenID4VCIParams = config
+        .issuance_protocol
         .get(&credential.exchange)
         .map_err(ServiceError::ConfigValidationError)?;
     Ok(params.encryption)
@@ -244,7 +244,7 @@ async fn check_access_token(
         interaction_data
             .token_endpoint
             .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
+            .ok_or(IssuanceProtocolError::Failed(
                 "token endpoint is missing".to_string(),
             ))?;
 
@@ -255,21 +255,21 @@ async fn check_access_token(
             ("grant_type", "refresh_token".to_string()),
         ])
         .context("form error")
-        .map_err(ExchangeProtocolError::Transport)?
+        .map_err(IssuanceProtocolError::Transport)?
         .send()
         .await
         .context("send error")
-        .map_err(ExchangeProtocolError::Transport)?
+        .map_err(IssuanceProtocolError::Transport)?
         .error_for_status()
         .context("status error")
-        .map_err(ExchangeProtocolError::Transport)?
+        .map_err(IssuanceProtocolError::Transport)?
         .json()
         .context("parsing error")
-        .map_err(ExchangeProtocolError::Transport)?;
+        .map_err(IssuanceProtocolError::Transport)?;
 
     let encrypted_token = encrypt_string(&token_response.access_token, token_encryption_key)
         .map_err(|err| {
-            ExchangeProtocolError::Failed(format!("failed to encrypt access token: {err}"))
+            IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
         })?;
     interaction_data.access_token = Some(encrypted_token);
     interaction_data.access_token_expires_at =
@@ -280,7 +280,7 @@ async fn check_access_token(
         .map(|token| encrypt_string(&token, token_encryption_key))
         .transpose()
         .map_err(|err| {
-            ExchangeProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
+            IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
         })?;
     interaction_data.refresh_token_expires_at = token_response
         .refresh_token_expires_in

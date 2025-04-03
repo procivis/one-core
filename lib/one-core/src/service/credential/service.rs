@@ -5,7 +5,7 @@ use super::mapper::credential_detail_response_from_model;
 use super::validator::{validate_redirect_uri, verify_suspension_support};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
-use crate::config::core_config::RevocationType;
+use crate::config::core_config::{IssuanceProtocolType, RevocationType};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -20,8 +20,8 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::provider::exchange_protocol::error::ExchangeProtocolError;
-use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
+use crate::provider::issuance_protocol::openid4vc::model::ShareResponse;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
@@ -435,16 +435,25 @@ impl CredentialService {
         let credential_schema = credential
             .schema
             .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
+            .ok_or(IssuanceProtocolError::Failed(
                 "credential schema missing".to_string(),
             ))?;
 
-        let format = if credential_exchange == "OPENID4VC" {
+        let exchange_type = self
+            .config
+            .issuance_protocol
+            .get_fields(credential_exchange)
+            .map_err(|err| {
+                ServiceError::MissingExchangeProtocol(format!("{credential_exchange}: {err}"))
+            })?
+            .r#type();
+
+        let format = if *exchange_type == IssuanceProtocolType::OpenId4VciDraft13 {
             let format_type = self
                 .config
                 .format
                 .get_fields(&credential_schema.format)
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
                 .r#type;
 
             map_to_openid4vp_format(&format_type)?
@@ -452,21 +461,11 @@ impl CredentialService {
             credential_schema.format.as_str()
         };
 
-        let exchange_instance = &self
-            .config
-            .exchange
-            .get_fields(credential_exchange)
-            .map_err(|err| {
-                ServiceError::MissingExchangeProtocol(format!("{credential_exchange}: {err}"))
-            })?
-            .r#type()
-            .to_string();
-
         let exchange = self
             .protocol_provider
-            .get_protocol(exchange_instance)
+            .get_protocol(credential_exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(
-                exchange_instance.clone(),
+                credential_exchange.clone(),
             ))?;
 
         let ShareResponse {

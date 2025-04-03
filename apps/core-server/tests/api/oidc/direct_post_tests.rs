@@ -131,7 +131,7 @@ async fn test_direct_post_one_credential_correct() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;
@@ -288,7 +288,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;
@@ -523,7 +523,7 @@ async fn test_direct_post_multiple_presentations() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;
@@ -698,7 +698,7 @@ async fn test_direct_post_wrong_claim_format() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;

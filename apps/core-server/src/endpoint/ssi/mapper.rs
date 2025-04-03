@@ -1,6 +1,6 @@
 use one_core::model::key::PublicKeyJwk;
-use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
-use one_core::provider::exchange_protocol::openid4vc::model::{
+use one_core::provider::issuance_protocol::openid4vc::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::openid4vc::model::{
     OpenID4VCITokenRequestDTO, Timestamp,
 };
 use one_core::service::error::ServiceError;

@@ -29,7 +29,7 @@ async fn test_create_credential_success() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -54,7 +54,7 @@ async fn test_create_credential_success() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(2, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VC", credential.exchange);
+    assert_eq!("OPENID4VCI_DRAFT13", credential.exchange);
 }
 
 #[tokio::test]
@@ -94,7 +94,7 @@ async fn test_create_credential_with_array_success() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -193,7 +193,7 @@ async fn test_create_credential_success_with_nested_claims() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -223,7 +223,7 @@ async fn test_create_credential_success_with_nested_claims() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(3, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VC", credential.exchange);
+    assert_eq!("OPENID4VCI_DRAFT13", credential.exchange);
 }
 
 #[tokio::test]
@@ -288,7 +288,7 @@ async fn test_create_credential_with_issuer_key() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -349,7 +349,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -384,7 +384,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -422,7 +422,7 @@ async fn test_create_credential_with_big_picture_success() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -442,7 +442,7 @@ async fn test_create_credential_with_big_picture_success() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(1, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VC", credential.exchange);
+    assert_eq!("OPENID4VCI_DRAFT13", credential.exchange);
 }
 
 #[tokio::test]
@@ -465,7 +465,7 @@ async fn test_create_credential_failed_specified_object_claim() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -503,7 +503,7 @@ async fn test_create_credential_boolean_value_wrong() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -524,48 +524,6 @@ async fn test_create_credential_boolean_value_wrong() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0061", resp.error_code().await);
-}
-
-#[tokio::test]
-async fn test_fail_to_create_credential_issuance_disabled() {
-    // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
-        .await;
-    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
-        .schema
-        .id;
-    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
-
-    // WHEN
-    let resp = context
-        .api
-        .credentials
-        .create(
-            credential_schema.id,
-            "MDOC_OPENID4VP",
-            did.id,
-            serde_json::json!([
-                {
-                    "claimId": claim_id.to_string(),
-                    "value": "foo",
-                    "path": "firstName"
-                },
-                {
-                    "claimId": claim_id1.to_string(),
-                    "value": "true",
-                    "path": "isOver18"
-                }
-            ]),
-            None,
-        )
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
 }
 
 #[tokio::test]
@@ -597,7 +555,7 @@ async fn test_fail_create_credential_with_empty_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
@@ -613,7 +571,7 @@ async fn test_fail_create_credential_with_empty_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
@@ -662,7 +620,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -685,7 +643,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -757,7 +715,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -775,7 +733,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -792,7 +750,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {
@@ -810,7 +768,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             did.id,
             serde_json::json!([
                 {

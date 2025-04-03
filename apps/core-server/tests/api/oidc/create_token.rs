@@ -47,7 +47,7 @@ async fn test_oidc_issuer_create_token() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -116,7 +116,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -190,7 +190,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()

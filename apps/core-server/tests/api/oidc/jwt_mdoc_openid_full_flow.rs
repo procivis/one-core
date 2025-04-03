@@ -199,7 +199,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             &jwt_credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -215,7 +215,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             &mdoc_credential_schema,
             CredentialStateEnum::Offered,
             &server_mdoc_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_mdoc_local_key.to_owned()),
@@ -234,7 +234,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -316,7 +316,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             &holder_jwt_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(jwt_token),
@@ -331,7 +331,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             &holder_mdoc_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(mdoc_token),
@@ -451,7 +451,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )

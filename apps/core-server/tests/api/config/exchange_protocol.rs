@@ -15,19 +15,11 @@ async fn test_exchange_protocol_capabilities() {
     let resp = resp.json_value().await;
 
     assert_eq!(
-        resp["exchange"]["OPENID4VC"]["capabilities"]["operations"],
-        json!(["ISSUANCE", "VERIFICATION"])
-    );
-    assert_eq!(
-        resp["exchange"]["MDOC_OPENID4VP"]["capabilities"]["operations"],
-        json!(["VERIFICATION"])
-    );
-    assert_eq!(
-        resp["exchange"]["OPENID4VC"]["capabilities"]["supportedTransports"],
+        resp["verificationProtocol"]["OPENID4VP_DRAFT20"]["capabilities"]["supportedTransports"],
         json!(["HTTP", "BLE", "MQTT"])
     );
     assert_eq!(
-        resp["exchange"]["MDOC_OPENID4VP"]["capabilities"]["supportedTransports"],
+        resp["verificationProtocol"]["MDOC_OPENID4VP"]["capabilities"]["supportedTransports"],
         json!(["HTTP", "BLE", "MQTT"])
     );
 }

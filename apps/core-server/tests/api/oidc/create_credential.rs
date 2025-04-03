@@ -212,7 +212,7 @@ async fn test_post_issuer_credential_with(
             &credential_schema,
             CredentialStateEnum::Offered,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),
@@ -328,7 +328,7 @@ async fn test_post_issuer_credential_mdoc() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),

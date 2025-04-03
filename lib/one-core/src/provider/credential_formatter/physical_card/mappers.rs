@@ -9,7 +9,7 @@ use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, CredentialSubject, DetailCredential,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::exchange_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
+use crate::provider::verification_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
 
 impl OptiocalBarcodeCredential {
     pub fn from_token(token: &str) -> Result<Self, FormatterError> {

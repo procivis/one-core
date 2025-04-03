@@ -76,7 +76,7 @@ async fn test_list_proof_success() {
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
             )
@@ -167,7 +167,7 @@ async fn test_list_proofs_by_ids() {
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
             )
@@ -294,7 +294,7 @@ async fn test_list_proofs_by_name() {
                 None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
             )
@@ -312,7 +312,7 @@ async fn test_list_proofs_by_name() {
             None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
         )
@@ -436,7 +436,7 @@ async fn test_list_proofs_by_schema_ids() {
                 None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
             )
@@ -454,7 +454,7 @@ async fn test_list_proofs_by_schema_ids() {
             None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
         )
@@ -558,7 +558,7 @@ async fn test_list_proofs_by_state() {
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
             )
@@ -576,7 +576,7 @@ async fn test_list_proofs_by_state() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Error,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
         )
@@ -677,7 +677,7 @@ async fn test_list_proof_with_retain_date() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
         )
@@ -726,7 +726,7 @@ async fn test_list_proofs_with_org_by_interaction() {
                 None,
                 None,
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 Some(&interaction),
                 key.clone(),
             )
@@ -773,7 +773,7 @@ async fn test_list_proofs_with_org_by_interaction() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Error,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )
@@ -866,7 +866,7 @@ async fn test_list_proofs_by_role() {
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
-                "OPENID4VC",
+                "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
             )
@@ -888,7 +888,7 @@ async fn test_list_proofs_by_role() {
             None,
             None,
             ProofStateEnum::Error,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key.to_owned(),
         )

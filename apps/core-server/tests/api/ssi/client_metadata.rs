@@ -46,7 +46,7 @@ async fn test_get_client_metadata() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key.to_owned(),
         )
@@ -208,7 +208,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Rejected,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )

@@ -52,7 +52,7 @@ async fn test_run_task_suspend_check_with_update() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 suspend_end_date: Some(a_while_ago),
                 ..Default::default()
@@ -153,7 +153,7 @@ async fn test_run_retain_proof_check_with_update() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -167,7 +167,7 @@ async fn test_run_retain_proof_check_with_update() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )

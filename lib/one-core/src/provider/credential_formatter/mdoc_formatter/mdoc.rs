@@ -10,8 +10,8 @@ use sha2::{Digest, Sha256};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
-use crate::provider::exchange_protocol::iso_mdl::common::EReaderKey;
-use crate::provider::exchange_protocol::iso_mdl::device_engagement::DeviceEngagement;
+use crate::provider::verification_protocol::iso_mdl::common::EReaderKey;
+use crate::provider::verification_protocol::iso_mdl::device_engagement::DeviceEngagement;
 
 pub type Namespace = String;
 
@@ -280,7 +280,7 @@ impl TryFrom<ciborium::Value> for Bstr {
 // used in DeviceSigned as detached payload
 // should be serialized as cbor array: DeviceAuthentication = ["DeviceAuthentication", SessionTranscriptBytes, DocType; DeviceNameSpaceBytes]
 #[derive(Debug, PartialEq)]
-pub struct DeviceAuthentication {
+pub(crate) struct DeviceAuthentication {
     pub session_transcript: SessionTranscript,
     pub doctype: DocType,
     pub device_namespaces: EmbeddedCbor<DeviceNamespaces>,
@@ -308,7 +308,7 @@ impl Serialize for DeviceAuthentication {
 //    OID4VPHandover
 //  ]
 #[derive(Debug, Clone, PartialEq)]
-pub struct SessionTranscript {
+pub(crate) struct SessionTranscript {
     pub device_engagement_bytes: Option<EmbeddedCbor<DeviceEngagement>>,
     pub e_reader_key_bytes: Option<EmbeddedCbor<EReaderKey>>,
     pub handover: Option<OID4VPHandover>,

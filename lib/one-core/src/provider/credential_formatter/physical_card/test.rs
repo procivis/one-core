@@ -13,11 +13,11 @@ use crate::provider::credential_formatter::physical_card::model::{
     OptiocalBarcodeCredential, TerseBitstringStatusListEntry,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::exchange_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::remote_entity_storage::{
     MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
 };
+use crate::provider::verification_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
 
 // https://w3c-ccg.github.io/vc-barcodes/#example-a-json-ld-vc-for-a-utopia-ead-vcb-0
 // https://w3c-ccg.github.io/vc-barcodes/#verifying-0

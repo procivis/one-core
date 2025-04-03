@@ -3,9 +3,9 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -36,7 +36,7 @@ pub struct ProofService {
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+    protocol_provider: Arc<dyn VerificationProtocolProvider>,
     #[allow(dead_code)]
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
@@ -60,7 +60,7 @@ impl ProofService {
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+        protocol_provider: Arc<dyn VerificationProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,

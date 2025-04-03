@@ -68,7 +68,7 @@ async fn test_delete_proof_claims_success() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
         )
@@ -81,7 +81,7 @@ async fn test_delete_proof_claims_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &verifier_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;

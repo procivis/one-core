@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use config::core_config::{
@@ -12,12 +11,15 @@ use provider::caching_loader::json_schema::JsonSchemaCache;
 use provider::caching_loader::trust_list::TrustListCache;
 use provider::caching_loader::vct::VctTypeMetadataCache;
 use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
-use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
-use provider::exchange_protocol::ExchangeProtocolProviderImpl;
+use provider::issuance_protocol::provider::IssuanceProtocolProviderCoreImpl;
+use provider::issuance_protocol::IssuanceProtocolProviderImpl;
 use provider::mqtt_client::MqttClient;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
 use provider::trust_management::provider::TrustManagementProviderImpl;
+use provider::verification_protocol::{
+    verification_protocol_providers_from_config, VerificationProtocolProviderImpl,
+};
 use repository::DataRepository;
 use service::backup::BackupService;
 use service::config::ConfigService;
@@ -39,13 +41,20 @@ use util::ble_resource::BleWaiter;
 use crate::config::core_config::{DidConfig, RevocationConfig};
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::provider::ExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::issuance_protocol_providers_from_config;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::service::cache::CacheService;
+use crate::service::credential_schema::CredentialSchemaService;
+use crate::service::history::HistoryService;
+use crate::service::key::KeyService;
+use crate::service::revocation_list::RevocationListService;
+use crate::service::{oid4vci_draft13, oid4vp_draft20};
 
 pub mod config;
 pub mod provider;
@@ -57,15 +66,6 @@ pub mod service;
 pub mod common_mapper;
 mod common_validator;
 pub mod util;
-
-use crate::provider::did_method::mdl::DidMdlValidator;
-use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
-use crate::service::cache::CacheService;
-use crate::service::credential_schema::CredentialSchemaService;
-use crate::service::history::HistoryService;
-use crate::service::key::KeyService;
-use crate::service::oidc::OIDCService;
-use crate::service::revocation_list::RevocationListService;
 
 pub type DidMethodCreator = Box<
     dyn FnOnce(
@@ -100,7 +100,6 @@ pub type RevocationMethodCreator = Box<
 >;
 
 pub struct OneCore {
-    pub exchange_protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
     pub trust_anchor_service: TrustAnchorService,
@@ -114,7 +113,8 @@ pub struct OneCore {
     pub proof_service: ProofService,
     pub config_service: ConfigService,
     pub revocation_list_service: RevocationListService,
-    pub oidc_service: OIDCService,
+    pub oid4vci_service: oid4vci_draft13::OIDCService,
+    pub oid4vp_service: oid4vp_draft20::OIDCService,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub task_service: TaskService,
@@ -404,15 +404,26 @@ impl OneCore {
         .map_err(OneCoreBuildError::Config)?;
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
-        let exchange_protocols = exchange_protocol_providers_from_config(
+        let issuance_protocols = issuance_protocol_providers_from_config(
+            &mut core_config.issuance_protocol,
+            providers.core_base_url.clone(),
+            formatter_provider.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            revocation_method_provider.clone(),
+            did_method_provider.clone(),
+            client.clone(),
+        )
+        .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
+
+        let verification_protocols = verification_protocol_providers_from_config(
             Arc::new(core_config.clone()),
-            &mut core_config.exchange,
+            &mut core_config.verification_protocol,
             providers.core_base_url.clone(),
             data_provider.clone(),
             formatter_provider.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
-            revocation_method_provider.clone(),
             did_method_provider.clone(),
             ble_waiter.clone(),
             client.clone(),
@@ -421,10 +432,8 @@ impl OneCore {
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
         let config = Arc::new(core_config);
-        let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(
-            Arc::new(ExchangeProtocolProviderImpl::new(
-                exchange_protocols.to_owned(),
-            )),
+        let issuance_provider = Arc::new(IssuanceProtocolProviderCoreImpl::new(
+            Arc::new(IssuanceProtocolProviderImpl::new(issuance_protocols)),
             formatter_provider.clone(),
             data_provider.get_credential_repository(),
             revocation_method_provider.clone(),
@@ -437,8 +446,11 @@ impl OneCore {
             providers.core_base_url.clone(),
         ));
 
+        let verification_provider = Arc::new(VerificationProtocolProviderImpl::new(
+            verification_protocols,
+        ));
+
         Ok(OneCore {
-            exchange_protocols,
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_trust_entity_repository(),
@@ -473,7 +485,7 @@ impl OneCore {
                 data_provider.get_revocation_list_repository(),
                 revocation_method_provider.clone(),
                 formatter_provider.clone(),
-                protocol_provider.clone(),
+                issuance_provider.clone(),
                 did_method_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
@@ -502,16 +514,23 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 config.clone(),
             ),
-            oidc_service: OIDCService::new(
+            oid4vci_service: oid4vci_draft13::OIDCService::new(
                 providers.core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
+                data_provider.get_credential_repository(),
+                data_provider.get_interaction_repository(),
+                config.clone(),
+                issuance_provider.clone(),
+                data_provider.get_did_repository(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+            ),
+            oid4vp_service: oid4vp_draft20::OIDCService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_key_repository(),
                 key_provider.clone(),
-                data_provider.get_interaction_repository(),
                 config.clone(),
-                protocol_provider.clone(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -561,7 +580,7 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 formatter_provider.clone(),
                 revocation_method_provider.clone(),
-                protocol_provider.clone(),
+                verification_provider.clone(),
                 did_method_provider.clone(),
                 ble_waiter,
                 config.clone(),
@@ -598,7 +617,8 @@ impl OneCore {
                 key_provider,
                 key_algorithm_provider,
                 formatter_provider,
-                protocol_provider,
+                issuance_provider,
+                verification_provider,
                 did_method_provider,
                 config.clone(),
                 client.clone(),

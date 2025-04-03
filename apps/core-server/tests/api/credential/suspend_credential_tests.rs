@@ -33,7 +33,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
         .await;
@@ -83,7 +83,7 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
         .await;
@@ -146,7 +146,7 @@ async fn test_suspend_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
                 key: Some(issuer_key),
@@ -202,7 +202,7 @@ async fn test_suspend_credential_with_none_fails() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
         .await;
@@ -240,7 +240,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 ..Default::default()

@@ -30,7 +30,7 @@ async fn test_get_credential_offer_success_jwt() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -100,7 +100,7 @@ async fn test_get_credential_offer_success_mdoc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -181,7 +181,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![

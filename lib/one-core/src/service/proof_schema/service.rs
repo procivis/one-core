@@ -28,7 +28,7 @@ use crate::model::proof_schema::{
     ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
     ProofSchemaRelations,
 };
-use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
@@ -355,13 +355,13 @@ impl ProofSchemaService {
             .send()
             .await
             .context("send error")
-            .map_err(ExchangeProtocolError::Transport)?
+            .map_err(VerificationProtocolError::Transport)?
             .error_for_status()
             .context("status error")
-            .map_err(ExchangeProtocolError::Transport)?
+            .map_err(VerificationProtocolError::Transport)?
             .json()
             .context("parsing error")
-            .map_err(ExchangeProtocolError::Transport)?;
+            .map_err(VerificationProtocolError::Transport)?;
 
         let credential_schema = import_credential_schema(
             credential_schema_import_request,

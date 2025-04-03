@@ -1,11 +1,13 @@
 use url::Url;
 
 use super::dto::CreateProofRequestDTO;
-use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType};
+use crate::config::core_config::{
+    CoreConfig, VerificationProtocolConfig, VerificationProtocolType,
+};
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
+use crate::provider::verification_protocol::openid4vc::model::OpenID4VpParams;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -23,7 +25,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
             "input_schemas is None".to_string(),
         ))?;
 
-    let exchange_type = config.exchange.get_fields(exchange)?.r#type;
+    let exchange_type = config.verification_protocol.get_fields(exchange)?.r#type;
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
@@ -60,9 +62,12 @@ pub(super) fn validate_scan_to_verify_compatibility(
     request: &CreateProofRequestDTO,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let exchange_type = config.exchange.get_fields(&request.exchange)?.r#type;
+    let exchange_type = config
+        .verification_protocol
+        .get_fields(&request.exchange)?
+        .r#type;
     match exchange_type {
-        ExchangeType::ScanToVerify => {
+        VerificationProtocolType::ScanToVerify => {
             if request.redirect_uri.is_some() || request.scan_to_verify.is_none() {
                 return Err(ServiceError::Validation(
                     ValidationError::InvalidScanToVerifyParameters,
@@ -85,14 +90,14 @@ pub(super) fn validate_mdl_exchange(
     exchange: &str,
     engagement: Option<&str>,
     redirect_uri: Option<&str>,
-    config: &ExchangeConfig,
+    config: &VerificationProtocolConfig,
 ) -> Result<(), ServiceError> {
     let exchange_type = config.get_fields(exchange)?.r#type;
     match exchange_type {
-        ExchangeType::IsoMdl if redirect_uri.is_some() => Err(ServiceError::Validation(
-            ValidationError::InvalidMdlParameters,
-        )),
-        ExchangeType::IsoMdl if engagement.is_some() => Ok(()),
+        VerificationProtocolType::IsoMdl if redirect_uri.is_some() => Err(
+            ServiceError::Validation(ValidationError::InvalidMdlParameters),
+        ),
+        VerificationProtocolType::IsoMdl if engagement.is_some() => Ok(()),
         _ if engagement.is_some() => Err(ServiceError::Validation(
             ValidationError::InvalidMdlParameters,
         )),
@@ -103,15 +108,15 @@ pub(super) fn validate_mdl_exchange(
 pub(super) fn validate_redirect_uri(
     exchange: &str,
     redirect_uri: Option<&str>,
-    config: &ExchangeConfig,
+    config: &VerificationProtocolConfig,
 ) -> Result<(), ServiceError> {
     let fields = config.get_fields(exchange)?;
     match fields.r#type {
-        ExchangeType::OpenId4Vc => {
+        VerificationProtocolType::OpenId4VpDraft20 => {
             if let Some(redirect_uri) = redirect_uri {
-                let exchange_params: OpenID4VCParams = config.get(exchange)?;
+                let exchange_params: OpenID4VpParams = config.get(exchange)?;
 
-                if !exchange_params.presentation.redirect_uri.enabled {
+                if !exchange_params.redirect_uri.enabled {
                     return Err(ValidationError::InvalidRedirectUri.into());
                 }
 
@@ -119,7 +124,6 @@ pub(super) fn validate_redirect_uri(
                     Url::parse(redirect_uri).map_err(|_| ValidationError::InvalidRedirectUri)?;
 
                 if !exchange_params
-                    .presentation
                     .redirect_uri
                     .allowed_schemes
                     .contains(&url.scheme().to_string())

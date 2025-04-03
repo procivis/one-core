@@ -8,7 +8,9 @@ use shared_types::{CredentialSchemaId, DidValue};
 
 use super::json_ld_classic::verify_credential_signature;
 use super::model::{CredentialData, HolderBindingCtx};
-use crate::config::core_config::{ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType};
+use crate::config::core_config::{
+    KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
+};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
@@ -136,7 +138,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
             selective_disclosure: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
-            proof_exchange_protocols: vec![ExchangeType::ScanToVerify],
+            proof_exchange_protocols: vec![VerificationProtocolType::ScanToVerify],
             revocation_methods: vec![RevocationType::None],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,

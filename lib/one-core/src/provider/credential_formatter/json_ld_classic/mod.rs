@@ -22,7 +22,8 @@ use super::json_ld::{
 use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
-    DidType, ExchangeType, FormatType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    DidType, FormatType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    VerificationProtocolType,
 };
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -298,8 +299,8 @@ impl CredentialFormatter for JsonLdClassic {
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
-            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
-            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             revocation_methods: vec![
                 RevocationType::None,
                 RevocationType::BitstringStatusList,

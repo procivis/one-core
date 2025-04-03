@@ -9,7 +9,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::config::core_config::{CoreConfig, ExchangeType, Fields, KeyStorageType, TransportType};
+use crate::config::core_config::{
+    CoreConfig, Fields, KeyStorageType, TransportType, VerificationProtocolType,
+};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -40,21 +42,21 @@ use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
-use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
-    ShareResponse,
-};
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
-use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
+use crate::provider::verification_protocol::openid4vc::model::{
+    ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+    ShareResponse,
+};
+use crate::provider::verification_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vc::openidvc_ble::BLEPeer;
+use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
+use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::claim_repository::MockClaimRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -91,7 +93,7 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
-    pub protocol_provider: MockExchangeProtocolProviderExtra,
+    pub protocol_provider: MockVerificationProtocolProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
@@ -144,7 +146,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state,
@@ -231,7 +233,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Pending,
         redirect_uri: None,
@@ -345,7 +347,7 @@ async fn test_get_proof_exists() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -575,7 +577,7 @@ async fn test_get_proof_with_array_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -789,7 +791,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1008,7 +1010,7 @@ async fn test_get_proof_with_object_array_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1210,7 +1212,7 @@ async fn test_get_proof_with_array() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1442,7 +1444,7 @@ async fn test_get_proof_with_array_in_object() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1680,7 +1682,7 @@ async fn test_get_proof_with_object_array() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1860,7 +1862,7 @@ async fn test_get_proof_list_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
@@ -1949,7 +1951,7 @@ async fn test_get_proof_list_success() {
 
 #[tokio::test]
 async fn test_create_proof_using_invalid_did_method() {
-    let exchange_type = ExchangeType::OpenId4Vc;
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2033,19 +2035,17 @@ async fn test_create_proof_using_invalid_did_method() {
         .times(2)
         .returning(move |_| Some(formatter.clone()));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
 
         protocol
             .inner
             .expect_get_capabilities()
             .times(1)
-            .returning(|| ExchangeProtocolCapabilities {
+            .returning(|| VerificationProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-                issuance_did_methods: vec![],
-                verification_did_methods: vec!["KEY".to_owned()],
+                did_methods: vec![crate::config::core_config::DidType::Key],
             });
 
         Some(Arc::new(protocol))
@@ -2071,7 +2071,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
 #[tokio::test]
 async fn test_create_proof_without_related_key() {
-    let exchange_type = ExchangeType::OpenId4Vc;
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2163,19 +2163,17 @@ async fn test_create_proof_without_related_key() {
         .withf(move |proof| proof.exchange == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
 
         protocol
             .inner
             .expect_get_capabilities()
             .times(1)
-            .returning(|| ExchangeProtocolCapabilities {
+            .returning(|| VerificationProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-                issuance_did_methods: vec![],
-                verification_did_methods: vec!["KEY".to_owned()],
+                did_methods: vec![crate::config::core_config::DidType::Key],
             });
 
         Some(Arc::new(protocol))
@@ -2197,7 +2195,7 @@ async fn test_create_proof_without_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_with_related_key() {
-    let exchange_type = ExchangeType::OpenId4Vc;
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
@@ -2288,19 +2286,17 @@ async fn test_create_proof_with_related_key() {
         .withf(move |proof| proof.exchange == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
 
         protocol
             .inner
             .expect_get_capabilities()
             .times(1)
-            .returning(|| ExchangeProtocolCapabilities {
+            .returning(|| VerificationProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-                issuance_did_methods: vec![],
-                verification_did_methods: vec!["KEY".to_owned()],
+                did_methods: vec![crate::config::core_config::DidType::Key],
             });
 
         Some(Arc::new(protocol))
@@ -2322,7 +2318,7 @@ async fn test_create_proof_with_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_failed_no_key_with_assertion_method_role() {
-    let exchange_type = ExchangeType::OpenId4Vc;
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2405,7 +2401,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_exchange() {
-    let exchange = "OPENID4VC".to_string();
+    let exchange = "OPENID4VP_DRAFT20".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2463,7 +2459,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
-    let exchange_type = ExchangeType::OpenId4Vc;
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2577,7 +2573,7 @@ async fn test_create_proof_schema_deleted() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Uuid::new_v4().into(),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: None,
             verifier_key: None,
             scan_to_verify: None,
@@ -2616,7 +2612,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .expect_get_capabilities()
         .once()
         .return_once(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2635,7 +2631,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Uuid::new_v4().into(),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: None,
             verifier_key: None,
             scan_to_verify: Some(ScanToVerifyRequestDTO {
@@ -2654,7 +2650,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_verification_key_storage() {
-    let exchange_type = ExchangeType::OpenId4Vc;
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2766,7 +2762,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Uuid::new_v4().into(),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: Some("invalid://domain.com".to_string()),
             verifier_key: None,
             scan_to_verify: None,
@@ -2784,8 +2780,8 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
 async fn test_share_proof_created_success() {
     let proof_id = Uuid::new_v4().into();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
-    let mut protocol = MockExchangeProtocol::default();
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol = MockVerificationProtocol::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm
@@ -2898,8 +2894,8 @@ async fn test_share_proof_created_success() {
 async fn test_share_proof_pending_success() {
     let proof_id = Uuid::new_v4().into();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    let mut protocol = MockExchangeProtocol::default();
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol = MockVerificationProtocol::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm
@@ -3031,7 +3027,7 @@ async fn test_delete_proof_ok_for_allowed_state(
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, state);
-    proof.exchange = "OPENID4VC".to_string();
+    proof.exchange = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3042,9 +3038,9 @@ async fn test_delete_proof_ok_for_allowed_state(
         organisation: None,
     });
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
         protocol
             .inner
             .expect_retract_proof()
@@ -3103,7 +3099,7 @@ async fn test_delete_proof_ok_for_requested_state() {
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Requested);
-    proof.exchange = "OPENID4VC".to_string();
+    proof.exchange = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3114,9 +3110,9 @@ async fn test_delete_proof_ok_for_requested_state() {
         organisation: None,
     });
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
         protocol
             .inner
             .expect_retract_proof()
@@ -3178,7 +3174,7 @@ async fn test_delete_proof_fails_for_invalid_state(
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, state.clone());
-    proof.exchange = "OPENID4VC".to_string();
+    proof.exchange = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3229,7 +3225,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let device_address = "00000001-5026-444A-9E0E-F6F2450F3A77";
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    proof.exchange = "OPENID4VC".to_string();
+    proof.exchange = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "BLE".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3277,9 +3273,9 @@ async fn test_retract_proof_with_bluetooth_ok() {
         }),
     });
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
         protocol
             .inner
             .expect_retract_proof()
@@ -3361,9 +3357,9 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         organisation: None,
     });
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
-        let mut protocol = MockExchangeProtocol::default();
+        let mut protocol = MockVerificationProtocol::default();
         protocol
             .inner
             .expect_retract_proof()
@@ -3416,7 +3412,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
 
 #[test]
 fn test_validate_mdl_exchange() {
-    let config = generic_config().core.exchange;
+    let config = generic_config().core.verification_protocol;
     let engagement = Some("engagement");
     let uri = Some("uri");
 
@@ -3424,7 +3420,7 @@ fn test_validate_mdl_exchange() {
     assert!(validate_mdl_exchange("ISO_MDL", engagement, uri, &config).is_err());
     assert!(validate_mdl_exchange("ISO_MDL", None, uri, &config).is_err());
 
-    assert!(validate_mdl_exchange("OPENID4VC", None, uri, &config).is_ok());
-    assert!(validate_mdl_exchange("OPENID4VC", engagement, uri, &config).is_err());
-    assert!(validate_mdl_exchange("OPENID4VC", engagement, None, &config).is_err());
+    assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", None, uri, &config).is_ok());
+    assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, uri, &config).is_err());
+    assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, None, &config).is_err());
 }

@@ -143,7 +143,7 @@ async fn test_get_presentation_definition_success() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
         )
@@ -224,7 +224,7 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
         )
@@ -262,7 +262,7 @@ async fn test_get_presentation_definition_failed_wrong_state() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
         )

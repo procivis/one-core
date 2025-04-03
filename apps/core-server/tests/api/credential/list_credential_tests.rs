@@ -32,7 +32,7 @@ async fn test_get_list_credential_success() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
-                "OPENID4VC",
+                "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -53,7 +53,7 @@ async fn test_get_list_credential_success() {
     assert_eq!(resp["totalPages"], 2);
     assert_eq!(resp["values"].as_array().unwrap().len(), 8);
     assert!(resp["values"][0]["schema"]["layoutProperties"].is_null());
-    assert_eq!(resp["values"][0]["exchange"], "OPENID4VC")
+    assert_eq!(resp["values"][0]["exchange"], "OPENID4VCI_DRAFT13")
 }
 
 #[tokio::test]
@@ -74,7 +74,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
                 &credential_schema,
                 CredentialStateEnum::Created,
                 &did,
-                "OPENID4VC",
+                "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -119,7 +119,7 @@ async fn test_get_list_credential_filter_by_role() {
                     &credential_schema,
                     CredentialStateEnum::Created,
                     &did,
-                    "OPENID4VC",
+                    "OPENID4VCI_DRAFT13",
                     TestingCredentialParams {
                         role: Some(role_enum.clone()),
                         ..Default::default()
@@ -189,7 +189,7 @@ async fn test_get_list_credential_filter_by_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -201,7 +201,7 @@ async fn test_get_list_credential_filter_by_name() {
             &credential_schema2,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -254,7 +254,7 @@ async fn test_get_list_credential_filter_by_ids() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
-                "OPENID4VC",
+                "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -310,7 +310,7 @@ async fn test_get_list_credential_include_layout_properties_success() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
-                "OPENID4VC",
+                "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -379,7 +379,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -391,7 +391,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
             &credential_schema2,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -463,7 +463,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
                     (claim_1, "super-name-100", "extra-value-11"),
@@ -481,7 +481,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(claim_2, "super-name-200", "extra-value-22")]),
                 ..Default::default()
@@ -496,7 +496,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -568,7 +568,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
                     (claim_1, "super-name-100", "extra-value-11"),
@@ -586,7 +586,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(claim_2, "super-name-200", "extra-value-33")]),
                 ..Default::default()
@@ -601,7 +601,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -673,7 +673,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
                     (claim_1, "test 2", "extra-value-11"),
@@ -691,7 +691,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(claim_2, "super-name-200", "test 3")]),
                 ..Default::default()
@@ -706,7 +706,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;

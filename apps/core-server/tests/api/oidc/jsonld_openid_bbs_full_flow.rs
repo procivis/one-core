@@ -221,7 +221,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_issuer_did.unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(server_remote_holder_did.clone()),
                 key: Some(server_issuer_key.unwrap()),
@@ -241,7 +241,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             Some(&server_remote_holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_verifier_key,
         )
@@ -319,7 +319,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &holder_remote_issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_local_holder_did.clone()),
                 credential: Some(credentials.unwrap()),
@@ -434,7 +434,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             Some(&holder_local_holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             holder_local_holer_key,
         )
@@ -654,7 +654,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_issuer_did.unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(server_remote_holder_did.clone()),
                 key: Some(server_issuer_key.unwrap()),
@@ -684,7 +684,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             Some(&server_remote_holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_verifier_key,
         )
@@ -756,7 +756,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &holder_remote_issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_local_holder_did.clone()),
                 credential: Some(credentials.unwrap()),
@@ -880,7 +880,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             Some(&holder_local_holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             holder_local_holer_key,
         )
@@ -980,7 +980,7 @@ async fn test_opeind4vc_jsonld_only_bbs_supported() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_issuer_did.unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_issuer_key.unwrap()),

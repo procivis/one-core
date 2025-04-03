@@ -229,7 +229,7 @@ async fn test_openid4vc_mdoc_flow(
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -248,7 +248,7 @@ async fn test_openid4vc_mdoc_flow(
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -303,7 +303,7 @@ async fn test_openid4vc_mdoc_flow(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
@@ -407,7 +407,7 @@ async fn test_openid4vc_mdoc_flow(
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )
@@ -612,7 +612,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -631,7 +631,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -686,7 +686,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
@@ -802,7 +802,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )
@@ -991,7 +991,7 @@ async fn test_openid4vc_mdoc_flow_array(
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -1021,7 +1021,7 @@ async fn test_openid4vc_mdoc_flow_array(
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -1074,7 +1074,7 @@ async fn test_openid4vc_mdoc_flow_array(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
@@ -1196,7 +1196,7 @@ async fn test_openid4vc_mdoc_flow_array(
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )

@@ -5,16 +5,16 @@ use regex::Regex;
 use url::Url;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{CoreConfig, DatatypeType, ExchangeType};
+use crate::config::core_config::{CoreConfig, DatatypeType, IssuanceProtocolType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
 use crate::config::validator::exchange::{
-    validate_exchange_did_compatibility, validate_exchange_operation, validate_exchange_type,
+    validate_exchange_type, validate_protocol_did_compatibility,
 };
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
-use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
-use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
+use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
+use crate::provider::issuance_protocol::openid4vc::model::OpenID4VCIParams;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
@@ -22,15 +22,18 @@ use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 pub(crate) fn validate_create_request(
     did_method: &str,
     exchange: &str,
-    exchange_capabilities: &ExchangeProtocolCapabilities,
+    exchange_capabilities: &IssuanceProtocolCapabilities,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    validate_exchange_type(exchange, &config.exchange)?;
-    validate_exchange_operation(exchange_capabilities, &Operation::ISSUANCE)?;
-    validate_exchange_did_compatibility(exchange_capabilities, &Operation::ISSUANCE, did_method)?;
+    validate_exchange_type(exchange, &config.issuance_protocol)?;
+    validate_protocol_did_compatibility(
+        &exchange_capabilities.did_methods,
+        did_method,
+        &config.did,
+    )?;
     validate_format_and_exchange_protocol_compatibility(exchange, formatter_capabilities, config)?;
     validate_format_and_did_method_compatibility(did_method, formatter_capabilities, config)?;
 
@@ -107,12 +110,12 @@ pub(super) fn validate_redirect_uri(
     redirect_uri: Option<&str>,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let fields = config.exchange.get_fields(exchange)?;
+    let fields = config.issuance_protocol.get_fields(exchange)?;
     match fields.r#type {
-        ExchangeType::OpenId4Vc => {
+        IssuanceProtocolType::OpenId4VciDraft13 => {
             if let Some(redirect_uri) = redirect_uri {
-                let exchange_params: OpenID4VCParams = config.exchange.get(exchange)?;
-                let params = exchange_params.issuance.redirect_uri;
+                let exchange_params: OpenID4VCIParams = config.issuance_protocol.get(exchange)?;
+                let params = exchange_params.redirect_uri;
 
                 if !params.enabled {
                     return Err(ValidationError::InvalidRedirectUri.into());
@@ -128,7 +131,6 @@ pub(super) fn validate_redirect_uri(
 
             Ok(())
         }
-        _ => Ok(()),
     }
 }
 
@@ -447,7 +449,7 @@ fn validate_format_and_exchange_protocol_compatibility(
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let exchange_protocol = config.exchange.get_fields(exchange)?;
+    let exchange_protocol = config.issuance_protocol.get_fields(exchange)?;
 
     if !formatter_capabilities
         .issuance_exchange_protocols

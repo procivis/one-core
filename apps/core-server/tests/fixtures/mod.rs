@@ -77,8 +77,8 @@ pub fn create_config(
     });
     let allow_insecure_http = Some(
         indoc::indoc! {"
-        exchange:
-            OPENID4VC:
+        verificationProtocol:
+            OPENID4VP_DRAFT20:
                 params:
                     public:
                         allowInsecureHttpTransport: true

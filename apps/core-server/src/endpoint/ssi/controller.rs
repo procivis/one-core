@@ -6,8 +6,8 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use headers::Authorization;
-use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
-use one_core::provider::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
+use one_core::provider::issuance_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
+use one_core::provider::verification_protocol::openid4vc::error::OpenID4VCError;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofId, ProofSchemaId,
@@ -200,7 +200,7 @@ pub(crate) async fn oidc_issuer_get_issuer_metadata(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vci_service
         .oidc_issuer_get_issuer_metadata(&id)
         .await;
 
@@ -249,7 +249,7 @@ pub(crate) async fn oidc_issuer_service_discovery(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vci_service
         .oidc_issuer_service_discovery(&id)
         .await;
 
@@ -303,7 +303,7 @@ pub(crate) async fn oidc_issuer_get_credential_offer(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vci_service
         .oidc_issuer_get_credential_offer(credential_schema_id, credential_id)
         .await;
 
@@ -367,7 +367,7 @@ pub(crate) async fn oidc_issuer_create_token(
 
         state
             .core
-            .oidc_service
+            .oid4vci_service
             .oidc_issuer_create_token(&id, request)
             .await
     }
@@ -444,7 +444,7 @@ pub(crate) async fn oidc_issuer_create_credential(
     let access_token = token.token();
     let result = state
         .core
-        .oidc_service
+        .oid4vci_service
         .oidc_issuer_create_credential(&credential_schema_id, access_token, request.into())
         .await;
 
@@ -504,7 +504,7 @@ pub(crate) async fn oidc_verifier_direct_post(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vp_service
         .oidc_verifier_direct_post(request.into())
         .await;
 
@@ -514,14 +514,23 @@ pub(crate) async fn oidc_verifier_direct_post(
             Json(OpenID4VPDirectPostResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(
-            ServiceError::OpenID4VCIError(error)
-            | ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(error)),
-        ) => {
-            tracing::error!("OpenID4VCI validation error: {:?}", error);
+        Err(ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(error))) => {
+            tracing::error!("OpenID4VC validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
-                Json(OpenID4VCIErrorResponseRestDTO::from(error)),
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
+        Err(ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest)) => {
+            tracing::error!("OpenID4VC invalid request");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
             )
                 .into_response()
         }
@@ -573,7 +582,7 @@ pub(crate) async fn oidc_verifier_presentation_definition(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vp_service
         .oidc_verifier_presentation_definition(id)
         .await;
 
@@ -633,7 +642,7 @@ pub(crate) async fn oidc_verifier_client_metadata(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vp_service
         .oidc_verifier_get_client_metadata(proof_id)
         .await;
 
@@ -697,7 +706,7 @@ pub(crate) async fn oidc_verifier_client_request(
 ) -> Response {
     let result = state
         .core
-        .oidc_service
+        .oid4vp_service
         .oidc_verifier_get_client_request(proof_id)
         .await;
 

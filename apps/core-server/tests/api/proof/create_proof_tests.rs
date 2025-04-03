@@ -57,7 +57,7 @@ async fn test_create_proof_success_without_related_key() {
         .proofs
         .create(
             &proof_schema.id.to_string(),
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             &did.id.to_string(),
             None,
             None,
@@ -71,7 +71,7 @@ async fn test_create_proof_success_without_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.exchange, "OPENID4VC");
+    assert_eq!(proof.exchange, "OPENID4VP_DRAFT20");
     assert_eq!(proof.transport, "HTTP");
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
@@ -120,7 +120,7 @@ async fn test_create_proof_success_with_related_key() {
         .proofs
         .create(
             &proof_schema.id.to_string(),
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             &did.id.to_string(),
             None,
             Some(&key.id.to_string()),
@@ -134,7 +134,7 @@ async fn test_create_proof_success_with_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.exchange, "OPENID4VC");
+    assert_eq!(proof.exchange, "OPENID4VP_DRAFT20");
 }
 
 #[tokio::test]
@@ -192,7 +192,7 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
         .bearer_auth("test")
         .json(&json!({
           "proofSchemaId": proof_schema.id,
-          "exchange": "OPENID4VC",
+          "exchange": "OPENID4VP_DRAFT20",
           "verifierDid": did.id,
         }))
         .send()
@@ -212,7 +212,7 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
         &base_url,
         Some(TestingConfigParams {
             additional_config: Some(indoc::formatdoc! {"
-            exchange:
+            verificationProtocol:
                 SCAN_TO_VERIFY:
                     type: \"SCAN_TO_VERIFY\"
                     display: \"exchange.scanToVerify\"
@@ -294,70 +294,4 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
     let proof = db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "SCAN_TO_VERIFY");
     assert_eq!(proof.state, ProofStateEnum::Error);
-}
-
-#[tokio::test]
-async fn test_create_proof_fail_with_operation_disabled() {
-    // GIVEN
-    let additional_config = Some(
-        indoc::indoc! {"
-        exchange:
-            OPENID4VC:
-                params:
-                    public:
-                        presentation:
-                            enabled: false
-    "}
-        .to_string(),
-    );
-    let (context, organisation, did, key) = TestContext::new_with_did(additional_config).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
-        .await;
-    let claim_schema = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .first()
-        .unwrap()
-        .schema
-        .to_owned();
-
-    let proof_schema = context
-        .db
-        .proof_schemas
-        .create(
-            "test",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-                validity_constraint: None,
-            }],
-        )
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "OPENID4VC",
-            &did.id.to_string(),
-            None,
-            Some(&key.id.to_string()),
-        )
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
 }

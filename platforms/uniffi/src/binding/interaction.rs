@@ -1,4 +1,4 @@
-use one_core::provider::exchange_protocol::openid4vc::model::{
+use one_core::provider::issuance_protocol::openid4vc::model::{
     OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
 use one_core::service::error::ServiceError;

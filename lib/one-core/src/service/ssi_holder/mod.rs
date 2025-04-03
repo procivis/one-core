@@ -5,10 +5,11 @@ use crate::provider::caching_loader::json_schema::JsonSchemaCache;
 use crate::provider::caching_loader::vct::VctTypeMetadataCache;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::provider::IssuanceProtocolProviderExtra;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -19,7 +20,9 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
+pub mod issuance;
 pub mod service;
+pub mod verification;
 
 mod mapper;
 
@@ -39,7 +42,8 @@ pub struct SSIHolderService {
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+    issuance_protocol_provider: Arc<dyn IssuanceProtocolProviderExtra>,
+    verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     config: Arc<core_config::CoreConfig>,
     client: Arc<dyn HttpClient>,
@@ -61,7 +65,8 @@ impl SSIHolderService {
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+        issuance_protocol_provider: Arc<dyn IssuanceProtocolProviderExtra>,
+        verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         config: Arc<core_config::CoreConfig>,
         client: Arc<dyn HttpClient>,
@@ -80,7 +85,8 @@ impl SSIHolderService {
             key_provider,
             key_algorithm_provider,
             formatter_provider,
-            protocol_provider,
+            issuance_protocol_provider,
+            verification_protocol_provider,
             did_method_provider,
             config,
             client,

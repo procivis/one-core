@@ -78,7 +78,7 @@ async fn test_get_proof_success() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -171,7 +171,7 @@ async fn test_get_proof_detached_success() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -272,7 +272,7 @@ async fn test_get_proof_with_nested_claims() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -368,7 +368,7 @@ async fn test_get_proof_with_empty_array() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -421,7 +421,7 @@ async fn test_get_proof_with_array() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
                     (
@@ -506,7 +506,7 @@ async fn test_get_proof_with_array() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -618,7 +618,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -711,7 +711,7 @@ async fn test_get_proof_with_credentials() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -725,7 +725,7 @@ async fn test_get_proof_with_credentials() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )
@@ -795,7 +795,7 @@ async fn test_get_proof_as_holder_success() {
             Some(&holder_did),
             None, // Proof schema is empty on holder side
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction), // Interaction is present on holder side
             verifier_key,
         )
@@ -876,7 +876,7 @@ async fn test_get_proof_with_retain_date() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
         )
@@ -967,7 +967,7 @@ async fn test_get_proof_with_deleted_claims() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -981,7 +981,7 @@ async fn test_get_proof_with_deleted_claims() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             verifier_key,
         )

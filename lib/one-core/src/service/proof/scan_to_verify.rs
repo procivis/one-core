@@ -11,10 +11,10 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::exchange_protocol::provider::ExchangeProtocol;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
+use crate::provider::verification_protocol::provider::VerificationProtocol;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
@@ -90,7 +90,7 @@ impl ProofService {
 
     async fn validate_scan_to_verify_proof(
         &self,
-        exchange_protocol: &dyn ExchangeProtocol,
+        exchange_protocol: &dyn VerificationProtocol,
         proof: &Proof,
         submission: &[u8],
     ) -> Result<Vec<Claim>, ServiceError> {

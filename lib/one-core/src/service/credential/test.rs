@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialService;
-use crate::config::core_config::{CoreConfig, ExchangeType, KeyAlgorithmType};
+use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -30,12 +30,11 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::exchange_protocol;
-use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
-use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
-use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
+use crate::provider::issuance_protocol::openid4vc::model::ShareResponse;
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -75,7 +74,7 @@ struct Repositories {
     pub revocation_list_repository: MockRevocationListRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
-    pub protocol_provider: MockExchangeProtocolProviderExtra,
+    pub protocol_provider: MockIssuanceProtocolProviderExtra,
     pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -125,7 +124,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Created,
@@ -203,7 +202,7 @@ fn generic_credential_list_entity() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -584,8 +583,8 @@ async fn test_share_credential_success() {
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
-    let mut protocol = MockExchangeProtocol::default();
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol = MockIssuanceProtocol::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
@@ -734,13 +733,13 @@ async fn test_create_credential_success() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -775,7 +774,7 @@ async fn test_create_credential_success() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -830,13 +829,13 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -858,7 +857,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -914,7 +913,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             credential_schema_id: Uuid::new_v4().into(),
             issuer_did: did_id.into(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![],
             redirect_uri: None,
         })
@@ -989,13 +988,13 @@ async fn test_create_credential_one_required_claim_missing_success() {
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1033,7 +1032,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         issuer_key: None,
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         claim_values: vec![],
         redirect_uri: None,
     };
@@ -1112,13 +1111,13 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1141,7 +1140,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         issuer_key: None,
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         claim_values: vec![],
         redirect_uri: None,
     };
@@ -1203,13 +1202,13 @@ async fn test_create_credential_schema_deleted() {
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1235,7 +1234,7 @@ async fn test_create_credential_schema_deleted() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
@@ -1713,13 +1712,13 @@ async fn test_create_credential_key_with_issuer_key() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1754,7 +1753,7 @@ async fn test_create_credential_key_with_issuer_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1851,13 +1850,13 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1892,7 +1891,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1959,13 +1958,13 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1998,7 +1997,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2051,13 +2050,13 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2090,7 +2089,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(Uuid::new_v4().into()),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2160,13 +2159,13 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2199,7 +2198,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2269,13 +2268,13 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2308,7 +2307,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2351,7 +2350,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     }
 
     let mut formatter_capabilities = generic_formatter_capabilities();
-    formatter_capabilities.issuance_exchange_protocols = vec![ExchangeType::ScanToVerify];
+    formatter_capabilities.issuance_exchange_protocols = vec![];
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -2366,13 +2365,13 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2392,7 +2391,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2452,13 +2451,13 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2479,7 +2478,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2985,7 +2984,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
 
     validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
@@ -3011,15 +3010,9 @@ fn test_validate_create_request_all_nested_claims_are_required() {
     .unwrap();
 }
 
-fn generic_capabilities() -> ExchangeProtocolCapabilities {
-    ExchangeProtocolCapabilities {
-        supported_transports: vec![],
-        operations: vec![
-            exchange_protocol::dto::Operation::ISSUANCE,
-            exchange_protocol::dto::Operation::VERIFICATION,
-        ],
-        issuance_did_methods: vec!["KEY".to_owned()],
-        verification_did_methods: vec![],
+fn generic_capabilities() -> IssuanceProtocolCapabilities {
+    IssuanceProtocolCapabilities {
+        did_methods: vec![crate::config::core_config::DidType::Key],
     }
 }
 
@@ -3080,7 +3073,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
@@ -3107,7 +3100,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
@@ -3122,7 +3115,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     let result = validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
@@ -3172,7 +3165,7 @@ fn test_validate_create_request_did_methods() {
 
     validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &claims,
         &schema,
@@ -3183,7 +3176,7 @@ fn test_validate_create_request_did_methods() {
 
     let result = validate_create_request(
         "INVALID",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &claims,
         &schema,
@@ -3255,7 +3248,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
@@ -3282,7 +3275,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     let result = validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
@@ -3302,7 +3295,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     validate_create_request(
         "KEY",
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
@@ -3321,31 +3314,6 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_config().core,
     )
     .unwrap();
-}
-
-#[test]
-fn test_validate_create_exchange_protocol_disabled_operation() {
-    let capabilities = ExchangeProtocolCapabilities {
-        supported_transports: vec![],
-        operations: vec![exchange_protocol::dto::Operation::VERIFICATION],
-        issuance_did_methods: vec!["KEY".to_owned()],
-        verification_did_methods: vec![],
-    };
-    let result = validate_create_request(
-        "KEY",
-        "OPENID4VC",
-        &capabilities,
-        &[],
-        &generate_credential_schema_with_claim_schemas(vec![]),
-        &generic_formatter_capabilities(),
-        &generic_config().core,
-    );
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(
-            ValidationError::InvalidExchangeOperation
-        ))
-    ));
 }
 
 #[tokio::test]
@@ -3529,7 +3497,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4086,7 +4054,7 @@ async fn test_get_credential_success_array_index_sorting() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4392,7 +4360,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4601,7 +4569,7 @@ async fn test_get_credential_success_array_single_element() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4819,13 +4787,13 @@ async fn test_create_credential_array(
             .return_once(move |_| Ok(Uuid::new_v4().into()));
     }
 
-    let mut dummy_protocol = MockExchangeProtocol::default();
+    let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -4861,7 +4829,7 @@ async fn test_create_credential_array(
             credential_schema_id: Uuid::new_v4().into(),
             issuer_did: Uuid::new_v4().into(),
             issuer_key: None,
-            exchange: "OPENID4VC".to_string(),
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: claims
                 .iter()
                 .map(|claim| CredentialRequestClaimDTO {

@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use futures::FutureExt;
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
-use one_core::provider::exchange_protocol::dto::{
+use one_core::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::exchange_protocol::openid4vc::model::ClientIdScheme;
+use one_core::provider::verification_protocol::openid4vc::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO,
@@ -123,7 +123,7 @@ impl OneCoreBinding {
         let request = params.into();
 
         let core = self.use_core().await?;
-        let oidc_service = core.oidc_service.clone();
+        let oidc_service = core.oid4vp_service.clone();
         let callback = Some(
             async move {
                 oidc_service.oidc_verifier_ble_mqtt_presentation(id).await;

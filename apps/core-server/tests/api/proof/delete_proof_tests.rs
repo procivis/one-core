@@ -26,7 +26,7 @@ async fn test_delete_proof_created_holder_success() {
             None,
             None,
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
         )
@@ -77,7 +77,7 @@ async fn test_delete_proof_accepted_holder_fail() {
             None,
             None,
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
         )
@@ -105,7 +105,7 @@ async fn test_delete_proof_created_issuer_success() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )
@@ -150,7 +150,7 @@ async fn test_delete_proof_accepted_issuer_fail() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )
@@ -178,7 +178,7 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             None,
             key,
         )

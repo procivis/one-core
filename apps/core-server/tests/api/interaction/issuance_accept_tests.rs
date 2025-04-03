@@ -122,7 +122,7 @@ async fn test_issuance_accept_openid4vc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 role: Some(CredentialRole::Holder),
@@ -274,7 +274,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -406,7 +406,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -537,7 +537,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -624,7 +624,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -716,7 +716,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -807,7 +807,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -915,7 +915,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -1001,7 +1001,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -1099,7 +1099,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -1222,7 +1222,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -1360,7 +1360,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![(schema_id, "string", "")]),
@@ -1546,7 +1546,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![

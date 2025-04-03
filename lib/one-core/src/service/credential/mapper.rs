@@ -3,7 +3,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::CredentialSchemaType;
+use super::dto::{CredentialSchemaType, DetailCredentialSchemaResponseDTO};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
@@ -383,5 +383,37 @@ impl From<String> for CredentialSchemaType {
             "mdoc" => CredentialSchemaType::Mdoc,
             _ => Self::Other(value),
         }
+    }
+}
+
+impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
+        let organisation_id = match value.organisation {
+            None => Err(ServiceError::MappingError(
+                "Organisation has not been fetched".to_string(),
+            )),
+            Some(value) => Ok(value.id),
+        }?;
+
+        Ok(Self {
+            id: value.id,
+            created_date: value.created_date,
+            deleted_at: value.deleted_at,
+            last_modified: value.last_modified,
+            imported_source_url: value.imported_source_url,
+            name: value.name,
+            external_schema: value.external_schema,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            wallet_storage_type: value.wallet_storage_type,
+            organisation_id,
+            schema_type: value.schema_type.into(),
+            schema_id: value.schema_id,
+            layout_type: value.layout_type.into(),
+            layout_properties: value.layout_properties.map(Into::into),
+            allow_suspension: value.allow_suspension,
+        })
     }
 }

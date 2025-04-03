@@ -46,7 +46,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         &credential_schema_1,
         CredentialStateEnum::Accepted,
         &did,
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
     .await;
@@ -56,7 +56,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         &credential_schema_2,
         CredentialStateEnum::Accepted,
         &did,
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
     .await;
@@ -74,7 +74,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         Some(&did),
         None,
         ProofStateEnum::Requested,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;
@@ -219,7 +219,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -244,7 +244,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             Some(&did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
         )
@@ -289,7 +289,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 ..Default::default()
@@ -317,7 +317,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             Some(&did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
         )
@@ -357,7 +357,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
         Some(&did),
         None,
         ProofStateEnum::Requested,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;
@@ -493,7 +493,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             Default::default(),
         )
         .await;
@@ -518,7 +518,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             Some(&did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
         )
@@ -565,7 +565,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &credential_schema_1,
         CredentialStateEnum::Accepted,
         &did,
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
     .await;
@@ -587,7 +587,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &credential_schema_2,
         CredentialStateEnum::Accepted,
         &did,
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
     .await;
@@ -720,7 +720,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         Some(&did),
         None,
         ProofStateEnum::Requested,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;
@@ -825,7 +825,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(
                     first_claim_schema.schema.id.into(),
@@ -843,7 +843,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
                     (
@@ -964,7 +964,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             Some(&did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
         )

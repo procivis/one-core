@@ -2,10 +2,13 @@ use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::sdjwt::{detect_sdjwt_type_from_token, SdJwtType};
-use crate::provider::exchange_protocol::error::ExchangeProtocolError;
-use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
+use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
+use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::service::error::ServiceError;
 
-pub fn map_to_openid4vp_format(format_type: &FormatType) -> Result<&'static str, OpenID4VCIError> {
+pub(crate) fn map_to_openid4vp_format(
+    format_type: &FormatType,
+) -> Result<&'static str, OpenID4VCIError> {
     match format_type {
         FormatType::Jwt => Ok("jwt_vc_json"),
         FormatType::SdJwt => Ok("vc+sd-jwt"),
@@ -17,7 +20,7 @@ pub fn map_to_openid4vp_format(format_type: &FormatType) -> Result<&'static str,
     }
 }
 
-pub fn map_from_openid4vp_format(format: &str) -> Result<String, OpenID4VCIError> {
+pub(crate) fn map_from_openid4vp_format(format: &str) -> Result<String, OpenID4VCIError> {
     match format {
         "jwt_vc_json" => Ok(FormatType::Jwt.to_string()),
         "jwt_vp_json" => Ok(FormatType::Jwt.to_string()),
@@ -30,16 +33,16 @@ pub fn map_from_openid4vp_format(format: &str) -> Result<String, OpenID4VCIError
     }
 }
 
-pub fn map_from_oidc_format_to_core_detailed(
+pub(crate) fn map_from_oidc_format_to_core_detailed(
     format: &str,
     token: Option<&str>,
-) -> Result<String, OpenID4VCError> {
+) -> Result<String, OpenIDIssuanceError> {
     match format {
         "jwt_vc_json" => Ok(FormatType::Jwt.to_string()),
         "vc+sd-jwt" | "dc+sd-jwt" => {
             if let Some(token) = token {
                 match detect_sdjwt_type_from_token(token).map_err(|_| {
-                    OpenID4VCError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
+                    OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
                 })? {
                     SdJwtType::SdJwt => Ok("SD_JWT".to_string()),
                     SdJwtType::SdJwtVc => Ok("SD_JWT_VC".to_string()),
@@ -55,7 +58,7 @@ pub fn map_from_oidc_format_to_core_detailed(
                         "bbs-2023" => Ok("JSON_LD_BBSPLUS".to_string()),
                         _ => Ok("JSON_LD_CLASSIC".to_string()),
                     },
-                    None => Err(OpenID4VCError::OpenID4VCI(
+                    None => Err(OpenIDIssuanceError::OpenID4VCI(
                         OpenID4VCIError::UnsupportedCredentialFormat,
                     )),
                 }
@@ -66,21 +69,20 @@ pub fn map_from_oidc_format_to_core_detailed(
         "jwt_vp_json" => Ok(FormatType::Jwt.to_string()),
         "ldp_vp" => Ok(FormatType::JsonLdClassic.to_string()),
         "mso_mdoc" => Ok(FormatType::Mdoc.to_string()),
-        _ => Err(OpenID4VCError::OpenID4VCI(
+        _ => Err(OpenIDIssuanceError::OpenID4VCI(
             OpenID4VCIError::UnsupportedCredentialFormat,
         )),
     }
 }
 
 // This detects precise format checking e.g. crypto suite
-pub fn detect_format_with_crypto_suite(
+pub(crate) fn detect_format_with_crypto_suite(
     credential_schema_format: &str,
     credential_content: &str,
-) -> Result<String, OpenID4VCError> {
+) -> Result<String, ServiceError> {
     let format = if credential_schema_format.starts_with("JSON_LD") {
-        map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content)).map_err(|_| {
-            OpenID4VCError::MappingError("Credential format not resolved".to_owned())
-        })?
+        map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
+            .map_err(|_| ServiceError::MappingError("Credential format not resolved".to_owned()))?
     } else {
         credential_schema_format.to_owned()
     };
@@ -92,7 +94,7 @@ pub fn detect_format_with_crypto_suite(
 /// - `direct_post.jwt` for `MDOC` presentations
 ///     - `MDOC` will only be used for a [Proof] if _all_ credentials presented have the format `MDOC`
 /// - `direct_post` for everything else
-pub fn determine_response_mode(proof: &Proof) -> Result<String, ExchangeProtocolError> {
+pub(crate) fn determine_response_mode(proof: &Proof) -> Result<String, VerificationProtocolError> {
     let mut format_iter = proof
         .schema
         .iter()
@@ -103,7 +105,7 @@ pub fn determine_response_mode(proof: &Proof) -> Result<String, ExchangeProtocol
         .peekable();
 
     if format_iter.peek().is_none() {
-        return Err(ExchangeProtocolError::Failed(format!(
+        return Err(VerificationProtocolError::Failed(format!(
             "Cannot determine response mode for proof {}",
             proof.id
         )));

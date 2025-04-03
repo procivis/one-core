@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
-use crate::config::core_config::ExchangeType;
+use crate::config::core_config::VerificationProtocolType;
 use crate::config::ConfigValidationError;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::interaction::InteractionId;
@@ -19,14 +19,16 @@ use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::did_method::mdl::DidMdlValidationError;
-use crate::provider::exchange_protocol::error::{ExchangeProtocolError, TxCodeError};
-use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
+use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
+use crate::provider::issuance_protocol::openid4vc::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::trust_management::error::TrustManagementError;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vc::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
 
 #[derive(Debug, Error)]
@@ -43,11 +45,17 @@ pub enum ServiceError {
     #[error("OpenID4VCI validation error `{0}`")]
     OpenID4VCIError(#[from] OpenID4VCIError),
 
+    #[error("OpenID4VCI issuance error `{0}`")]
+    OpenIDIssuanceError(#[from] OpenIDIssuanceError),
+
     #[error("Config validation error `{0}`")]
     ConfigValidationError(#[from] ConfigValidationError),
 
-    #[error("Exchange protocol error `{0}`")]
-    ExchangeProtocolError(#[from] ExchangeProtocolError),
+    #[error("Issuance protocol error `{0}`")]
+    IssuanceProtocolError(#[from] IssuanceProtocolError),
+
+    #[error("Verification protocol error `{0}`")]
+    VerificationProtocolError(#[from] VerificationProtocolError),
 
     #[error("Formatter error `{0}`")]
     FormatterError(#[from] FormatterError),
@@ -203,7 +211,9 @@ pub enum BusinessLogicError {
     InvalidProofRoleForRetraction { role: String },
 
     #[error("Cannot retract proof with exchange type: {exchange_type}")]
-    InvalidProofExchangeForRetraction { exchange_type: ExchangeType },
+    InvalidProofExchangeForRetraction {
+        exchange_type: VerificationProtocolType,
+    },
 
     #[error(transparent)]
     DidDeactivation(#[from] DidDeactivationError),
@@ -697,7 +707,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Model mapping error")]
     BR_0047,
 
-    #[strum(to_string = "OpenID4VCI error")]
+    #[strum(to_string = "OpenID4VC error")]
     BR_0048,
 
     #[strum(to_string = "Credential status list bitstring handling error")]
@@ -1048,12 +1058,15 @@ impl ErrorCodeMixin for ServiceError {
             Self::Repository(error) => error.error_code(),
             Self::MissingProvider(error) => error.error_code(),
             Self::ResponseMapping(_) => ErrorCode::BR_0055,
-            Self::ExchangeProtocolError(error) => error.error_code(),
+            Self::IssuanceProtocolError(error) => error.error_code(),
+            Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::FormatterError(error) => error.error_code(),
             Self::KeyStorageError(_) | Self::KeyStorageProvider(_) => ErrorCode::BR_0039,
             Self::MappingError(_) => ErrorCode::BR_0047,
-            Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) => ErrorCode::BR_0048,
+            Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
+                ErrorCode::BR_0048
+            }
             Self::ConfigValidationError(error) => error.error_code(),
             Self::BitstringError(_) => ErrorCode::BR_0049,
             Self::MissingSigner(_) => ErrorCode::BR_0060,
@@ -1227,7 +1240,7 @@ impl ErrorCodeMixin for ValidationError {
     }
 }
 
-impl ErrorCodeMixin for ExchangeProtocolError {
+impl ErrorCodeMixin for IssuanceProtocolError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::Failed(_) => ErrorCode::BR_0062,
@@ -1244,8 +1257,23 @@ impl ErrorCodeMixin for ExchangeProtocolError {
                 TxCodeError::IncorrectCode => ErrorCode::BR_0169,
                 TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
             },
-            ExchangeProtocolError::DidMismatch
-            | ExchangeProtocolError::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
+            IssuanceProtocolError::DidMismatch
+            | IssuanceProtocolError::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
+        }
+    }
+}
+
+impl ErrorCodeMixin for VerificationProtocolError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Failed(_) => ErrorCode::BR_0062,
+            Self::Transport(_) => ErrorCode::BR_0086,
+            Self::JsonError(_) => ErrorCode::BR_0062,
+            Self::OperationNotSupported => ErrorCode::BR_0062,
+            Self::InvalidRequest(_) => ErrorCode::BR_0085,
+            Self::Disabled(_) => ErrorCode::BR_0085,
+            Self::Other(_) => ErrorCode::BR_0062,
+            Self::StorageAccessError(_) => ErrorCode::BR_0062,
         }
     }
 }

@@ -190,7 +190,7 @@ pub(crate) async fn share_proof(
         );
     }
 
-    let service = state.core.oidc_service.clone();
+    let service = state.core.oid4vp_service.clone();
     let callback = Some(
         async move {
             service.oidc_verifier_ble_mqtt_presentation(id).await;

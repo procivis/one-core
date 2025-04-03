@@ -7,7 +7,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{
-    AppConfig, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    AppConfig, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    VerificationProtocolType,
 };
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -80,31 +81,36 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                   msoExpectedUpdateIn: 86400 # 24h in seconds
                   msoMinimumRefreshTime: 300 # 5min in seconds
                   leeway: 60
-        exchange:
-            OPENID4VC:
+        issuanceProtocol:
+            OPENID4VCI_DRAFT13:
                 display: 'display'
                 order: 1
-                type: 'OPENID4VC'
+                type: 'OPENID4VCI_DRAFT13'
                 params:
                     public:
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
                         refreshExpiresIn: 886400
-                        issuance:
-                            redirectUri:
-                                enabled: true
-                                allowedSchemes: [ https ]
-                        presentation:
-                            verifier:
-                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
-                                defaultClientIdScheme: verifier_attestation
-                            holder:
-                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
-                            redirectUri:
-                                enabled: true
-                                allowedSchemes: [ https ]
+                        redirectUri:
+                            enabled: true
+                            allowedSchemes: [ https ]
                     private:
                         encryption: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'
+        verificationProtocol:
+            OPENID4VP_DRAFT20:
+                display: 'display'
+                order: 1
+                type: 'OPENID4VP_DRAFT20'
+                params:
+                    public:
+                        verifier:
+                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+                            defaultClientIdScheme: verifier_attestation
+                        holder:
+                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+                        redirectUri:
+                            enabled: true
+                            allowedSchemes: [ https ]
             ISO_MDL:
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'
@@ -387,8 +393,8 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             crate::config::core_config::DidType::Jwk,
             crate::config::core_config::DidType::X509,
         ],
-        issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
-        proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+        issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+        proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
         revocation_methods: vec![
             RevocationType::None,
             RevocationType::BitstringStatusList,

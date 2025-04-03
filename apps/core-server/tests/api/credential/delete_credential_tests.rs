@@ -19,7 +19,7 @@ async fn test_delete_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
         .await;

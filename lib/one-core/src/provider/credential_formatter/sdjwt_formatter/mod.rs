@@ -14,7 +14,8 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::config::core_config::{
-    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    VerificationProtocolType,
 };
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -225,8 +226,8 @@ impl CredentialFormatter for SDJWTFormatter {
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
-            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
-            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             revocation_methods: vec![
                 RevocationType::None,
                 RevocationType::BitstringStatusList,

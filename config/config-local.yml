@@ -26,32 +26,27 @@ format:
         msoMinimumRefreshTime: 10
         leeway: 10
         embedLayoutProperties: true
-exchange:
-  OPENID4VC:
+issuanceProtocol:
+  OPENID4VCI_DRAFT13:
+    params:
+      public:
+        redirectUri:
+          allowedSchemes: ["http", "https"]
+      private:
+        # this is the SHA-256 of "my encryption key"
+        encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+verificationProtocol:
+  OPENID4VP_DRAFT20:
     params:
       public:
         allowInsecureHttpTransport: true
-        issuance:
-          redirectUri:
-            allowedSchemes: ["http", "https"]
-        presentation:
-          redirectUri:
-            allowedSchemes: ["http", "https"]
-      private:
-        # this is the SHA-256 of "my encryption key"
-        encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        redirectUri:
+          allowedSchemes: ["http", "https"]
   MDOC_OPENID4VP:
     params:
       public:
-        issuance:
-          redirectUri:
-            allowedSchemes: ["http", "https"]
-        presentation:
-          redirectUri:
-            allowedSchemes: ["http", "https"]
-      private:
-        # this is the SHA-256 of "my encryption key"
-        encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        redirectUri:
+          allowedSchemes: ["http", "https"]
 keyStorage:
   INTERNAL:
     params:

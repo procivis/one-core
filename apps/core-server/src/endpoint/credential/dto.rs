@@ -269,7 +269,7 @@ pub struct CreateCredentialRequestRestDTO {
     /// Exchange protocol to use for issuing the credential to a wallet. Check
     /// the `exchange` object of the configuration for supported options and
     /// reference the configuration instance.
-    #[schema(example = "OPENID4VC")]
+    #[schema(example = "OPENID4VCI_DRAFT13")]
     pub exchange: String,
     /// Attribute from the credential schema, together with the
     /// corresponding claim being made.

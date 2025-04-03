@@ -66,7 +66,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VC".to_string(),
+        exchange: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role,
         state: CredentialStateEnum::Created,

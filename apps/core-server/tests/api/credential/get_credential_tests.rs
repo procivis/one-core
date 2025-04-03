@@ -20,7 +20,7 @@ async fn test_get_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
         .await;
@@ -38,7 +38,7 @@ async fn test_get_credential_success() {
     assert!(resp["revocationDate"].is_null());
     assert_eq!(resp["state"], "CREATED");
     assert_eq!(resp["role"], "ISSUER");
-    assert_eq!(resp["exchange"], "OPENID4VC");
+    assert_eq!(resp["exchange"], "OPENID4VCI_DRAFT13");
 }
 
 #[tokio::test]
@@ -57,7 +57,7 @@ async fn test_get_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
         .await;

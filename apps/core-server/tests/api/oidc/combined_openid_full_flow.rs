@@ -174,7 +174,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &sdjwt_credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -191,7 +191,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &jsonld_credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -210,7 +210,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -284,7 +284,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &holder_sdjwt_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(sdjwt_credential_token),
@@ -315,7 +315,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &holder_jsonld_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(jsonld_credential_token),
@@ -439,7 +439,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )

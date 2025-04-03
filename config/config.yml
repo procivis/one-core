@@ -1,5 +1,6 @@
 format: {}
-exchange: {}
+issuanceProtocol: {}
+verificationProtocol: {}
 revocation: {}
 did: {}
 keyAlgorithm: {}

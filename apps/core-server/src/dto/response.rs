@@ -6,7 +6,7 @@ use axum::response::IntoResponse;
 use axum::Json;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
-use one_core::provider::exchange_protocol::error::ExchangeProtocolError;
+use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
 use one_core::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -57,11 +57,11 @@ impl ErrorResponse {
             | ServiceError::BusinessLogic(_)
             | ServiceError::FormatterError(FormatterError::BBSOnly)
             | ServiceError::ConfigValidationError(_)
-            | ServiceError::ExchangeProtocolError(ExchangeProtocolError::TxCode(_))
-            | ServiceError::ExchangeProtocolError(
-                ExchangeProtocolError::CredentialVerificationFailed(_),
+            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::TxCode(_))
+            | ServiceError::IssuanceProtocolError(
+                IssuanceProtocolError::CredentialVerificationFailed(_),
             )
-            | ServiceError::ExchangeProtocolError(ExchangeProtocolError::DidMismatch)
+            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::DidMismatch)
             | ServiceError::DidMdlValidationError(_)
             | ServiceError::TrustManagementError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),

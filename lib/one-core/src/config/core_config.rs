@@ -35,7 +35,8 @@ pub struct AppConfig<Custom> {
 #[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
     pub(crate) format: FormatConfig,
-    pub(crate) exchange: ExchangeConfig,
+    pub(crate) issuance_protocol: IssuanceProtocolConfig,
+    pub(crate) verification_protocol: VerificationProtocolConfig,
     pub(crate) transport: TransportConfig,
     pub(crate) revocation: RevocationConfig,
     pub(crate) did: DidConfig,
@@ -245,7 +246,7 @@ pub enum TransportType {
     Mqtt,
 }
 
-pub type ExchangeConfig = ConfigBlock<ExchangeType>;
+pub type IssuanceProtocolConfig = ConfigBlock<IssuanceProtocolType>;
 
 #[derive(
     Debug,
@@ -261,10 +262,32 @@ pub type ExchangeConfig = ConfigBlock<ExchangeType>;
     Deserialize,
     AsRefStr,
 )]
-pub enum ExchangeType {
-    #[serde(rename = "OPENID4VC")]
-    #[strum(serialize = "OPENID4VC")]
-    OpenId4Vc,
+pub enum IssuanceProtocolType {
+    #[serde(rename = "OPENID4VCI_DRAFT13")]
+    #[strum(serialize = "OPENID4VCI_DRAFT13")]
+    OpenId4VciDraft13,
+}
+
+pub type VerificationProtocolConfig = ConfigBlock<VerificationProtocolType>;
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+)]
+pub enum VerificationProtocolType {
+    #[serde(rename = "OPENID4VP_DRAFT20")]
+    #[strum(serialize = "OPENID4VP_DRAFT20")]
+    OpenId4VpDraft20,
     #[serde(rename = "SCAN_TO_VERIFY")]
     #[strum(serialize = "SCAN_TO_VERIFY")]
     ScanToVerify,

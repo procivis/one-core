@@ -316,7 +316,7 @@ async fn setup_submittable_presentation(
         &credential_schema,
         CredentialStateEnum::Accepted,
         issuer_did,
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_did: Some(holder_did.clone()),
             credential: Some("TOKEN"),
@@ -388,7 +388,7 @@ async fn setup_submittable_presentation(
             None,
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
         )
@@ -463,7 +463,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &issuer_did,
-        "OPENID4VC",
+        "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_did: Some(holder_did.clone()),
             credential: Some("TOKEN"),
@@ -575,7 +575,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         None,
         None,
         ProofStateEnum::Requested,
-        "OPENID4VC",
+        "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
     .await;

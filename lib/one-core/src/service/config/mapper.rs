@@ -13,7 +13,8 @@ impl TryFrom<&CoreConfig> for ConfigDTO {
         let mut dto: ConfigDTO = serde_json::from_value(value)?;
 
         dto.format = filter_config_entities(dto.format);
-        dto.exchange = filter_config_entities(dto.exchange);
+        dto.issuance_protocol = filter_config_entities(dto.issuance_protocol);
+        dto.verification_protocol = filter_config_entities(dto.verification_protocol);
         dto.revocation = filter_config_entities(dto.revocation);
         dto.did = filter_config_entities(dto.did);
         dto.datatype = filter_config_entities(dto.datatype);

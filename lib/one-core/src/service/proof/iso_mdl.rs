@@ -6,10 +6,10 @@ use super::ProofService;
 use crate::config::core_config::TransportType;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::exchange_protocol::iso_mdl::ble_verifier::{
+use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
     setup_verifier_session, start_client,
 };
-use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
+use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, RetrievalOptions,
 };
 use crate::service::error::ServiceError;

@@ -28,7 +28,7 @@ transport:
     params:
       private:
         brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
-exchange:
+verificationProtocol:
   SCAN_TO_VERIFY:
     type: "SCAN_TO_VERIFY"
     enabled: false

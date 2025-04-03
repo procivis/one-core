@@ -26,7 +26,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
+use crate::provider::issuance_protocol::openid4vc::model::OpenID4VCIParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;
@@ -64,7 +64,7 @@ pub(crate) fn get_exchange_param_pre_authorization_expires_in(
     config: &CoreConfig,
     exchange: &str,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get(exchange)?;
+    let params: OpenID4VCIParams = config.issuance_protocol.get(exchange)?;
     Ok(Duration::seconds(
         params.pre_authorized_code_expires_in as _,
     ))
@@ -74,7 +74,7 @@ pub(crate) fn get_exchange_param_token_expires_in(
     config: &CoreConfig,
     exchange: &str,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get(exchange)?;
+    let params: OpenID4VCIParams = config.issuance_protocol.get(exchange)?;
     Ok(Duration::seconds(params.token_expires_in as _))
 }
 
@@ -82,7 +82,7 @@ pub(crate) fn get_exchange_param_refresh_token_expires_in(
     config: &CoreConfig,
     exchange: &str,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get(exchange)?;
+    let params: OpenID4VCIParams = config.issuance_protocol.get(exchange)?;
     Ok(Duration::seconds(params.refresh_expires_in as _))
 }
 

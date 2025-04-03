@@ -18,7 +18,8 @@ use super::jwt::Jwt;
 use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::{
-    DidType, ExchangeType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    VerificationProtocolType,
 };
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
@@ -308,8 +309,8 @@ impl CredentialFormatter for JWTFormatter {
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
-            issuance_exchange_protocols: vec![ExchangeType::OpenId4Vc],
-            proof_exchange_protocols: vec![ExchangeType::OpenId4Vc],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             revocation_methods: vec![
                 RevocationType::None,
                 RevocationType::BitstringStatusList,

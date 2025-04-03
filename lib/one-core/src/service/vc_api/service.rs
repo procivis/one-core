@@ -128,7 +128,7 @@ impl VCAPIService {
                     last_modified: OffsetDateTime::now_utc(),
                     deleted_at: None,
                     credential: vec![],
-                    exchange: "OPENID4VC".to_owned(),
+                    exchange: "OPENID4VCI_DRAFT13".to_owned(),
                     redirect_uri: None,
                     role: CredentialRole::Issuer,
                     state: CredentialStateEnum::Offered,

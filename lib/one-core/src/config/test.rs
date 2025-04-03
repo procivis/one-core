@@ -50,15 +50,23 @@ rusty_fork_test! {
                     enabled: true
                     order: 0
                     params: {}
-            exchange:
-                OPENID4VC:
+            issuanceProtocol:
+                OPENID4VCI_DRAFT13:
                     display: 'display'
                     order: 1
-                    type: 'OPENID4VC'
+                    type: 'OPENID4VCI_DRAFT13'
                     params:
                         public:
                             preAuthorizedCodeExpiresIn: 300
                             tokenExpiresIn: 86400
+            verificationProtocol:
+                OPENID4VP_DRAFT20:
+                    display: 'display'
+                    order: 1
+                    type: 'OPENID4VP_DRAFT20'
+                    params:
+                        public:
+                            useRequestUri: true
             revocation:
                 NONE:
                     display: 'revocation.none'

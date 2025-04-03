@@ -158,7 +158,7 @@ async fn test_openid4vc_jwt_flow(
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -177,7 +177,7 @@ async fn test_openid4vc_jwt_flow(
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -234,7 +234,7 @@ async fn test_openid4vc_jwt_flow(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
@@ -335,7 +335,7 @@ async fn test_openid4vc_jwt_flow(
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )
@@ -503,7 +503,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -536,7 +536,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             Some(&holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             server_local_key.clone(),
         )
@@ -596,7 +596,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &server_did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
@@ -707,7 +707,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             Some(&holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key,
         )

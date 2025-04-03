@@ -40,7 +40,7 @@ async fn test_issuance_reject_openid4vc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()

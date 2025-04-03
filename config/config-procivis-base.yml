@@ -57,56 +57,52 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
-exchange:
-  OPENID4VC:
+issuanceProtocol:
+  OPENID4VCI_DRAFT13:
     display: "exchange.openid"
     order: 1
-    type: "OPENID4VC"
+    type: "OPENID4VCI_DRAFT13"
     params:
       public:
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+verificationProtocol:
+  OPENID4VP_DRAFT20:
+    display: "exchange.openid"
+    order: 1
+    type: "OPENID4VP_DRAFT20"
+    params:
+      public:
         useRequestUri: true
-        issuance:
-          redirectUri:
-            enabled: true
-            allowedSchemes: ["https"]
-        presentation:
-          verifier:
-            supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
-            defaultClientIdScheme: verifier_attestation
-          holder:
-            supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
-          redirectUri:
-            enabled: true
-            allowedSchemes: ["https"]
+        verifier:
+          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
+          defaultClientIdScheme: verifier_attestation
+        holder:
+          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
   MDOC_OPENID4VP:
     display: "exchange.mdocOpenid"
     order: 2
-    type: "OPENID4VC"
+    type: "OPENID4VP_DRAFT20"
     params:
       public:
-        preAuthorizedCodeExpiresIn: 300
-        tokenExpiresIn: 86400
-        refreshExpiresIn: 7776000
         useRequestUri: true
-        issuance:
-          enabled: false
-          redirectUri:
-            enabled: true
-            allowedSchemes: ["https"]
-        presentation:
-          urlScheme: mdoc-openid4vp
-          x509CaCertificate: MIIC6jCCApCgAwIBAgIULOnT9JtSjwzSk5XUCy4lzAXgzsMwCgYIKoZIzj0EAwQwgZYxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20xCzAJBgNVBAYTAkNIMQ8wDQYDVQQHDAZadXJpY2gxFDASBgNVBAoMC1Byb2NpdmlzIEFHMR4wHAYDVQQLDBVDZXJ0aWZpY2F0ZSBBdXRob3JpdHkxIjAgBgkqhkiG9w0BCQEWE3N1cHBvcnRAcHJvY2l2aXMuY2gwHhcNMjUwMzEzMTQzNzAwWhcNMzUwMzExMTQzNzAwWjCBljEcMBoGA1UEAwwTY2EuZGV2Lm1kbC1wbHVzLmNvbTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABC8hfYMdzhP87J1EnaaIInDNqGebPugTdzANq8kd2no4Xav_cyHsOVCe6FL7yYHButVR7xrmCbQip_0ctE0cdrejgbkwgbYwDgYDVR0PAQH_BAQDAgEGMDAGA1UdHwQpMCcwJaAjoCGGH2h0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8wHgYDVR0SBBcwFYITY2EuZGV2Lm1kbC1wbHVzLmNvbTASBgNVHRMBAf8ECDAGAQH_AgEAMB0GA1UdDgQWBBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAfBgNVHSMEGDAWgBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAKBggqhkjOPQQDBANIADBFAiAwMs_rQEDwt0HbrAt4lvAwT3jrtqqR4BzZDQhqqh8zyAIhAKTYqzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
-          verifier:
-            supportedClientIdSchemes: [x509_san_dns]
-            defaultClientIdScheme: x509_san_dns
-          holder:
-            supportedClientIdSchemes: [x509_san_dns]
-          redirectUri:
-            enabled: true
-            allowedSchemes: ["https"]
+        urlScheme: mdoc-openid4vp
+        x509CaCertificate: MIIC6jCCApCgAwIBAgIULOnT9JtSjwzSk5XUCy4lzAXgzsMwCgYIKoZIzj0EAwQwgZYxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20xCzAJBgNVBAYTAkNIMQ8wDQYDVQQHDAZadXJpY2gxFDASBgNVBAoMC1Byb2NpdmlzIEFHMR4wHAYDVQQLDBVDZXJ0aWZpY2F0ZSBBdXRob3JpdHkxIjAgBgkqhkiG9w0BCQEWE3N1cHBvcnRAcHJvY2l2aXMuY2gwHhcNMjUwMzEzMTQzNzAwWhcNMzUwMzExMTQzNzAwWjCBljEcMBoGA1UEAwwTY2EuZGV2Lm1kbC1wbHVzLmNvbTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABC8hfYMdzhP87J1EnaaIInDNqGebPugTdzANq8kd2no4Xav_cyHsOVCe6FL7yYHButVR7xrmCbQip_0ctE0cdrejgbkwgbYwDgYDVR0PAQH_BAQDAgEGMDAGA1UdHwQpMCcwJaAjoCGGH2h0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8wHgYDVR0SBBcwFYITY2EuZGV2Lm1kbC1wbHVzLmNvbTASBgNVHRMBAf8ECDAGAQH_AgEAMB0GA1UdDgQWBBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAfBgNVHSMEGDAWgBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAKBggqhkjOPQQDBANIADBFAiAwMs_rQEDwt0HbrAt4lvAwT3jrtqqR4BzZDQhqqh8zyAIhAKTYqzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
+        verifier:
+          supportedClientIdSchemes: [x509_san_dns]
+          defaultClientIdScheme: x509_san_dns
+        holder:
+          supportedClientIdSchemes: [x509_san_dns]
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
 transport:
   HTTP:
     type: "HTTP"

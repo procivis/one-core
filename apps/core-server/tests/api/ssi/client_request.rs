@@ -97,7 +97,7 @@ async fn test_get_client_request() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             key.to_owned(),
         )

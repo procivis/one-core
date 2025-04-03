@@ -1,0 +1,505 @@
+use std::str::FromStr;
+
+use futures::TryFutureExt;
+use shared_types::{DidValue, ProofId};
+use url::Url;
+
+use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
+use super::SSIHolderService;
+use crate::common_mapper::{get_or_create_did, DidRole, NESTED_CLAIM_MARKER};
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::config::core_config::{Fields, RevocationType};
+use crate::config::validator::transport::{
+    validate_and_select_transport_type, SelectedTransportType,
+};
+use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential::CredentialRelations;
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::did::{DidRelations, KeyRole};
+use crate::model::history::{HistoryAction, HistoryErrorMetadata};
+use crate::model::interaction::{InteractionId, InteractionRelations};
+use crate::model::key::KeyRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::provider::credential_formatter::model::CredentialPresentation;
+use crate::provider::issuance_protocol::deserialize_interaction_data;
+use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
+use crate::provider::verification_protocol::openid4vc::model::{
+    InvitationResponseDTO, OpenID4VPHolderInteractionData, PresentedCredential, UpdateResponse,
+};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
+    ValidationError,
+};
+use crate::service::storage_proxy::StorageProxyImpl;
+use crate::util::history::log_history_event_proof;
+use crate::util::oidc::detect_format_with_crypto_suite;
+
+impl SSIHolderService {
+    pub async fn reject_proof_request(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> Result<(), ServiceError> {
+        let proof = self
+            .proof_repository
+            .get_proof_by_interaction_id(
+                interaction_id,
+                &ProofRelations {
+                    interaction: Some(InteractionRelations::default()),
+                    holder_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let Some(proof) = proof else {
+            return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
+        };
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+
+        let (state, error_metadata) = if let Err(err) = self
+            .verification_protocol_provider
+            .get_protocol(&proof.exchange)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                proof.exchange.clone(),
+            ))?
+            .holder_reject_proof(&proof)
+            .await
+        {
+            let error_metadata = Some(HistoryErrorMetadata {
+                error_code: err.error_code(),
+                message: err.to_string(),
+            });
+            (ProofStateEnum::Error, error_metadata)
+        } else {
+            (ProofStateEnum::Rejected, None)
+        };
+        self.proof_repository
+            .update_proof(
+                &proof.id,
+                UpdateProofRequest {
+                    state: Some(state),
+                    ..Default::default()
+                },
+                error_metadata,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn submit_proof(
+        &self,
+        submission: PresentationSubmitRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let Some(proof) = self
+            .proof_repository
+            .get_proof_by_interaction_id(
+                &submission.interaction_id,
+                &ProofRelations {
+                    holder_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(
+                BusinessLogicError::MissingProofForInteraction(submission.interaction_id).into(),
+            );
+        };
+
+        let Some(holder_did) = self
+            .did_repository
+            .get_did(
+                &submission.did_id,
+                &DidRelations {
+                    organisation: Some(Default::default()),
+                    keys: Some(Default::default()),
+                },
+            )
+            .await?
+        else {
+            return Err(ValidationError::DidNotFound.into());
+        };
+
+        let selected_key = match submission.key_id {
+            Some(key_id) => holder_did.find_key(&key_id, KeyRole::Authentication)?,
+            None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
+        };
+
+        let holder_jwk_key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(&holder_did, selected_key)
+            .await?;
+
+        let verification_protocol = self
+            .verification_protocol_provider
+            .get_protocol(&proof.exchange)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                proof.exchange.clone(),
+            ))?;
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+
+        let interaction_data: serde_json::Value = proof
+            .interaction
+            .as_ref()
+            .and_then(|interaction| interaction.data.as_ref())
+            .map(|interaction| serde_json::from_slice(interaction))
+            .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
+            .map_err(|err| ServiceError::MappingError(err.to_string()))?;
+
+        let storage_access = StorageProxyImpl::new(
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+            self.did_repository.clone(),
+            self.did_method_provider.clone(),
+        );
+
+        let presentation_definition = verification_protocol
+            .holder_get_presentation_definition(&proof, interaction_data.clone(), &storage_access)
+            .await?;
+
+        let requested_credentials: Vec<_> = presentation_definition
+            .request_groups
+            .into_iter()
+            .flat_map(|group| group.requested_credentials)
+            .collect();
+
+        let mut submitted_claims: Vec<Claim> = vec![];
+        let mut credential_presentations: Vec<PresentedCredential> = vec![];
+        let holder_binding_ctx =
+            verification_protocol.holder_get_holder_binding_context(&proof, interaction_data)?;
+        for (requested_credential_id, credential_request) in submission.submit_credentials {
+            let requested_credential = requested_credentials
+                .iter()
+                .find(|credential| credential.id == requested_credential_id)
+                .ok_or(ServiceError::MappingError(format!(
+                    "requested credential `{requested_credential_id}` not found"
+                )))?;
+
+            let submitted_keys = requested_credential
+                .fields
+                .iter()
+                .filter(|field| credential_request.submit_claims.contains(&field.id))
+                .map(|field| {
+                    Ok(field
+                        .key_map
+                        .get(&credential_request.credential_id.to_string())
+                        .ok_or(ServiceError::MappingError(format!(
+                            "no matching key for credential_id `{}`",
+                            credential_request.credential_id
+                        )))?
+                        .to_owned())
+                })
+                .collect::<Result<Vec<String>, ServiceError>>()?;
+
+            let credential = self
+                .credential_repository
+                .get_credential(
+                    &credential_request.credential_id,
+                    &CredentialRelations {
+                        claims: Some(ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        }),
+                        holder_did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        issuer_did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        key: Some(KeyRelations::default()),
+                        schema: Some(CredentialSchemaRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(EntityNotFoundError::Credential(
+                    credential_request.credential_id,
+                ))?;
+            let credential_data = credential.credential.as_slice();
+            if credential_data.is_empty() {
+                return Err(BusinessLogicError::MissingCredentialData {
+                    credential_id: credential_request.credential_id,
+                }
+                .into());
+            }
+            let credential_content = std::str::from_utf8(credential_data)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+            let credential_schema =
+                credential
+                    .schema
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "credential_schema missing".to_string(),
+                    ))?;
+
+            for claim in credential
+                .claims
+                .as_ref()
+                .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+            {
+                let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
+                    "claim_schema missing".to_string(),
+                ))?;
+
+                for key in &submitted_keys {
+                    // handle nested path by checking the prefix
+                    if claim_schema
+                        .key
+                        .starts_with(&format!("{key}{NESTED_CLAIM_MARKER}"))
+                        || claim_schema.key == *key
+                            && submitted_claims.iter().all(|c| c.id != claim.id)
+                    {
+                        submitted_claims.push(claim.to_owned());
+                    }
+                }
+            }
+
+            let format =
+                detect_format_with_crypto_suite(&credential_schema.format, credential_content)?;
+
+            let formatter = self
+                .formatter_provider
+                .get_formatter(&format)
+                .ok_or(MissingProviderError::Formatter(format.to_string()))?;
+
+            let credential_presentation = CredentialPresentation {
+                token: credential_content.to_owned(),
+                disclosed_keys: submitted_keys.to_owned(),
+            };
+
+            let authn_fn = credential
+                .key
+                .as_ref()
+                .map(|key| {
+                    self.key_provider.get_signature_provider(
+                        key,
+                        None,
+                        self.key_algorithm_provider.clone(),
+                    )
+                })
+                .transpose()?;
+
+            let formatted_credential_presentation = formatter
+                .format_credential_presentation(
+                    credential_presentation,
+                    holder_binding_ctx.clone(),
+                    authn_fn,
+                )
+                .await?;
+
+            credential_presentations.push(PresentedCredential {
+                presentation: formatted_credential_presentation.to_owned(),
+                credential_schema: credential_schema.clone(),
+                request: requested_credential.to_owned(),
+            });
+
+            let revocation_method: Fields<RevocationType> = self
+                .config
+                .revocation
+                .get(&credential_schema.revocation_method)?;
+            if revocation_method.r#type == RevocationType::Lvvc {
+                let extracted = formatter
+                    .extract_credentials_unverified(&formatted_credential_presentation)
+                    .await?;
+                let credential_status = extracted
+                    .status
+                    .first()
+                    .ok_or(ServiceError::MappingError(
+                        "credential_status is None".to_string(),
+                    ))?
+                    .to_owned();
+
+                let revocation_params = self
+                    .config
+                    .revocation
+                    .get(&credential_schema.revocation_method)?;
+
+                let lvvc = holder_get_lvvc(
+                    &credential,
+                    &credential_status,
+                    &*self.validity_credential_repository,
+                    &*self.key_provider,
+                    &self.key_algorithm_provider,
+                    &*self.did_method_provider,
+                    &*self.client,
+                    &revocation_params,
+                    false,
+                )
+                .await?;
+
+                let token = std::str::from_utf8(&lvvc.credential)
+                    .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                    .to_string();
+
+                let lvvc_presentation = CredentialPresentation {
+                    token,
+                    disclosed_keys: vec!["id".to_string(), "status".to_string()],
+                };
+
+                let formatted_lvvc_presentation = formatter
+                    .format_credential_presentation(lvvc_presentation, None, None)
+                    .await?;
+
+                credential_presentations.push(PresentedCredential {
+                    presentation: formatted_lvvc_presentation,
+                    credential_schema: credential_schema.clone(),
+                    request: requested_credential.to_owned(),
+                });
+            }
+        }
+
+        let submit_result = verification_protocol
+            .holder_submit_proof(
+                &proof,
+                credential_presentations,
+                &holder_did,
+                selected_key,
+                Some(holder_jwk_key_id),
+            )
+            .map_err(ServiceError::from)
+            .and_then(|submit_result| async {
+                self.resolve_update_proof_response(proof.id, submit_result)
+                    .await
+            })
+            .await;
+
+        let (state, error_metadata) = if let Err(ref err) = submit_result {
+            let error_metadata = Some(HistoryErrorMetadata {
+                error_code: err.error_code(),
+                message: err.to_string(),
+            });
+            (ProofStateEnum::Error, error_metadata)
+        } else {
+            (ProofStateEnum::Accepted, None)
+        };
+        self.proof_repository
+            .update_proof(
+                &proof.id,
+                UpdateProofRequest {
+                    holder_did_id: Some(holder_did.id),
+                    state: Some(state),
+                    ..Default::default()
+                },
+                error_metadata,
+            )
+            .await?;
+
+        self.proof_repository
+            .set_proof_claims(&proof.id, submitted_claims)
+            .await?;
+
+        submit_result
+    }
+
+    pub(super) async fn handle_verification_invitation(
+        &self,
+        url: Url,
+        organisation: Organisation,
+        transport: Option<Vec<String>>,
+    ) -> Result<HandleInvitationResultDTO, ServiceError> {
+        let (verification_exchange, verification_protocol) = self
+            .verification_protocol_provider
+            .detect_protocol(&url)
+            .ok_or(ServiceError::MissingExchangeProtocol(
+                "Cannot detect exchange protocol".to_string(),
+            ))?;
+
+        let storage_access = StorageProxyImpl::new(
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+            self.did_repository.clone(),
+            self.did_method_provider.clone(),
+        );
+
+        let transport = validate_and_select_transport_type(
+            &transport,
+            &self.config.transport,
+            &verification_protocol.get_capabilities(),
+        )?;
+        let transport = match transport {
+            SelectedTransportType::Single(s) => s,
+            SelectedTransportType::Multiple(vec) => vec
+                .into_iter()
+                .next()
+                .ok_or_else(|| ValidationError::TransportNotAllowedForExchange)?,
+        };
+
+        let InvitationResponseDTO {
+            mut proof,
+            interaction_id,
+        } = verification_protocol
+            .holder_handle_invitation(url, organisation, &storage_access, transport)
+            .await?;
+
+        proof.exchange = verification_exchange;
+
+        log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Requested).await;
+
+        self.fill_verifier_did_in_proof(&mut proof).await?;
+
+        self.proof_repository.create_proof(proof.to_owned()).await?;
+
+        log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Pending).await;
+
+        Ok(HandleInvitationResultDTO::ProofRequest {
+            interaction_id,
+            proof_id: proof.id,
+        })
+    }
+
+    async fn fill_verifier_did_in_proof(&self, proof: &mut Proof) -> Result<(), ServiceError> {
+        if let Some(interaction) = proof.interaction.as_ref() {
+            let deserialized: Result<OpenID4VPHolderInteractionData, _> =
+                deserialize_interaction_data(interaction.data.as_ref());
+            if let Ok(data) = deserialized {
+                if let Some(did_value) = data.verifier_did {
+                    let did_value = DidValue::from_str(&did_value).map_err(|_| {
+                        ServiceError::MappingError("failed to parse did value".to_string())
+                    })?;
+                    let did = get_or_create_did(
+                        &*self.did_method_provider,
+                        &*self.did_repository,
+                        &interaction.organisation,
+                        &did_value,
+                        DidRole::Verifier,
+                    )
+                    .await?;
+
+                    proof.verifier_did = Some(did);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn resolve_update_proof_response(
+        &self,
+        proof_id: ProofId,
+        update_response: UpdateResponse,
+    ) -> Result<(), ServiceError> {
+        if let Some(update_proof) = update_response.update_proof {
+            self.proof_repository
+                .update_proof(&proof_id, update_proof, None)
+                .await?;
+        }
+        Ok(())
+    }
+}

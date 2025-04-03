@@ -21,9 +21,9 @@ use super::validator::{
 use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::{ExchangeType, TransportType};
+use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::config::validator::exchange::{
-    validate_exchange_did_compatibility, validate_exchange_operation, validate_exchange_type,
+    validate_exchange_type, validate_protocol_did_compatibility,
 };
 use crate::config::validator::transport::{
     validate_and_select_transport_type, SelectedTransportType,
@@ -47,20 +47,20 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::dto::{Operation, PresentationDefinitionResponseDTO};
-use crate::provider::exchange_protocol::error::ExchangeProtocolError;
-use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
+use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     receive_mdl_request, start_mdl_server, MdocBleHolderInteractionData,
 };
-use crate::provider::exchange_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
-use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
+use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
+use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
-use crate::provider::exchange_protocol::openid4vc::mapper::{
+use crate::provider::verification_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::exchange_protocol::openid4vc::model::{OpenID4VCParams, ShareResponse};
-use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
+use crate::provider::verification_protocol::openid4vc::model::{OpenID4VpParams, ShareResponse};
+use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -252,17 +252,17 @@ impl ProofService {
         &self,
         request: CreateProofRequestDTO,
     ) -> Result<ProofId, ServiceError> {
-        validate_exchange_type(&request.exchange, &self.config.exchange)?;
+        validate_exchange_type(&request.exchange, &self.config.verification_protocol)?;
         validate_mdl_exchange(
             &request.exchange,
             request.iso_mdl_engagement.as_deref(),
             request.redirect_uri.as_deref(),
-            &self.config.exchange,
+            &self.config.verification_protocol,
         )?;
         validate_redirect_uri(
             &request.exchange,
             request.redirect_uri.as_deref(),
-            &self.config.exchange,
+            &self.config.verification_protocol,
         )?;
 
         let now = OffsetDateTime::now_utc();
@@ -299,8 +299,12 @@ impl ProofService {
 
         validate_scan_to_verify_compatibility(&request, &self.config)?;
 
-        let exchange_type = self.config.exchange.get_fields(&request.exchange)?.r#type;
-        if exchange_type == ExchangeType::ScanToVerify {
+        let exchange_type = self
+            .config
+            .verification_protocol
+            .get_fields(&request.exchange)?
+            .r#type;
+        if exchange_type == VerificationProtocolType::ScanToVerify {
             return self
                 .handle_scan_to_verify(
                     proof_schema,
@@ -310,7 +314,7 @@ impl ProofService {
                         .ok_or(ValidationError::InvalidScanToVerifyParameters)?,
                 )
                 .await;
-        } else if exchange_type == ExchangeType::IsoMdl {
+        } else if exchange_type == VerificationProtocolType::IsoMdl {
             return self
                 .handle_iso_mdl_verifier(
                     proof_schema,
@@ -368,11 +372,10 @@ impl ProofService {
             return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
         };
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
-        validate_exchange_operation(&exchange_protocol_capabilities, &Operation::VERIFICATION)?;
-        validate_exchange_did_compatibility(
-            &exchange_protocol_capabilities,
-            &Operation::VERIFICATION,
+        validate_protocol_did_compatibility(
+            &exchange_protocol_capabilities.did_methods,
             &verifier_did.did_method,
+            &self.config.did,
         )?;
 
         let transport = validate_and_select_transport_type(
@@ -461,18 +464,14 @@ impl ProofService {
             MissingProviderError::ExchangeProtocol(proof.exchange.to_owned()),
         )?;
 
-        let exchange_params: OpenID4VCParams = self.config.exchange.get(&proof.exchange)?;
+        let exchange_params: OpenID4VpParams =
+            self.config.verification_protocol.get(&proof.exchange)?;
 
         let client_id_scheme = request
             .params
             .unwrap_or_default()
             .client_id_scheme
-            .unwrap_or(
-                exchange_params
-                    .presentation
-                    .verifier
-                    .default_client_id_scheme,
-            );
+            .unwrap_or(exchange_params.verifier.default_client_id_scheme);
 
         let formats = create_open_id_for_vp_formats();
         let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
@@ -482,7 +481,7 @@ impl ProofService {
             Ok(config
                 .format
                 .get_fields(input)
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
                 .r#type
                 .to_owned())
         });
@@ -510,7 +509,7 @@ impl ProofService {
             .schema
             .as_ref()
             .and_then(|schema| schema.organisation.as_ref())
-            .ok_or_else(|| ExchangeProtocolError::Failed("Missing organisation".to_string()))?;
+            .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?;
 
         add_new_interaction(
             interaction_id,
@@ -578,9 +577,13 @@ impl ProofService {
         exchange: String,
         organisation_id: OrganisationId,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
-        validate_exchange_type(&exchange, &self.config.exchange)?;
-        let exchange_type = self.config.exchange.get_fields(&exchange)?.r#type;
-        if exchange_type != ExchangeType::IsoMdl {
+        validate_exchange_type(&exchange, &self.config.verification_protocol)?;
+        let exchange_type = self
+            .config
+            .verification_protocol
+            .get_fields(&exchange)?
+            .r#type;
+        if exchange_type != VerificationProtocolType::IsoMdl {
             return Err(ValidationError::InvalidExchangeType {
                 value: exchange,
                 source: anyhow::anyhow!("propose_proof"),
@@ -605,7 +608,7 @@ impl ProofService {
         let device_engagement = DeviceEngagement {
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
-                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
@@ -628,7 +631,7 @@ impl ProofService {
             session: None,
         })
         .context("interaction serialization error")
-        .map_err(ExchangeProtocolError::Other)?;
+        .map_err(VerificationProtocolError::Other)?;
 
         let organisation = self
             .organisation_repository

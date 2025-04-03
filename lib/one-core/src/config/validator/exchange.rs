@@ -1,10 +1,11 @@
-use crate::config::core_config::ExchangeConfig;
-use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
+use serde::Serialize;
+
+use crate::config::core_config::{ConfigBlock, DidConfig, DidType};
 use crate::service::error::{BusinessLogicError, ValidationError};
 
-pub fn validate_exchange_type(
+pub fn validate_exchange_type<T: Serialize + Clone>(
     exchange: &str,
-    config: &ExchangeConfig,
+    config: &ConfigBlock<T>,
 ) -> Result<(), ValidationError> {
     config.get_if_enabled(exchange).map(|_| ()).map_err(|err| {
         ValidationError::InvalidExchangeType {
@@ -14,29 +15,21 @@ pub fn validate_exchange_type(
     })
 }
 
-pub fn validate_exchange_operation(
-    exchange_capabilities: &ExchangeProtocolCapabilities,
-    operation: &Operation,
-) -> Result<(), ValidationError> {
-    if !exchange_capabilities.operations.contains(operation) {
-        return Err(ValidationError::InvalidExchangeOperation);
-    }
-    Ok(())
-}
-
-pub(crate) fn validate_exchange_did_compatibility(
-    exchange_capabilities: &ExchangeProtocolCapabilities,
-    operation: &Operation,
+pub(crate) fn validate_protocol_did_compatibility(
+    capabilities: &[DidType],
     did_method: &str,
+    config: &DidConfig,
 ) -> Result<(), BusinessLogicError> {
-    let did_methods = match operation {
-        Operation::ISSUANCE => &exchange_capabilities.issuance_did_methods,
-        Operation::VERIFICATION => &exchange_capabilities.verification_did_methods,
-    };
-
-    let did_method = did_method.to_owned();
-    if !did_methods.contains(&did_method) {
-        return Err(BusinessLogicError::InvalidDidMethod { method: did_method });
+    let did_method_type = config
+        .get_fields(did_method)
+        .map_err(|_| BusinessLogicError::InvalidDidMethod {
+            method: did_method.to_string(),
+        })?
+        .r#type;
+    if !capabilities.contains(&did_method_type) {
+        return Err(BusinessLogicError::InvalidDidMethod {
+            method: did_method.to_string(),
+        });
     }
     Ok(())
 }

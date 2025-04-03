@@ -22,20 +22,22 @@ use crate::provider::credential_formatter::model::{CredentialSubject, DetailCred
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::exchange_protocol::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-};
-use crate::provider::exchange_protocol::openid4vc::model::{SubmitIssuerResponse, UpdateResponse};
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
-use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::issuance_protocol::openid4vc::model::{SubmitIssuerResponse, UpdateResponse};
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
+use crate::provider::verification_protocol::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+};
+use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
+use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -58,7 +60,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 ) {
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4().into();
-    let protocol = "OPENID4VC";
+    let protocol = "OPENID4VP_DRAFT20";
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -91,8 +93,8 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_, _, _| Ok(()));
 
-    let mut exchange_protocol_mock = MockExchangeProtocol::default();
-    exchange_protocol_mock
+    let mut verification_protocol_mock = MockVerificationProtocol::default();
+    verification_protocol_mock
         .inner
         .expect_holder_reject_proof()
         .withf(move |proof| {
@@ -102,15 +104,15 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_| Ok(()));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
-    protocol_provider
+    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
+    verification_protocol_provider
         .expect_get_protocol()
         .withf(move |_protocol| {
             assert_eq!(_protocol, protocol);
             true
         })
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+        .return_once(move |_| Some(Arc::new(verification_protocol_mock)));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -119,7 +121,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
-        protocol_provider: Arc::new(protocol_provider),
+        verification_protocol_provider: Arc::new(verification_protocol_provider),
         history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
@@ -132,7 +134,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
     let reject_proof_for_state = |state| async {
         let interaction_id = Uuid::new_v4();
         let proof_id = Uuid::new_v4().into();
-        let protocol = "OPENID4VC";
+        let protocol = "OPENID4VP_DRAFT20";
         let mut proof_repository = MockProofRepository::new();
         proof_repository
             .expect_get_proof_by_interaction_id()
@@ -257,8 +259,8 @@ async fn test_submit_proof_succeeds() {
         .times(1)
         .returning(move |_| Some(formatter.clone()));
 
-    let mut exchange_protocol = MockExchangeProtocol::default();
-    exchange_protocol
+    let mut verification_protocol = MockVerificationProtocol::default();
+    verification_protocol
         .inner
         .expect_holder_get_presentation_definition()
         .withf(move |proof, _, _| {
@@ -294,7 +296,7 @@ async fn test_submit_proof_succeeds() {
             })
         });
 
-    exchange_protocol
+    verification_protocol
         .inner
         .expect_holder_submit_proof()
         .withf(move |proof, _, _, _, _| {
@@ -304,12 +306,12 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(|_, _, _, _, _| Ok(Default::default()));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
-    protocol_provider
+    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
+    verification_protocol_provider
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol)));
+        .return_once(move |_| Some(Arc::new(verification_protocol)));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -326,7 +328,7 @@ async fn test_submit_proof_succeeds() {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
-        protocol_provider: Arc::new(protocol_provider),
+        verification_protocol_provider: Arc::new(verification_protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
         did_method_provider: Arc::new(did_method_provider),
@@ -430,8 +432,8 @@ async fn test_submit_proof_repeating_claims() {
         .expect_get_formatter()
         .returning(move |_| Some(formatter.clone()));
 
-    let mut exchange_protocol = MockExchangeProtocol::default();
-    exchange_protocol
+    let mut verification_protocol = MockVerificationProtocol::default();
+    verification_protocol
         .inner
         .expect_holder_get_presentation_definition()
         .withf(move |proof, _, _| {
@@ -494,7 +496,7 @@ async fn test_submit_proof_repeating_claims() {
             })
         });
 
-    exchange_protocol
+    verification_protocol
         .inner
         .expect_holder_submit_proof()
         .withf(move |proof, _, _, _, _| {
@@ -504,12 +506,12 @@ async fn test_submit_proof_repeating_claims() {
         .once()
         .returning(|_, _, _, _, _| Ok(Default::default()));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
-    protocol_provider
+    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
+    verification_protocol_provider
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol)));
+        .return_once(move |_| Some(Arc::new(verification_protocol)));
 
     proof_repository
         .expect_set_proof_claims()
@@ -542,7 +544,7 @@ async fn test_submit_proof_repeating_claims() {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
-        protocol_provider: Arc::new(protocol_provider),
+        verification_protocol_provider: Arc::new(verification_protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
         did_method_provider: Arc::new(did_method_provider),
@@ -620,7 +622,7 @@ async fn test_accept_credential() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let mut exchange_protocol_mock = MockExchangeProtocol::default();
+    let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
         .inner
         .expect_holder_accept_credential()
@@ -631,15 +633,14 @@ async fn test_accept_credential() {
                     credential: "credential".to_string(),
                     redirect_uri: None,
                 },
-                update_proof: None,
                 create_did: None,
                 update_credential: None,
                 update_credential_schema: None,
             })
         });
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
-    protocol_provider
+    let mut issuance_protocol_provider = MockIssuanceProtocolProviderExtra::new();
+    issuance_protocol_provider
         .expect_get_protocol()
         .once()
         .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
@@ -682,7 +683,7 @@ async fn test_accept_credential() {
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
-        protocol_provider: Arc::new(protocol_provider),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
         key_provider: Arc::new(key_provider),
@@ -714,22 +715,22 @@ async fn test_reject_credential() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let mut exchange_protocol_mock = MockExchangeProtocol::default();
+    let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
         .inner
         .expect_holder_reject_credential()
         .once()
         .returning(|_| Ok(()));
 
-    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
-    protocol_provider
+    let mut issuance_protocol_provider = MockIssuanceProtocolProviderExtra::new();
+    issuance_protocol_provider
         .expect_get_protocol()
         .once()
         .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
-        protocol_provider: Arc::new(protocol_provider),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
@@ -759,7 +760,8 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
+        issuance_protocol_provider: Arc::new(MockIssuanceProtocolProviderExtra::new()),
+        verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
         did_method_provider: Arc::new(did_method_provider),
         config: Arc::new(generic_config().core),
         client: client.clone(),

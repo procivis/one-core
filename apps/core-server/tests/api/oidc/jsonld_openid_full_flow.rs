@@ -168,7 +168,7 @@ async fn test_openid4vc_jsonld_flow(
             &credential_schema,
             CredentialStateEnum::Offered,
             server_did.as_ref().unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: holder_did.clone(),
                 key: local_key.to_owned(),
@@ -187,7 +187,7 @@ async fn test_openid4vc_jsonld_flow(
             holder_did.as_ref(),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             local_key.unwrap(),
         )
@@ -245,7 +245,7 @@ async fn test_openid4vc_jsonld_flow(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             server_did.as_ref().unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: holder_did.clone(),
                 credential: Some(credentials),
@@ -353,7 +353,7 @@ async fn test_openid4vc_jsonld_flow(
             holder_did.as_ref(),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key.unwrap(),
         )
@@ -524,7 +524,7 @@ async fn test_openid4vc_jsonld_flow_array(
             &credential_schema,
             CredentialStateEnum::Offered,
             server_did.as_ref().unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: holder_did.clone(),
                 key: local_key.to_owned(),
@@ -554,7 +554,7 @@ async fn test_openid4vc_jsonld_flow_array(
             holder_did.as_ref(),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&interaction),
             local_key.unwrap(),
         )
@@ -612,7 +612,7 @@ async fn test_openid4vc_jsonld_flow_array(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             server_did.as_ref().unwrap(),
-            "OPENID4VC",
+            "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: holder_did.clone(),
                 credential: Some(credentials),
@@ -730,7 +730,7 @@ async fn test_openid4vc_jsonld_flow_array(
             holder_did.as_ref(),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VC",
+            "OPENID4VP_DRAFT20",
             Some(&holder_interaction),
             local_key.unwrap(),
         )

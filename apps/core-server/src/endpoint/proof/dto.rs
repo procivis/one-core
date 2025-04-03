@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
-use one_core::provider::exchange_protocol::dto::{
+use one_core::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::exchange_protocol::openid4vc::model::ClientIdScheme;
+use one_core::provider::verification_protocol::openid4vc::model::ClientIdScheme;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
@@ -66,7 +66,7 @@ pub struct CreateProofRequestRestDTO {
     /// Specify the exchange protocol to use for credential exchange. Check
     /// the `exchange` object of the configuration for supported options and
     /// reference the configuration instance.
-    #[schema(example = "OPENID4VC")]
+    #[schema(example = "OPENID4VP_DRAFT20")]
     pub exchange: String,
     /// When a shared proof is accepted, the holder will be redirected to
     /// the resource specified here, if redirects are enabled in the system
