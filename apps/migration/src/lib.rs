@@ -92,6 +92,7 @@ mod m20250327_141601_add_new_history_action;
 mod m20250331_115152_add_history_target;
 mod m20250331_143210_rename_es256_to_ecdsa;
 mod m20250401_140204_add_reactivated_history_enum;
+mod m20250403_083609_exchange_rename;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -186,6 +187,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250331_143210_rename_es256_to_ecdsa::Migration),
             Box::new(m20250331_115152_add_history_target::Migration),
             Box::new(m20250401_140204_add_reactivated_history_enum::Migration),
+            Box::new(m20250403_083609_exchange_rename::Migration),
         ]
     }
 }

@@ -38,7 +38,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-enum Proof {
+pub enum Proof {
     Table,
     Transport,
     Exchange,
