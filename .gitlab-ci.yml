@@ -476,7 +476,7 @@ dtrack:generate-bom:
     SBOM_FILE_PATH: "one-core.json"
     SBOM_FILES: >-
       apps/core-server/core-server.cdx.json
-      apps/migration/migration.cdx.json
+      lib/migration/migration.cdx.json
       lib/one-core/one-core.cdx.json
       lib/shared-types/shared-types.cdx.json
       lib/sql-data-provider/sql-data-provider.cdx.json

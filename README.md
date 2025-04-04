@@ -283,7 +283,7 @@ EOF
 - Merge all SBOM files to one
 
 ```shell
-FILES="apps/core-server/bom.json apps/migration/bom.json lib/one-core/bom.json lib/shared-types/bom.json lib/sql-data-provider/bom.json platforms/uniffi/bom.json platforms/uniffi-bindgen/bom.json"
+FILES="apps/core-server/bom.json lib/migration/bom.json lib/one-core/bom.json lib/shared-types/bom.json lib/sql-data-provider/bom.json platforms/uniffi/bom.json platforms/uniffi-bindgen/bom.json"
 cyclonedx-cli merge --input-files ${FILES} --input-format=json --output-format=json > merged_sbom.json
 ```
 

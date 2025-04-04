@@ -6,6 +6,7 @@ version = "0.1.0"
 
 [workspace]
 members = [
+  "lib/migration",
   "lib/one-core",
   "lib/one-crypto",
   "lib/one-dev-services",
@@ -16,8 +17,6 @@ members = [
   "platforms/uniffi-bindgen",
 
   "apps/core-server",
-  "apps/migration",
-
   "examples",
 ]
 resolver = "2"

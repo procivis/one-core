@@ -19,7 +19,7 @@ autometrics.workspace    = true
 futures                  = { version = "0.3" }
 hex.workspace            = true
 itertools                = { version = "0.13" }
-migration                = { version = "0.1.0", path = "../../apps/migration", default-features = false }
+migration                = { version = "0.1.0", path = "../migration", default-features = false }
 one-core                 = { version = "0.1.0", path = "../one-core" }
 one-dto-mapper.workspace = true
 sea-orm                  = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-time", "with-json"] }
