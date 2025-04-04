@@ -27,7 +27,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::*;
-use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
+use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -44,7 +45,7 @@ struct Mocks {
     pub credential_repository: MockCredentialRepository,
     pub interaction_repository: MockInteractionRepository,
     pub config: CoreConfig,
-    pub exchange_provider: MockIssuanceProtocolProviderExtra,
+    pub exchange_provider: MockIssuanceProtocolProvider,
     pub did_repository: MockDidRepository,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -599,7 +600,7 @@ async fn test_oidc_issuer_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut exchange_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut exchange_provider = MockIssuanceProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
     let now = OffsetDateTime::now_utc();
 
@@ -638,8 +639,9 @@ async fn test_oidc_issuer_create_credential_success() {
                 )))
             });
 
-        exchange_provider
-            .expect_issue_credential()
+        let mut issuance_protocol = MockIssuanceProtocol::default();
+        issuance_protocol
+            .expect_issuer_issue_credential()
             .once()
             .return_once(|_, _, _| {
                 Ok(SubmitIssuerResponse {
@@ -647,6 +649,10 @@ async fn test_oidc_issuer_create_credential_success() {
                     redirect_uri: None,
                 })
             });
+        exchange_provider
+            .expect_get_protocol()
+            .once()
+            .return_once(move |_| Some(Arc::new(issuance_protocol)));
 
         did_repository
             .expect_get_did_by_value()
@@ -764,7 +770,7 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut exchange_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut exchange_provider = MockIssuanceProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
     let now = OffsetDateTime::now_utc();
 
@@ -807,8 +813,9 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
                 )))
             });
 
-        exchange_provider
-            .expect_issue_credential()
+        let mut issuance_protocol = MockIssuanceProtocol::default();
+        issuance_protocol
+            .expect_issuer_issue_credential()
             .once()
             .return_once(|_, _, _| {
                 Ok(SubmitIssuerResponse {
@@ -816,6 +823,10 @@ async fn test_oidc_issuer_create_credential_success_mdoc() {
                     redirect_uri: None,
                 })
             });
+        exchange_provider
+            .expect_get_protocol()
+            .once()
+            .return_once(move |_| Some(Arc::new(issuance_protocol)));
 
         did_repository
             .expect_get_did_by_value()
@@ -1116,7 +1127,7 @@ async fn test_oidc_issuer_create_credential_pre_authorized_code_not_used() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let exchange_provider = MockIssuanceProtocolProviderExtra::default();
+    let exchange_provider = MockIssuanceProtocolProvider::default();
 
     let schema = generic_credential_schema();
     {
@@ -1172,7 +1183,7 @@ async fn test_oidc_issuer_create_credential_interaction_data_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let exchange_provider = MockIssuanceProtocolProviderExtra::default();
+    let exchange_provider = MockIssuanceProtocolProvider::default();
 
     let schema = generic_credential_schema();
     {
@@ -1228,7 +1239,7 @@ async fn test_oidc_issuer_create_credential_access_token_expired() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let exchange_provider = MockIssuanceProtocolProviderExtra::default();
+    let exchange_provider = MockIssuanceProtocolProvider::default();
 
     let schema = generic_credential_schema();
     {

@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
+use secrecy::SecretSlice;
 use serde_json::{json, Value};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::OpenID4VCHTTP;
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -26,10 +28,10 @@ use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatu
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
-use crate::provider::issuance_protocol::provider::{
-    IssuanceProtocolProviderCoreImpl, IssuanceProtocolProviderExtra,
-    MockIssuanceProtocolProviderExtra,
+use crate::provider::http_client::MockHttpClient;
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+    OpenID4VCIParams, OpenID4VCRedirectUriParams,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -40,7 +42,6 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::error::ServiceError;
 use crate::service::test_utilities::{
     dummy_did_document, dummy_organisation, generic_config, get_dummy_date,
 };
@@ -199,21 +200,33 @@ async fn test_issuer_submit_succeeds() {
             }))
         });
 
-    let service = IssuanceProtocolProviderCoreImpl::new(
-        Arc::new(MockIssuanceProtocolProviderExtra::default()),
-        Arc::new(formatter_provider),
-        Arc::new(credential_repository),
-        Arc::new(revocation_method_provider),
-        Arc::new(key_provider),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(did_method_provider),
-        Arc::new(revocation_list_repository),
-        Arc::new(MockValidityCredentialRepository::new()),
-        Arc::new(generic_config().core),
+    let provider = OpenID4VCHTTP::new(
         Some("http://example.com/".to_string()),
+        Arc::new(credential_repository),
+        Arc::new(MockValidityCredentialRepository::new()),
+        Arc::new(revocation_list_repository),
+        Arc::new(formatter_provider),
+        Arc::new(revocation_method_provider),
+        Arc::new(did_method_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_provider),
+        Arc::new(MockHttpClient::new()),
+        Arc::new(generic_config().core),
+        OpenID4VCIParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            refresh_expires_in: 1000,
+            encryption: SecretSlice::from(vec![0; 32]),
+            url_scheme: "openid-credential-offer".to_string(),
+            redirect_uri: OpenID4VCRedirectUriParams {
+                enabled: true,
+                allowed_schemes: vec!["https".to_string()],
+            },
+        },
     );
 
-    let result = service
+    let result = provider
         .issue_credential(
             &credential_id,
             dummy_did(),
@@ -365,18 +378,30 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         })
         .return_once(|_| Ok(()));
 
-    let service = IssuanceProtocolProviderCoreImpl::new(
-        Arc::new(MockIssuanceProtocolProviderExtra::default()),
-        Arc::new(formatter_provider),
-        Arc::new(credential_repository),
-        Arc::new(revocation_method_provider),
-        Arc::new(key_provider),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(did_method_provider),
-        Arc::new(revocation_list_repository),
-        Arc::new(validity_credential_repository),
-        Arc::new(dummy_config()),
+    let service = OpenID4VCHTTP::new(
         Some("https://example.com/test/".to_string()),
+        Arc::new(credential_repository),
+        Arc::new(validity_credential_repository),
+        Arc::new(revocation_list_repository),
+        Arc::new(formatter_provider),
+        Arc::new(revocation_method_provider),
+        Arc::new(did_method_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_provider),
+        Arc::new(MockHttpClient::new()),
+        Arc::new(dummy_config()),
+        OpenID4VCIParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            refresh_expires_in: 1000,
+            encryption: SecretSlice::from(vec![0; 32]),
+            url_scheme: "openid-credential-offer".to_string(),
+            redirect_uri: OpenID4VCRedirectUriParams {
+                enabled: true,
+                allowed_schemes: vec!["https".to_string()],
+            },
+        },
     );
 
     service
@@ -538,18 +563,30 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
     );
 
-    let service = IssuanceProtocolProviderCoreImpl::new(
-        Arc::new(MockIssuanceProtocolProviderExtra::default()),
-        Arc::new(formatter_provider),
-        Arc::new(credential_repository),
-        Arc::new(revocation_method_provider),
-        Arc::new(key_provider),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(did_method_provider),
-        Arc::new(revocation_list_repository),
-        Arc::new(validity_credential_repository),
-        Arc::new(config),
+    let service = OpenID4VCHTTP::new(
         Some("https://example.com/test/".to_string()),
+        Arc::new(credential_repository),
+        Arc::new(validity_credential_repository),
+        Arc::new(revocation_list_repository),
+        Arc::new(formatter_provider),
+        Arc::new(revocation_method_provider),
+        Arc::new(did_method_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_provider),
+        Arc::new(MockHttpClient::new()),
+        Arc::new(config),
+        OpenID4VCIParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            refresh_expires_in: 1000,
+            encryption: SecretSlice::from(vec![0; 32]),
+            url_scheme: "openid-credential-offer".to_string(),
+            redirect_uri: OpenID4VCRedirectUriParams {
+                enabled: true,
+                allowed_schemes: vec!["https".to_string()],
+            },
+        },
     );
 
     service
@@ -620,22 +657,34 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
     );
 
-    let service = IssuanceProtocolProviderCoreImpl::new(
-        Arc::new(MockIssuanceProtocolProviderExtra::default()),
-        Arc::new(MockCredentialFormatterProvider::new()),
-        Arc::new(credential_repository),
-        Arc::new(MockRevocationMethodProvider::new()),
-        Arc::new(MockKeyProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockRevocationListRepository::new()),
-        Arc::new(validity_credential_repository),
-        Arc::new(config),
+    let service = OpenID4VCHTTP::new(
         Some("base_url".to_string()),
+        Arc::new(credential_repository),
+        Arc::new(validity_credential_repository),
+        Arc::new(MockRevocationListRepository::new()),
+        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockRevocationMethodProvider::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(MockHttpClient::new()),
+        Arc::new(config),
+        OpenID4VCIParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            refresh_expires_in: 1000,
+            encryption: SecretSlice::from(vec![0; 32]),
+            url_scheme: "openid-credential-offer".to_string(),
+            redirect_uri: OpenID4VCRedirectUriParams {
+                enabled: true,
+                allowed_schemes: vec!["https".to_string()],
+            },
+        },
     );
 
     assert2::assert!(
-        let ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest) =
+        let IssuanceProtocolError::InvalidRequest(_) =
         service
         .issue_credential(&credential_id, dummy_did(), format!("{}#0", dummy_did().did))
         .await

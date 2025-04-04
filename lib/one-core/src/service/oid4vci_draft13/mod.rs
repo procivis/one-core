@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::provider::IssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -21,7 +21,7 @@ pub struct OIDCService {
     credential_repository: Arc<dyn CredentialRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     config: Arc<core_config::CoreConfig>,
-    protocol_provider: Arc<dyn IssuanceProtocolProviderExtra>,
+    protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     did_repository: Arc<dyn DidRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -35,7 +35,7 @@ impl OIDCService {
         credential_repository: Arc<dyn CredentialRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         config: Arc<core_config::CoreConfig>,
-        protocol_provider: Arc<dyn IssuanceProtocolProviderExtra>,
+        protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_repository: Arc<dyn DidRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

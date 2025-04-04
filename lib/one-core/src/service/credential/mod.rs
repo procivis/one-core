@@ -4,7 +4,7 @@ use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
-use crate::provider::issuance_protocol::provider::IssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -33,7 +33,7 @@ pub struct CredentialService {
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    protocol_provider: Arc<dyn IssuanceProtocolProviderExtra>,
+    protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -54,7 +54,7 @@ impl CredentialService {
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        protocol_provider: Arc<dyn IssuanceProtocolProviderExtra>,
+        protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

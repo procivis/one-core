@@ -322,13 +322,14 @@ impl OIDCService {
 
         let issued_credential = self
             .protocol_provider
-            .issue_credential(&credential.id, holder_did, holder_key_id)
+            .get_protocol(&credential.exchange)
+            .ok_or(ServiceError::MappingError(
+                "issuance protocol not found".to_string(),
+            ))?
+            .issuer_issue_credential(&credential.id, holder_did, holder_key_id)
             .await?;
 
-        Ok(OpenID4VCICredentialResponseDTO {
-            credential: issued_credential.credential,
-            redirect_uri: credential.redirect_uri.to_owned(),
-        })
+        Ok(issued_credential.into())
     }
 
     pub async fn oidc_issuer_create_token(

@@ -11,8 +11,7 @@ use provider::caching_loader::json_schema::JsonSchemaCache;
 use provider::caching_loader::trust_list::TrustListCache;
 use provider::caching_loader::vct::VctTypeMetadataCache;
 use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
-use provider::issuance_protocol::provider::IssuanceProtocolProviderCoreImpl;
-use provider::issuance_protocol::IssuanceProtocolProviderImpl;
+use provider::issuance_protocol::provider::IssuanceProtocolProviderImpl;
 use provider::mqtt_client::MqttClient;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
@@ -404,8 +403,12 @@ impl OneCore {
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
         let issuance_protocols = issuance_protocol_providers_from_config(
+            Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
             providers.core_base_url.clone(),
+            data_provider.get_credential_repository(),
+            data_provider.get_validity_credential_repository(),
+            data_provider.get_revocation_list_repository(),
             formatter_provider.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
@@ -431,19 +434,7 @@ impl OneCore {
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
         let config = Arc::new(core_config);
-        let issuance_provider = Arc::new(IssuanceProtocolProviderCoreImpl::new(
-            Arc::new(IssuanceProtocolProviderImpl::new(issuance_protocols)),
-            formatter_provider.clone(),
-            data_provider.get_credential_repository(),
-            revocation_method_provider.clone(),
-            key_provider.clone(),
-            key_algorithm_provider.clone(),
-            did_method_provider.clone(),
-            data_provider.get_revocation_list_repository(),
-            data_provider.get_validity_credential_repository(),
-            config.clone(),
-            providers.core_base_url.clone(),
-        ));
+        let issuance_provider = Arc::new(IssuanceProtocolProviderImpl::new(issuance_protocols));
 
         let verification_provider = Arc::new(VerificationProtocolProviderImpl::new(
             verification_protocols,

@@ -26,7 +26,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
@@ -629,7 +629,6 @@ async fn test_accept_credential() {
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
-        .inner
         .expect_holder_accept_credential()
         .once()
         .returning(|_, _, _, _, _, _, _| {
@@ -644,7 +643,7 @@ async fn test_accept_credential() {
             })
         });
 
-    let mut issuance_protocol_provider = MockIssuanceProtocolProviderExtra::new();
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
@@ -722,12 +721,11 @@ async fn test_reject_credential() {
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
-        .inner
         .expect_holder_reject_credential()
         .once()
         .returning(|_| Ok(()));
 
-    let mut issuance_protocol_provider = MockIssuanceProtocolProviderExtra::new();
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
@@ -765,7 +763,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        issuance_protocol_provider: Arc::new(MockIssuanceProtocolProviderExtra::new()),
+        issuance_protocol_provider: Arc::new(MockIssuanceProtocolProvider::new()),
         verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
         did_method_provider: Arc::new(did_method_provider),
         config: Arc::new(generic_config().core),

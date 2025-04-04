@@ -25,7 +25,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_op
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::provider::IssuanceProtocol;
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,

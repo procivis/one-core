@@ -4,11 +4,12 @@ use std::sync::Arc;
 use anyhow::Context;
 use indexmap::IndexMap;
 use one_crypto::encryption::encrypt_string;
+use one_dto_mapper::convert_inner;
 use secrecy::ExposeSecret;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use shared_types::CredentialId;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{deserialize_interaction_data, serialize_interaction_data};
 use uuid::Uuid;
@@ -29,42 +30,72 @@ use super::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::service::create_credential_offer;
 use super::{HandleInvitationOperationsAccess, IssuanceProtocolError, StorageAccess};
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
-use crate::config::core_config::DatatypeType;
-use crate::model::claim::Claim;
-use crate::model::credential::{Clearable, Credential, UpdateCredentialRequest};
-use crate::model::credential_schema::UpdateCredentialSchemaRequest;
-use crate::model::did::{Did, DidType, KeyRole};
+use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential::{
+    Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
+};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
+};
+use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
-use crate::model::organisation::Organisation;
+use crate::model::key::{Key, KeyRelations};
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::revocation_list::{
+    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+};
+use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
+use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::TxCodeError;
-use crate::provider::issuance_protocol::mapper::interaction_from_handle_invitation;
+use crate::provider::issuance_protocol::mapper::{
+    get_issued_credential_update, interaction_from_handle_invitation,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::revocation::token_status_list;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
+use crate::util::params::convert_params;
+use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
+use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 mod utils;
 
 #[cfg(test)]
 mod test;
 
+#[cfg(test)]
+mod test_issuance;
+
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 
 pub(crate) struct OpenID4VCHTTP {
     client: Arc<dyn HttpClient>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
+    config: Arc<CoreConfig>,
     params: OpenID4VCIParams,
 }
 
@@ -72,22 +103,30 @@ pub(crate) struct OpenID4VCHTTP {
 impl OpenID4VCHTTP {
     pub(crate) fn new(
         base_url: Option<String>,
+        credential_repository: Arc<dyn CredentialRepository>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
+        config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
     ) -> Self {
         Self {
             base_url,
+            credential_repository,
+            validity_credential_repository,
+            revocation_list_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
             key_algorithm_provider,
             key_provider,
             client,
+            config,
             params,
         }
     }
@@ -565,6 +604,400 @@ impl OpenID4VCHTTP {
             interaction_id,
             context: interaction_content,
         })
+    }
+
+    pub(crate) async fn issue_credential(
+        &self,
+        credential_id: &CredentialId,
+        holder_did: Did,
+        holder_key_id: String,
+    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
+        let Some(mut credential) = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                    }),
+                    issuer_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
+                    key: Some(KeyRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+        else {
+            return Err(IssuanceProtocolError::Failed(
+                "Credential not found".to_string(),
+            ));
+        };
+
+        let issuer_did = credential
+            .issuer_did
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "issuer_did is None".to_string(),
+            ))?;
+
+        let credentials_by_issuer_did = convert_inner(
+            self.credential_repository
+                .get_credentials_by_issuer_did_id(&issuer_did.id, &CredentialRelations::default())
+                .await
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+        );
+
+        credential.holder_did = Some(holder_did.clone());
+
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "credential_schema is None".to_string(),
+            ))?
+            .clone();
+        let credential_state = credential.state;
+
+        self.validate_credential_issuable(credential_id, &credential_state, &credential_schema)
+            .await?;
+
+        let format = credential_schema.format.to_owned();
+
+        let revocation_method = self
+            .revocation_provider
+            .get_revocation_method(&credential_schema.revocation_method)
+            .ok_or(IssuanceProtocolError::Failed(format!(
+                "revocation method not found: {}",
+                credential_schema.revocation_method
+            )))?;
+
+        let did_document = self
+            .did_method_provider
+            .resolve(&issuer_did.did)
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        let key_id = did_document
+            .find_verification_method(None, Some(KeyRole::AssertionMethod))
+            .ok_or(IssuanceProtocolError::Failed(
+                "invalid issuer did".to_string(),
+            ))?
+            .id
+            .to_owned();
+
+        let mut credential_additional_data = None;
+
+        // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
+        if credential_schema.revocation_method == StatusListType::BitstringStatusList.to_string() {
+            let crate::provider::revocation::bitstring_status_list::Params { format } =
+                convert_params(
+                    revocation_method
+                        .get_params()
+                        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+                )
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+            let status_list_format = if format == StatusListCredentialFormat::JsonLdClassic
+                && credential_schema.format == "JSON_LD_BBSPLUS"
+            {
+                "JSON_LD_BBSPLUS".to_string()
+            } else {
+                format.to_string()
+            };
+
+            let formatter = self
+                .formatter_provider
+                .get_formatter(&status_list_format)
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "formatter not found: {status_list_format}"
+                )))?;
+
+            credential_additional_data = Some(CredentialAdditionalData {
+                credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
+                revocation_list_id: get_or_create_revocation_list_id(
+                    &credentials_by_issuer_did,
+                    issuer_did,
+                    RevocationListPurpose::Revocation,
+                    &*self.revocation_list_repository,
+                    &self.key_provider,
+                    &self.key_algorithm_provider,
+                    &self.base_url,
+                    &*formatter,
+                    key_id.clone(),
+                    &StatusListType::BitstringStatusList,
+                    &format,
+                )
+                .await
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+                suspension_list_id: Some(
+                    get_or_create_revocation_list_id(
+                        &credentials_by_issuer_did,
+                        issuer_did,
+                        RevocationListPurpose::Suspension,
+                        &*self.revocation_list_repository,
+                        &self.key_provider,
+                        &self.key_algorithm_provider,
+                        &self.base_url,
+                        &*formatter,
+                        key_id,
+                        &StatusListType::BitstringStatusList,
+                        &format,
+                    )
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+                ),
+            });
+        } else if credential_schema.revocation_method == StatusListType::TokenStatusList.to_string()
+        {
+            let token_status_list::Params { format } = convert_params(
+                revocation_method
+                    .get_params()
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+            )
+            .unwrap_or_default();
+
+            let formatter = self
+                .formatter_provider
+                .get_formatter(&format.to_string())
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "formatter not found: {format}"
+                )))?;
+
+            credential_additional_data = Some(CredentialAdditionalData {
+                credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
+                revocation_list_id: get_or_create_revocation_list_id(
+                    &credentials_by_issuer_did,
+                    issuer_did,
+                    RevocationListPurpose::Revocation,
+                    &*self.revocation_list_repository,
+                    &self.key_provider,
+                    &self.key_algorithm_provider,
+                    &self.base_url,
+                    &*formatter,
+                    key_id.clone(),
+                    &StatusListType::TokenStatusList,
+                    &format,
+                )
+                .await
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+                suspension_list_id: None,
+            });
+        }
+
+        let (update, status) = revocation_method
+            .add_issued_credential(&credential, credential_additional_data)
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        if let Some(update) = update {
+            process_update(
+                update,
+                &*self.validity_credential_repository,
+                &*self.revocation_list_repository,
+            )
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        }
+
+        let credential_status = status
+            .into_iter()
+            .map(|revocation_info| revocation_info.credential_status)
+            .collect();
+
+        let key = credential
+            .key
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?;
+
+        let issuer_did_value = &credential
+            .issuer_did
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "missing issuer did".to_string(),
+            ))?
+            .did;
+
+        let did_document = self
+            .did_method_provider
+            .resolve(issuer_did_value)
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        let assertion_methods =
+            did_document
+                .assertion_method
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing assertion_method keys".to_owned(),
+                ))?;
+
+        let issuer_jwk_key_id = match assertion_methods
+            .iter()
+            .find(|id| id.contains(&key.id.to_string()))
+            .cloned()
+        {
+            Some(id) => id,
+            None => assertion_methods
+                .first()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing first assertion_method key".to_owned(),
+                ))?
+                .to_owned(),
+        };
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(
+                &key.to_owned(),
+                Some(issuer_jwk_key_id),
+                self.key_algorithm_provider.clone(),
+            )
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let redirect_uri = credential.redirect_uri.to_owned();
+
+        let core_base_url = self.base_url.as_ref().ok_or(IssuanceProtocolError::Failed(
+            "Missing core_base_url for credential issuance".to_string(),
+        ))?;
+
+        // TODO - remove organisation usage from here when moved to open core
+        let credential_detail =
+            credential_detail_response_from_model(credential.clone(), &self.config, None)
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let additional_contexts = revocation_method
+            .get_json_ld_context()
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .url
+            .map(|ctx| ctx.parse().map(|ctx| vec![ContextType::Url(ctx)]))
+            .transpose()
+            .map_err(|_err| {
+                IssuanceProtocolError::Failed(
+                    "Provided JSON-LD context URL is not a valid URL".to_owned(),
+                )
+            })?;
+        let contexts = vcdm_v2_base_context(additional_contexts);
+        let credential_data = credential_data_from_credential_detail_response(
+            credential_detail,
+            holder_did.did,
+            holder_key_id,
+            core_base_url,
+            credential_status,
+            contexts,
+        )
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let token = self
+            .formatter_provider
+            .get_formatter(&format)
+            .ok_or(IssuanceProtocolError::Failed(format!(
+                "formatter not found: {format}"
+            )))?
+            .format_credential(credential_data, auth_fn)
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        match (credential_schema.format.as_str(), credential_state) {
+            ("MDOC", CredentialStateEnum::Accepted) => {
+                self.validity_credential_repository
+                    .insert(
+                        Mdoc {
+                            id: Uuid::new_v4(),
+                            created_date: OffsetDateTime::now_utc(),
+                            credential: token.as_bytes().to_vec(),
+                            linked_credential_id: *credential_id,
+                        }
+                        .into(),
+                    )
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            }
+            ("MDOC", CredentialStateEnum::Offered) => {
+                self.credential_repository
+                    .update_credential(
+                        *credential_id,
+                        get_issued_credential_update(&token, holder_did.id),
+                    )
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+                self.validity_credential_repository
+                    .insert(
+                        Mdoc {
+                            id: Uuid::new_v4(),
+                            created_date: OffsetDateTime::now_utc(),
+                            credential: token.as_bytes().to_vec(),
+                            linked_credential_id: *credential_id,
+                        }
+                        .into(),
+                    )
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            }
+            _ => {
+                self.credential_repository
+                    .update_credential(
+                        *credential_id,
+                        get_issued_credential_update(&token, holder_did.id),
+                    )
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            }
+        }
+
+        Ok(SubmitIssuerResponse {
+            credential: token,
+            redirect_uri,
+        })
+    }
+
+    fn mso_minimum_refresh_time(&self) -> Result<Duration, IssuanceProtocolError> {
+        self.config
+            .format
+            .get::<mdoc_formatter::Params>("MDOC")
+            .map(|p| p.mso_minimum_refresh_time)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
+    }
+
+    async fn validate_credential_issuable(
+        &self,
+        credential_id: &CredentialId,
+        latest_state: &CredentialStateEnum,
+        credential_schema: &CredentialSchema,
+    ) -> Result<(), IssuanceProtocolError> {
+        match (latest_state, credential_schema.format.as_str()) {
+            (CredentialStateEnum::Accepted, "MDOC") => {
+                let mdoc_validity_credential = self
+                    .validity_credential_repository
+                    .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                    .ok_or_else(|| {
+                        IssuanceProtocolError::Failed(format!(
+                            "Missing verifiable credential for MDOC: {credential_id}"
+                        ))
+                    })?;
+
+                let can_be_updated_at =
+                    mdoc_validity_credential.created_date + self.mso_minimum_refresh_time()?;
+
+                if can_be_updated_at > OffsetDateTime::now_utc() {
+                    return Err(IssuanceProtocolError::InvalidRequest("expired".to_string()));
+                }
+            }
+            (CredentialStateEnum::Offered, _) => {}
+            _ => {
+                return Err(IssuanceProtocolError::InvalidRequest(
+                    "invalid state".to_string(),
+                ))
+            }
+        }
+
+        Ok(())
     }
 }
 

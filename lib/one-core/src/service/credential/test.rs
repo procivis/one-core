@@ -33,7 +33,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
-use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProviderExtra;
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -74,7 +74,7 @@ struct Repositories {
     pub revocation_list_repository: MockRevocationListRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
-    pub protocol_provider: MockIssuanceProtocolProviderExtra,
+    pub protocol_provider: MockIssuanceProtocolProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -584,19 +584,18 @@ async fn test_share_credential_success() {
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut protocol = MockIssuanceProtocol::default();
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
     protocol
-        .inner
         .expect_issuer_share_credential()
         .times(1)
         .returning(move |_, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
-                context: (),
+                context: Default::default(),
             })
         });
 
@@ -735,11 +734,10 @@ async fn test_create_credential_success() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -831,11 +829,10 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -990,11 +987,10 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1113,11 +1109,10 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1204,11 +1199,10 @@ async fn test_create_credential_schema_deleted() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1714,11 +1708,10 @@ async fn test_create_credential_key_with_issuer_key() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1852,11 +1845,10 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -1960,11 +1952,10 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2052,11 +2043,10 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2161,11 +2151,10 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2270,11 +2259,10 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2367,11 +2355,10 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -2453,11 +2440,10 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -4789,11 +4775,10 @@ async fn test_create_credential_array(
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
-        .inner
         .expect_get_capabilities()
         .once()
         .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProviderExtra::default();
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
         .once()

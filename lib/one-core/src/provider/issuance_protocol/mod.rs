@@ -13,7 +13,7 @@ use serde_json::json;
 use shared_types::CredentialId;
 use url::Url;
 
-use crate::config::core_config::{IssuanceProtocolConfig, IssuanceProtocolType};
+use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
@@ -28,10 +28,12 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, OpenID4VCIParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VC;
-use crate::provider::issuance_protocol::provider::{IssuanceProtocol, IssuanceProtocolProvider};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;
@@ -39,9 +41,6 @@ pub mod error;
 mod mapper;
 pub mod openid4vci_draft13;
 pub(crate) mod provider;
-
-#[cfg(test)]
-mod test;
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -54,8 +53,12 @@ pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn issuance_protocol_providers_from_config(
+    config: Arc<CoreConfig>,
     exchange_config: &mut IssuanceProtocolConfig,
     core_base_url: Option<String>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -86,12 +89,16 @@ pub(crate) fn issuance_protocol_providers_from_config(
 
                 let http = OpenID4VCHTTP::new(
                     core_base_url.clone(),
+                    credential_repository.clone(),
+                    validity_credential_repository.clone(),
+                    revocation_list_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     client.clone(),
+                    config.clone(),
                     params.clone(),
                 );
 
@@ -160,14 +167,11 @@ pub(crate) trait HandleInvitationOperations: Send + Sync {
 }
 pub(crate) type HandleInvitationOperationsAccess = dyn HandleInvitationOperations;
 
-/// This trait contains methods for exchanging credentials between issuers,
-/// holders, and verifiers.
-#[cfg_attr(any(test, feature = "mock"), mockall::automock(type InteractionContext = ();))]
+/// This trait contains methods for exchanging credentials between issuers and holders
+#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 #[allow(clippy::too_many_arguments)]
-pub(crate) trait IssuanceProtocolImpl: Send + Sync {
-    type InteractionContext;
-
+pub(crate) trait IssuanceProtocol: Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the necessary URLs.
     fn holder_can_handle(&self, url: &Url) -> bool;
@@ -207,128 +211,15 @@ pub(crate) trait IssuanceProtocolImpl: Send + Sync {
         &self,
         credential: &Credential,
         credential_format: &str,
-    ) -> Result<ShareResponse<Self::InteractionContext>, IssuanceProtocolError>;
+    ) -> Result<ShareResponse<serde_json::Value>, IssuanceProtocolError>;
+
+    /// Creates a newly issued credential
+    async fn issuer_issue_credential(
+        &self,
+        credential_id: &CredentialId,
+        holder_did: Did,
+        holder_key_id: String,
+    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError>;
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities;
-}
-
-#[cfg(test)]
-pub(crate) type MockIssuanceProtocol = IssuanceProtocolWrapper<MockIssuanceProtocolImpl>;
-
-#[cfg(test)]
-#[derive(Default)]
-pub(crate) struct IssuanceProtocolWrapper<T> {
-    pub inner: T,
-}
-
-#[cfg(test)]
-#[async_trait::async_trait]
-impl<T> IssuanceProtocolImpl for IssuanceProtocolWrapper<T>
-where
-    T: IssuanceProtocolImpl,
-    T::InteractionContext: serde::Serialize + serde::de::DeserializeOwned,
-{
-    type InteractionContext = serde_json::Value;
-
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        self.inner.holder_can_handle(url)
-    }
-
-    async fn holder_handle_invitation(
-        &self,
-        url: Url,
-        organisation: Organisation,
-        storage_access: &StorageAccess,
-        handle_invitation_operations: &HandleInvitationOperationsAccess,
-    ) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
-        self.inner
-            .holder_handle_invitation(
-                url,
-                organisation,
-                storage_access,
-                handle_invitation_operations,
-            )
-            .await
-    }
-
-    async fn holder_accept_credential(
-        &self,
-        credential: &Credential,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
-        format: &str,
-        storage_access: &StorageAccess,
-        tx_code: Option<String>,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
-        self.inner
-            .holder_accept_credential(
-                credential,
-                holder_did,
-                key,
-                jwk_key_id,
-                format,
-                storage_access,
-                tx_code,
-            )
-            .await
-    }
-
-    async fn holder_reject_credential(
-        &self,
-        credential: &Credential,
-    ) -> Result<(), IssuanceProtocolError> {
-        self.inner.holder_reject_credential(credential).await
-    }
-
-    async fn issuer_share_credential(
-        &self,
-        credential: &Credential,
-        credential_format: &str,
-    ) -> Result<ShareResponse<Self::InteractionContext>, IssuanceProtocolError> {
-        self.inner
-            .issuer_share_credential(credential, credential_format)
-            .await
-            .map(|resp| ShareResponse {
-                url: resp.url,
-                interaction_id: resp.interaction_id,
-                context: serde_json::json!(resp.context),
-            })
-    }
-
-    fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
-        self.inner.get_capabilities()
-    }
-}
-
-#[cfg(test)]
-impl<T> IssuanceProtocol for IssuanceProtocolWrapper<T>
-where
-    T: IssuanceProtocolImpl,
-    T::InteractionContext: serde::Serialize + serde::de::DeserializeOwned,
-{
-}
-
-pub(crate) struct IssuanceProtocolProviderImpl {
-    protocols: HashMap<String, Arc<dyn IssuanceProtocol>>,
-}
-
-impl IssuanceProtocolProviderImpl {
-    pub(crate) fn new(protocols: HashMap<String, Arc<dyn IssuanceProtocol>>) -> Self {
-        Self { protocols }
-    }
-}
-
-#[async_trait::async_trait]
-impl IssuanceProtocolProvider for IssuanceProtocolProviderImpl {
-    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn IssuanceProtocol>> {
-        self.protocols.get(protocol_id).cloned()
-    }
-
-    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)> {
-        self.protocols
-            .iter()
-            .find(|(_, protocol)| protocol.holder_can_handle(url))
-            .map(|(id, protocol)| (id.to_owned(), protocol.to_owned()))
-    }
 }

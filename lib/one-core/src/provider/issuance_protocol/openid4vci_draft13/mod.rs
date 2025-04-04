@@ -4,12 +4,12 @@
 use async_trait::async_trait;
 use openidvc_http::OpenID4VCHTTP;
 use serde_json::json;
+use shared_types::CredentialId;
 use url::Url;
 
 use super::dto::IssuanceProtocolCapabilities;
 use super::{
-    HandleInvitationOperationsAccess, IssuanceProtocol, IssuanceProtocolError,
-    IssuanceProtocolImpl, StorageAccess,
+    HandleInvitationOperationsAccess, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
 };
 use crate::config::core_config::DidType;
 use crate::model::credential::Credential;
@@ -41,9 +41,7 @@ impl OpenID4VC {
 }
 
 #[async_trait]
-impl IssuanceProtocolImpl for OpenID4VC {
-    type InteractionContext = serde_json::Value;
-
+impl IssuanceProtocol for OpenID4VC {
     fn holder_can_handle(&self, url: &Url) -> bool {
         self.openid_http.can_handle(url)
     }
@@ -106,7 +104,7 @@ impl IssuanceProtocolImpl for OpenID4VC {
         &self,
         credential: &Credential,
         credential_format: &str,
-    ) -> Result<ShareResponse<Self::InteractionContext>, IssuanceProtocolError> {
+    ) -> Result<ShareResponse<serde_json::Value>, IssuanceProtocolError> {
         self.openid_http
             .issuer_share_credential(credential, credential_format)
             .await
@@ -117,11 +115,20 @@ impl IssuanceProtocolImpl for OpenID4VC {
             })
     }
 
+    async fn issuer_issue_credential(
+        &self,
+        credential_id: &CredentialId,
+        holder_did: Did,
+        holder_key_id: String,
+    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
+        self.openid_http
+            .issue_credential(credential_id, holder_did, holder_key_id)
+            .await
+    }
+
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
         IssuanceProtocolCapabilities {
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::MDL],
         }
     }
 }
-
-impl IssuanceProtocol for OpenID4VC {}
