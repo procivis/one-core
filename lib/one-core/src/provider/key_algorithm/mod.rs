@@ -48,3 +48,28 @@ pub trait KeyAlgorithm: Send + Sync {
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError>;
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError>;
 }
+
+pub(crate) fn parse_multibase_with_tag(
+    encoded: &str,
+    expected_tag: &[u8],
+) -> Result<Vec<u8>, KeyAlgorithmError> {
+    if !encoded.starts_with('z') {
+        return Err(KeyAlgorithmError::Failed(format!(
+            "Invalid multibase, expected 'z' prefix but got '{}'",
+            encoded
+        )));
+    }
+    let raw_bs58 = &encoded[1..];
+    let decoded = bs58::decode(&raw_bs58)
+        .into_vec()
+        .map_err(|err| KeyAlgorithmError::Failed(format!("Invalid multibase suffix: {err}")))?;
+
+    if decoded[..expected_tag.len()] != expected_tag[..] {
+        return Err(KeyAlgorithmError::Failed(format!(
+            "Invalid multibase tag, expected {}, but got {}",
+            hex::encode(expected_tag),
+            hex::encode(&decoded[..2])
+        )));
+    };
+    Ok(decoded[expected_tag.len()..].to_vec())
+}

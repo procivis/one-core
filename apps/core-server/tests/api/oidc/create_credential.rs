@@ -24,12 +24,17 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
-    test_post_issuer_credential_with("NONE", None).await;
+    test_post_issuer_credential_with("NONE", true, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_jwk_proof() {
+    test_post_issuer_credential_with("NONE", false, None).await;
 }
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_bitstring_revocation_method() {
-    test_post_issuer_credential_with("BITSTRINGSTATUSLIST", None).await;
+    test_post_issuer_credential_with("BITSTRINGSTATUSLIST", true, None).await;
 }
 
 #[tokio::test]
@@ -49,7 +54,8 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         .await;
 
     let issuer_did_id = params.issuer_did.id;
-    let (context, _) = test_post_issuer_credential_with("BITSTRINGSTATUSLIST", Some(params)).await;
+    let (context, _) =
+        test_post_issuer_credential_with("BITSTRINGSTATUSLIST", true, Some(params)).await;
 
     assert_eq!(
         context
@@ -100,7 +106,7 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_lvvc_revocation_method() {
-    let (context, credential_id) = test_post_issuer_credential_with("LVVC", None).await;
+    let (context, credential_id) = test_post_issuer_credential_with("LVVC", true, None).await;
 
     let lvvcs = context
         .db
@@ -165,6 +171,7 @@ async fn issuer_setup() -> TestPostIssuerCredentialParams {
 
 async fn test_post_issuer_credential_with(
     revocation_method: &str,
+    use_kid_in_proof: bool,
     context: Option<TestPostIssuerCredentialParams>,
 ) -> (TestContext, CredentialId) {
     let TestPostIssuerCredentialParams {
@@ -221,7 +228,8 @@ async fn test_post_issuer_credential_with(
         )
         .await;
 
-    let (jwt, did) = proof_jwt().await;
+    let (jwt, did) = proof_jwt(use_kid_in_proof).await;
+    println!("jwt: {}", jwt);
     let resp = context
         .api
         .ssi
@@ -342,7 +350,7 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
-    let (jwt, _) = proof_jwt().await;
+    let (jwt, _) = proof_jwt(true).await;
     let resp = context
         .api
         .ssi

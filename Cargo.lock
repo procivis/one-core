@@ -1133,6 +1133,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-extra",
+ "bs58",
  "clap",
  "ct-codecs",
  "futures",

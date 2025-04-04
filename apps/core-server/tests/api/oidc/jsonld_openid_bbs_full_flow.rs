@@ -224,7 +224,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         )
         .await;
 
-    let jwt = proof_jwt_for(&holder_key, &server_remote_holder_did.did.to_string()).await;
+    let jwt = proof_jwt_for(&holder_key, Some(&server_remote_holder_did.did.to_string())).await;
 
     let resp = server_context
         .api

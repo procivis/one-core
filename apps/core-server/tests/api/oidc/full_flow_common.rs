@@ -7,14 +7,16 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use hex_literal::hex;
 use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
-use one_core::model::key::Key;
+use one_core::model::key::{Key, PublicKeyJwk};
 use one_core::model::organisation::Organisation;
+use one_core::provider::key_algorithm::bbs::BBS;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
 use one_core::provider::key_storage::KeyStorage;
+use one_core::service::key::dto::PublicKeyJwkDTO;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
@@ -100,11 +102,19 @@ pub(super) fn key_to_did_params(key: Option<&Key>, multibase: &str) -> TestingDi
 pub(super) struct TestKey {
     multibase: String,
     params: TestingKeyParams,
+    jwk: PublicKeyJwk,
 }
 
 pub(super) fn eddsa_key_1() -> TestKey {
+    let multibase = "z6Mkw6BZWh2yCJW3HJ9RuJfuFdSzmzRbgWgbzLnfahzZ3ZBB".to_string();
+    let jwk = Eddsa
+        .parse_multibase(&multibase)
+        .unwrap()
+        .public_key_as_jwk()
+        .unwrap();
     TestKey {
-        multibase: "z6Mkw6BZWh2yCJW3HJ9RuJfuFdSzmzRbgWgbzLnfahzZ3ZBB".to_string(),
+        multibase,
+        jwk,
         params: TestingKeyParams {
             key_type: Some("EDDSA".to_string()),
             storage_type: Some("INTERNAL".to_string()),
@@ -126,8 +136,15 @@ pub(super) fn eddsa_key_1() -> TestKey {
 }
 
 pub(super) fn eddsa_key_2() -> TestKey {
+    let multibase = "z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5".to_string();
+    let jwk = Eddsa
+        .parse_multibase(&multibase)
+        .unwrap()
+        .public_key_as_jwk()
+        .unwrap();
     TestKey {
-        multibase: "z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5".to_string(),
+        multibase,
+        jwk,
         params: TestingKeyParams {
             key_type: Some("EDDSA".to_string()),
             storage_type: Some("INTERNAL".to_string()),
@@ -149,10 +166,17 @@ pub(super) fn eddsa_key_2() -> TestKey {
 }
 
 pub(super) fn bbs_key_1() -> TestKey {
-    TestKey {
-        multibase: "zUC77bqRWgmZNzUQHeSSuQTiMc2Pqv3uTp1oWgbwrXushHz4Y5CbCG3WRZVo93qMwqKqizMbA6ntv\
+    let multibase = "zUC77bqRWgmZNzUQHeSSuQTiMc2Pqv3uTp1oWgbwrXushHz4Y5CbCG3WRZVo93qMwqKqizMbA6ntv\
             gGBXq5ZoHZ6HseTN842bp43GkR3N1Sw7TkJ52uQPUEyWYVD5ggtnn1E85W"
-            .to_string(),
+        .to_string();
+    let jwk = BBS
+        .parse_multibase(&multibase)
+        .unwrap()
+        .public_key_as_jwk()
+        .unwrap();
+    TestKey {
+        multibase,
+        jwk,
         params: TestingKeyParams {
             key_type: Some("BBS_PLUS".to_string()),
             storage_type: Some("INTERNAL".to_string()),
@@ -238,20 +262,24 @@ pub(super) fn get_simple_context_bbsplus(
     (url, context)
 }
 
-pub(super) async fn proof_jwt() -> (String, String) {
+pub(super) async fn proof_jwt(use_kid: bool) -> (String, String) {
     let holder_key = eddsa_key_2();
     let holder_key_id = format!("did:key:{}", holder_key.multibase);
     (
-        proof_jwt_for(&holder_key, &holder_key_id).await,
+        proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id)).await,
         holder_key_id,
     )
 }
 
-pub(super) async fn proof_jwt_for(key: &TestKey, holder_key_id: &str) -> String {
+pub(super) async fn proof_jwt_for(key: &TestKey, holder_key_id: Option<&str>) -> String {
     let mut header = json!({
-        "typ": "openid4vci-proof+jwt",
-        "kid": holder_key_id
+        "typ": "openid4vci-proof+jwt"
     });
+    if let Some(holder_key_id) = holder_key_id {
+        header["kid"] = holder_key_id.into();
+    } else {
+        header["jwk"] = serde_json::to_value(PublicKeyJwkDTO::from(key.jwk.clone())).unwrap();
+    }
 
     let payload = json!({
         "aud": "test123"

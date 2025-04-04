@@ -16,10 +16,10 @@ impl OpenID4VCIProofJWTFormatter {
     pub async fn verify_proof(
         jwt: &str,
         verifier: Box<dyn TokenVerifier>,
-    ) -> Result<Jwt<()>, FormatterError> {
+    ) -> Result<(DidValue, String), FormatterError> {
         let DecomposedToken::<()> {
             header,
-            payload,
+            payload: _,
             signature,
             unverified_jwt,
         } = Jwt::decompose_token(jwt)?;
@@ -38,7 +38,7 @@ impl OpenID4VCIProofJWTFormatter {
             }
         }
 
-        match (header.key_id.as_ref(), header.jwk.clone()) {
+        let result = match (header.key_id.as_ref(), header.jwk.clone()) {
             (Some(_), Some(_)) => {
                 return Err(FormatterError::CouldNotVerify(
                     "Only kid or jwt allowed in proof.jwt but not both".to_string(),
@@ -50,7 +50,7 @@ impl OpenID4VCIProofJWTFormatter {
                 ))
             }
             (Some(key_id), None) => {
-                let (did, key_id) = match key_id.find('#') {
+                let (did, fragment) = match key_id.find('#') {
                     // key_id is verificationMethod id
                     Some(idx) => (&key_id[..idx], Some(key_id.as_str())),
                     None => (key_id.as_str(), None),
@@ -69,8 +69,8 @@ impl OpenID4VCIProofJWTFormatter {
 
                 verifier
                     .verify(
-                        Some(did),
-                        key_id,
+                        Some(did.clone()),
+                        fragment,
                         &key_algorithm.algorithm_id(),
                         unverified_jwt.as_bytes(),
                         &signature,
@@ -79,6 +79,7 @@ impl OpenID4VCIProofJWTFormatter {
                     .map_err(|e| {
                         FormatterError::CouldNotVerify(format!("Failed to verify proof.jwt: {e}"))
                     })?;
+                (did, key_id.clone())
             }
             (None, Some(jwk)) => {
                 let jwk = jwk.into();
@@ -97,12 +98,20 @@ impl OpenID4VCIProofJWTFormatter {
                     .key
                     .verify(unverified_jwt.as_bytes(), &signature)
                     .map_err(|_| FormatterError::CouldNotVerify("Invalid signature".to_string()))?;
+                let multibase = key_handle.key.public_key_as_multibase().map_err(|err| {
+                    FormatterError::CouldNotVerify(format!(
+                        "Failed to encode public key as multibase: {err}"
+                    ))
+                })?;
+                let did_value = format!("did:key:{multibase}");
+                let key_id = format!("{did_value}#{multibase}");
+                let did_value = did_value
+                    .parse()
+                    .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid did: {e}")))?;
+                (did_value, key_id)
             }
         };
-
-        let jwt = Jwt { header, payload };
-
-        Ok(jwt)
+        Ok(result)
     }
 
     pub async fn format_proof(

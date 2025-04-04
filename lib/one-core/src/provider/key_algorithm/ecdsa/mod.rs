@@ -18,7 +18,7 @@ use crate::provider::key_algorithm::key::{
     SignaturePrivateKeyHandle, SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::{parse_multibase_with_tag, KeyAlgorithm};
 use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
 pub struct Ecdsa;
@@ -130,8 +130,9 @@ impl KeyAlgorithm for Ecdsa {
         }
     }
 
-    fn parse_multibase(&self, _multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
-        todo!()
+    fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
+        let raw_pubkey = parse_multibase_with_tag(multibase, &[0x80, 0x24])?;
+        self.reconstruct_key(&raw_pubkey, None, None)
     }
 
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {

@@ -18,7 +18,7 @@ use crate::provider::key_algorithm::key::{
     SignaturePrivateKeyHandle, SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::{parse_multibase_with_tag, KeyAlgorithm};
 use crate::provider::key_utils::{eddsa_public_key_as_jwk, eddsa_public_key_as_multibase};
 
 pub struct Eddsa;
@@ -124,13 +124,8 @@ impl KeyAlgorithm for Eddsa {
     }
 
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
-        let x = Base64UrlSafeNoPadding::decode_to_vec(multibase, None)
-            .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
-        let handle = Arc::new(EddsaPublicKeyHandle::new(x, None));
-        Ok(KeyHandle::SignatureAndKeyAgreement {
-            signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
-            key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
-        })
+        let raw_pubkey = parse_multibase_with_tag(multibase, &[0xed, 0x01])?;
+        self.reconstruct_key(&raw_pubkey, None, None)
     }
 
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {

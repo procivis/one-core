@@ -26,6 +26,7 @@ anyhow             = { version = "1.0" }
 async-trait        = { version = "0.1" }
 autometrics        = { version = "2.0", features = ["prometheus-0_13"] }
 axum               = { version = "0.8", features = ["macros"] }
+bs58               = { version = "0.5" }
 ct-codecs          = { version = "1.1" }
 futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }

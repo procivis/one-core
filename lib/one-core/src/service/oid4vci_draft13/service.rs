@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
-use shared_types::{CredentialId, CredentialSchemaId, DidValue};
+use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -288,7 +288,7 @@ impl OID4VCIDraft13Service {
         )?;
 
         let (holder_did, holder_key_id) = if request.proof.proof_type == "jwt" {
-            let jwt = OpenID4VCIProofJWTFormatter::verify_proof(
+            let (holder_did_value, key_id) = OpenID4VCIProofJWTFormatter::verify_proof(
                 &request.proof.jwt,
                 Box::new(KeyVerification {
                     key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -297,13 +297,6 @@ impl OID4VCIDraft13Service {
                 }),
             )
             .await?;
-            // TODO: this works only when kid is DID but not when it's JWK
-            let key_id = jwt.header.key_id.ok_or(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::InvalidOrMissingProof,
-            ))?;
-            let holder_did_value = DidValue::from_did_url(key_id.clone()).map_err(|_| {
-                ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
-            })?;
 
             let did = get_or_create_did(
                 &*self.did_method_provider,

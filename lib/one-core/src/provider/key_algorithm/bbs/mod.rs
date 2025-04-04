@@ -15,7 +15,7 @@ use crate::provider::key_algorithm::key::{
     MultiMessageSignaturePrivateKeyHandle, MultiMessageSignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::{parse_multibase_with_tag, KeyAlgorithm};
 
 pub struct BBS;
 
@@ -112,8 +112,9 @@ impl KeyAlgorithm for BBS {
         }
     }
 
-    fn parse_multibase(&self, _multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
-        todo!()
+    fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
+        let raw_pubkey = parse_multibase_with_tag(multibase, &[0xeb, 0x01])?;
+        self.reconstruct_key(&raw_pubkey, None, None)
     }
 
     fn parse_raw(&self, _public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
