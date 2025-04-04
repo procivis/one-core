@@ -15,7 +15,7 @@ pub mod service;
 pub mod validator;
 
 #[derive(Clone)]
-pub struct OIDCService {
+pub struct OID4VCIDraft13Service {
     pub(crate) core_base_url: Option<String>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -28,7 +28,7 @@ pub struct OIDCService {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl OIDCService {
+impl OID4VCIDraft13Service {
     pub(crate) fn new(
         core_base_url: Option<String>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,

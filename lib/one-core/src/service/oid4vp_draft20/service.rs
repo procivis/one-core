@@ -16,7 +16,7 @@ use super::proof_request::{
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
-use super::OIDCService;
+use super::OID4VPDraft20Service;
 use crate::common_mapper::{
     encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_did, DidRole,
 };
@@ -56,11 +56,8 @@ use crate::service::oid4vp_draft20::mapper::parse_interaction_content;
 use crate::service::oid4vp_draft20::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 
-impl OIDCService {
-    pub async fn oidc_verifier_get_client_request(
-        &self,
-        id: ProofId,
-    ) -> Result<String, ServiceError> {
+impl OID4VPDraft20Service {
+    pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
@@ -156,7 +153,7 @@ impl OIDCService {
         })
     }
 
-    pub async fn oidc_verifier_get_client_metadata(
+    pub async fn get_client_metadata(
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPClientMetadata, ServiceError> {
@@ -198,7 +195,7 @@ impl OIDCService {
     // TODO (Eugeniu) - this method is used as part of the OIDC BLE flow
     // as soon as ONE-2754 is finalized, we should remove this method, and move
     // all logic to the provider instead. This is a temporary solution.
-    pub async fn oidc_verifier_ble_mqtt_presentation(&self, proof_id: ProofId) {
+    pub async fn ble_mqtt_presentation(&self, proof_id: ProofId) {
         let Ok(Some(proof)) = self
             .proof_repository
             .get_proof(
@@ -287,15 +284,12 @@ impl OIDCService {
             }
         };
 
-        if let Err(error) = self
-            .oidc_verifier_verify_submission(proof, request_data)
-            .await
-        {
+        if let Err(error) = self.verify_submission(proof, request_data).await {
             tracing::error!(%error, "Proof submission failed");
         }
     }
 
-    pub async fn oidc_verifier_direct_post(
+    pub async fn direct_post(
         &self,
         request: OpenID4VPDirectPostRequestDTO,
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
@@ -329,11 +323,10 @@ impl OIDCService {
                 BusinessLogicError::MissingProofForInteraction(interaction_id),
             ))?;
 
-        self.oidc_verifier_verify_submission(proof, unpacked_request)
-            .await
+        self.verify_submission(proof, unpacked_request).await
     }
 
-    pub(crate) async fn oidc_verifier_verify_submission(
+    pub(crate) async fn verify_submission(
         &self,
         proof: Proof,
         unpacked_request: RequestData,
@@ -478,7 +471,7 @@ impl OIDCService {
         }
     }
 
-    pub async fn oidc_verifier_presentation_definition(
+    pub async fn presentation_definition(
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {

@@ -7,6 +7,7 @@ use shared_types::{DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::OID4VPDraft20Service;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
@@ -39,7 +40,6 @@ use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use crate::service::oid4vp_draft20::OIDCService;
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -58,8 +58,8 @@ struct Mocks {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn setup_service(mocks: Mocks) -> OIDCService {
-    OIDCService::new(
+fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
+    OID4VPDraft20Service::new(
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.proof_repository),
         Arc::new(mocks.key_repository),
@@ -84,7 +84,7 @@ fn jwt_format_map() -> HashMap<String, OpenID4VpPresentationFormat> {
 }
 
 #[tokio::test]
-async fn test_oidc_verifier_presentation_definition_success() {
+async fn test_presentation_definition_success() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof_id: ProofId = Uuid::new_v4().into();
@@ -207,9 +207,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
         ..Default::default()
     });
 
-    let result = service
-        .oidc_verifier_presentation_definition(proof_id)
-        .await;
+    let result = service.presentation_definition(proof_id).await;
 
     assert!(result.is_ok());
 }
@@ -470,7 +468,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let vp_token = "vp_token";
 
     let err = service
-        .oidc_verifier_direct_post(OpenID4VPDirectPostRequestDTO {
+        .direct_post(OpenID4VPDirectPostRequestDTO {
             presentation_submission: Some(PresentationSubmissionMappingDTO {
                 id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
                 definition_id: interaction_id.to_string(),
@@ -590,10 +588,7 @@ async fn test_get_client_metadata_success() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service
-        .oidc_verifier_get_client_metadata(proof_id)
-        .await
-        .unwrap();
+    let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
         OpenID4VPClientMetadata {
             jwks: OpenID4VPClientMetadataJwks {

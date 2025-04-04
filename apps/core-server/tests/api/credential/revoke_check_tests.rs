@@ -738,7 +738,7 @@ async fn test_revoke_check_mdoc_update() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -873,7 +873,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -1019,7 +1019,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -1157,7 +1157,7 @@ async fn test_revoke_check_token_update() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -1283,7 +1283,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -1405,7 +1405,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -1537,7 +1537,7 @@ async fn test_suspended_to_valid_mdoc() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );
@@ -1701,7 +1701,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .format(&format)
         .unwrap();
     let issuer_url = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.server_mock.uri(),
         credential_schema.id,
     );

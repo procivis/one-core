@@ -17,7 +17,7 @@ async fn test_get_issuer_configuration() {
     let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!(
-        "{base_url}/ssi/oidc-issuer/v1/{}/.well-known/openid-configuration",
+        "{base_url}/ssi/openid4vci/draft-13/{}/.well-known/openid-configuration",
         credential_schema.id
     );
     let resp = utils::client().get(url).send().await.unwrap();
@@ -27,7 +27,10 @@ async fn test_get_issuer_configuration() {
 
     let resp: Value = resp.json().await.unwrap();
 
-    let issuer = format!("{base_url}/ssi/oidc-issuer/v1/{}", credential_schema.id);
+    let issuer = format!(
+        "{base_url}/ssi/openid4vci/draft-13/{}",
+        credential_schema.id
+    );
 
     assert_eq!(issuer, resp["issuer"].as_str().unwrap());
     assert_eq!(

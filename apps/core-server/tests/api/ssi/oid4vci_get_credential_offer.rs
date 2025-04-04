@@ -52,7 +52,7 @@ async fn test_get_credential_offer_success_jwt() {
     assert_eq!(
         offer["credential_issuer"],
         format!(
-            "{}/ssi/oidc-issuer/v1/{}",
+            "{}/ssi/openid4vci/draft-13/{}",
             context.config.app.core_base_url, credential_schema.id
         )
     );
@@ -122,7 +122,7 @@ async fn test_get_credential_offer_success_mdoc() {
     assert_eq!(
         offer["credential_issuer"],
         format!(
-            "{}/ssi/oidc-issuer/v1/{}",
+            "{}/ssi/openid4vci/draft-13/{}",
             context.config.app.core_base_url, credential_schema.id
         )
     );

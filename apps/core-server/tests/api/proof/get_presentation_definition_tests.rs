@@ -128,7 +128,7 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
         "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
         "nonce": "xKpt9wiB4apJ1MVTzQv1zdDty2dVWkl7",
         "client_id_scheme": "redirect_uri",
-        "client_id": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+        "client_id": "http://0.0.0.0:3000/ssi/openid4vp/draft-20/response",
         "client_metadata": {
             "jwks": {
                 "keys": [{
@@ -164,7 +164,7 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
             "client_id_scheme": "redirect_uri"
         },
         "response_mode": "direct_post",
-        "response_uri": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+        "response_uri": "http://0.0.0.0:3000/ssi/openid4vp/draft-20/response",
         "presentation_definition": {
             "id": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
             "input_descriptors": [
@@ -422,7 +422,7 @@ fn get_open_id_interaction_data_without_vp_formats(
         "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
         "nonce": "xKpt9wiB4apJ1MVTzQv1zdDty2dVWkl7",
         "client_id_scheme": "redirect_uri",
-        "client_id": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+        "client_id": "http://0.0.0.0:3000/ssi/openid4vp/draft-20/response",
         "client_metadata": {
             "jwks": {
                 "keys": [{
@@ -438,7 +438,7 @@ fn get_open_id_interaction_data_without_vp_formats(
             "client_id_scheme": "redirect_uri"
         },
         "response_mode": "direct_post",
-        "response_uri": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+        "response_uri": "http://0.0.0.0:3000/ssi/openid4vp/draft-20/response",
         "presentation_definition": {
             "id": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
             "input_descriptors": [
@@ -594,13 +594,13 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        "https://core.test.one-trust-solution.com/ssi/oidc-verifier/v1/response",
+        "https://core.test.one-trust-solution.com/ssi/openid4vp/draft-20/response",
         &json!({
             "response_type": "vp_token",
             "state": "30622803-c01a-4b24-9843-1aa4306510cb",
             "nonce": "5D910DcsvtdZV0VllYUjGpcpdkNtakHU",
             "client_id_scheme": "redirect_uri",
-            "client_id": "https://core.test.one-trust-solution.com/ssi/oidc-verifier/v1/response",
+            "client_id": "https://core.test.one-trust-solution.com/ssi/openid4vp/draft-20/response",
             "client_metadata": {
                 "jwks": {
                     "keys": [{
@@ -636,7 +636,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                 "client_id_scheme": "redirect_uri"
             },
             "response_mode": "direct_post",
-            "response_uri": "https://core.test.one-trust-solution.com/ssi/oidc-verifier/v1/response",
+            "response_uri": "https://core.test.one-trust-solution.com/ssi/openid4vp/draft-20/response",
             "presentation_definition": {
                 "id": "30622803-c01a-4b24-9843-1aa4306510cb",
                 "input_descriptors": [
@@ -873,7 +873,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                 "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
                 "nonce": "xKpt9wiB4apJ1MVTzQv1zdDty2dVWkl7",
                 "client_id_scheme": "redirect_uri",
-                "client_id": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+                "client_id": "http://0.0.0.0:3000/ssi/openid4vp/draft-20/response",
                 "client_metadata": {
                     "jwks": {
                         "keys": [{
@@ -909,7 +909,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                     "client_id_scheme": "redirect_uri"
                 },
                 "response_mode": "direct_post",
-                "response_uri": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+                "response_uri": "http://0.0.0.0:3000/ssi/openid4vp/draft-20/response",
                 "presentation_definition": {
                     "id": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
                     "input_descriptors": [

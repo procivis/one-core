@@ -24,7 +24,7 @@ async fn test_get_credential_issuer_metadata() {
     let resp = resp.json_value().await;
 
     let issuer = format!(
-        "{}/ssi/oidc-issuer/v1/{}",
+        "{}/ssi/openid4vci/draft-13/{}",
         context.config.app.core_base_url, credential_schema.id
     );
     assert_eq!(issuer, resp["credential_issuer"]);

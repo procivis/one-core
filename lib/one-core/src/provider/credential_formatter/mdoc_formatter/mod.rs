@@ -150,7 +150,7 @@ impl MdocFormatter {
             .or_else(|| {
                 // fallback for backwards compatibility (also note "base_url" is not available on mobile verifier)
                 let base_url = self.base_url.as_ref()?;
-                Url::parse(&format!("{}/ssi/oidc-verifier/v1/response", base_url))
+                Url::parse(&format!("{}/ssi/openid4vp/draft-20/response", base_url))
                     .map(|u| u.to_string())
                     .ok()
             })

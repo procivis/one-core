@@ -515,7 +515,7 @@ fn get_params_with_request_uri(
     OpenID4VPAuthorizationRequestQueryParams {
         client_id,
         request_uri: Some(format!(
-            "{base_url}/ssi/oidc-verifier/v1/{}/client-request",
+            "{base_url}/ssi/openid4vp/draft-20/{}/client-request",
             proof_id
         )),
         client_id_scheme: Some(client_id_scheme),
@@ -578,7 +578,7 @@ fn get_params_for_redirect_uri(
         presentation_definition = Some(pd);
     } else {
         presentation_definition_uri = Some(format!(
-            "{base_url}/ssi/oidc-verifier/v1/{}/presentation-definition",
+            "{base_url}/ssi/openid4vp/draft-20/{}/presentation-definition",
             proof.id
         ));
     }
@@ -596,7 +596,7 @@ fn get_params_for_redirect_uri(
         client_metadata = Some(metadata);
     } else {
         client_metadata_uri = Some(format!(
-            "{base_url}/ssi/oidc-verifier/v1/{}/client-metadata",
+            "{base_url}/ssi/openid4vp/draft-20/{}/client-metadata",
             proof.id
         ));
     }

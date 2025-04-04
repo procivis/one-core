@@ -162,7 +162,7 @@ async fn test_direct_post_one_credential_correct() {
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
+    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -321,7 +321,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn).await;
 
-    let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
+    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
 
     let resp = utils::client()
         .post(url)
@@ -574,7 +574,7 @@ async fn test_direct_post_multiple_presentations() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn).await;
 
-    let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
+    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
 
     let resp = utils::client()
         .post(url)
@@ -731,7 +731,7 @@ async fn test_direct_post_wrong_claim_format() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn).await;
 
-    let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
+    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
 
     let resp = utils::client()
         .post(url)

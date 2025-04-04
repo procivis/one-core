@@ -204,7 +204,7 @@ async fn test_generate_offer() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": "BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965",
+            "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_did": "did:example:123",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
@@ -234,7 +234,7 @@ async fn test_generate_share_credentials() {
         .issuer_share_credential(&credential, "")
         .await
         .unwrap();
-    assert_eq!(result.url, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    assert_eq!(result.url, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
 }
 
 #[tokio::test]
@@ -264,7 +264,7 @@ async fn test_generate_share_credentials_offer_by_value() {
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     );
     assert!(result
         .url
@@ -308,7 +308,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let mock_server = MockServer::start().await;
     let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
     let credential_schema_id = credential.schema.clone().unwrap().id;
-    let credential_issuer = format!("{issuer_url}ssi/oidc-issuer/v1/{credential_schema_id}");
+    let credential_issuer = format!("{issuer_url}ssi/openid4vci/draft-13/{credential_schema_id}");
 
     let mut credential_offer = json!({
         "credential_issuer": credential_issuer,
@@ -335,7 +335,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{}/offer/{}",
+            "/ssi/openid4vci/draft-13/{}/offer/{}",
             credential_schema_id, credential.id
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
@@ -345,7 +345,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let token_endpoint = format!("{credential_issuer}/token");
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -370,7 +370,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .await;
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -429,7 +429,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             })
         });
 
-    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Foidc-issuer%2Fv1%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
+    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Fdraft-13%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
 
     let protocol = setup_protocol(Default::default());
     let result = protocol

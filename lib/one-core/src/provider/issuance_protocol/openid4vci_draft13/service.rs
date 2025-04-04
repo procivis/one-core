@@ -165,7 +165,7 @@ pub(crate) fn get_credential_schema_base_url(
     base_url: &str,
 ) -> Result<String, OpenID4VCIError> {
     Ok(format!(
-        "{base_url}/ssi/oidc-issuer/v1/{credential_schema_id}"
+        "{base_url}/ssi/openid4vci/draft-13/{credential_schema_id}"
     ))
 }
 
@@ -178,7 +178,10 @@ pub(crate) fn create_credential_offer(
     credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenIDIssuanceError> {
     Ok(OpenID4VCICredentialOfferDTO {
-        credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", base_url, credential_schema_uuid),
+        credential_issuer: format!(
+            "{}/ssi/openid4vci/draft-13/{}",
+            base_url, credential_schema_uuid
+        ),
         issuer_did: Some(issuer_did),
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants {

@@ -178,7 +178,7 @@ pub(crate) async fn get_lvvc_by_credential_id(
 
 #[utoipa::path(
     get,
-    path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-credential-issuer",
+    path = "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
@@ -187,21 +187,21 @@ pub(crate) async fn get_lvvc_by_credential_id(
         (status = 404, description = "Credential schema not found"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vci-draft13",
     summary = "OID4VC - Retrieve issuer metadata",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_issuer_get_issuer_metadata(
+pub(crate) async fn oid4vci_draft13_get_issuer_metadata(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
-        .oid4vci_service
-        .oidc_issuer_get_issuer_metadata(&id)
+        .oid4vci_draft13_service
+        .get_issuer_metadata(&id)
         .await;
 
     match result {
@@ -227,7 +227,7 @@ pub(crate) async fn oidc_issuer_get_issuer_metadata(
 
 #[utoipa::path(
     get,
-    path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-configuration",
+    path = "/ssi/openid4vci/draft-13/{id}/.well-known/openid-configuration",
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
@@ -236,21 +236,21 @@ pub(crate) async fn oidc_issuer_get_issuer_metadata(
         (status = 404, description = "Credential schema not found"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vci-draft13",
     summary = "OID4VC - Service discovery",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_issuer_service_discovery(
+pub(crate) async fn oid4vci_draft13_service_discovery(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
-        .oid4vci_service
-        .oidc_issuer_service_discovery(&id)
+        .oid4vci_draft13_service
+        .service_discovery(&id)
         .await;
 
     match result {
@@ -276,7 +276,7 @@ pub(crate) async fn oidc_issuer_service_discovery(
 
 #[utoipa::path(
     get,
-    path = "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}",
+    path = "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}",
     params(
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id"),
         ("credential_id" = CredentialId, Path, description = "Credential id")
@@ -287,14 +287,14 @@ pub(crate) async fn oidc_issuer_service_discovery(
         (status = 404, description = "Credential not found"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vci-draft13",
     summary = "OID4VC - Retrieve credential offer",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_issuer_get_credential_offer(
+pub(crate) async fn oid4vci_draft13_get_credential_offer(
     state: State<AppState>,
     WithRejection(Path((credential_schema_id, credential_id)), _): WithRejection<
         Path<(CredentialSchemaId, CredentialId)>,
@@ -303,8 +303,8 @@ pub(crate) async fn oidc_issuer_get_credential_offer(
 ) -> Response {
     let result = state
         .core
-        .oid4vci_service
-        .oidc_issuer_get_credential_offer(credential_schema_id, credential_id)
+        .oid4vci_draft13_service
+        .get_credential_offer(credential_schema_id, credential_id)
         .await;
 
     match result {
@@ -334,7 +334,7 @@ pub(crate) async fn oidc_issuer_get_credential_offer(
 
 #[utoipa::path(
     post,
-    path = "/ssi/oidc-issuer/v1/{id}/token",
+    path = "/ssi/openid4vci/draft-13/{id}/token",
     request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"
     ),
     params(
@@ -347,14 +347,14 @@ pub(crate) async fn oidc_issuer_get_credential_offer(
         (status = 409, description = "Wrong credential state"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vci-draft13",
     summary = "OID4VC - Create token",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_issuer_create_token(
+pub(crate) async fn oid4vci_draft13_create_token(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
     WithRejection(Form(request), _): WithRejection<
@@ -367,8 +367,8 @@ pub(crate) async fn oidc_issuer_create_token(
 
         state
             .core
-            .oid4vci_service
-            .oidc_issuer_create_token(&id, request)
+            .oid4vci_draft13_service
+            .create_token(&id, request)
             .await
     }
     .await;
@@ -404,7 +404,7 @@ pub(crate) async fn oidc_issuer_create_token(
 
 #[utoipa::path(
     post,
-    path = "/ssi/oidc-issuer/v1/{id}/credential",
+    path = "/ssi/openid4vci/draft-13/{id}/credential",
     request_body(content = OpenID4VCICredentialRequestRestDTO, description = "Credential request"),
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
@@ -419,14 +419,14 @@ pub(crate) async fn oidc_issuer_create_token(
     security(
         ("openID4VCI" = [])
     ),
-    tag = "ssi",
+    tag = "openid4vci-draft13",
     summary = "OID4VC - Create credential",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_issuer_create_credential(
+pub(crate) async fn oid4vci_draft13_create_credential(
     state: State<AppState>,
     WithRejection(Path(credential_schema_id), _): WithRejection<
         Path<CredentialSchemaId>,
@@ -444,8 +444,8 @@ pub(crate) async fn oidc_issuer_create_credential(
     let access_token = token.token();
     let result = state
         .core
-        .oid4vci_service
-        .oidc_issuer_create_credential(&credential_schema_id, access_token, request.into())
+        .oid4vci_draft13_service
+        .create_credential(&credential_schema_id, access_token, request.into())
         .await;
 
     match result {
@@ -479,7 +479,7 @@ pub(crate) async fn oidc_issuer_create_credential(
 
 #[utoipa::path(
     post,
-    path = "/ssi/oidc-verifier/v1/response",
+    path = "/ssi/openid4vp/draft-20/response",
     request_body(content = OpenID4VPDirectPostRequestRestDTO, description = "Verifier request", content_type = "application/x-www-form-urlencoded"
     ),
     responses(
@@ -488,14 +488,14 @@ pub(crate) async fn oidc_issuer_create_credential(
         (status = 409, description = "Wrong proof state"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vp-draft20",
     summary = "OID4VC - Verifier direct post",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_verifier_direct_post(
+pub(crate) async fn oid4vp_draft20_direct_post(
     state: State<AppState>,
     WithRejection(Form(request), _): WithRejection<
         Form<OpenID4VPDirectPostRequestRestDTO>,
@@ -504,8 +504,8 @@ pub(crate) async fn oidc_verifier_direct_post(
 ) -> Response {
     let result = state
         .core
-        .oid4vp_service
-        .oidc_verifier_direct_post(request.into())
+        .oid4vp_draft20_service
+        .direct_post(request.into())
         .await;
 
     match result {
@@ -559,7 +559,7 @@ pub(crate) async fn oidc_verifier_direct_post(
 
 #[utoipa::path(
     get,
-    path = "/ssi/oidc-verifier/v1/{id}/presentation-definition",
+    path = "/ssi/openid4vp/draft-20/{id}/presentation-definition",
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -569,21 +569,21 @@ pub(crate) async fn oidc_verifier_direct_post(
         (status = 404, description = "Proof does not exist"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vp-draft20",
     summary = "OID4VC - Verifier presentation definition",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_verifier_presentation_definition(
+pub(crate) async fn oid4vp_draft20_presentation_definition(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
-        .oid4vp_service
-        .oidc_verifier_presentation_definition(id)
+        .oid4vp_draft20_service
+        .presentation_definition(id)
         .await;
 
     match result {
@@ -619,7 +619,7 @@ pub(crate) async fn oidc_verifier_presentation_definition(
 
 #[utoipa::path(
     get,
-    path = "/ssi/oidc-verifier/v1/{id}/client-metadata",
+    path = "/ssi/openid4vp/draft-20/{id}/client-metadata",
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -629,21 +629,21 @@ pub(crate) async fn oidc_verifier_presentation_definition(
         (status = 404, description = "Proof does not exist"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vp-draft20",
     summary = "OID4VC - Client metadata",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oidc_verifier_client_metadata(
+pub(crate) async fn oid4vp_draft20_client_metadata(
     state: State<AppState>,
     WithRejection(Path(proof_id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
-        .oid4vp_service
-        .oidc_verifier_get_client_metadata(proof_id)
+        .oid4vp_draft20_service
+        .get_client_metadata(proof_id)
         .await;
 
     match result {
@@ -682,7 +682,7 @@ pub(crate) async fn oidc_verifier_client_metadata(
 
 #[utoipa::path(
     get,
-    path = "/ssi/oidc-verifier/v1/{id}/client-request",
+    path = "/ssi/openid4vp/draft-20/{id}/client-request",
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -692,7 +692,7 @@ pub(crate) async fn oidc_verifier_client_metadata(
         (status = 404, description = "Proof does not exist"),
         (status = 500, description = "Server error"),
     ),
-    tag = "ssi",
+    tag = "openid4vp-draft20",
     summary = "OID4VC - Proof request data",
     description = indoc::formatdoc! {"
         This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
@@ -700,14 +700,14 @@ pub(crate) async fn oidc_verifier_client_metadata(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_verifier_client_request(
+pub(crate) async fn oid4vp_draft20_client_request(
     state: State<AppState>,
     WithRejection(Path(proof_id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
-        .oid4vp_service
-        .oidc_verifier_get_client_request(proof_id)
+        .oid4vp_draft20_service
+        .get_client_request(proof_id)
         .await;
 
     match result {

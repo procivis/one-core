@@ -18,7 +18,7 @@ pub mod service;
 pub mod validator;
 
 #[derive(Clone)]
-pub struct OIDCService {
+pub struct OID4VPDraft20Service {
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     key_repository: Arc<dyn KeyRepository>,
@@ -33,7 +33,7 @@ pub struct OIDCService {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl OIDCService {
+impl OID4VPDraft20Service {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,

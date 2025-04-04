@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::OpenID4VCICredentialResponseDTO;
-use super::OIDCService;
+use super::OID4VCIDraft13Service;
 use crate::common_mapper::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
     get_exchange_param_token_expires_in, get_or_create_did, DidRole,
@@ -49,8 +49,8 @@ use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_to_openid4vp_format;
 
-impl OIDCService {
-    pub async fn oidc_issuer_get_issuer_metadata(
+impl OID4VCIDraft13Service {
+    pub async fn get_issuer_metadata(
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
@@ -92,7 +92,7 @@ impl OIDCService {
             .map_err(Into::into)
     }
 
-    pub async fn oidc_issuer_service_discovery(
+    pub async fn service_discovery(
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
@@ -125,7 +125,7 @@ impl OIDCService {
         Ok(create_service_discovery_response(&schema_base_url)?)
     }
 
-    pub async fn oidc_issuer_get_credential_offer(
+    pub async fn get_credential_offer(
         &self,
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
@@ -211,7 +211,7 @@ impl OIDCService {
         )?)
     }
 
-    pub async fn oidc_issuer_create_credential(
+    pub async fn create_credential(
         &self,
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
@@ -332,7 +332,7 @@ impl OIDCService {
         Ok(issued_credential.into())
     }
 
-    pub async fn oidc_issuer_create_token(
+    pub async fn create_token(
         &self,
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,

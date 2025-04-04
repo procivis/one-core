@@ -123,10 +123,10 @@ impl OneCoreBinding {
         let request = params.into();
 
         let core = self.use_core().await?;
-        let oidc_service = core.oid4vp_service.clone();
+        let oid4vp_service = core.oid4vp_draft20_service.clone();
         let callback = Some(
             async move {
-                oidc_service.oidc_verifier_ble_mqtt_presentation(id).await;
+                oid4vp_service.ble_mqtt_presentation(id).await;
             }
             .boxed(),
         );

@@ -21,7 +21,7 @@ impl SSIApi {
         credential_id: impl Into<Uuid>,
     ) -> Response {
         let url = format!(
-            "/ssi/oidc-issuer/v1/{}/offer/{}",
+            "/ssi/openid4vci/draft-13/{}/offer/{}",
             credential_schema_id.into(),
             credential_id.into()
         );
@@ -38,17 +38,20 @@ impl SSIApi {
         &self,
         proof_id: impl Display,
     ) -> Response {
-        let url = format!("/ssi/oidc-verifier/v1/{proof_id}/presentation-definition");
+        let url = format!("/ssi/openid4vp/draft-20/{proof_id}/presentation-definition");
         self.client.get(&url).await
     }
 
     pub async fn get_client_metadata(&self, proof_id: impl Into<Uuid>) -> Response {
-        let url = format!("/ssi/oidc-verifier/v1/{}/client-metadata", proof_id.into());
+        let url = format!(
+            "/ssi/openid4vp/draft-20/{}/client-metadata",
+            proof_id.into()
+        );
         self.client.get(&url).await
     }
 
     pub async fn get_client_request(&self, proof_id: impl Into<Uuid>) -> Response {
-        let url = format!("/ssi/oidc-verifier/v1/{}/client-request", proof_id.into());
+        let url = format!("/ssi/openid4vp/draft-20/{}/client-request", proof_id.into());
         self.client.get(&url).await
     }
 
@@ -59,7 +62,7 @@ impl SSIApi {
         jwt: &str,
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
-        let url = format!("/ssi/oidc-issuer/v1/{credential_schema_id}/credential");
+        let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/credential");
 
         let body = json!({
             "format": format,
@@ -82,7 +85,7 @@ impl SSIApi {
         jwt: &str,
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
-        let url = format!("/ssi/oidc-issuer/v1/{credential_schema_id}/credential");
+        let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/credential");
 
         let body = json!({
             "format": "mso_mdoc",
@@ -105,7 +108,7 @@ impl SSIApi {
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
         let url = format!(
-            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
         );
         self.client.get(&url).await
     }
@@ -170,7 +173,7 @@ impl SSIApi {
             ],
         };
 
-        let url = format!("/ssi/oidc-issuer/v1/{id}/token");
+        let url = format!("/ssi/openid4vci/draft-13/{id}/token");
 
         self.client.post_form(&url, &form_data).await
     }

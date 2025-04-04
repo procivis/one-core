@@ -358,7 +358,7 @@ impl OpenID4VCHTTP {
         let Some(base_url) = &self.base_url else {
             return Err(VerificationProtocolError::Failed("Missing base_url".into()));
         };
-        let response_uri = format!("{base_url}/ssi/oidc-verifier/v1/response");
+        let response_uri = format!("{base_url}/ssi/openid4vp/draft-20/response");
         let nonce = utilities::generate_alphanumeric(32);
 
         let client_id = match client_id_scheme {

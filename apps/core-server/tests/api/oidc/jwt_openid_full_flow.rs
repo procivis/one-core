@@ -101,8 +101,8 @@ async fn test_openid4vc_jwt_flow(
 
     let interaction_data = serde_json::to_vec(&json!({
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
             "id": interaction_id,
             "input_descriptors": [{
@@ -249,7 +249,7 @@ async fn test_openid4vc_jwt_flow(
         "state": interaction.id,
         "nonce": nonce,
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
@@ -282,7 +282,7 @@ async fn test_openid4vc_jwt_flow(
             "authorization_encrypted_response_enc": "A256GCM"
         },
         "response_mode": "direct_post",
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
@@ -446,8 +446,8 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
 
     let interaction_data = serde_json::to_vec(&json!({
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
             "id": interaction_id,
             "input_descriptors": [{
@@ -621,7 +621,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         "state": interaction.id,
         "nonce": nonce,
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "client_metadata": {
             "vp_formats": {
                 "vc+sd-jwt": {
@@ -654,7 +654,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             "authorization_encrypted_response_enc": "A256GCM"
         },
         "response_mode": "direct_post",
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{

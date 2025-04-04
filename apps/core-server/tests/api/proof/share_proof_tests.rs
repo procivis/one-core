@@ -388,7 +388,7 @@ async fn test_share_proof_client_id_scheme_redirect_uri() {
     assert_eq!(
         client_id,
         format!(
-            "{}/ssi/oidc-verifier/v1/response",
+            "{}/ssi/openid4vp/draft-20/response",
             context.config.app.core_base_url
         )
     );
@@ -432,7 +432,7 @@ async fn test_share_proof_client_id_scheme_verifier_attestation() {
     assert_eq!(
         client_id,
         format!(
-            "{}/ssi/oidc-verifier/v1/response",
+            "{}/ssi/openid4vp/draft-20/response",
             context.config.app.core_base_url
         )
     );

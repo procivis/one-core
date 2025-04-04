@@ -92,10 +92,10 @@ async fn test_issuance_accept_openid4vc() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -244,10 +244,10 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -376,10 +376,10 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -508,10 +508,10 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -595,10 +595,10 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -687,10 +687,10 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -1191,10 +1191,10 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e",
@@ -1330,10 +1330,10 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
@@ -1516,10 +1516,10 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
 
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
         "access_token": encrypted_token("123"),
         "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/oidc-issuer/v1/{}/token", context.server_mock.uri(), credential_schema.id),
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
         "grants":{
             "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"

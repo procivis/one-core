@@ -278,40 +278,41 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
     let unprotected = if config.enable_external_endpoints {
         Router::new()
             .route(
-                "/ssi/oidc-issuer/v1/{id}/.well-known/openid-credential-issuer",
-                get(ssi::controller::oidc_issuer_get_issuer_metadata),
+                "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
+                get(ssi::controller::oid4vci_draft13_get_issuer_metadata),
             )
             .route(
-                "/ssi/oidc-issuer/v1/{id}/.well-known/openid-configuration",
-                get(ssi::controller::oidc_issuer_service_discovery),
+                "/ssi/openid4vci/draft-13/{id}/.well-known/openid-configuration",
+                get(ssi::controller::oid4vci_draft13_service_discovery),
             )
             .route(
-                "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}",
-                get(ssi::controller::oidc_issuer_get_credential_offer),
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}",
+                get(ssi::controller::oid4vci_draft13_get_credential_offer),
             )
             .route(
-                "/ssi/oidc-issuer/v1/{id}/token",
-                post(ssi::controller::oidc_issuer_create_token),
+                "/ssi/openid4vci/draft-13/{id}/token",
+                post(ssi::controller::oid4vci_draft13_create_token),
             )
             .route(
-                "/ssi/oidc-issuer/v1/{id}/credential",
-                post(ssi::controller::oidc_issuer_create_credential),
+                "/ssi/openid4vci/draft-13/{id}/credential",
+                post(ssi::controller::oid4vci_draft13_create_credential),
             )
             .route(
-                "/ssi/oidc-verifier/v1/response",
-                post(ssi::controller::oidc_verifier_direct_post).layer(DefaultBodyLimit::disable()),
+                "/ssi/openid4vp/draft-20/response",
+                post(ssi::controller::oid4vp_draft20_direct_post)
+                    .layer(DefaultBodyLimit::disable()),
             )
             .route(
-                "/ssi/oidc-verifier/v1/{id}/presentation-definition",
-                get(ssi::controller::oidc_verifier_presentation_definition),
+                "/ssi/openid4vp/draft-20/{id}/presentation-definition",
+                get(ssi::controller::oid4vp_draft20_presentation_definition),
             )
             .route(
-                "/ssi/oidc-verifier/v1/{id}/client-metadata",
-                get(ssi::controller::oidc_verifier_client_metadata),
+                "/ssi/openid4vp/draft-20/{id}/client-metadata",
+                get(ssi::controller::oid4vp_draft20_client_metadata),
             )
             .route(
-                "/ssi/oidc-verifier/v1/{id}/client-request",
-                get(ssi::controller::oidc_verifier_client_request),
+                "/ssi/openid4vp/draft-20/{id}/client-request",
+                get(ssi::controller::oid4vp_draft20_client_request),
             )
             .route(
                 "/ssi/revocation/v1/list/{id}",

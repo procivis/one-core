@@ -336,10 +336,10 @@ async fn setup_submittable_presentation(
                 "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
                 "nonce":"QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
                 "client_id_scheme":"redirect_uri",
-                "client_id": format!("{verifier_url}/ssi/oidc-verifier/v1/response"),
+                "client_id": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
                 "client_metadata": client_metadata,
                 "response_mode":"direct_post",
-                "response_uri": format!("{verifier_url}/ssi/oidc-verifier/v1/response"),
+                "response_uri": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
                 "presentation_definition":
                 {
                     "id":"fa42f6f7-f1a7-4af6-aa0e-970468cc4b3f",
@@ -488,7 +488,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
                 "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
                 "nonce":"QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
                 "client_id_scheme":"redirect_uri",
-                "client_id": format!("{verifier_url}/ssi/oidc-verifier/v1/response"),
+                "client_id": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
                 "client_metadata":
                 {
                     "jwks": {
@@ -524,7 +524,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
                     "client_id_scheme":"redirect_uri"
                 },
                 "response_mode":"direct_post",
-                "response_uri": format!("{verifier_url}/ssi/oidc-verifier/v1/response"),
+                "response_uri": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
                 "presentation_definition":
                 {
                     "id":"fa42f6f7-f1a7-4af6-aa0e-970468cc4b3f",
@@ -581,7 +581,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     .await;
 
     Mock::given(method(Method::POST))
-        .and(path("/ssi/oidc-verifier/v1/response".to_owned()))
+        .and(path("/ssi/openid4vp/draft-20/response".to_owned()))
         // Just sample query params as they are too dynamic and contain random ids
         .and(body_string_contains("state"))
         .and(body_string_contains("53c44733-4f9d-4db2-aa83-afb8e17b500f"))

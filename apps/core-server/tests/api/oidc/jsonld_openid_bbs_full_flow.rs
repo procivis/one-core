@@ -161,8 +161,8 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
 
     let interaction_data = json!({
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
@@ -335,7 +335,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         "state": interaction.id,
         "nonce": nonce,
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "client_metadata": {
             "jwks": {
                 "keys": [{
@@ -376,7 +376,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             "client_id_scheme": "redirect_uri"
         },
         "response_mode": "direct_post",
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
@@ -592,8 +592,8 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
 
     let interaction_data = json!({
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
@@ -781,7 +781,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         "state": interaction.id,
         "nonce": nonce,
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "client_metadata": {
             "jwks": {
                 "keys": [{
@@ -822,7 +822,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             "client_id_scheme": "redirect_uri"
         },
         "response_mode": "direct_post",
-        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{

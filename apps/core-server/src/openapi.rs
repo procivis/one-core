@@ -375,9 +375,28 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .build()]);
     }
     if config.enable_external_endpoints {
-        tags.append(&mut vec![Tag::builder()
-            .name("ssi")
-            .description(Some(indoc::formatdoc! {"
+        tags.append(&mut vec![
+            Tag::builder()
+                .name("ssi")
+                .description(Some(indoc::formatdoc! {"
+
+            :::warning
+
+            These endpoints handle low-level mechanisms in interactions between agents.
+            Deep understanding of the involved protocols is recommended.
+
+            :::
+
+        "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "(Advanced) SSI")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("openid4vci-draft13")
+                .description(Some(indoc::formatdoc! {"
 
                 :::warning
 
@@ -387,12 +406,31 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 :::
 
             "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "(Advanced) SSI")
-                    .build(),
-            ))
-            .build()]);
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "(Advanced) SSI")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("openid4vp-draft20")
+                .description(Some(indoc::formatdoc! {"
+
+                :::warning
+
+                These endpoints handle low-level mechanisms in interactions between agents.
+                Deep understanding of the involved protocols is recommended.
+
+                :::
+
+            "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "(Advanced) SSI")
+                        .build(),
+                ))
+                .build(),
+        ]);
     }
     tags
 }

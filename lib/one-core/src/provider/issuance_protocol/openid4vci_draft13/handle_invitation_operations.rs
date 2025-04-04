@@ -127,7 +127,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         // MDOC doesn't have any information about schema url. It's replaced by doctype, hence we need to figure something out for now
         let schema_url = issuer_metadata
             .credential_issuer
-            .replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/");
+            .replace("/ssi/openid4vci/draft-13/", "/ssi/schema/v1/");
 
         let credential_display_name = credential_config.display.as_ref().and_then(|display_info| {
             let display = display_info.first()?;

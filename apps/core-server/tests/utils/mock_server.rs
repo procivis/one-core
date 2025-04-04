@@ -24,7 +24,10 @@ impl MockServer {
 
     pub async fn refresh_token(&self, schema_id: impl Display) {
         Mock::given(method(Method::POST))
-            .and(path(format!("/ssi/oidc-issuer/v1/{}/token", schema_id)))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{}/token",
+                schema_id
+            )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                    "access_token": "321",
@@ -40,7 +43,10 @@ impl MockServer {
 
     pub async fn token_endpoint(&self, schema_id: impl Display, test_token: impl Serialize) {
         Mock::given(method(Method::POST))
-            .and(path(format!("/ssi/oidc-issuer/v1/{}/token", schema_id)))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{}/token",
+                schema_id
+            )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "access_token": test_token,
@@ -61,7 +67,10 @@ impl MockServer {
         tx_code: impl Display,
     ) {
         Mock::given(method(Method::POST))
-            .and(path(format!("/ssi/oidc-issuer/v1/{}/token", schema_id)))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{}/token",
+                schema_id
+            )))
             .and(body_string_contains(format!("tx_code={tx_code}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -86,7 +95,7 @@ impl MockServer {
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
-                "/ssi/oidc-issuer/v1/{}/credential",
+                "/ssi/openid4vci/draft-13/{}/credential",
                 schema_id
             )))
             .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
@@ -113,7 +122,7 @@ impl MockServer {
         matcher: Option<impl Fn(MockBuilder) -> MockBuilder>,
     ) {
         let mut mock_builder = Mock::given(method(Method::POST))
-            .and(path("/ssi/oidc-verifier/v1/response".to_owned()));
+            .and(path("/ssi/openid4vp/draft-20/response".to_owned()));
         if let Some(matcher) = matcher {
             mock_builder = matcher(mock_builder);
         }

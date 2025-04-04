@@ -253,18 +253,18 @@ async fn test_share_proof() {
     assert_eq!("redirect_uri", query_pairs.get("client_id_scheme").unwrap());
 
     assert_eq!(
-        "http://base_url/ssi/oidc-verifier/v1/response",
+        "http://base_url/ssi/openid4vp/draft-20/response",
         query_pairs.get("response_uri").unwrap()
     );
 
     assert_eq!(
-        "http://base_url/ssi/oidc-verifier/v1/response",
+        "http://base_url/ssi/openid4vp/draft-20/response",
         query_pairs.get("client_id").unwrap()
     );
 
     assert_eq!(
         &format!(
-            "http://base_url/ssi/oidc-verifier/v1/{}/presentation-definition",
+            "http://base_url/ssi/openid4vp/draft-20/{}/presentation-definition",
             proof.id
         ),
         query_pairs.get("presentation_definition_uri").unwrap()
@@ -272,7 +272,7 @@ async fn test_share_proof() {
 
     assert_eq!(
         &format!(
-            "http://base_url/ssi/oidc-verifier/v1/{}/client-metadata",
+            "http://base_url/ssi/openid4vp/draft-20/{}/client-metadata",
             proof.id
         ),
         query_pairs.get("client_metadata_uri").unwrap()
@@ -488,7 +488,7 @@ async fn test_share_proof_with_use_request_uri() {
             ("client_id_scheme".into(), "did".into()),
             (
                 "request_uri".into(),
-                format!("http://base_url/ssi/oidc-verifier/v1/{proof_id}/client-request").into()
+                format!("http://base_url/ssi/openid4vp/draft-20/{proof_id}/client-request").into()
             ),
         ]),
         query_pairs
@@ -552,12 +552,12 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
         HashSet::from_iter([
             (
                 "client_id".into(),
-                "http://base_url/ssi/oidc-verifier/v1/response".into()
+                "http://base_url/ssi/openid4vp/draft-20/response".into()
             ),
             ("client_id_scheme".into(), "redirect_uri".into()),
             (
                 "request_uri".into(),
-                format!("http://base_url/ssi/oidc-verifier/v1/{proof_id}/client-request").into()
+                format!("http://base_url/ssi/openid4vp/draft-20/{proof_id}/client-request").into()
             ),
         ]),
         query_pairs

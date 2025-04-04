@@ -815,7 +815,7 @@ pub(crate) fn get_credential_offer_url(
         ))?;
     let base_url = get_url(base_url)?;
     Ok(format!(
-        "{base_url}/ssi/oidc-issuer/v1/{}/offer/{}",
+        "{base_url}/ssi/openid4vci/draft-13/{}/offer/{}",
         credential_schema.id, credential.id
     ))
 }
