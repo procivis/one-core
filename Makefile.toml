@@ -126,8 +126,14 @@ env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.dylib" }
 
 #### Android
 [tasks.add_android_targets]
-# x86_64 is skipped due to: https://github.com/rust-lang/rust/issues/109717
-args    = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
+args = [
+  "target",
+  "add",
+  "i686-linux-android",
+  "x86_64-linux-android",
+  "armv7-linux-androideabi",
+  "aarch64-linux-android",
+]
 command = "rustup"
 
 [tasks.install_cross]
@@ -151,12 +157,17 @@ env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.dylib" }
 
 [tasks.build_android_targets]
 script = '''
-for target in "i686-linux-android" "armv7-linux-androideabi" "aarch64-linux-android"
+for target in "i686-linux-android" "x86_64-linux-android" "armv7-linux-androideabi" "aarch64-linux-android"
 do
   case $target in
     i686-linux-android)
       arch=x86
       stripCmd=i686-linux-android-strip
+      ;;
+
+    x86_64-linux-android)
+      arch=x86_64
+      stripCmd=x86_64-linux-android-strip
       ;;
   
     armv7-linux-androideabi)
