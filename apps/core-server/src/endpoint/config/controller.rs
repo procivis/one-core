@@ -30,7 +30,8 @@ use crate::router::AppState;
     - Credential formats
     - Key algorithms
     - Key storage providers
-    - Exchange protocols
+    - Issuance protocols
+    - Verification protocols
     - Revocation methods
     - Datatypes
     - Transport protocols

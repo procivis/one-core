@@ -131,12 +131,14 @@ pub(crate) async fn get_proofs(
     Creates a proof request, which can then be shared with a wallet holder.
 
     Choose what information to request (proof schema), the DID to be used
-    for identification as a verifier and which exchange protocol to be used
-    for verification.
+    for identification as a verifier, and which verification protocol to use.
 
     The `exchange` and `transport` values must reference specific configuration
     instances from your system configuration. This is because the system allows
-    multiple configurations of the same type.
+    multiple configurations of the same type. For `exchange`, reference a configured
+    instance of `verificationProtocol`.
+
+    Related guide: [Verify workflow](/verify)
 "},
 )]
 pub(crate) async fn post_proof(

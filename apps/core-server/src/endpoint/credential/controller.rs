@@ -137,12 +137,11 @@ pub(crate) async fn get_credential_list(
     Creates a credential, which can then be issued to a wallet holder.
 
     Choose the type of credential to issue (credential schema), the DID
-    to be used for identification, an exchange protocol for issuance, and
+    to be used for identification, an issuance protocol, and
     make claims about the subject.
 
-    The `exchange` value must reference specific configuration instances
-    from your system configuration. This is because the system allows
-    multiple configurations of the same type.
+    The `exchange` value must reference a configured instance of the
+    `issuanceProtocol` object of your system configuration.
 
     Related guide: [Issuance workflow](/issue)
 "},

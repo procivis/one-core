@@ -73,10 +73,10 @@ We can use `Makefile.toml` to add and fine tune build/run targets later in the p
 
 The base configuration does not provide encryption keys to encrypt
 sensitive data such as private keys. Create a .yml file and provide
-encryption keys for each instance of OpenID4VC exchange protocol and
+encryption keys for each instance of OpenID4VC issuance protocol and
 internal key storage:
 
-- `exchange.[instanceName].type: 'OPENID4VC'`
+- `issuanceProtocol.[instanceName].type: 'OPENID4VCI_DRAFT13'`
 - `keyStorage.[instanceName].type: 'INTERNAL'`
 
 Encryption keys must be a 32 byte hex-encoded value. Use:
@@ -92,15 +92,11 @@ of the override configuration.
 Your override configuration file should look something like this:
 
 ```yml
-exchange:
-  OPENID4VC:
+issuanceProtocol:
+  OPENID4VCI_DRAFT13:
     params:
       private:
         encryption: '93d9182795...'
-  MDOC_OPENID4VP:
-    params:
-      private:
-        encryption: 'af57619a85...'
 keyStorage:
   INTERNAL:
     params:
