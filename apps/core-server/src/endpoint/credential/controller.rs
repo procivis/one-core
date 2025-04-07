@@ -36,9 +36,13 @@ use crate::router::AppState;
     ),
     summary = "Delete a credential",
     description = indoc::formatdoc! {"
-        Prevents a credential from being returned when retrieving a list of credentials. The credential maintains its state in the
-        system and can be retrieved by its ID. This has no impact on the holder's ability to keep and use the credential. Deletion cannot
-        be completed if the credential state is `ACCEPTED` while the corresponding credential schema includes a revocation method. If revocation
+        Makes a credential no longer retrievable and records the history
+        action `DELETED`.
+
+        This has no impact on the holder's ability to keep and use the credential.
+
+        Deletion cannot be completed if the credential state is `ACCEPTED` while
+        the corresponding credential schema includes a revocation method. If revocation
         method is `NONE`, the credential can be deleted in any state.
     "},
 )]
