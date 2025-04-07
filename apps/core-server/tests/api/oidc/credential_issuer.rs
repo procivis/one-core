@@ -1,6 +1,10 @@
+use std::collections::HashSet;
+
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_credential_issuer_metadata() {
@@ -135,9 +139,46 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
     let resp = resp.json_value().await;
 
     let metadata = &resp["credential_configurations_supported"]["schema-id"];
-    let expected_metadata = serde_json::json!({
-        "format": "mso_mdoc",
-        "claims": {
+    let expected_binding_methods = HashSet::from([
+        "did:key",
+        "did:web",
+        "did:jwk",
+        "did:x509",
+        "did:mdl",
+        "did:ion",
+        "did:sd_jwt_vc_issuer_metadata",
+        "did:tdw",
+        "jwk",
+    ]);
+    let cryptographic_binding_methods_supported = &metadata
+        ["cryptographic_binding_methods_supported"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|val| val.as_str().unwrap())
+        .collect::<HashSet<&str>>();
+    assert_eq!(
+        *cryptographic_binding_methods_supported,
+        expected_binding_methods
+    );
+
+    let expected_proof_signing_algs =
+        HashSet::from(["BBS_PLUS", "EdDSA", "EDDSA", "CRYDI3", "DILITHIUM", "ES256"]);
+    let proof_signing_algs = &metadata["proof_types_supported"]["jwt"]
+        ["proof_signing_alg_values_supported"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|val| val.as_str().unwrap())
+        .collect::<HashSet<&str>>();
+    assert_eq!(*proof_signing_algs, expected_proof_signing_algs);
+
+    metadata["format"].assert_eq(&json!("mso_mdoc"));
+    metadata["doctype"].assert_eq(&json!("schema-id"));
+    metadata["order"].assert_eq(&json!(["root~str", "root~num", "root~bool"]));
+    metadata["display"].assert_eq(&json!([{ "name": "schema-1" }]));
+    metadata["claims"].assert_eq(&json!(
+        {
             "root": {
                 "str": {
                     "value_type": "string",
@@ -152,15 +193,6 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
                     "mandatory": true,
                 }
             }
-        },
-        "order": ["root~str", "root~num", "root~bool"],
-        "doctype": "schema-id",
-        "display": [
-            {
-                "name": "schema-1"
-            }
-        ]
-    });
-
-    assert_eq!(&expected_metadata, metadata);
+        }
+    ));
 }

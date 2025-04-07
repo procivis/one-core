@@ -27,6 +27,7 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
 };
+use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
@@ -88,8 +89,17 @@ impl OID4VCIDraft13Service {
             .r#type;
         let oidc_format = map_to_openid4vp_format(&format_type).map(|s| s.to_string())?;
 
-        create_issuer_metadata_response(&base_url, &oidc_format, &schema, &self.config)
-            .map_err(Into::into)
+        create_issuer_metadata_response(
+            &base_url,
+            &oidc_format,
+            &schema,
+            &self.config,
+            &self.did_method_provider.supported_method_names(),
+            Some(map_proof_types_supported(
+                self.key_algorithm_provider.supported_jose_alg_ids(),
+            )),
+        )
+        .map_err(Into::into)
     }
 
     pub async fn service_discovery(

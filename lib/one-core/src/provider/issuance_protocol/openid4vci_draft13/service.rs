@@ -8,13 +8,16 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::error::{OpenID4VCIError, OpenIDIssuanceError};
-use super::mapper::{credentials_supported_mdoc, prepare_nested_representation};
+use super::mapper::{
+    credentials_supported_mdoc, map_cryptographic_binding_methods_supported,
+    prepare_nested_representation,
+};
 use super::model::{
     ExtendedSubjectDTO, OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
+    OpenID4VCIProofTypeSupported, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::CoreConfig;
@@ -32,9 +35,16 @@ pub(crate) fn create_issuer_metadata_response(
     oidc_format: &str,
     schema: &CredentialSchema,
     config: &CoreConfig,
+    supported_did_methods: &[String],
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
-    let credential_configurations_supported =
-        credential_configurations_supported(oidc_format, schema, config)?;
+    let credential_configurations_supported = credential_configurations_supported(
+        oidc_format,
+        schema,
+        config,
+        supported_did_methods,
+        proof_types_supported,
+    )?;
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: base_url.to_owned(),
         credential_endpoint: format!("{base_url}/credential"),
@@ -46,31 +56,59 @@ fn credential_configurations_supported(
     oidc_format: &str,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
+    supported_did_methods: &[String],
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
     let wallet_storage_type = credential_schema.wallet_storage_type.to_owned();
     let schema_id = credential_schema.schema_id.to_owned();
 
     let claims = prepare_nested_representation(credential_schema, config)?;
+    let cryptographic_binding_methods_supported =
+        map_cryptographic_binding_methods_supported(supported_did_methods);
 
     Ok(IndexMap::from([(
         schema_id.clone(),
         match oidc_format {
-            "ldp_vc" => {
-                jsonld_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
-            }
-            "jwt_vc_json" => {
-                jwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
-            }
+            "ldp_vc" => jsonld_configuration(
+                wallet_storage_type,
+                oidc_format,
+                claims,
+                credential_schema,
+                cryptographic_binding_methods_supported,
+                proof_types_supported,
+            ),
+            "jwt_vc_json" => jwt_configuration(
+                wallet_storage_type,
+                oidc_format,
+                claims,
+                credential_schema,
+                cryptographic_binding_methods_supported,
+                proof_types_supported,
+            ),
             "vc+sd-jwt" => sdjwt_configuration(
                 wallet_storage_type,
                 oidc_format,
                 claims,
                 credential_schema,
                 (credential_schema.format == "SD_JWT_VC").then_some(schema_id),
+                cryptographic_binding_methods_supported,
+                proof_types_supported,
             ),
-            "mso_mdoc" => credentials_supported_mdoc(credential_schema.clone(), config)
-                .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
-            _ => jwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema),
+            "mso_mdoc" => credentials_supported_mdoc(
+                credential_schema.clone(),
+                config,
+                cryptographic_binding_methods_supported,
+                proof_types_supported,
+            )
+            .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+            _ => jwt_configuration(
+                wallet_storage_type,
+                oidc_format,
+                claims,
+                credential_schema,
+                cryptographic_binding_methods_supported,
+                proof_types_supported,
+            ),
         },
     )]))
 }
@@ -80,6 +118,8 @@ fn jsonld_configuration(
     oidc_format: &str,
     claims: OpenID4VCICredentialSubjectItem,
     credential_schema: &CredentialSchema,
+    cryptographic_binding_methods_supported: Vec<String>,
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> OpenID4VCICredentialConfigurationData {
     let schema_name = credential_schema.name.to_owned();
     OpenID4VCICredentialConfigurationData {
@@ -93,6 +133,8 @@ fn jsonld_configuration(
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
+        cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
+        proof_types_supported,
         ..Default::default()
     }
 }
@@ -102,6 +144,8 @@ fn jwt_configuration(
     oidc_format: &str,
     claims: OpenID4VCICredentialSubjectItem,
     credential_schema: &CredentialSchema,
+    cryptographic_binding_methods_supported: Vec<String>,
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> OpenID4VCICredentialConfigurationData {
     let schema_name = credential_schema.name.to_owned();
     OpenID4VCICredentialConfigurationData {
@@ -114,6 +158,8 @@ fn jwt_configuration(
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
+        cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
+        proof_types_supported,
         ..Default::default()
     }
 }
@@ -124,6 +170,8 @@ fn sdjwt_configuration(
     claims: OpenID4VCICredentialSubjectItem,
     credential_schema: &CredentialSchema,
     vct: Option<String>,
+    cryptographic_binding_methods_supported: Vec<String>,
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> OpenID4VCICredentialConfigurationData {
     let schema_name = credential_schema.name.to_owned();
     OpenID4VCICredentialConfigurationData {
@@ -133,11 +181,12 @@ fn sdjwt_configuration(
             r#type: vec!["VerifiableCredential".to_string()],
             credential_subject: Some(claims),
         }),
-        doctype: None,
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
         vct,
+        cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
+        proof_types_supported,
         ..Default::default()
     }
 }

@@ -13,7 +13,7 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCIProofRequestDTO, OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use one_core::provider::verification_protocol::openid4vp_draft20::model::{
@@ -139,6 +139,8 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub vct: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    #[schema(value_type = Object)]
+    pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

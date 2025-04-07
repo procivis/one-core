@@ -301,7 +301,14 @@ impl OpenID4VCHTTP {
         // Very basic support for JWK as crypto binding method for EUDI
         let jwk = match interaction_data.cryptographic_binding_methods_supported {
             Some(methods) => {
-                if methods.contains(&"jwk".to_string()) {
+                // For now, prefer kid-based holder binding proofs instead of using jwk because the core does not support that yet
+                // TODO: Clean this up once https://procivis.atlassian.net/browse/ONE-5349 is implemented
+                if methods
+                    .iter()
+                    .any(|method| holder_did.did.as_str().starts_with(method.as_str()))
+                {
+                    None
+                } else if methods.contains(&"jwk".to_string()) {
                     let resolved = self
                         .did_method_provider
                         .resolve(&holder_did.did)

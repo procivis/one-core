@@ -14,7 +14,7 @@ use super::model::{
     CredentialSchemaLogoPropertiesRequestDTO, DidListItemResponseDTO,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCITokenResponseDTO,
+    OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -961,6 +961,8 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
 pub(super) fn credentials_supported_mdoc(
     schema: CredentialSchema,
     config: &CoreConfig,
+    cryptographic_binding_methods_supported: Vec<String>,
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
     let claim_schemas: &Vec<CredentialSchemaClaim> =
         schema
@@ -1006,13 +1008,36 @@ pub(super) fn credentials_supported_mdoc(
         } else {
             None
         },
-        credential_definition: None,
         doctype: Some(schema.schema_id),
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
         ]),
+        cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
+        proof_types_supported,
         ..Default::default()
     };
 
     Ok(credential_configuration)
+}
+
+pub(crate) fn map_proof_types_supported(
+    supported_jose_alg_ids: Vec<String>,
+) -> IndexMap<String, OpenID4VCIProofTypeSupported> {
+    IndexMap::from([(
+        "jwt".to_string(),
+        OpenID4VCIProofTypeSupported {
+            proof_signing_alg_values_supported: supported_jose_alg_ids,
+        },
+    )])
+}
+
+pub(crate) fn map_cryptographic_binding_methods_supported(
+    supported_did_methods: &[String],
+) -> Vec<String> {
+    let mut binding_methods: Vec<_> = supported_did_methods
+        .iter()
+        .map(|did_method| format!("did:{}", did_method))
+        .collect();
+    binding_methods.push("jwk".to_string());
+    binding_methods
 }

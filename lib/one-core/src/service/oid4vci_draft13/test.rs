@@ -172,8 +172,15 @@ fn dummy_credential(
 
 #[tokio::test]
 async fn test_get_issuer_metadata_jwt() {
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_supported_method_names()
+        .return_once(|| vec!["key".to_string()]);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_supported_jose_alg_ids()
+        .return_once(|| vec!["ES256".to_string()]);
     let mut repository = MockCredentialSchemaRepository::default();
-    let credential_repository = MockCredentialRepository::default();
     let schema = generic_credential_schema();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
@@ -189,7 +196,8 @@ async fn test_get_issuer_metadata_jwt() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
-        credential_repository,
+        did_method_provider,
+        key_algorithm_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -199,6 +207,19 @@ async fn test_get_issuer_metadata_jwt() {
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("jwt_vc_json".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
+    assert_eq!(
+        credential.cryptographic_binding_methods_supported.unwrap(),
+        vec!["did:key".to_string(), "jwk".to_string()]
+    );
+    assert_eq!(
+        credential
+            .proof_types_supported
+            .unwrap()
+            .get("jwt")
+            .unwrap()
+            .proof_signing_alg_values_supported,
+        vec!["ES256".to_string()]
+    );
     assert!(credential.claims.is_none()); // This is present of mdoc only
     let credential_definition = credential.credential_definition.as_ref().unwrap();
     assert!(credential_definition
@@ -218,7 +239,14 @@ async fn test_get_issuer_metadata_jwt() {
 #[tokio::test]
 async fn test_get_issuer_metadata_sd_jwt() {
     let mut repository = MockCredentialSchemaRepository::default();
-    let credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_supported_method_names()
+        .return_once(|| vec!["key".to_string()]);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_supported_jose_alg_ids()
+        .return_once(|| vec!["ES256".to_string()]);
 
     let mut schema = generic_credential_schema();
     schema.format = "SD_JWT".to_string();
@@ -236,7 +264,8 @@ async fn test_get_issuer_metadata_sd_jwt() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
-        credential_repository,
+        did_method_provider,
+        key_algorithm_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -245,6 +274,19 @@ async fn test_get_issuer_metadata_sd_jwt() {
     assert_eq!("vc+sd-jwt".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
     assert!(credential.claims.is_none()); // This is present of mdoc only
+    assert_eq!(
+        credential.cryptographic_binding_methods_supported.unwrap(),
+        vec!["did:key".to_string(), "jwk".to_string()]
+    );
+    assert_eq!(
+        credential
+            .proof_types_supported
+            .unwrap()
+            .get("jwt")
+            .unwrap()
+            .proof_signing_alg_values_supported,
+        vec!["ES256".to_string()]
+    );
     let credential_definition = credential.credential_definition.as_ref().unwrap();
     assert!(credential_definition
         .r#type
@@ -263,7 +305,14 @@ async fn test_get_issuer_metadata_sd_jwt() {
 #[tokio::test]
 async fn test_get_issuer_metadata_mdoc() {
     let mut repository = MockCredentialSchemaRepository::default();
-    let credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_supported_method_names()
+        .return_once(|| vec!["key".to_string()]);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_supported_jose_alg_ids()
+        .return_once(|| vec!["ES256".to_string()]);
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".to_string();
@@ -307,7 +356,8 @@ async fn test_get_issuer_metadata_mdoc() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
-        credential_repository,
+        did_method_provider,
+        key_algorithm_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -315,6 +365,19 @@ async fn test_get_issuer_metadata_mdoc() {
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("mso_mdoc".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
+    assert_eq!(
+        credential.cryptographic_binding_methods_supported.unwrap(),
+        vec!["did:key".to_string(), "jwk".to_string()]
+    );
+    assert_eq!(
+        credential
+            .proof_types_supported
+            .unwrap()
+            .get("jwt")
+            .unwrap()
+            .proof_signing_alg_values_supported,
+        vec!["ES256".to_string()]
+    );
     let claims = credential.claims.unwrap();
     assert_eq!(
         IndexMap::from([(

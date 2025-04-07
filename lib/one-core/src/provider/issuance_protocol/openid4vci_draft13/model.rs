@@ -74,6 +74,12 @@ pub struct OpenID4VCICredentialConfigurationData {
     pub vct: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct OpenID4VCIProofTypeSupported {
+    pub proof_signing_alg_values_supported: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]

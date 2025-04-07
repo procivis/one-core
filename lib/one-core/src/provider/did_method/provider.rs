@@ -27,6 +27,8 @@ pub trait DidMethodProvider: Send + Sync {
         did: &Did,
         selected_key: &Key,
     ) -> Result<String, DidMethodProviderError>;
+
+    fn supported_method_names(&self) -> Vec<String>;
 }
 
 pub struct DidMethodProviderImpl {
@@ -120,6 +122,13 @@ impl DidMethodProvider for DidMethodProviderImpl {
             }
         };
         Ok(verification_method.id)
+    }
+
+    fn supported_method_names(&self) -> Vec<String> {
+        self.did_methods
+            .values()
+            .flat_map(|did_method| did_method.get_capabilities().method_names)
+            .collect()
     }
 }
 

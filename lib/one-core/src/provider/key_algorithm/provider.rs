@@ -48,6 +48,8 @@ pub trait KeyAlgorithmProvider: Send + Sync {
         private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError>;
+
+    fn supported_jose_alg_ids(&self) -> Vec<String>;
 }
 
 pub struct KeyAlgorithmProviderImpl {
@@ -166,5 +168,12 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         algorithm
             .reconstruct_key(public_key, private_key, r#use)
             .map_err(KeyAlgorithmProviderError::KeyAlgorithm)
+    }
+
+    fn supported_jose_alg_ids(&self) -> Vec<String> {
+        self.algorithms
+            .values()
+            .flat_map(|key_alg| key_alg.verification_jose_alg_ids())
+            .collect()
     }
 }
