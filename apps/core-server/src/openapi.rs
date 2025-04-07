@@ -102,7 +102,10 @@ pub fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::
             .build(),
     );
     docs.servers = Some(vec![
-        Server::builder().url("/").build(),
+        Server::builder()
+            .url("")
+            .description(Some("Local server url"))
+            .build(),
         Server::builder()
             .url("https://www.procivis-one.com")
             .description(Some("Generated server url"))
