@@ -91,6 +91,7 @@ mod m20250324_150815_add_name_to_history_table;
 mod m20250327_141601_add_new_history_action;
 mod m20250331_115152_add_history_target;
 mod m20250331_143210_rename_es256_to_ecdsa;
+mod m20250401_110914_add_log_column_to_did_table;
 mod m20250401_140204_add_reactivated_history_enum;
 mod m20250403_083609_exchange_rename;
 mod migrate_enum;
@@ -188,6 +189,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250331_115152_add_history_target::Migration),
             Box::new(m20250401_140204_add_reactivated_history_enum::Migration),
             Box::new(m20250403_083609_exchange_rename::Migration),
+            Box::new(m20250401_110914_add_log_column_to_did_table::Migration),
         ]
     }
 }

@@ -1,0 +1,692 @@
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
+use serde::ser::SerializeSeq;
+use serde::Serialize;
+use shared_types::DidValue;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
+use crate::config::core_config::KeyAlgorithmType;
+use crate::model::key::Key;
+use crate::provider::credential_formatter::vcdm::VcdmProof;
+use crate::provider::did_method::dto::DidVerificationMethodDTO;
+use crate::provider::did_method::error::DidMethodError;
+use crate::provider::did_method::webvh::common::{
+    canonicalized_hash, DidLogParameters, DidMethodVersion,
+};
+use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::key_storage::provider::KeyProvider;
+
+const SCID_PLACEHOLDER: &str = "{SCID}";
+const CRYPTOSUITE: &str = "eddsa-jcs-2022";
+
+pub struct DidDocKeys {
+    pub authentication: Vec<Key>,
+    pub assertion_method: Vec<Key>,
+    pub key_agreement: Vec<Key>,
+    pub capability_invocation: Vec<Key>,
+    pub capability_delegation: Vec<Key>,
+}
+
+pub struct UpdateKeys<'a> {
+    pub active: &'a Key,
+    pub next: &'a [Key],
+}
+
+#[derive(Default)]
+struct Options {
+    version_time: Option<OffsetDateTime>,
+    proof_created: Option<OffsetDateTime>,
+}
+
+pub async fn create(
+    domain: &str,
+    did_doc_keys: DidDocKeys,
+    update_keys: UpdateKeys<'_>,
+    key_provider: &dyn KeyProvider,
+) -> Result<(DidValue, String), DidMethodError> {
+    create_with_options(
+        domain,
+        did_doc_keys,
+        update_keys,
+        key_provider,
+        Options::default(),
+    )
+    .await
+}
+
+async fn create_with_options(
+    domain: &str,
+    did_doc_keys: DidDocKeys,
+    update_keys: UpdateKeys<'_>,
+    key_provider: &dyn KeyProvider,
+    options: Options,
+) -> Result<(DidValue, String), DidMethodError> {
+    check_keys(&update_keys)?;
+    let did_placeholder = format!("did:tdw:{SCID_PLACEHOLDER}:{domain}");
+    let active_key = make_keyref(update_keys.active, key_provider)?;
+
+    let prerotation = !update_keys.next.is_empty();
+    let next_key_hashes = update_keys
+        .next
+        .iter()
+        .map(|key| {
+            let key_ref = make_keyref(key, key_provider)?;
+            let hash = SHA256.hash(key_ref.multibase.as_bytes()).map_err(|err| {
+                DidMethodError::ResolutionError(format!("Failed to hash next key: {err}"))
+            })?;
+            b58btc_multihash(&hash)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let parameters = DidLogParameters {
+        method: Some(DidMethodVersion::V3),
+        prerotation: prerotation.then_some(prerotation),
+        portable: None,
+        update_keys: Some(vec![active_key.multibase.clone()]),
+        next_key_hashes,
+        scid: Some(SCID_PLACEHOLDER.to_owned()),
+        witness: vec![],
+        deactivated: None,
+        ttl: None,
+    };
+
+    let did_doc = create_did_doc(did_placeholder, did_doc_keys, key_provider)?;
+    let state = DidDocState { value: did_doc };
+    let log = DidLogEntry {
+        version_id: SCID_PLACEHOLDER.to_string(),
+        version_time: options.version_time.unwrap_or(OffsetDateTime::now_utc()),
+        parameters,
+        state,
+        proof: vec![],
+    };
+    // replace {SCID} with it's value
+    let scid = canonicalize_multihash_encode(&log)?;
+    let log = replace_scid(log, scid)?;
+    // update version field
+    let entry_hash = canonicalize_multihash_encode(&log)?;
+    let mut log = update_version(log, &entry_hash);
+
+    let proof = build_proof(
+        &log,
+        &active_key,
+        options.proof_created.unwrap_or(OffsetDateTime::now_utc()),
+    )
+    .await?;
+    log.proof = vec![proof];
+
+    let line = serde_json::to_string(&log).map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("Failed serializing did log: {err}"))
+    })?;
+    let did = log.state.value.id.parse().map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("Failed parsing webvh did as did value: {err:#}"))
+    })?;
+
+    Ok((did, line))
+}
+
+fn check_keys(keys: &UpdateKeys<'_>) -> Result<(), DidMethodError> {
+    for key in std::iter::once(keys.active).chain(keys.next) {
+        if key.key_type != KeyAlgorithmType::Eddsa.as_ref() {
+            return Err(DidMethodError::CouldNotCreate(format!(
+                "invalid key type `{}`. expected EDDSA key for cryptosuite {CRYPTOSUITE}",
+                key.key_type,
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn make_keyref(key: &Key, key_provider: &dyn KeyProvider) -> Result<KeyRef, DidMethodError> {
+    let Some(storage) = key_provider.get_key_storage(&key.storage_type) else {
+        return Err(DidMethodError::CouldNotCreate(format!(
+            "missing key storage for storage type: {}",
+            key.storage_type
+        )));
+    };
+
+    let key_handle = storage.key_handle(key).map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("failed getting key handle for key: {err}"))
+    })?;
+
+    let multibase = key_handle.public_key_as_multibase().map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("failed converting key to multibase: {err}"))
+    })?;
+
+    Ok(KeyRef {
+        multibase,
+        handle: key_handle,
+    })
+}
+
+fn canonicalize_multihash_encode(log: impl Serialize) -> Result<String, DidMethodError> {
+    let json = json_syntax::to_value(log)
+        .map_err(|err| DidMethodError::CouldNotCreate(format!("failed serializing log: {err}")))?;
+    let hash = canonicalized_hash(json)?;
+    b58btc_multihash(&hash)
+}
+
+fn b58btc_multihash(input: &[u8]) -> Result<String, DidMethodError> {
+    let multihash = multihash::Multihash::<32>::wrap(0x12, input).map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("Failed to create multihash: {err}"))
+    })?;
+
+    Ok(bs58::encode(multihash.to_bytes()).into_string())
+}
+
+fn create_did_doc(
+    did: String,
+    did_doc_keys: DidDocKeys,
+    key_provider: &dyn KeyProvider,
+) -> Result<DidDocument, DidMethodError> {
+    let mut verification_method_list = vec![];
+
+    let mut map_keys_and_add_to_verification_method = |keys| {
+        let mut purpose: Vec<String> = vec![];
+        for key in keys {
+            let key_ref = make_keyref(&key, key_provider)?;
+            let verification_method_id = format!("{did}#key-{}", key.id);
+            let verification_method = create_verification_method(
+                verification_method_id.clone(),
+                did.clone(),
+                &key_ref.handle,
+            )?;
+            purpose.push(verification_method_id);
+            verification_method_list.push(verification_method);
+        }
+
+        Ok(purpose)
+    };
+
+    let authentication: Vec<String> =
+        map_keys_and_add_to_verification_method(did_doc_keys.authentication)?;
+    let assertion_method: Vec<String> =
+        map_keys_and_add_to_verification_method(did_doc_keys.assertion_method)?;
+    let key_agreement: Vec<String> =
+        map_keys_and_add_to_verification_method(did_doc_keys.key_agreement)?;
+    let capability_invocation: Vec<String> =
+        map_keys_and_add_to_verification_method(did_doc_keys.capability_invocation)?;
+    let capability_delegation: Vec<String> =
+        map_keys_and_add_to_verification_method(did_doc_keys.capability_delegation)?;
+
+    Ok(DidDocument {
+        context: vec![
+            "https://www.w3.org/ns/did/v1".to_string(),
+            "https://w3id.org/security/multikey/v1".to_string(),
+        ],
+        id: did,
+        verification_method: verification_method_list,
+        authentication,
+        assertion_method,
+        key_agreement,
+        capability_invocation,
+        capability_delegation,
+    })
+}
+
+fn create_verification_method(
+    id: String,
+    did: String,
+    key_handle: &KeyHandle,
+) -> Result<DidVerificationMethodDTO, DidMethodError> {
+    let public_key_jwk = key_handle.public_key_as_jwk().map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("Cannot convert PK to JWK: {err}"))
+    })?;
+
+    Ok(DidVerificationMethodDTO {
+        id,
+        r#type: "JsonWebKey2020".to_string(),
+        controller: did,
+        public_key_jwk: public_key_jwk.into(),
+    })
+}
+
+async fn build_proof(
+    log: &DidLogEntry,
+    active_key: &KeyRef,
+    created: OffsetDateTime,
+) -> Result<VcdmProof, DidMethodError> {
+    let verification_method = format!("did:key:{}#{}", active_key.multibase, active_key.multibase);
+    let mut proof = VcdmProof::builder()
+        .proof_purpose("authentication")
+        .cryptosuite(CRYPTOSUITE)
+        .created(created)
+        .challenge(log.version_id.clone())
+        .verification_method(verification_method)
+        .build();
+
+    let json = json_syntax::to_value(&proof).map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("failed serializing proof: {err}"))
+    })?;
+    let mut proof_hash = canonicalized_hash(json)?;
+
+    let json = json_syntax::to_value(&log.state.value).map_err(|err| {
+        DidMethodError::CouldNotCreate(format!("failed serializing did doc: {err}"))
+    })?;
+    let did_doc_hash = canonicalized_hash(json)?;
+    proof_hash.extend(did_doc_hash);
+
+    let proof_value = active_key
+        .handle
+        .sign(&proof_hash)
+        .await
+        .map(|s| {
+            let encoded = bs58::encode(s).into_string();
+            format!("z{encoded}")
+        })
+        .map_err(|err| DidMethodError::CouldNotCreate(format!("failed signing did log: {err}")))?;
+
+    proof.proof_value = Some(proof_value);
+
+    Ok(proof)
+}
+
+fn replace_scid(mut entry: DidLogEntry, scid: String) -> Result<DidLogEntry, DidMethodError> {
+    // replace {SCID} with it's value
+    entry.version_id = scid.clone();
+
+    {
+        let did_doc = &mut entry.state.value;
+        // replace in document id
+        did_doc.id = did_doc
+            .id
+            .as_str()
+            .replace(SCID_PLACEHOLDER, &scid)
+            .parse()
+            .map_err(|err| {
+                DidMethodError::CouldNotCreate(format!(
+                    "Invalid did:webvh after replacing SCID: {err}"
+                ))
+            })?;
+
+        // replace verification id for each key role
+        for v in did_doc
+            .authentication
+            .iter_mut()
+            .chain(did_doc.assertion_method.iter_mut())
+            .chain(did_doc.key_agreement.iter_mut())
+            .chain(did_doc.capability_delegation.iter_mut())
+            .chain(did_doc.capability_invocation.iter_mut())
+        {
+            *v = v.replace(SCID_PLACEHOLDER, &scid);
+        }
+
+        // replace verification id and controller in verification method
+        for v in did_doc.verification_method.iter_mut() {
+            v.id = v.id.replace(SCID_PLACEHOLDER, &scid);
+            v.controller = v.controller.replace(SCID_PLACEHOLDER, &scid);
+        }
+    }
+
+    entry.parameters.scid = Some(scid);
+
+    Ok(entry)
+}
+
+fn update_version(mut entry: DidLogEntry, entry_hash: &str) -> DidLogEntry {
+    entry.version_id = format!("1-{entry_hash}");
+    entry
+}
+
+struct KeyRef {
+    multibase: String,
+    handle: KeyHandle,
+}
+
+#[derive(Debug, Serialize)]
+struct DidDocState {
+    value: DidDocument,
+}
+
+#[derive(Debug)]
+struct DidLogEntry {
+    version_id: String,
+    version_time: OffsetDateTime,
+    parameters: DidLogParameters,
+    state: DidDocState,
+    proof: Vec<VcdmProof>,
+}
+
+impl Serialize for DidLogEntry {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(5))?;
+        seq.serialize_element(&self.version_id)?;
+
+        let version_time = self
+            .version_time
+            .replace_nanosecond(0)
+            .unwrap()
+            .format(&Rfc3339)
+            .map_err(serde::ser::Error::custom)?;
+        seq.serialize_element(&version_time)?;
+
+        seq.serialize_element(&self.parameters)?;
+        seq.serialize_element(&self.state)?;
+
+        match self.proof.as_slice() {
+            [] => {}
+            [proof] => seq.serialize_element(proof)?,
+            proofs => seq.serialize_element(proofs)?,
+        }
+
+        seq.end()
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct DidDocument {
+    #[serde(rename = "@context")]
+    pub context: Vec<String>,
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub verification_method: Vec<DidVerificationMethodDTO>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub authentication: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub assertion_method: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub key_agreement: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capability_invocation: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capability_delegation: Vec<String>,
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use secrecy::SecretSlice;
+    use shared_types::KeyId;
+    use time::format_description::well_known::Iso8601;
+
+    use super::*;
+    use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+    use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::did_method::webvh::verification::verify_did_log;
+    use crate::provider::did_method::webvh::{common, Params};
+    use crate::provider::key_algorithm::ecdsa::Ecdsa;
+    use crate::provider::key_algorithm::eddsa::Eddsa;
+    use crate::provider::key_algorithm::KeyAlgorithm;
+    use crate::provider::key_storage::provider::MockKeyProvider;
+    use crate::provider::key_storage::MockKeyStorage;
+
+    #[tokio::test]
+    async fn test_create_fails_for_non_eddsa_update_keys() {
+        let update_keys = UpdateKeys {
+            active: &make_key(
+                "8586BC4B-0085-4976-B95D-F591B00DD067".parse().unwrap(),
+                vec![],
+                KeyAlgorithmType::Ecdsa,
+            ),
+            next: &[],
+        };
+        let did_doc_keys = DidDocKeys {
+            authentication: vec![],
+            assertion_method: vec![],
+            key_agreement: vec![],
+            capability_invocation: vec![],
+            capability_delegation: vec![],
+        };
+        let provider = MockKeyProvider::new();
+        assert!(create("test-domain", did_doc_keys, update_keys, &provider)
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn test_create_did_webvh_ok() {
+        let KeyProviderSetup {
+            mock: key_provider,
+            active_key_setup: (active_key, _),
+            document_key,
+            ..
+        } = setup_key_provider();
+
+        let did_doc_keys = DidDocKeys {
+            authentication: vec![document_key.clone()],
+            assertion_method: vec![document_key.clone()],
+            key_agreement: vec![document_key.clone()],
+            capability_invocation: vec![document_key.clone()],
+            capability_delegation: vec![document_key],
+        };
+        let update_keys = UpdateKeys {
+            active: &active_key,
+            next: &[],
+        };
+
+        let options = Options {
+            version_time: OffsetDateTime::parse("2024-07-29T17:00:27Z", &Iso8601::DATE_TIME_OFFSET)
+                .ok(),
+            proof_created: OffsetDateTime::parse(
+                "2024-07-29T17:00:28Z",
+                &Iso8601::DATE_TIME_OFFSET,
+            )
+            .ok(),
+        };
+        let (did, log) = create_with_options(
+            "test-domain.com",
+            did_doc_keys,
+            update_keys,
+            &key_provider,
+            options,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            did.to_string(),
+            "did:tdw:QmeZGQQV8uM9Mr74LyM3hS6JJHJD2a265xb9xJU8zZdo4A:test-domain.com"
+        );
+
+        let expected_log = include_str!("test_data/success/create_did_web_ok.jsonl");
+        assert_eq!(log, expected_log);
+    }
+
+    #[tokio::test]
+    async fn test_create_did_webvh_with_prerotation_ok() {
+        let KeyProviderSetup {
+            mock: key_provider,
+            active_key_setup: (active_key, _),
+            document_key,
+            next_key,
+        } = setup_key_provider();
+
+        let did_doc_keys = DidDocKeys {
+            authentication: vec![document_key.clone()],
+            assertion_method: vec![document_key.clone()],
+            key_agreement: vec![document_key.clone()],
+            capability_invocation: vec![document_key.clone()],
+            capability_delegation: vec![document_key],
+        };
+        let update_keys = UpdateKeys {
+            active: &active_key,
+            next: &[next_key],
+        };
+
+        let options = Options {
+            version_time: OffsetDateTime::parse("2024-07-29T17:00:27Z", &Iso8601::DATE_TIME_OFFSET)
+                .ok(),
+            proof_created: OffsetDateTime::parse(
+                "2024-07-29T17:00:28Z",
+                &Iso8601::DATE_TIME_OFFSET,
+            )
+            .ok(),
+        };
+        let (did, log) = create_with_options(
+            "test-domain.com",
+            did_doc_keys,
+            update_keys,
+            &key_provider,
+            options,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            did.to_string(),
+            "did:tdw:QmRf4gmKe419cSXva4hrEzAaocnSZgKBHmi187ZgSzmMMV:test-domain.com"
+        );
+
+        let expected_log = include_str!("test_data/create_did_web_with_prerotation_ok.jsonl");
+        assert_eq!(log, expected_log);
+    }
+
+    #[tokio::test]
+    async fn test_create_then_verify() {
+        let KeyProviderSetup {
+            mock: key_provider,
+            active_key_setup: (active_key, active_key_handle),
+            document_key,
+            ..
+        } = setup_key_provider();
+
+        let did_doc_keys = DidDocKeys {
+            authentication: vec![document_key.clone()],
+            assertion_method: vec![document_key.clone()],
+            key_agreement: vec![document_key.clone()],
+            capability_invocation: vec![document_key.clone()],
+            capability_delegation: vec![document_key],
+        };
+        let update_keys = UpdateKeys {
+            active: &active_key,
+            next: &[],
+        };
+
+        let (_did, log) = create("test-domain.ch", did_doc_keys, update_keys, &key_provider)
+            .await
+            .unwrap();
+        let entry: common::DidLogEntry = serde_json::from_str(&log).unwrap();
+
+        let mut did_method_provider = MockDidMethodProvider::new();
+        let public_key_jwk = active_key_handle.public_key_as_jwk().unwrap();
+        did_method_provider.expect_resolve().once().returning(
+            move |_| {
+            let doc = DidDocument {
+                context: serde_json::Value::Null,
+                id: "did:key:z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV"
+                    .parse()
+                    .unwrap(),
+                verification_method: vec![
+                    DidVerificationMethod {
+                        id: "did:key:z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV#z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV".to_string(), 
+                        r#type: "JsonWebKey2020".to_string(), 
+                        controller: "did:key:z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV".to_string(),
+                        public_key_jwk: public_key_jwk.clone(),
+                    }
+                ],
+                authentication: Some(vec!["did:key:z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV#z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV".to_string()]),
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                also_known_as: None,
+                service: None,
+            };
+
+            Ok(doc)
+        });
+
+        assert2::assert!(let Ok(()) = verify_did_log(&[(entry, log)], &did_method_provider, &Params::default()).await);
+    }
+
+    #[track_caller]
+    fn make_key_handle(pk: &[u8], sk: Vec<u8>, key_alg: &dyn KeyAlgorithm) -> KeyHandle {
+        let sk = SecretSlice::from(sk.to_vec());
+        key_alg.reconstruct_key(pk, Some(sk), None).unwrap()
+    }
+
+    fn make_key(id: KeyId, public_key: Vec<u8>, key_type: KeyAlgorithmType) -> Key {
+        Key {
+            id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            public_key,
+            name: "test-key".to_string(),
+            key_reference: vec![],
+            storage_type: "INTERNAL".to_string(),
+            key_type: key_type.to_string(),
+            organisation: None,
+        }
+    }
+
+    struct KeyProviderSetup {
+        mock: MockKeyProvider,
+        active_key_setup: (Key, KeyHandle),
+        next_key: Key,
+        document_key: Key,
+    }
+
+    #[track_caller]
+    fn setup_key_provider() -> KeyProviderSetup {
+        let active_key_handle = make_key_handle(
+            &hex_literal::hex!("14bb5dd69734a472b6693fd947a579d9b714f49a771dc1a0933bbc823aed6a80"),
+            hex_literal::hex!("a3f88f2bc284a8f1ff94d30c83a8b42a4155c4c38da501183731cbf977b3c3e914bb5dd69734a472b6693fd947a579d9b714f49a771dc1a0933bbc823aed6a80").to_vec(),
+            &Eddsa,
+        );
+        let active_key_id = uuid::uuid!("577B894A-D37C-4415-ACB0-43237F962BE4").into();
+        let active_key = make_key(
+            active_key_id,
+            active_key_handle.public_key_as_raw(),
+            KeyAlgorithmType::Eddsa,
+        );
+
+        let next_key_handle = make_key_handle(
+            &hex_literal::hex!("5fdef8f02b852787f802c4f53d04c48183ef5b766d5e6f3d28ff10204b0cd61c"),
+            hex_literal::hex!("2d922fd47cda6d5adb72c9d33b63153adf38ee05980da13ce1878704e9f410a55fdef8f02b852787f802c4f53d04c48183ef5b766d5e6f3d28ff10204b0cd61c").to_vec(),
+            &Eddsa,
+        );
+        let next_key_kid = uuid::uuid!("3497ED3D-4BA8-4273-84D0-D2AB60603999").into();
+        let next_key = make_key(
+            next_key_kid,
+            next_key_handle.public_key_as_raw(),
+            KeyAlgorithmType::Eddsa,
+        );
+
+        let did_doc_key_handle = make_key_handle(
+            &hex_literal::hex!("04a51f0f7f0bc35c44a0a84df7e38f62214ba3e91fbc87c40b1d983f4fbbe1614ebbe45135d3213c2c2ef52897710f719a890bae812add735f55418eb0585e1d44"),
+            hex_literal::hex!("cddd4dcf9de47ee105b1f6058f04ba88d2327d977511568eb52f9f2c93652574").to_vec(),
+            &Ecdsa,
+        );
+        let did_doc_key_kid = uuid::uuid!("763E6AEA-B0AE-43F5-A54A-0D4CBADC2C6F").into();
+        let did_doc_key = make_key(
+            did_doc_key_kid,
+            did_doc_key_handle.public_key_as_raw(),
+            KeyAlgorithmType::Ecdsa,
+        );
+
+        let mut key_storage = MockKeyStorage::new();
+        key_storage
+            .expect_key_handle()
+            .withf(move |key| key.id == active_key_id)
+            .returning({
+                let key_handle = active_key_handle.clone();
+                move |_| Ok(key_handle.clone())
+            });
+        key_storage
+            .expect_key_handle()
+            .withf(move |key| key.id == next_key_kid)
+            .returning(move |_| Ok(next_key_handle.clone()));
+        key_storage
+            .expect_key_handle()
+            .withf(move |key| key.id == did_doc_key_kid)
+            .returning(move |_| Ok(did_doc_key_handle.clone()));
+
+        let mut key_provider = MockKeyProvider::new();
+        let key_storage = Arc::new(key_storage);
+        key_provider
+            .expect_get_key_storage()
+            .returning(move |_| Some(key_storage.clone()));
+
+        KeyProviderSetup {
+            mock: key_provider,
+            active_key_setup: (active_key, active_key_handle),
+            next_key,
+            document_key: did_doc_key,
+        }
+    }
+}

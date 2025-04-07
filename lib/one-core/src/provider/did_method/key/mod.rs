@@ -7,8 +7,9 @@ use anyhow::Context;
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
+use super::common::expect_one_key;
+use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
 use crate::provider::did_method::keys::Keys;
@@ -34,15 +35,10 @@ impl DidMethod for KeyDidMethod {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        keys: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError> {
+        keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError> {
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
-
-        let key = match keys.as_slice() {
-            [key] => key,
-            [] => return Err(DidMethodError::CouldNotCreate("Missing key".to_string())),
-            _ => return Err(DidMethodError::CouldNotCreate("Too many keys".to_string())),
-        };
+        let key = expect_one_key(&keys)?;
 
         let key_algorithm = self
             .key_algorithm_provider
@@ -55,6 +51,7 @@ impl DidMethod for KeyDidMethod {
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
         format!("did:key:{}", multibase)
             .parse()
+            .map(|did| DidCreated { did, log: None })
             .context("did parsing error")
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
     }
@@ -104,6 +101,8 @@ impl DidMethod for KeyDidMethod {
                 KeyAlgorithmType::BbsPlus,
             ],
             method_names: vec!["key".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         }
     }
 

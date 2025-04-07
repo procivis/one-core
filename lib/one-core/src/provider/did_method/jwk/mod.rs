@@ -9,8 +9,9 @@ pub(crate) mod jwk_helpers;
 
 use shared_types::{DidId, DidValue};
 
+use super::common::expect_one_key;
+use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::{
     encode_to_did, extract_jwk, generate_document,
@@ -39,15 +40,10 @@ impl DidMethod for JWKDidMethod {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        keys: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError> {
+        keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError> {
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
-
-        let key = match keys.as_slice() {
-            [key] => key,
-            [] => return Err(DidMethodError::CouldNotCreate("Missing key".to_string())),
-            _ => return Err(DidMethodError::CouldNotCreate("Too many keys".to_string())),
-        };
+        let key = expect_one_key(&keys)?;
 
         let key_algorithm = self
             .key_algorithm_provider
@@ -59,7 +55,7 @@ impl DidMethod for JWKDidMethod {
             .public_key_as_jwk()
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
 
-        encode_to_did(&jwk.into())
+        encode_to_did(&jwk.into()).map(|did| DidCreated { did, log: None })
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {
@@ -85,6 +81,8 @@ impl DidMethod for JWKDidMethod {
                 KeyAlgorithmType::Dilithium,
             ],
             method_names: vec!["jwk".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         }
     }
 

@@ -173,6 +173,7 @@ pub(super) fn credential_list_model_to_repository_model(
                 .ok_or(DataLayerError::MappingError)?,
             keys: None,
             organisation: None,
+            log: None,
         }),
     };
 

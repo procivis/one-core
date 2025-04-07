@@ -1,11 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
+use futures::future::BoxFuture;
 use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO};
+use super::dto::{
+    CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO, DidResponseDTO,
+    GetDidListResponseDTO,
+};
 use super::mapper::did_from_did_request;
 use super::validator::validate_deactivation_request;
 use super::DidService;
@@ -15,6 +19,7 @@ use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodProviderError;
+use crate::provider::did_method::DidCreateKeys;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{
     map_did_model_to_did_web_response, map_key_to_verification_method,
@@ -132,7 +137,11 @@ impl DidService {
     /// # Arguments
     ///
     /// * `request` - did data
-    pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
+    pub async fn create_did(
+        &self,
+        request: CreateDidRequestDTO,
+        update_keys_fut: Option<BoxFuture<'_, Result<Vec<KeyId>, ServiceError>>>,
+    ) -> Result<DidId, ServiceError> {
         validate_did_method(&request.did_method, &self.config.did)?;
 
         let did_method_key = &request.did_method;
@@ -161,6 +170,7 @@ impl DidService {
 
         let new_did_id = DidId::from(Uuid::new_v4());
 
+        let capabilities = did_method.get_capabilities();
         for key in &keys {
             let key_algorithm = self
                 .key_algorithm_provider
@@ -169,8 +179,7 @@ impl DidService {
                     key.key_type.to_owned(),
                 ))?;
 
-            if !did_method
-                .get_capabilities()
+            if !capabilities
                 .key_algorithms
                 .contains(&key_algorithm.algorithm_type())
             {
@@ -181,8 +190,36 @@ impl DidService {
             }
         }
 
+        let mut keys = build_keys_request(&request.keys, keys)?;
+
+        if !capabilities.supported_update_key_types.is_empty() {
+            let Some(update_keys_fut) = update_keys_fut else {
+                return Err(ServiceError::Other(
+                    "Missing update key for did:webvh creation".to_string(),
+                ));
+            };
+            let update_keys = update_keys_fut.await.map_err(|err| {
+                ServiceError::Other(format!("Failed creating update keys for did:webvh: {err}"))
+            })?;
+            let update_keys = self.key_repository.get_keys(&update_keys).await?;
+
+            for key in &update_keys {
+                if !capabilities
+                    .supported_update_key_types
+                    .iter()
+                    .any(|supported_key_type| key.key_type == supported_key_type.as_ref())
+                {
+                    return Err(ServiceError::Other(
+                        "The provided key type is not supported as updateKey".to_string(),
+                    ));
+                }
+            }
+
+            keys.update_keys = Some(update_keys)
+        }
+
         let did_value = did_method
-            .create(Some(new_did_id), &request.params, Some(keys.to_owned()))
+            .create(Some(new_did_id), &request.params, Some(keys.clone()))
             .await?;
 
         let now = OffsetDateTime::now_utc();
@@ -194,7 +231,7 @@ impl DidService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now)?;
+        let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now);
         let did_value = did.did.clone();
 
         let did_id = self
@@ -258,4 +295,55 @@ impl DidService {
     ) -> Result<DidDocumentDTO, DidMethodProviderError> {
         self.did_method_provider.resolve(did).await.map(Into::into)
     }
+}
+
+fn build_keys_request(
+    request: &CreateDidRequestKeysDTO,
+    keys: Vec<Key>,
+) -> Result<DidCreateKeys, ServiceError> {
+    let mut create_keys = DidCreateKeys {
+        authentication: vec![],
+        assertion_method: vec![],
+        key_agreement: vec![],
+        capability_invocation: vec![],
+        capability_delegation: vec![],
+        update_keys: None,
+    };
+
+    for key in keys {
+        let mut in_any = false;
+        let key_id = key.id;
+        if request.authentication.contains(&key_id) {
+            create_keys.authentication.push(key.clone());
+            in_any = true;
+        }
+
+        if request.assertion_method.contains(&key_id) {
+            create_keys.assertion_method.push(key.clone());
+            in_any = true;
+        }
+
+        if request.key_agreement.contains(&key_id) {
+            create_keys.key_agreement.push(key.clone());
+            in_any = true;
+        }
+
+        if request.capability_delegation.contains(&key_id) {
+            create_keys.capability_delegation.push(key.clone());
+            in_any = true;
+        }
+
+        if request.capability_invocation.contains(&key_id) {
+            create_keys.capability_invocation.push(key);
+            in_any = true;
+        }
+
+        if !in_any {
+            return Err(ServiceError::EntityNotFound(EntityNotFoundError::Key(
+                key_id,
+            )));
+        }
+    }
+
+    Ok(create_keys)
 }

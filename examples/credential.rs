@@ -6,6 +6,7 @@ use one_core::provider::credential_formatter::model::{
 };
 use one_core::provider::credential_formatter::nest_claims;
 use one_core::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use one_core::provider::did_method::DidCreateKeys;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::model::{CredentialFormat, KeyAlgorithmType, StorageType};
 use one_dev_services::service::error::CredentialServiceError;
@@ -43,14 +44,23 @@ async fn main() -> Result<(), CredentialServiceError> {
     };
 
     // We will use the same did value for both issuer and holder
+    let keys = vec![issuer_key.clone()];
     let issuer_did = did_method
         .create(
             Some(Uuid::new_v4().into()),
             &None,
-            Some(vec![issuer_key.clone()]),
+            Some(DidCreateKeys {
+                authentication: keys.clone(),
+                assertion_method: keys.clone(),
+                key_agreement: keys.clone(),
+                capability_invocation: keys.clone(),
+                capability_delegation: keys,
+                update_keys: None,
+            }),
         )
         .await
-        .expect("Did creation failed");
+        .expect("Did creation failed")
+        .did;
 
     let credential_service = core.credential_service;
 

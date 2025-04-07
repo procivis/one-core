@@ -498,6 +498,7 @@ impl OpenID4VCHTTP {
                         keys: None,
                         deactivated: false,
                         organisation: schema.organisation.clone(),
+                        log: None,
                     }),
                 )
             }

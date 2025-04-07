@@ -135,6 +135,7 @@ async fn insert_did_to_database(
         } else {
             NotSet
         },
+        log: NotSet,
     }
     .insert(database)
     .await

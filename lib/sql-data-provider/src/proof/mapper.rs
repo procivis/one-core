@@ -79,6 +79,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 organisation: None,
                 keys: None,
                 deactivated: false,
+                log: None,
             }),
         };
 

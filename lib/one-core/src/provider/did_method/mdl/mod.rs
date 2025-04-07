@@ -11,8 +11,9 @@ pub use validator::{DidMdlValidationError, DidMdlValidator};
 use x509_parser::certificate::X509Certificate;
 use x509_parser::pem::Pem;
 
+use super::common::expect_one_key;
+use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
 use crate::provider::did_method::common::jwk_context;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document, DidKeyType};
@@ -75,8 +76,8 @@ impl DidMethod for DidMdl {
         &self,
         _id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError> {
+        keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError> {
         let Some(params) = params.as_ref() else {
             return Err(DidMethodError::CouldNotCreate(
                 "Missing params for MDL".to_owned(),
@@ -86,8 +87,7 @@ impl DidMethod for DidMdl {
         let certificate = extract_x509_certificate(params)?;
 
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
-
-        let selected_key = select_key(keys.as_slice())?;
+        let selected_key = expect_one_key(&keys)?;
 
         let pem = parse_pem(certificate)?;
         let certificate = parse_x509_from_pem(&pem)?;
@@ -106,6 +106,7 @@ impl DidMethod for DidMdl {
 
         did_mdl
             .parse()
+            .map(|did| DidCreated { did, log: None })
             .context("did parsing error")
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))
     }
@@ -189,6 +190,8 @@ impl DidMethod for DidMdl {
             operations: vec![Operation::CREATE, Operation::RESOLVE],
             key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             method_names: vec!["mdl".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         }
     }
 
@@ -242,15 +245,4 @@ pub(crate) fn parse_x509_from_der(certificate: &[u8]) -> Result<X509Certificate,
         })?;
 
     Ok(certificate)
-}
-
-fn select_key(keys: &[Key]) -> Result<&Key, DidMethodError> {
-    let [key] = keys else {
-        return Err(DidMethodError::CouldNotCreate(format!(
-            "Expected 1 provided {} keys for DID MDL creation",
-            keys.len()
-        )));
-    };
-
-    Ok(key)
 }

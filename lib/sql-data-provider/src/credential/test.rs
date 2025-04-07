@@ -147,6 +147,7 @@ async fn setup_empty() -> TestSetup {
         did_method: "KEY".to_string(),
         keys: None,
         deactivated: false,
+        log: None,
     };
 
     TestSetup {

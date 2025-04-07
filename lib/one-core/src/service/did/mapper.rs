@@ -9,10 +9,10 @@ use super::dto::{
     GetDidListResponseDTO,
 };
 use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
-use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::provider::did_method::{DidCreateKeys, DidCreated};
+use crate::service::error::ServiceError;
 use crate::service::key::dto::{KeyListItemResponseDTO, PublicKeyJwkDTO};
 
 impl TryFrom<Did> for DidResponseDTO {
@@ -65,49 +65,45 @@ pub(super) fn did_from_did_request(
     did_id: DidId,
     request: CreateDidRequestDTO,
     organisation: Organisation,
-    did_value: DidValue,
-    found_keys: Vec<Key>,
+    did_create: DidCreated,
+    found_keys: DidCreateKeys,
     now: OffsetDateTime,
-) -> Result<Did, EntityNotFoundError> {
-    let mut keys: Vec<RelatedKey> = vec![];
-    let mut add_keys = |key_ids: Vec<KeyId>, role: KeyRole| {
-        for key_id in key_ids {
-            keys.push(RelatedKey {
-                role: role.to_owned(),
-                key: found_keys
-                    .iter()
-                    .find(|key| key.id == key_id)
-                    .ok_or(EntityNotFoundError::Key(key_id))?
-                    .clone(),
-            });
-        }
-        Ok(())
-    };
+) -> Did {
+    let keys = [
+        (KeyRole::Authentication, found_keys.authentication),
+        (KeyRole::AssertionMethod, found_keys.assertion_method),
+        (KeyRole::KeyAgreement, found_keys.key_agreement),
+        (
+            KeyRole::CapabilityDelegation,
+            found_keys.capability_delegation,
+        ),
+        (
+            KeyRole::CapabilityInvocation,
+            found_keys.capability_invocation,
+        ),
+    ]
+    .into_iter()
+    .flat_map(|(role, keys)| {
+        keys.into_iter().map(move |key| RelatedKey {
+            role: role.clone(),
+            key,
+        })
+    })
+    .collect();
 
-    add_keys(request.keys.authentication, KeyRole::Authentication)?;
-    add_keys(request.keys.assertion_method, KeyRole::AssertionMethod)?;
-    add_keys(request.keys.key_agreement, KeyRole::KeyAgreement)?;
-    add_keys(
-        request.keys.capability_invocation,
-        KeyRole::CapabilityInvocation,
-    )?;
-    add_keys(
-        request.keys.capability_delegation,
-        KeyRole::CapabilityDelegation,
-    )?;
-
-    Ok(Did {
+    Did {
         id: did_id,
         created_date: now,
         last_modified: now,
         name: request.name,
         organisation: Some(organisation),
-        did: did_value,
+        did: did_create.did,
         did_type: request.did_type,
         did_method: request.did_method,
         keys: Some(keys),
         deactivated: false,
-    })
+        log: did_create.log,
+    }
 }
 
 pub(super) fn map_did_model_to_did_web_response(

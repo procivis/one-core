@@ -57,6 +57,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
             },
         }]),
         organisation: None,
+        log: None,
     };
 
     let credential = Credential {

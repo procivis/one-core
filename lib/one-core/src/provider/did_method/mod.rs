@@ -42,8 +42,8 @@ pub trait DidMethod: Send + Sync {
         &self,
         id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError>;
+        keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError>;
 
     /// Resolve a DID to its DID document.
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError>;
@@ -68,4 +68,21 @@ pub trait DidMethod: Send + Sync {
     fn validate_keys(&self, keys: AmountOfKeys) -> bool;
     /// Returns the keys associated with a DID.
     fn get_keys(&self) -> Option<Keys>;
+}
+
+#[derive(Debug, Clone)]
+pub struct DidCreated {
+    pub did: DidValue,
+    pub log: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DidCreateKeys {
+    pub authentication: Vec<Key>,
+    pub assertion_method: Vec<Key>,
+    pub key_agreement: Vec<Key>,
+    pub capability_invocation: Vec<Key>,
+    pub capability_delegation: Vec<Key>,
+    /// used for signing did-log entries for did:webvh
+    pub update_keys: Option<Vec<Key>>,
 }

@@ -18,6 +18,7 @@ pub struct Model {
     #[sea_orm(column_name = "type")]
     pub type_field: DidType,
     pub method: String,
+    pub log: Option<String>,
     pub organisation_id: Option<OrganisationId>,
     pub deactivated: bool,
 }

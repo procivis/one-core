@@ -417,6 +417,7 @@ async fn test_share_proof_with_use_request_uri() {
             },
         }]),
         organisation: None,
+        log: None,
     };
     let proof_id = Uuid::new_v4();
     let proof = Proof {

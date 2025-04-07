@@ -212,6 +212,7 @@ async fn test_handle_invitation_success() {
                 deactivated: false,
                 keys: None,
                 organisation: None,
+                log: None,
             }))
         });
 
@@ -545,6 +546,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,

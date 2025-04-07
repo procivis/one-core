@@ -311,6 +311,7 @@ pub async fn create_did(
         did_method: params.did_method.unwrap_or("KEY".to_string()),
         deactivated: params.deactivated.unwrap_or(false),
         keys: params.keys,
+        log: None,
     };
 
     data_layer

@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::{DidMdl, Params};
 use crate::model::key::Key;
 use crate::provider::did_method::keys::Keys;
-use crate::provider::did_method::DidMethod;
+use crate::provider::did_method::{DidCreateKeys, DidMethod};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -107,9 +107,21 @@ async fn test_create_mdl_did_for(
 
     // act
     let did = service
-        .create(Some(did_id), &Some(params), Some(keys.to_vec()))
+        .create(
+            Some(did_id),
+            &Some(params),
+            Some(DidCreateKeys {
+                authentication: keys.to_vec(),
+                assertion_method: keys.to_vec(),
+                key_agreement: keys.to_vec(),
+                capability_invocation: keys.to_vec(),
+                capability_delegation: keys.to_vec(),
+                update_keys: None,
+            }),
+        )
         .await
-        .unwrap();
+        .unwrap()
+        .did;
 
     // assert
     assert_eq!(

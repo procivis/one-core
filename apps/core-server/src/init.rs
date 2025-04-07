@@ -260,8 +260,13 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
 
             // Separately construct the did:webvh providers using the intermediary provider
             for (name, params) in did_webvh_params {
-                let did_webvh =
-                    DidWebVh::new(params.into(), client.clone(), intermediary_provider.clone());
+                let did_webvh = DidWebVh::new(
+                    params.into(),
+                    Some(core_base_url.clone()),
+                    client.clone(),
+                    intermediary_provider.clone(),
+                    providers.key_storage_provider.clone(),
+                );
                 did_methods.insert(name, Arc::new(did_webvh) as _);
             }
 

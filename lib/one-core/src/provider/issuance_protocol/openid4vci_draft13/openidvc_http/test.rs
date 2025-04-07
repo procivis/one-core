@@ -141,6 +141,7 @@ fn generic_credential() -> Credential {
             keys: None,
             deactivated: false,
             organisation: Some(dummy_organisation(None)),
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {

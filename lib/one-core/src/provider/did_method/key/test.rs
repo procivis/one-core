@@ -12,7 +12,7 @@ use super::KeyDidMethod;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
-use crate::provider::did_method::DidMethod;
+use crate::provider::did_method::{DidCreateKeys, DidMethod};
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
@@ -346,8 +346,20 @@ async fn test_create_did_success() {
         });
 
     let did_method = setup_key_did_method(key_algorithm, KeyAlgorithmType::Eddsa);
+    let keys = vec![key];
     let result = did_method
-        .create(Some(DidId::from(Uuid::new_v4())), &None, Some(vec![key]))
+        .create(
+            Some(DidId::from(Uuid::new_v4())),
+            &None,
+            Some(DidCreateKeys {
+                authentication: keys.clone(),
+                assertion_method: keys.clone(),
+                key_agreement: keys.clone(),
+                capability_invocation: keys.clone(),
+                capability_delegation: keys.clone(),
+                update_keys: None,
+            }),
+        )
         .await;
     result.unwrap();
 }

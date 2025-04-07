@@ -406,6 +406,7 @@ pub struct KeyAlgorithmFields {
     Ord,
     Serialize,
     Deserialize,
+    AsRefStr,
 )]
 pub enum KeyAlgorithmType {
     #[serde(rename = "EDDSA")]

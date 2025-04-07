@@ -98,10 +98,14 @@ async fn test_did_web_create() {
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
-    let result = did_web_method.create(Some(id), &None, None).await;
+    let result = did_web_method
+        .create(Some(id), &None, None)
+        .await
+        .unwrap()
+        .did;
 
     assert_eq!(
-        result.unwrap().as_str(),
+        result.as_str(),
         "did:web:test-domain.com:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7"
     )
 }
@@ -119,10 +123,14 @@ async fn test_did_web_create_with_port() {
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
-    let result = did_web_method.create(Some(id), &None, None).await;
+    let result = did_web_method
+        .create(Some(id), &None, None)
+        .await
+        .unwrap()
+        .did;
 
     assert_eq!(
-        result.unwrap().as_str(),
+        result.as_str(),
         "did:web:test-domain.com%3A54812:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7"
     )
 }

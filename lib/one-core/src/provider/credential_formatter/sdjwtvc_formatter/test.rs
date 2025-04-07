@@ -34,7 +34,7 @@ use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::resolver::DidCachingLoader;
-use crate::provider::did_method::DidMethod;
+use crate::provider::did_method::{DidCreateKeys, DidMethod};
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
@@ -514,10 +514,23 @@ async fn test_format_extract_round_trip() {
         organisation: None,
     };
 
+    let keys = vec![key];
     let issuer_did = JWKDidMethod::new(key_algorithm_provider.clone())
-        .create(None, &None, Some(vec![key]))
+        .create(
+            None,
+            &None,
+            Some(DidCreateKeys {
+                authentication: keys.clone(),
+                assertion_method: keys.clone(),
+                key_agreement: keys.clone(),
+                capability_invocation: keys.clone(),
+                capability_delegation: keys.clone(),
+                update_keys: None,
+            }),
+        )
         .await
-        .unwrap();
+        .unwrap()
+        .did;
 
     let claims = vec![
         PublishedClaim {

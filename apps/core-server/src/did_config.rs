@@ -36,6 +36,8 @@ pub struct DidWebParams {
 pub struct DidWebVhParams {
     #[serde(default)]
     pub max_did_log_entry_check: Option<u32>,
+    #[serde(default)]
+    pub external_hosting_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Into)]

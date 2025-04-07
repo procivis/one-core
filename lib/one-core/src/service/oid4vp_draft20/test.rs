@@ -549,6 +549,7 @@ async fn test_get_client_metadata_success() {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,

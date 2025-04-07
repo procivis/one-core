@@ -147,6 +147,7 @@ async fn test_create_did() {
                 key,
             }]),
             deactivated: false,
+            log: None,
         })
         .await;
 
@@ -191,6 +192,7 @@ async fn test_create_did_invalid_organisation() {
             did_method: "KEY".to_string(),
             keys: None,
             deactivated: false,
+            log: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
@@ -578,6 +580,7 @@ async fn test_get_did_list_sorting() {
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
+        log: NotSet,
     }
     .insert(&db)
     .await
@@ -594,6 +597,7 @@ async fn test_get_did_list_sorting() {
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
+        log: NotSet,
     }
     .insert(&db)
     .await
@@ -764,6 +768,7 @@ async fn test_get_did_list_complex_filter_condition() {
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
+        log: NotSet,
     }
     .insert(&db)
     .await
@@ -780,6 +785,7 @@ async fn test_get_did_list_complex_filter_condition() {
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
+        log: NotSet,
     }
     .insert(&db)
     .await

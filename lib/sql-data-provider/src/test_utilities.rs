@@ -415,6 +415,7 @@ pub async fn insert_did(
         organisation_id: Set(Some(organisation_id)),
         deactivated: Set(deactivated.into().unwrap_or_default()),
         deleted_at: NotSet,
+        log: NotSet,
     }
     .insert(database)
     .await?;
@@ -538,6 +539,7 @@ pub fn dummy_did() -> Did {
         keys: None,
         organisation: Some(dummy_organisation(None)),
         deactivated: false,
+        log: None,
     }
 }
 

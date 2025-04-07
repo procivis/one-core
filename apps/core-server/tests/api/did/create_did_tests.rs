@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use one_core::model::did::DidType;
 use serde_json::json;
 
@@ -569,4 +571,46 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     for k in keys {
         assert_eq!(k.key.id, key.id);
     }
+}
+
+#[tokio::test]
+async fn test_create_did_webvh_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .dids
+        .create(
+            organisation.id,
+            DidKeys::single(key.id),
+            "WEBVH",
+            "test",
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let did = context.db.dids.get(&resp["id"].parse()).await;
+    assert_eq!(did.did_method, "WEBVH");
+    assert_eq!(did.did_type, DidType::Local);
+
+    assert!(did.did.as_str().starts_with("did:tdw:"));
+    assert!(did
+        .did
+        .as_str()
+        .ends_with(&format!(":ssi:did-webvh:v1:{}", did.id)));
+
+    let log = did.log.unwrap();
+    assert_eq!(log.lines().count(), 1);
+    assert!(serde_json::Value::from_str(&log).unwrap().is_array());
 }

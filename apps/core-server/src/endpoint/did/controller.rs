@@ -1,7 +1,9 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use one_core::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use one_core::service::error::ServiceError;
+use one_core::service::key::dto::KeyRequestDTO;
 use shared_types::DidId;
 
 use super::dto::{
@@ -101,7 +103,30 @@ pub(crate) async fn post_did(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = state.core.did_service.create_did(request.into()).await;
+    // TODO: the update keys will need to be provided by the API request
+    let organisation_id = request.organisation_id;
+    let did_name = request.name.clone();
+    let update_keys_fut = async {
+        let key = state
+            .core
+            .key_service
+            .generate_key(KeyRequestDTO {
+                organisation_id,
+                key_type: KeyAlgorithmType::Eddsa.to_string(),
+                name: format!("update-key-for-{did_name}"),
+                storage_type: KeyStorageType::Internal.to_string(),
+                key_params: Default::default(),
+                storage_params: Default::default(),
+            })
+            .await?;
+
+        Ok(vec![key])
+    };
+    let result = state
+        .core
+        .did_service
+        .create_did(request.into(), Some(Box::pin(update_keys_fut)))
+        .await;
 
     match result {
         Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id: id.into() }),

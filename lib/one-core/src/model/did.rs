@@ -24,7 +24,7 @@ impl DidType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[derive(Clone, Debug, Eq, PartialEq, Display, Hash)]
 #[strum(serialize_all = "camelCase")]
 pub enum KeyRole {
     Authentication,
@@ -50,6 +50,7 @@ pub struct Did {
     pub did_type: DidType,
     pub did_method: String,
     pub deactivated: bool,
+    pub log: Option<String>,
 
     // Relations:
     pub keys: Option<Vec<RelatedKey>>,

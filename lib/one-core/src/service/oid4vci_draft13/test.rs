@@ -726,6 +726,7 @@ async fn test_create_credential_success() {
                     organisation: None,
                     keys: None,
                     deactivated: false,
+                    log: None,
                 }))
             });
 
@@ -900,6 +901,7 @@ async fn test_create_credential_success_mdoc() {
                     organisation: None,
                     keys: None,
                     deactivated: false,
+                    log: None,
                 }))
             });
 

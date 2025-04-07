@@ -10,7 +10,7 @@ use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::model::{
     AmountOfKeys, DidDocument, DidVerificationMethod, Operation,
 };
-use crate::provider::did_method::DidMethod;
+use crate::provider::did_method::{DidCreateKeys, DidMethod};
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
@@ -202,24 +202,33 @@ async fn test_create_did_jwk_success() {
 
     let provider = JWKDidMethod::new(Arc::new(key_algorithm_provider));
 
+    let keys = vec![Key {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: b"public".into(),
+        name: "name".to_owned(),
+        key_reference: vec![],
+        storage_type: "test".to_owned(),
+        key_type: "key_type".to_owned(),
+        organisation: None,
+    }];
     let result = provider
         .create(
             Some(Uuid::new_v4().into()),
             &None,
-            Some(vec![Key {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                public_key: b"public".into(),
-                name: "name".to_owned(),
-                key_reference: vec![],
-                storage_type: "test".to_owned(),
-                key_type: "key_type".to_owned(),
-                organisation: None,
-            }]),
+            Some(DidCreateKeys {
+                authentication: keys.clone(),
+                assertion_method: keys.clone(),
+                key_agreement: keys.clone(),
+                capability_invocation: keys.clone(),
+                capability_delegation: keys.clone(),
+                update_keys: None,
+            }),
         )
         .await
-        .unwrap();
+        .unwrap()
+        .did;
 
     assert_eq!(
         result.as_str(),

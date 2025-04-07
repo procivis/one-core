@@ -8,8 +8,8 @@ use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
+use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
@@ -69,8 +69,8 @@ impl DidMethod for WebDidMethod {
         &self,
         id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _key: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError> {
+        _keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError> {
         let did_base_string =
             self.did_base_string
                 .as_ref()
@@ -83,10 +83,12 @@ impl DidMethod for WebDidMethod {
         ))?;
 
         let did_value = format!("{did_base_string}:{id}");
-        Ok(did_value
+
+        did_value
             .parse()
+            .map(|did| DidCreated { did, log: None })
             .context("did parsing error")
-            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?)
+            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {
@@ -113,6 +115,8 @@ impl DidMethod for WebDidMethod {
                 KeyAlgorithmType::Dilithium,
             ],
             method_names: vec!["web".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         }
     }
 

@@ -798,6 +798,7 @@ fn dummy_did() -> Did {
         keys: None,
         organisation: None,
         deactivated: false,
+        log: None,
     }
 }
 

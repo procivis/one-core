@@ -189,6 +189,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,
@@ -295,6 +296,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -307,6 +309,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         verifier_key: None,
         interaction: None,
@@ -419,6 +422,7 @@ async fn test_get_proof_exists() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,
@@ -606,6 +610,7 @@ async fn test_get_proof_with_array_holder() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: Some(dummy_did()),
         verifier_key: None,
@@ -820,6 +825,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: Some(dummy_did()),
         verifier_key: None,
@@ -1039,6 +1045,7 @@ async fn test_get_proof_with_object_array_holder() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: Some(dummy_did()),
         verifier_key: None,
@@ -1259,6 +1266,7 @@ async fn test_get_proof_with_array() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,
@@ -1491,6 +1499,7 @@ async fn test_get_proof_with_array_in_object() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,
@@ -1729,6 +1738,7 @@ async fn test_get_proof_with_object_array() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,
@@ -1892,6 +1902,7 @@ async fn test_get_proof_list_success() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: None,
@@ -2015,6 +2026,7 @@ async fn test_create_proof_using_invalid_did_method() {
                     },
                 }]),
                 deactivated: false,
+                log: None,
             }))
         });
 
@@ -2133,6 +2145,7 @@ async fn test_create_proof_without_related_key() {
                     },
                 }]),
                 deactivated: false,
+                log: None,
             }))
         });
 
@@ -2254,6 +2267,7 @@ async fn test_create_proof_with_related_key() {
                     },
                 }]),
                 deactivated: false,
+                log: None,
             }))
         });
 
@@ -2361,6 +2375,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
                 organisation: None,
                 keys: Some(vec![]),
                 deactivated: false,
+                log: None,
             }))
         });
 
@@ -2502,6 +2517,7 @@ async fn test_create_proof_did_deactivated_error() {
                 organisation: None,
                 keys: None,
                 deactivated: true,
+                log: None,
             }))
         });
 
@@ -2708,6 +2724,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                     },
                 }]),
                 deactivated: false,
+                log: None,
             }))
         });
 

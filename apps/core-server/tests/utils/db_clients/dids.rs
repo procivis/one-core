@@ -37,6 +37,7 @@ impl DidsDB {
             did_method: params.did_method.unwrap_or("KEY".to_string()),
             deactivated: params.deactivated.unwrap_or(false),
             keys: params.keys,
+            log: None,
         };
 
         let id = self.repository.create_did(did.clone()).await.unwrap();

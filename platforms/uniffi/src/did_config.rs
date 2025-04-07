@@ -26,6 +26,7 @@ pub struct DidUniversalParams {
 #[serde(rename_all = "camelCase")]
 pub struct DidWebVhParams {
     pub max_did_log_entry_check: u32,
+    pub external_hosting_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Into)]

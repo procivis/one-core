@@ -71,6 +71,7 @@ fn generic_did(id: DidId) -> Did {
         deactivated: false,
         keys: None,
         organisation: None,
+        log: None,
     }
 }
 

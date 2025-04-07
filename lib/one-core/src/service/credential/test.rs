@@ -162,6 +162,7 @@ fn generic_credential() -> Credential {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -219,6 +220,7 @@ fn generic_credential_list_entity() -> Credential {
             did_method: "KEY".to_string(),
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -897,6 +899,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
                 did_method: "KEY".to_string(),
                 keys: None,
                 deactivated: true,
+                log: None,
             }))
         });
 
@@ -3513,6 +3516,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -4070,6 +4074,7 @@ async fn test_get_credential_success_array_index_sorting() {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -4376,6 +4381,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -4585,6 +4591,7 @@ async fn test_get_credential_success_array_single_element() {
                 },
             }]),
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {

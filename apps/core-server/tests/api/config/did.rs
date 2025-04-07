@@ -20,6 +20,8 @@ async fn test_capabilities_are_present_in_config() {
             "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["key"],
+            "features": [],
+            "supportedUpdateKeyTypes": [],
         })
     );
     assert_eq!(
@@ -28,6 +30,8 @@ async fn test_capabilities_are_present_in_config() {
             "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "DILITHIUM"],
             "operations": ["RESOLVE", "CREATE", "DEACTIVATE"],
             "methodNames": ["web"],
+            "features": [],
+            "supportedUpdateKeyTypes": [],
         })
     );
     assert_eq!(
@@ -36,6 +40,8 @@ async fn test_capabilities_are_present_in_config() {
             "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "DILITHIUM"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["jwk"],
+            "features": [],
+            "supportedUpdateKeyTypes": [],
         })
     );
     assert_eq!(
@@ -44,6 +50,8 @@ async fn test_capabilities_are_present_in_config() {
             "keyAlgorithms": ["ECDSA", "EDDSA"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["x509"],
+            "features": [],
+            "supportedUpdateKeyTypes": [],
         })
     );
     assert_eq!(
@@ -52,6 +60,8 @@ async fn test_capabilities_are_present_in_config() {
             "keyAlgorithms": [],
             "operations": ["RESOLVE"],
             "methodNames": ["ion"],
+            "features": [],
+            "supportedUpdateKeyTypes": [],
         })
     );
 }
@@ -182,6 +192,45 @@ async fn test_webvh_did_method_config() {
         resp["did"]["WEBVH"]["capabilities"]["operations"]
             .as_array()
             .unwrap(),
-        &["RESOLVE"]
+        &["CREATE", "RESOLVE"]
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["supportedUpdateKeyTypes"]
+            .as_array()
+            .unwrap(),
+        &["EDDSA"]
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["features"]
+            .as_array()
+            .unwrap(),
+        &["SUPPORTS_EXTERNAL_HOSTING"]
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["params"]["keys"],
+        json!({
+            "min": 1,
+            "max": 1,
+            "assertionMethod": {
+                "min": 1,
+                "max": 1,
+            },
+            "authentication": {
+                "min": 1,
+                "max": 1,
+            },
+            "capabilityDelegation": {
+                "min": 1,
+                "max": 1,
+            },
+            "capabilityInvocation": {
+                "min": 1,
+                "max": 1,
+            },
+            "keyAgreement": {
+                "min": 1,
+                "max": 1,
+            },
+        })
     );
 }

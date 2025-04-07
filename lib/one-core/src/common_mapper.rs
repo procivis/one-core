@@ -127,6 +127,7 @@ pub(crate) async fn get_or_create_did(
                     did_type: DidType::Remote,
                     keys: None,
                     deactivated: false,
+                    log: None,
                 };
                 did_repository.create_did(did.clone()).await?;
                 did
@@ -596,6 +597,7 @@ mod tests {
                 deactivated: false,
                 keys: None,
                 organisation: None,
+                log: None,
             },
             None,
             "ISO_MDL".to_string(),

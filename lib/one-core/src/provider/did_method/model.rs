@@ -22,6 +22,14 @@ pub struct DidCapabilities {
     pub key_algorithms: Vec<KeyAlgorithmType>,
     /// Did method names that this did method is able to handle
     pub method_names: Vec<String>,
+    pub features: Vec<Feature>,
+    pub supported_update_key_types: Vec<KeyAlgorithmType>,
+}
+
+#[derive(Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Feature {
+    SupportsExternalHosting,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, From, Into)]

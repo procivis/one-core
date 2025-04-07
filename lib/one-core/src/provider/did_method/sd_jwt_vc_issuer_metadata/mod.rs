@@ -8,8 +8,8 @@ use dto::generate_document;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
+use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
@@ -159,8 +159,8 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _keys: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError> {
+        _keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError> {
         Err(DidMethodError::NotSupported)
     }
 
@@ -220,6 +220,8 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
             operations: vec![Operation::RESOLVE],
             key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             method_names: vec!["sd_jwt_vc_issuer_metadata".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         }
     }
 

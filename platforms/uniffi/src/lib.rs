@@ -425,8 +425,10 @@ async fn initialize(
                     for (name, params) in did_webvh_params {
                         let did_webvh = DidWebVh::new(
                             params.into(),
+                            providers.core_base_url.clone(),
                             client.clone(),
                             intermediary_provider.clone(),
+                            providers.key_storage_provider.clone(),
                         );
                         did_methods.insert(name, Arc::new(did_webvh) as _);
                     }

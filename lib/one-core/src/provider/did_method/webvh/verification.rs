@@ -1,19 +1,15 @@
 use std::str::FromStr;
 
 use json_syntax::json;
-use one_crypto::hasher::sha256::SHA256;
-use one_crypto::Hasher;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use DidMethodError::{Deactivated, ResolutionError};
 
+use super::common::{canonicalized_hash, DidLogEntry, DidLogParameters, DidMethodVersion};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::did_method::webvh::resolver::{
-    DidLogEntry, DidLogParameters, DidMethodVersion,
-};
 use crate::provider::did_method::webvh::Params;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -247,13 +243,6 @@ async fn verify_proof(
             entry.version_id
         ))
     })
-}
-
-fn canonicalized_hash(mut data: json_syntax::Value) -> Result<Vec<u8>, DidMethodError> {
-    data.canonicalize();
-    SHA256
-        .hash(data.to_string().as_bytes())
-        .map_err(|err| ResolutionError(format!("Failed to hash canonicalized JSON: {}", err)))
 }
 
 async fn verify_verification_method(

@@ -10,7 +10,7 @@ use one_core::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload
 use one_core::provider::credential_formatter::jwt::Jwt;
 use one_core::provider::credential_formatter::model::SignatureProvider;
 use one_core::provider::did_method::key::KeyDidMethod;
-use one_core::provider::did_method::DidMethod;
+use one_core::provider::did_method::{DidCreateKeys, DidMethod};
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -115,10 +115,24 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
             Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
         )])));
     let did_method = KeyDidMethod::new(key_algorithm_provider.clone());
+
+    let keys = vec![key.clone()];
     let did_value = did_method
-        .create(None, &None, Some(vec![key.clone()]))
+        .create(
+            None,
+            &None,
+            Some(DidCreateKeys {
+                authentication: keys.clone(),
+                assertion_method: keys.clone(),
+                key_agreement: keys.clone(),
+                capability_invocation: keys.clone(),
+                capability_delegation: keys.clone(),
+                update_keys: None,
+            }),
+        )
         .await
-        .unwrap();
+        .unwrap()
+        .did;
     let did = context
         .db
         .dids

@@ -249,6 +249,8 @@ mod tests {
                 operations: vec![],
                 key_algorithms: vec![],
                 method_names: vec!["test".to_string()],
+                features: vec![],
+                supported_update_key_types: vec![],
             });
         let did_method_arc: Arc<dyn DidMethod> = Arc::new(did_method);
         let caching_loader = CachingLoader::new(
@@ -304,6 +306,7 @@ mod tests {
             deactivated: false,
             keys,
             organisation: None,
+            log: None,
         }
     }
 

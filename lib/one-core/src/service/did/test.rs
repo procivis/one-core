@@ -20,7 +20,7 @@ use crate::model::organisation::OrganisationRelations;
 use crate::provider::caching_loader::CachingLoader;
 use crate::provider::did_method::model::DidCapabilities;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
-use crate::provider::did_method::{DidMethod, MockDidMethod};
+use crate::provider::did_method::{DidCreated, DidMethod, MockDidMethod};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -115,6 +115,7 @@ async fn test_get_did_exists() {
             },
         }]),
         deactivated: false,
+        log: None,
     };
     {
         let did_clone = did.clone();
@@ -187,6 +188,7 @@ async fn test_get_did_list() {
         did_method: "KEY".to_string(),
         keys: None,
         deactivated: false,
+        log: None,
     };
 
     let mut repository = MockDidRepository::default();
@@ -269,7 +271,12 @@ async fn test_create_did_success() {
     did_method
         .expect_create()
         .once()
-        .returning(|_, _request, _key| Ok("did:example:123".parse().unwrap()));
+        .returning(|_, _request, _key| {
+            Ok(DidCreated {
+                did: "did:example:123".parse().unwrap(),
+                log: None,
+            })
+        });
 
     did_method
         .expect_get_capabilities()
@@ -278,6 +285,8 @@ async fn test_create_did_success() {
             operations: vec![],
             key_algorithms: vec![KeyAlgorithmType::Eddsa],
             method_names: vec!["example".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
@@ -314,7 +323,7 @@ async fn test_create_did_success() {
         get_did_config(),
     );
 
-    let result = service.create_did(create_request).await;
+    let result = service.create_did(create_request, None).await;
     result.unwrap();
 }
 
@@ -354,10 +363,12 @@ async fn test_create_did_value_already_exists() {
     let mut did_method = MockDidMethod::default();
     did_method.expect_validate_keys().once().returning(|_| true);
 
-    did_method
-        .expect_create()
-        .once()
-        .returning(|_, _, _| Ok("did:example:123".parse().unwrap()));
+    did_method.expect_create().once().returning(|_, _, _| {
+        Ok(DidCreated {
+            did: "did:example:123".parse().unwrap(),
+            log: None,
+        })
+    });
 
     did_method
         .expect_get_capabilities()
@@ -366,6 +377,8 @@ async fn test_create_did_value_already_exists() {
             operations: vec![],
             key_algorithms: vec![KeyAlgorithmType::Eddsa],
             method_names: vec!["example".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
         });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
@@ -401,7 +414,7 @@ async fn test_create_did_value_already_exists() {
         get_did_config(),
     );
 
-    let result = service.create_did(create_request).await;
+    let result = service.create_did(create_request, None).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
@@ -442,7 +455,7 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
         get_did_config(),
     );
 
-    let result = service.create_did(create_request).await;
+    let result = service.create_did(create_request, None).await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(

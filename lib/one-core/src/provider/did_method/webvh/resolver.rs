@@ -1,14 +1,10 @@
 use std::io::BufRead;
 
 use itertools::Itertools;
-use serde::de::IntoDeserializer;
-use serde::Deserialize;
 use shared_types::DidValue;
-use time::OffsetDateTime;
 use url::Url;
 
-use crate::provider::credential_formatter::vcdm::VcdmProof;
-use crate::provider::did_method::dto::DidDocumentDTO;
+use super::common::DidLogEntry;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -61,69 +57,6 @@ pub async fn resolve(
     };
 
     Ok(entry.state.value.document.into())
-}
-
-// https://identity.foundation/didwebvh/v0.3/#the-did-log-file
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DidLogEntry {
-    pub version_id: String,
-    #[serde(with = "time::serde::iso8601")]
-    pub version_time: OffsetDateTime,
-    pub parameters: DidLogParameters,
-    pub state: DidDocState,
-    #[serde(default)]
-    pub proof: Vec<VcdmProof>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct DidLogParameters {
-    pub method: Option<DidMethodVersion>,
-    pub prerotation: Option<bool>,
-    pub portable: Option<bool>,
-    #[serde(default)]
-    pub update_keys: Option<Vec<String>>,
-    #[serde(default)]
-    pub next_key_hashes: Vec<String>,
-    pub scid: Option<String>,
-    #[serde(default)]
-    pub witness: Vec<String>,
-    pub deactivated: Option<bool>,
-    pub ttl: Option<u32>,
-}
-
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
-pub enum DidMethodVersion {
-    #[serde(rename = "did:tdw:0.3")]
-    V3,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DidDocState {
-    pub value: Document,
-}
-
-#[derive(Debug)]
-pub struct Document {
-    #[allow(dead_code)]
-    pub source: json_syntax::Value,
-    pub document: DidDocumentDTO,
-}
-
-impl<'de> Deserialize<'de> for Document {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let source = json_syntax::Value::deserialize(deserializer)?;
-        let document = DidDocumentDTO::deserialize(source.clone().into_deserializer())
-            .map_err(serde::de::Error::custom)?;
-
-        Ok(Self { source, document })
-    }
 }
 
 struct TransformedDid<'a> {
@@ -197,12 +130,15 @@ mod test {
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use crate::provider::credential_formatter::vcdm::VcdmProof;
+    use crate::provider::did_method::dto::DidDocumentDTO;
     use crate::provider::did_method::error::DidMethodError::ResolutionError;
     use crate::provider::did_method::jwk::JWKDidMethod;
     use crate::provider::did_method::key::KeyDidMethod;
     use crate::provider::did_method::model::DidVerificationMethod;
     use crate::provider::did_method::provider::DidMethodProviderImpl;
     use crate::provider::did_method::resolver::DidCachingLoader;
+    use crate::provider::did_method::webvh::common::{DidLogParameters, DidMethodVersion};
     use crate::provider::did_method::DidMethod;
     use crate::provider::http_client::reqwest_client::ReqwestClient;
     use crate::provider::key_algorithm::eddsa::Eddsa;
@@ -420,6 +356,7 @@ mod test {
             true,
             &Params {
                 max_did_log_entry_check: Some(2),
+                external_hosting_url: None,
             },
         )
         .await;

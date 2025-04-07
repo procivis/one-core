@@ -271,6 +271,7 @@ pub fn dummy_did() -> Did {
         keys: None,
         organisation: Some(dummy_organisation(None)),
         deactivated: false,
+        log: None,
     }
 }
 

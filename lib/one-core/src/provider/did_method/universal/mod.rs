@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 
-use crate::model::key::Key;
+use super::{DidCreateKeys, DidCreated};
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
@@ -44,8 +44,8 @@ impl DidMethod for UniversalDidMethod {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _keys: Option<Vec<Key>>,
-    ) -> Result<DidValue, DidMethodError> {
+        _keys: Option<DidCreateKeys>,
+    ) -> Result<DidCreated, DidMethodError> {
         Err(DidMethodError::NotSupported)
     }
 
@@ -84,6 +84,8 @@ impl DidMethod for UniversalDidMethod {
             operations: vec![Operation::RESOLVE],
             key_algorithms: vec![],
             method_names: self.params.supported_method_names.clone(),
+            features: vec![],
+            supported_update_key_types: vec![],
         }
     }
 

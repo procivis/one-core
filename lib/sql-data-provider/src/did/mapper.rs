@@ -25,6 +25,7 @@ impl From<entity::did::Model> for Did {
             organisation: None,
             keys: None,
             deactivated: value.deactivated,
+            log: value.log,
         }
     }
 }
@@ -133,6 +134,7 @@ impl TryFrom<Did> for did::ActiveModel {
             organisation_id: Set(organisation_id),
             deactivated: Set(value.deactivated),
             deleted_at: NotSet,
+            log: Set(value.log),
         })
     }
 }

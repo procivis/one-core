@@ -299,6 +299,7 @@ async fn test_create_proof_success() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }),
         holder_did: None,
         verifier_key: Some(Key {
@@ -459,6 +460,7 @@ async fn test_get_proof_with_relations() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }))
     });
 
@@ -700,6 +702,7 @@ async fn test_get_proof_by_interaction_id_success() {
             organisation: None,
             keys: None,
             deactivated: false,
+            log: None,
         }))
     });
 
