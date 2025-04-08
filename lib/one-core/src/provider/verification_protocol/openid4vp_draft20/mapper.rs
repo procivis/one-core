@@ -900,9 +900,9 @@ impl OpenID4VPAuthorizationRequestParams {
                 subject: None,
                 audience: None,
                 jwt_id: None,
-                custom: self,
-                proof_of_possession_key: None,
                 vc_type: None,
+                proof_of_possession_key: None,
+                custom: self.clone(),
             },
         };
         Ok(unsigned_jwt.tokenize(Some(auth_fn)).await?)

@@ -6,7 +6,7 @@ use serde_with::{serde_as, skip_serializing_none};
 use url::Url;
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SdJwtVc {
     #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]

@@ -46,7 +46,7 @@ pub struct VPContent {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VcClaim {
     #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
@@ -70,7 +70,7 @@ pub struct Sdvp {
 pub struct Disclosure {
     pub salt: String,
     pub key: String,
-    pub value: serde_json::Value,
+    pub value: Value,
     pub disclosure_array: String,
     pub disclosure: String,
 }

@@ -14,7 +14,7 @@ use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 struct Payload {
     test_field: String,
 }
@@ -73,11 +73,9 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         invalid_before: Some(now),
         issuer: Some("did:issuer:123".to_owned()),
         subject: Some("did:subject:123".to_owned()),
-        audience: None,
         jwt_id: Some("ID".to_owned()),
         custom: custom_payload,
-        vc_type: None,
-        proof_of_possession_key: None,
+        ..Default::default()
     };
     let jwt: Jwt<Payload> = Jwt::new(
         "Type1".to_owned(),

@@ -853,6 +853,7 @@ impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO
                         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
                 })
                 .transpose()?,
+            nonce: value.c_nonce.clone(),
         })
     }
 }

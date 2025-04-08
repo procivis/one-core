@@ -309,7 +309,7 @@ pub struct VcdmRelatedResource {
 
 #[skip_serializing_none]
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 // useful for parsing JWT/SD-JWT formats what may contain some of the values outside the "vc" claim
 pub struct JwtVcdmCredential {

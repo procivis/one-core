@@ -38,7 +38,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
     create_credential_offer, create_issuer_metadata_response, create_service_discovery_response,
-    get_credential_schema_base_url, parse_access_token, parse_refresh_token,
+    get_credential_schema_base_url, oidc_issuer_create_token, parse_access_token,
+    parse_refresh_token,
 };
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oid4vci_draft13::mapper::interaction_data_to_dto;
@@ -256,7 +257,8 @@ impl OID4VCIDraft13Service {
             );
         };
 
-        throw_if_access_token_invalid(&interaction_data_to_dto(&interaction)?, access_token)?;
+        let interaction_data = interaction_data_to_dto(&interaction)?;
+        throw_if_access_token_invalid(&interaction_data, access_token)?;
 
         let credentials = self
             .credential_repository
@@ -295,8 +297,10 @@ impl OID4VCIDraft13Service {
                     did_method_provider: self.did_method_provider.clone(),
                     key_role: KeyRole::Authentication,
                 }),
+                interaction_data.nonce,
             )
-            .await?;
+            .await
+            .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
 
             let did = get_or_create_did(
                 &*self.did_method_provider,
@@ -410,18 +414,19 @@ impl OID4VCIDraft13Service {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
 
-        let interaction_data = interaction_data_to_dto(&interaction)?;
+        let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
-        let mut response =
-            crate::provider::issuance_protocol::openid4vci_draft13::service::oidc_issuer_create_token(
-                &interaction_data,
-                &convert_inner(credentials.to_owned()),
-                &interaction,
-                &request,
-                pre_authorization_expires_in,
-                access_token_expires_in,
-                refresh_token_expires_in,
-            )?;
+        let mut response = oidc_issuer_create_token(
+            &interaction_data,
+            &convert_inner(credentials.to_owned()),
+            &interaction,
+            &request,
+            pre_authorization_expires_in,
+            access_token_expires_in,
+            refresh_token_expires_in,
+        )?;
+        // add nonce to interaction data so we can check it when verifying the proof
+        interaction_data.nonce = response.c_nonce.clone();
 
         let now = OffsetDateTime::now_utc();
         if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {

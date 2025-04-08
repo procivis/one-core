@@ -24,38 +24,97 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
-    test_post_issuer_credential_with("NONE", true, None).await;
+    let params = PostCredentialTestParams {
+        use_kid_in_proof: true,
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
 }
 
 #[tokio::test]
 async fn test_post_issuer_credential_jwk_proof() {
-    test_post_issuer_credential_with("NONE", false, None).await;
+    test_post_issuer_credential_with(Default::default(), None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_with_nonce() {
+    let nonce = "pop_nonce1234";
+    let params = PostCredentialTestParams {
+        use_kid_in_proof: true,
+        pop_nonce: Some(nonce),
+        interaction_nonce: Some(nonce),
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_fail_missing_nonce() {
+    let nonce = "pop_nonce1234";
+    let params = PostCredentialTestParams {
+        interaction_nonce: Some(nonce),
+        expect_failure: true, // no nonce in proof
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_nonce_not_required() {
+    let nonce = "pop_nonce1234";
+    let params = PostCredentialTestParams {
+        // Nonce is present but not asked for --> success
+        // Simply adding additional unexpected claims to the proof jwt should not make the verification fail
+        pop_nonce: Some(nonce),
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_jwk_proof_with_nonce() {
+    let nonce = "pop_nonce1234";
+    let params = PostCredentialTestParams {
+        pop_nonce: Some(nonce),
+        interaction_nonce: Some(nonce),
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
 }
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_bitstring_revocation_method() {
-    test_post_issuer_credential_with("BITSTRINGSTATUSLIST", true, None).await;
+    let params = PostCredentialTestParams {
+        revocation_method: Some("BITSTRINGSTATUSLIST"),
+        use_kid_in_proof: true,
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
 }
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existing_token_status_list(
 ) {
-    let params = issuer_setup().await;
-    params
+    let issuer_setup = issuer_setup().await;
+    issuer_setup
         .context
         .db
         .revocation_lists
         .create(
-            &params.issuer_did,
+            &issuer_setup.issuer_did,
             RevocationListPurpose::Revocation,
             None,
             Some(StatusListType::TokenStatusList),
         )
         .await;
 
-    let issuer_did_id = params.issuer_did.id;
-    let (context, _) =
-        test_post_issuer_credential_with("BITSTRINGSTATUSLIST", true, Some(params)).await;
+    let issuer_did_id = issuer_setup.issuer_did.id;
+    let params = PostCredentialTestParams {
+        revocation_method: Some("BITSTRINGSTATUSLIST"),
+        use_kid_in_proof: true,
+        ..Default::default()
+    };
+    let (context, _) = test_post_issuer_credential_with(params, Some(issuer_setup)).await;
 
     assert_eq!(
         context
@@ -106,7 +165,12 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_lvvc_revocation_method() {
-    let (context, credential_id) = test_post_issuer_credential_with("LVVC", true, None).await;
+    let params = PostCredentialTestParams {
+        revocation_method: Some("LVVC"),
+        use_kid_in_proof: true,
+        ..Default::default()
+    };
+    let (context, credential_id) = test_post_issuer_credential_with(params, None).await;
 
     let lvvcs = context
         .db
@@ -118,7 +182,7 @@ async fn test_post_issuer_credential_with_lvvc_revocation_method() {
     assert_eq!(credential_id, lvvcs[0].linked_credential_id);
 }
 
-struct TestPostIssuerCredentialParams {
+struct TestIssuerSetup {
     interaction_id: InteractionId,
     access_token: String,
     context: TestContext,
@@ -127,7 +191,7 @@ struct TestPostIssuerCredentialParams {
     issuer_did: Did,
 }
 
-async fn issuer_setup() -> TestPostIssuerCredentialParams {
+async fn issuer_setup() -> TestIssuerSetup {
     let interaction_id = Uuid::new_v4();
     let access_token = format!("{interaction_id}.test");
 
@@ -159,7 +223,7 @@ async fn issuer_setup() -> TestPostIssuerCredentialParams {
             },
         )
         .await;
-    TestPostIssuerCredentialParams {
+    TestIssuerSetup {
         interaction_id,
         access_token,
         context,
@@ -169,12 +233,20 @@ async fn issuer_setup() -> TestPostIssuerCredentialParams {
     }
 }
 
-async fn test_post_issuer_credential_with(
-    revocation_method: &str,
+#[derive(Default)]
+struct PostCredentialTestParams<'a> {
+    revocation_method: Option<&'a str>,
     use_kid_in_proof: bool,
-    context: Option<TestPostIssuerCredentialParams>,
+    interaction_nonce: Option<&'a str>,
+    pop_nonce: Option<&'a str>,
+    expect_failure: bool,
+}
+
+async fn test_post_issuer_credential_with(
+    test_params: PostCredentialTestParams<'_>,
+    context: Option<TestIssuerSetup>,
 ) -> (TestContext, CredentialId) {
-    let TestPostIssuerCredentialParams {
+    let TestIssuerSetup {
         interaction_id,
         access_token,
         organisation,
@@ -186,30 +258,47 @@ async fn test_post_issuer_credential_with(
         Some(context) => context,
     };
 
+    let PostCredentialTestParams {
+        revocation_method,
+        use_kid_in_proof,
+        interaction_nonce,
+        pop_nonce,
+        expect_failure,
+    } = test_params;
+
     let credential_schema = context
         .db
         .credential_schemas
         .create(
             "schema-1",
             &organisation,
-            revocation_method,
+            revocation_method.unwrap_or("NONE"),
             Default::default(),
         )
         .await;
 
     let date_format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    let data = serde_json::to_vec(&json!({
+    let mut interaction_data = json!({
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
-    })).unwrap();
+    });
+
+    if let Some(interaction_nonce) = interaction_nonce {
+        interaction_data["nonce"] = interaction_nonce.into();
+    }
 
     let base_url = &context.config.app.core_base_url;
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), base_url, &data, &organisation)
+        .create(
+            Some(interaction_id),
+            base_url,
+            &serde_json::to_vec(&interaction_data).unwrap(),
+            &organisation,
+        )
         .await;
 
     let credential = context
@@ -228,32 +317,34 @@ async fn test_post_issuer_credential_with(
         )
         .await;
 
-    let (jwt, did) = proof_jwt(use_kid_in_proof).await;
-    println!("jwt: {}", jwt);
+    let (jwt, did) = proof_jwt(use_kid_in_proof, pop_nonce).await;
     let resp = context
         .api
         .ssi
         .issuer_create_credential(credential_schema.id, "jwt_vc_json", &jwt)
         .await;
 
-    assert_eq!(200, resp.status());
-
-    let credential_history = context
-        .db
-        .histories
-        .get_by_entity_id(&credential.id.into())
-        .await;
-    assert_eq!(
-        credential_history
-            .values
-            .first()
-            .as_ref()
-            .unwrap()
-            .target
-            .as_ref()
-            .unwrap(),
-        &did
-    );
+    if expect_failure {
+        assert_eq!(400, resp.status());
+    } else {
+        assert_eq!(200, resp.status());
+        let credential_history = context
+            .db
+            .histories
+            .get_by_entity_id(&credential.id.into())
+            .await;
+        assert_eq!(
+            credential_history
+                .values
+                .first()
+                .as_ref()
+                .unwrap()
+                .target
+                .as_ref()
+                .unwrap(),
+            &did
+        );
+    }
 
     (context, credential.id)
 }
@@ -350,7 +441,7 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
-    let (jwt, _) = proof_jwt(true).await;
+    let (jwt, _) = proof_jwt(true, None).await;
     let resp = context
         .api
         .ssi

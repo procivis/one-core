@@ -331,6 +331,7 @@ pub struct OpenID4VCITokenResponseRestDTO {
     pub refresh_token: Option<SecretString>,
     #[from(with_fn = convert_inner)]
     pub refresh_token_expires_in: Option<TimestampRest>,
+    pub c_nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

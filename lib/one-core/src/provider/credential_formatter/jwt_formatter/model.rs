@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VPContent {
     #[serde(rename = "@context")]
@@ -12,13 +12,13 @@ pub struct VPContent {
     pub verifiable_credential: Vec<VerifiableCredential>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VcClaim {
     pub vc: JwtVcdmCredential,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VP {
     pub vp: VPContent,
@@ -41,12 +41,12 @@ pub struct EnvelopedContent {
     pub r#type: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct TokenStatusListContent {
     pub status_list: TokenStatusListSubject,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct TokenStatusListSubject {
     pub bits: usize,
     #[serde(rename = "lst")]

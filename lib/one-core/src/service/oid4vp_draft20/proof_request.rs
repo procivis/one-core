@@ -61,8 +61,8 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),
             jwt_id: None,
             vc_type: None,
-            custom: client_response,
             proof_of_possession_key: None,
+            custom: client_response,
         },
     };
 
@@ -141,16 +141,12 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
             x5c: None,
         },
         payload: JWTPayload {
-            issued_at: None,
             expires_at,
-            invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
             subject: Some(client_response.client_id.to_owned()),
-            audience: None,
-            jwt_id: None,
             custom,
             proof_of_possession_key,
-            vc_type: None,
+            ..Default::default()
         },
     }
     .tokenize(Some(auth_fn))
@@ -178,9 +174,9 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
             subject: Some(client_response.client_id.to_owned()),
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),
             jwt_id: None,
-            custom: client_response,
-            proof_of_possession_key: None,
             vc_type: None,
+            proof_of_possession_key: None,
+            custom: client_response,
         },
     };
 
@@ -248,13 +244,13 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
             expires_at,
             invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
-            subject: None,
             // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
+            subject: None,
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),
             jwt_id: None,
-            custom: client_response,
-            proof_of_possession_key: None,
             vc_type: None,
+            proof_of_possession_key: None,
+            custom: client_response,
         },
     };
 
@@ -318,9 +314,9 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
             subject: None,
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),
             jwt_id: None,
-            custom: client_response,
-            proof_of_possession_key: None,
             vc_type: None,
+            proof_of_possession_key: None,
+            custom: client_response,
         },
     };
 

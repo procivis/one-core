@@ -262,16 +262,20 @@ pub(super) fn get_simple_context_bbsplus(
     (url, context)
 }
 
-pub(super) async fn proof_jwt(use_kid: bool) -> (String, String) {
+pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> (String, String) {
     let holder_key = eddsa_key_2();
     let holder_key_id = format!("did:key:{}", holder_key.multibase);
     (
-        proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id)).await,
+        proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id), nonce).await,
         holder_key_id,
     )
 }
 
-pub(super) async fn proof_jwt_for(key: &TestKey, holder_key_id: Option<&str>) -> String {
+pub(super) async fn proof_jwt_for(
+    key: &TestKey,
+    holder_key_id: Option<&str>,
+    nonce: Option<&str>,
+) -> String {
     let mut header = json!({
         "typ": "openid4vci-proof+jwt"
     });
@@ -281,9 +285,12 @@ pub(super) async fn proof_jwt_for(key: &TestKey, holder_key_id: Option<&str>) ->
         header["jwk"] = serde_json::to_value(PublicKeyJwkDTO::from(key.jwk.clone())).unwrap();
     }
 
-    let payload = json!({
+    let mut payload = json!({
         "aud": "test123"
     });
+    if let Some(nonce) = nonce {
+        payload["nonce"] = nonce.into();
+    }
 
     match key.params.key_type.as_deref() {
         Some("EDDSA") => {

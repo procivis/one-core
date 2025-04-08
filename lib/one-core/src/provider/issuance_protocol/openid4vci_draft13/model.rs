@@ -149,6 +149,7 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub refresh_token_hash: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
+    pub nonce: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -681,7 +682,7 @@ pub(crate) struct OpenID4VCRedirectUriParams {
     pub allowed_schemes: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub(crate) struct OpenID4VCVerifierAttestationPayload {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub redirect_uris: Vec<String>,

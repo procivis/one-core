@@ -742,7 +742,6 @@ async fn test_direct_post_wrong_claim_format() {
 
     // THEN
     let status_code = resp.status();
-    println!("{}", resp.text().await.unwrap());
     assert_eq!(status_code, 400);
 
     let proof = get_proof(&db_conn, &proof.id).await;

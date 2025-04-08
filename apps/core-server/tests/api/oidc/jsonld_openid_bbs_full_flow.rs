@@ -136,14 +136,47 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         )
         .await;
 
-    let interaction_data = json!({
+    let credential_interaction_data = json!({
+        "pre_authorized_code_used": true,
+        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+    });
+
+    let credential_interaction = server_context
+        .db
+        .interactions
+        .create(
+            Some(interaction_id),
+            &base_url,
+            credential_interaction_data.to_string().as_bytes(),
+            &server_organisation,
+        )
+        .await;
+
+    let _credential = server_context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &server_issuer_did.unwrap(),
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                holder_did: Some(server_remote_holder_did.clone()),
+                key: Some(server_issuer_key.unwrap()),
+                random_claims: true,
+                interaction: Some(credential_interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_id = Uuid::new_v4();
+    let proof_interaction_data = json!({
         "client_id_scheme": "redirect_uri",
         "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "nonce": nonce,
-        "pre_authorized_code_used": true,
-        "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),
             "input_descriptors": [{
@@ -180,32 +213,14 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         }
     });
 
-    let interaction = server_context
+    let proof_interaction = server_context
         .db
         .interactions
         .create(
             Some(interaction_id),
             &base_url,
-            interaction_data.to_string().as_bytes(),
+            proof_interaction_data.to_string().as_bytes(),
             &server_organisation,
-        )
-        .await;
-
-    let _credential = server_context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Offered,
-            &server_issuer_did.unwrap(),
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams {
-                holder_did: Some(server_remote_holder_did.clone()),
-                key: Some(server_issuer_key.unwrap()),
-                random_claims: true,
-                interaction: Some(interaction.to_owned()),
-                ..Default::default()
-            },
         )
         .await;
 
@@ -219,12 +234,17 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             Some(&proof_schema),
             ProofStateEnum::Pending,
             "OPENID4VP_DRAFT20",
-            Some(&interaction),
+            Some(&proof_interaction),
             server_local_verifier_key,
         )
         .await;
 
-    let jwt = proof_jwt_for(&holder_key, Some(&server_remote_holder_did.did.to_string())).await;
+    let jwt = proof_jwt_for(
+        &holder_key,
+        Some(&server_remote_holder_did.did.to_string()),
+        None,
+    )
+    .await;
 
     let resp = server_context
         .api
@@ -309,7 +329,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
 
     let holder_interaction_data = json!({
         "response_type": "vp_token",
-        "state": interaction.id,
+        "state": proof_interaction.id,
         "nonce": nonce,
         "client_id_scheme": "redirect_uri",
         "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
@@ -355,7 +375,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         "response_mode": "direct_post",
         "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
         "presentation_definition": {
-            "id": interaction.id,
+            "id": proof_interaction.id,
             "input_descriptors": [{
                 "format": {
                     "ldp_vc": {

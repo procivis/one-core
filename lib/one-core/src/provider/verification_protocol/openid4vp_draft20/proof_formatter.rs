@@ -119,16 +119,10 @@ impl OpenID4VCIProofJWTFormatter {
 
         let custom = nonce.map(|nonce| NonceClaim { nonce });
         let payload = JWTPayload {
-            issuer: None,
-            jwt_id: None,
-            subject: None,
             audience: Some(vec![issuer_url]),
             custom,
             issued_at: Some(OffsetDateTime::now_utc()),
-            expires_at: None,
-            invalid_before: None,
-            vc_type: None,
-            proof_of_possession_key: None,
+            ..Default::default()
         };
 
         let key_id = match jwk {

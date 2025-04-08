@@ -91,11 +91,9 @@ impl CredentialFormatter for JWTFormatter {
                 .and_then(|iat| iat.checked_sub(Duration::seconds(self.get_leeway() as i64))),
             issuer: Some(issuer),
             subject: credential_data.holder_did.map(|did| did.to_string()),
-            audience: None,
             jwt_id: credential_id,
             custom: vc,
-            vc_type: None,
-            proof_of_possession_key: None,
+            ..Default::default()
         };
 
         let key_id = auth_fn.get_key_id();
@@ -168,15 +166,10 @@ impl CredentialFormatter for JWTFormatter {
 
                 let payload = JWTPayload {
                     issuer: Some(issuer_did.did.to_string()),
-                    jwt_id: None,
                     subject: Some(credential_subject_id.to_string()),
-                    audience: None,
                     custom: vc_claim,
                     issued_at: Some(OffsetDateTime::now_utc()),
-                    expires_at: None,
-                    invalid_before: None,
-                    vc_type: None,
-                    proof_of_possession_key: None,
+                    ..Default::default()
                 };
 
                 let jwt = Jwt::new("JWT".to_owned(), jose_alg, None, None, payload);
@@ -193,15 +186,9 @@ impl CredentialFormatter for JWTFormatter {
 
                 let payload = JWTPayload {
                     issuer: Some(issuer_did.did.to_string()),
-                    jwt_id: None,
                     subject: Some(revocation_list_url),
-                    audience: None,
                     custom: content,
-                    issued_at: None,
-                    expires_at: None,
-                    invalid_before: None,
-                    vc_type: None,
-                    proof_of_possession_key: None,
+                    ..Default::default()
                 };
 
                 let jwt = Jwt::new("statuslist+jwt".to_owned(), jose_alg, None, None, payload);
@@ -260,11 +247,9 @@ impl CredentialFormatter for JWTFormatter {
             invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             issuer: Some(holder_did.to_string()),
             subject: Some(holder_did.to_string()),
-            audience: None,
             jwt_id: Some(Uuid::new_v4().to_string()),
             custom: vp,
-            vc_type: None,
-            proof_of_possession_key: None,
+            ..Default::default()
         };
 
         let key_id = auth_fn.get_key_id();

@@ -93,12 +93,20 @@ pub async fn async_verifier_flow<C, T>(
     let nonce = utilities::generate_nonce();
     let request = OpenID4VPAuthorizationRequestParams {
         nonce: Some(nonce.to_owned()),
+        response_type: None,
+        response_mode: None,
+        response_uri: None,
+        client_metadata: None,
+        client_metadata_uri: None,
         presentation_definition: Some(params.presentation_definition.clone()),
+        presentation_definition_uri: None,
         client_id: params.did.to_string(),
         client_id_scheme: Some(ClientIdScheme::Did),
-        ..Default::default()
+        state: None,
+        redirect_uri: None,
     };
     let signed_request = request
+        .clone()
         .as_signed_jwt(params.did, auth_fn)
         .await
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;

@@ -220,7 +220,7 @@ pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, Default)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPAuthorizationRequestParams {
     pub client_id: String,
     #[serde(default)]
@@ -887,7 +887,7 @@ pub(crate) struct OpenID4VCRedirectUriParams {
     pub allowed_schemes: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub(crate) struct OpenID4VCVerifierAttestationPayload {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub redirect_uris: Vec<String>,

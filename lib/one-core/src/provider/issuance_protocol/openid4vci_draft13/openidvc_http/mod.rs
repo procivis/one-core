@@ -542,13 +542,6 @@ impl OpenID4VCHTTP {
         _credential_format: &str,
     ) -> Result<ShareResponse<OpenID4VCIIssuerInteractionDataDTO>, IssuanceProtocolError> {
         let interaction_id = Uuid::new_v4();
-        let interaction_content = OpenID4VCIIssuerInteractionDataDTO {
-            pre_authorized_code_used: false,
-            access_token_hash: Default::default(),
-            access_token_expires_at: None,
-            refresh_token_hash: None,
-            refresh_token_expires_at: None,
-        };
 
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -610,7 +603,14 @@ impl OpenID4VCHTTP {
         Ok(ShareResponse {
             url: query.finish().to_string(),
             interaction_id,
-            context: interaction_content,
+            context: OpenID4VCIIssuerInteractionDataDTO {
+                pre_authorized_code_used: false,
+                access_token_hash: vec![],
+                access_token_expires_at: None,
+                refresh_token_hash: None,
+                refresh_token_expires_at: None,
+                nonce: None,
+            },
         })
     }
 
