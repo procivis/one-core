@@ -73,7 +73,7 @@ impl OID4VCIDraft13Service {
                 credential_schema_id,
                 &CredentialSchemaRelations {
                     claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
+                    organisation: Some(OrganisationRelations::default()),
                 },
             )
             .await?;

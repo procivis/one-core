@@ -58,6 +58,13 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_endpoint: String,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpenID4VCIIssuerMetadataDisplayResponseDTO {
+    pub name: String,
+    pub locale: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]

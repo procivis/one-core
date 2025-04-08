@@ -12,7 +12,8 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIProofRequestDTO, OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
@@ -79,12 +80,21 @@ pub struct PostSsiVerifierConnectQueryParams {
     pub redirect_uri: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataDisplayResponseDTO)]
+pub struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
+    pub name: String,
+    pub locale: String,
 }
 
 // TODO! Support in mapper somehow?
@@ -98,6 +108,7 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
                 .into_iter()
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
+            display: convert_inner_of_inner(value.display),
         }
     }
 }

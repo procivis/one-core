@@ -22,6 +22,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
@@ -64,6 +65,16 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
     )
+}
+
+fn generic_organisation() -> Organisation {
+    let now = OffsetDateTime::now_utc();
+    Organisation {
+        id: Uuid::new_v4().into(),
+        name: "organisation name".to_string(),
+        created_date: now,
+        last_modified: now,
+    }
 }
 
 fn generic_credential_schema() -> CredentialSchema {
@@ -181,10 +192,11 @@ async fn test_get_issuer_metadata_jwt() {
         .expect_supported_jose_alg_ids()
         .return_once(|| vec!["ES256".to_string()]);
     let mut repository = MockCredentialSchemaRepository::default();
-    let schema = generic_credential_schema();
+    let mut schema = generic_credential_schema();
+    schema.organisation = Some(generic_organisation());
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
-        ..Default::default()
+        organisation: Some(OrganisationRelations::default()),
     };
     {
         let clone = schema.clone();
@@ -249,10 +261,11 @@ async fn test_get_issuer_metadata_sd_jwt() {
         .return_once(|| vec!["ES256".to_string()]);
 
     let mut schema = generic_credential_schema();
+    schema.organisation = Some(generic_organisation());
     schema.format = "SD_JWT".to_string();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
-        ..Default::default()
+        organisation: Some(OrganisationRelations::default()),
     };
     {
         let clone = schema.clone();
@@ -316,6 +329,7 @@ async fn test_get_issuer_metadata_mdoc() {
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".to_string();
+    schema.organisation = Some(generic_organisation());
     let now = OffsetDateTime::now_utc();
     schema.claim_schemas = Some(vec![
         CredentialSchemaClaim {
@@ -344,7 +358,7 @@ async fn test_get_issuer_metadata_mdoc() {
 
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
-        ..Default::default()
+        organisation: Some(OrganisationRelations::default()),
     };
     {
         let clone = schema.clone();

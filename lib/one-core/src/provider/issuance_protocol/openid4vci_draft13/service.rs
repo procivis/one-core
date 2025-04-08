@@ -16,7 +16,8 @@ use super::model::{
     ExtendedSubjectDTO, OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIProofTypeSupported, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
 };
 use super::validator::throw_if_credential_state_not_eq;
@@ -49,6 +50,17 @@ pub(crate) fn create_issuer_metadata_response(
         credential_issuer: base_url.to_owned(),
         credential_endpoint: format!("{base_url}/credential"),
         credential_configurations_supported,
+        display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
+            name: schema
+                .organisation
+                .as_ref()
+                .ok_or(OpenID4VCIError::RuntimeError(
+                    "missing organisation".to_string(),
+                ))?
+                .name
+                .clone(),
+            locale: "en".to_string(),
+        }]),
     })
 }
 
