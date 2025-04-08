@@ -41,23 +41,41 @@ pub(crate) fn throw_if_credential_request_invalid(
                 ));
             }
         }
-        _ => {
-            if !request
-                .credential_definition
-                .as_ref()
-                .ok_or(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidRequest,
-                ))?
-                .r#type
-                .contains(&"VerifiableCredential".to_string())
-            {
-                return Err(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::UnsupportedCredentialType,
-                ));
+        "SD_JWT" => {
+            if let Some(vct) = &request.vct {
+                if &schema.schema_id != vct {
+                    return Err(ServiceError::OpenID4VCIError(
+                        OpenID4VCIError::UnsupportedCredentialType,
+                    ));
+                }
+            } else {
+                validate_credential_definition(request)?;
             }
+        }
+        _ => {
+            validate_credential_definition(request)?;
         }
     };
 
+    Ok(())
+}
+
+fn validate_credential_definition(
+    request: &OpenID4VCICredentialRequestDTO,
+) -> Result<(), ServiceError> {
+    if !request
+        .credential_definition
+        .as_ref()
+        .ok_or(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest,
+        ))?
+        .r#type
+        .contains(&"VerifiableCredential".to_string())
+    {
+        return Err(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::UnsupportedCredentialType,
+        ));
+    }
     Ok(())
 }
 

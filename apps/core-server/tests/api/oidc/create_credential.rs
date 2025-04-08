@@ -20,12 +20,35 @@ use uuid::Uuid;
 use crate::api_oidc_tests::full_flow_common::proof_jwt;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
     let params = PostCredentialTestParams {
         use_kid_in_proof: true,
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_sd_jwt_vc() {
+    let params = PostCredentialTestParams {
+        schema_id: Some("some-vct-value".to_string()),
+        credential_format: Some("SD_JWT_VC".to_string()),
+        format: Some("vc+sd-jwt"),
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_sd_jwt_vc_invalid_format() {
+    let params = PostCredentialTestParams {
+        schema_id: Some("some-vct-value".to_string()),
+        credential_format: Some("SD_JWT_VC".to_string()),
+        expect_failure: true,
         ..Default::default()
     };
     test_post_issuer_credential_with(params, None).await;
@@ -240,6 +263,9 @@ struct PostCredentialTestParams<'a> {
     interaction_nonce: Option<&'a str>,
     pop_nonce: Option<&'a str>,
     expect_failure: bool,
+    schema_id: Option<String>,
+    credential_format: Option<String>,
+    format: Option<&'a str>,
 }
 
 async fn test_post_issuer_credential_with(
@@ -264,6 +290,9 @@ async fn test_post_issuer_credential_with(
         interaction_nonce,
         pop_nonce,
         expect_failure,
+        schema_id,
+        credential_format,
+        format,
     } = test_params;
 
     let credential_schema = context
@@ -273,7 +302,11 @@ async fn test_post_issuer_credential_with(
             "schema-1",
             &organisation,
             revocation_method.unwrap_or("NONE"),
-            Default::default(),
+            TestingCreateSchemaParams {
+                format: credential_format,
+                schema_id: schema_id.clone(),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -321,7 +354,12 @@ async fn test_post_issuer_credential_with(
     let resp = context
         .api
         .ssi
-        .issuer_create_credential(credential_schema.id, "jwt_vc_json", &jwt)
+        .issuer_create_credential(
+            credential_schema.id,
+            format.unwrap_or("jwt_vc_json"),
+            &jwt,
+            schema_id.as_deref(),
+        )
         .await;
 
     if expect_failure {

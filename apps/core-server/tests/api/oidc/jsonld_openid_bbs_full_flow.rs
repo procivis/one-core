@@ -249,7 +249,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     let resp = server_context
         .api
         .ssi
-        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt)
+        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt, None)
         .await;
 
     assert_eq!(resp.status(), 200);

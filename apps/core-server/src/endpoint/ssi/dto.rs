@@ -207,6 +207,7 @@ pub struct OpenID4VCICredentialRequestRestDTO {
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestRestDTO>,
     #[into(with_fn = convert_inner)]
     pub doctype: Option<String>,
+    pub vct: Option<String>,
     pub proof: OpenID4VCIProofRequestRestDTO,
 }
 

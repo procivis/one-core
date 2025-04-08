@@ -166,6 +166,7 @@ pub struct OpenID4VCICredentialRequestDTO {
     pub format: String,
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
     pub doctype: Option<String>,
+    pub vct: Option<String>,
     pub proof: OpenID4VCIProofRequestDTO,
 }
 

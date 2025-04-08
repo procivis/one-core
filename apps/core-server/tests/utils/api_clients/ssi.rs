@@ -60,20 +60,26 @@ impl SSIApi {
         credential_schema_id: impl Into<Uuid>,
         format: &str,
         jwt: &str,
+        vct: Option<&str>,
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
         let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/credential");
 
-        let body = json!({
+        let mut body = json!({
             "format": format,
-            "credential_definition": {
-                "type": ["VerifiableCredential"]
-            },
             "proof": {
                 "proof_type": "jwt",
                 "jwt": jwt
             },
         });
+
+        if let Some(vct) = vct {
+            body["vct"] = vct.into();
+        } else {
+            body["credential_definition"] = json!({
+                "type": ["VerifiableCredential"]
+            });
+        }
 
         self.client.post(&url, body).await
     }
