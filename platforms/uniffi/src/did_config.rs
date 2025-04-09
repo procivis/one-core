@@ -25,8 +25,10 @@ pub struct DidUniversalParams {
 #[into(one_core::provider::did_method::webvh::Params)]
 #[serde(rename_all = "camelCase")]
 pub struct DidWebVhParams {
-    pub max_did_log_entry_check: u32,
-    pub external_hosting_url: Option<String>,
+    #[serde(default)]
+    pub max_did_log_entry_check: Option<u32>,
+    #[serde(default)]
+    pub resolve_to_insecure_http: bool,
 }
 
 #[derive(Debug, Deserialize, Into)]

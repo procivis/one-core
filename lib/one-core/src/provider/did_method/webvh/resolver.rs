@@ -356,7 +356,7 @@ mod test {
             true,
             &Params {
                 max_did_log_entry_check: Some(2),
-                external_hosting_url: None,
+                resolve_to_insecure_http: false,
             },
         )
         .await;

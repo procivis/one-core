@@ -322,7 +322,18 @@ pub enum RevocationType {
 pub type DidConfig = ConfigBlock<DidType>;
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
 )]
 pub enum DidType {
     #[serde(rename = "KEY")]

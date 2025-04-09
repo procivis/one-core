@@ -327,6 +327,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 get(ssi::controller::get_did_web_document),
             )
             .route(
+                "/ssi/did-webvh/v1/{id}/did.jsonl",
+                get(ssi::controller::get_did_webvh_log),
+            )
+            .route(
                 "/ssi/context/v1/{id}",
                 get(ssi::controller::get_json_ld_context),
             )

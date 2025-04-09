@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use create::{DidDocKeys, UpdateKeys};
+use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
@@ -27,7 +28,13 @@ mod test;
 #[derive(Debug, Default)]
 pub struct Params {
     pub max_did_log_entry_check: Option<u32>,
-    pub external_hosting_url: Option<String>,
+    pub resolve_to_insecure_http: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DidCreateParams {
+    external_hosting_url: Url,
 }
 
 pub struct DidWebVh {
@@ -55,9 +62,28 @@ impl DidWebVh {
         }
     }
 
-    fn domain(&self, did_id: DidId) -> Result<String, DidMethodError> {
-        if let Some(external_host) = self.params.external_hosting_url.as_ref() {
-            Ok(format!("{external_host}:{did_id}"))
+    fn domain(
+        &self,
+        did_id: DidId,
+        external_hosting_url: Option<Url>,
+    ) -> Result<String, DidMethodError> {
+        if let Some(external_host) = external_hosting_url {
+            let mut domain = external_host
+                .domain()
+                .or(external_host.host_str())
+                .ok_or_else(|| {
+                    DidMethodError::CouldNotCreate(
+                        "Invalid core base url: missing domain or host".to_string(),
+                    )
+                })?
+                .to_owned();
+
+            let path = external_host.path();
+            if !path.is_empty() && path != "/" {
+                domain.push_str(&path.replace("/", ":"));
+            }
+
+            Ok(format!("{domain}:{did_id}"))
         } else {
             let base_url = self.core_base_url.as_ref().ok_or_else(|| {
                 DidMethodError::CouldNotCreate("Missing core base url".to_string())
@@ -71,7 +97,7 @@ impl DidWebVh {
                 .or(url.host_str())
                 .ok_or_else(|| {
                     DidMethodError::CouldNotCreate(
-                        "Invalid core base url: missing domain".to_string(),
+                        "Invalid core base url: missing domain or host".to_string(),
                     )
                 })?
                 .to_owned();
@@ -95,7 +121,7 @@ impl DidMethod for DidWebVh {
     async fn create(
         &self,
         id: Option<DidId>,
-        _params: &Option<serde_json::Value>,
+        params: &Option<serde_json::Value>,
         keys: Option<DidCreateKeys>,
     ) -> Result<DidCreated, DidMethodError> {
         let Some(key_provider) = self.key_provider.as_ref() else {
@@ -133,7 +159,17 @@ impl DidMethod for DidWebVh {
             capability_delegation: keys.capability_delegation,
         };
 
-        let domain = self.domain(did_id)?;
+        let external_hosting_url = params
+            .as_ref()
+            .filter(|params| params.as_object().is_some_and(|obj| !obj.is_empty()))
+            .map(|params| {
+                DidCreateParams::deserialize(params)
+                    .map(|p| p.external_hosting_url)
+                    .map_err(|err| DidMethodError::CouldNotCreate(format!("Invalid params: {err}")))
+            })
+            .transpose()?;
+
+        let domain = self.domain(did_id, external_hosting_url)?;
         let (did, log) =
             create::create(&domain, did_doc_keys, update_keys, key_provider.as_ref()).await?;
 
@@ -148,7 +184,7 @@ impl DidMethod for DidWebVh {
             did,
             &*self.client,
             &*self.did_method_provider,
-            false,
+            self.params.resolve_to_insecure_http,
             &self.params,
         )
         .await

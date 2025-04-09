@@ -95,6 +95,35 @@ impl DidService {
         )
     }
 
+    /// Returns did log for did:webvh(did:tdw)
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Did uuid
+    pub async fn get_did_webvh_log(&self, id: &DidId) -> Result<String, ServiceError> {
+        let did = self
+            .did_repository
+            .get_did(id, &DidRelations::default())
+            .await?;
+
+        let Some(did) = did else {
+            return Err(EntityNotFoundError::Did(*id).into());
+        };
+
+        let Some(log) = did.log else {
+            return Err(BusinessLogicError::InvalidDidMethod {
+                method: did.did_method,
+            }
+            .into());
+        };
+
+        if did.deactivated {
+            return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
+        }
+
+        Ok(log)
+    }
+
     /// Returns details of a did
     ///
     /// # Arguments

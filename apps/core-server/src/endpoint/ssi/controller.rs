@@ -58,6 +58,48 @@ pub(crate) async fn get_did_web_document(
 
 #[utoipa::path(
     get,
+    path = "/ssi/did-webvh/v1/{id}/did.jsonl",
+    params(
+        ("id" = DidId, Path, description = "Did id")
+    ),
+    responses(
+        (status = 200, description = "success response", content_type = "text/jsonl"),
+        (status = 400, description = "invalid did method"),
+        (status = 404, description = "did not found"),
+        (status = 500, description = "internal server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve did:webvh(did:tdw) document",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn get_did_webvh_log(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state.core.did_service.get_did_webvh_log(&id).await;
+
+    match result {
+        Ok(log) => (StatusCode::OK, [(header::CONTENT_TYPE, "text/jsonl")], log).into_response(),
+        Err(ServiceError::EntityNotFound(_)) => {
+            tracing::error!("did:webvh not found");
+            (StatusCode::NOT_FOUND, "Did not found").into_response()
+        }
+        Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidDidMethod { method })) => {
+            tracing::error!("Expected did:webvh found {method}");
+            (StatusCode::BAD_REQUEST, "Invalid did method").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error getting did:webvh: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
     path = "/ssi/revocation/v1/list/{id}",
     params(
         ("id" = Uuid, Path, description = "Revocation list id")

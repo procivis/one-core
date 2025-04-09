@@ -1,6 +1,5 @@
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
-use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, OneOrMany};
 use time::OffsetDateTime;
@@ -64,9 +63,9 @@ impl<'de> Deserialize<'de> for Document {
     where
         D: serde::Deserializer<'de>,
     {
-        let source = json_syntax::Value::deserialize(deserializer)?;
-        let document = DidDocumentDTO::deserialize(source.clone().into_deserializer())
-            .map_err(serde::de::Error::custom)?;
+        let source = serde_json::Value::deserialize(deserializer)?;
+        let document = DidDocumentDTO::deserialize(&source).map_err(serde::de::Error::custom)?;
+        let source = json_syntax::Value::from_serde_json(source);
 
         Ok(Self { source, document })
     }

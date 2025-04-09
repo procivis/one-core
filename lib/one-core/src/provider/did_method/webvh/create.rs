@@ -378,6 +378,7 @@ impl Serialize for DidLogEntry {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DidDocument {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
@@ -480,7 +481,7 @@ mod test {
 
         assert_eq!(
             did.to_string(),
-            "did:tdw:QmeZGQQV8uM9Mr74LyM3hS6JJHJD2a265xb9xJU8zZdo4A:test-domain.com"
+            "did:tdw:QmR7TMLNbLcB5NiSvDKj6TNsNJPraL3eL7QgpbxaD2oDb9:test-domain.com"
         );
 
         let expected_log = include_str!("test_data/success/create_did_web_ok.jsonl");
@@ -529,7 +530,7 @@ mod test {
 
         assert_eq!(
             did.to_string(),
-            "did:tdw:QmRf4gmKe419cSXva4hrEzAaocnSZgKBHmi187ZgSzmMMV:test-domain.com"
+            "did:tdw:QmdLHzmDtS15ouKVSZm3JxvUnEphK6JxBfgS2UF3YH5jtf:test-domain.com"
         );
 
         let expected_log = include_str!("test_data/create_did_web_with_prerotation_ok.jsonl");

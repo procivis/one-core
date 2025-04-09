@@ -286,6 +286,7 @@ pub struct TestingDidParams {
     pub did_method: Option<String>,
     pub deactivated: Option<bool>,
     pub keys: Option<Vec<RelatedKey>>,
+    pub log: Option<String>,
 }
 
 pub async fn create_did(

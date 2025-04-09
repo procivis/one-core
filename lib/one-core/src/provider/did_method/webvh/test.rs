@@ -5,12 +5,14 @@ use super::*;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
 
-#[test]
-fn test_use_domain_with_external_host() {
+#[rstest]
+#[case("https://example.com/", "example.com")]
+#[case("https://example.com/a/b/c", "example.com:a:b:c")]
+fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case] expected: &str) {
     let method = DidWebVh {
         params: Params {
             max_did_log_entry_check: None,
-            external_hosting_url: Some("test-external.com".to_string()),
+            resolve_to_insecure_http: false,
         },
         core_base_url: None,
         client: Arc::new(MockHttpClient::new()),
@@ -19,8 +21,13 @@ fn test_use_domain_with_external_host() {
     };
 
     let did_id = Uuid::new_v4().into();
-    let expected = format!("test-external.com:{did_id}");
-    assert_eq!(method.domain(did_id).unwrap(), expected,)
+    let expected = format!("{expected}:{did_id}");
+    let external_hosting_url = external_hosting_url.parse().unwrap();
+
+    assert_eq!(
+        method.domain(did_id, Some(external_hosting_url)).unwrap(),
+        expected,
+    )
 }
 
 #[rstest]
@@ -43,5 +50,5 @@ fn test_use_domain_with_core_base_url(#[case] base_url: &str, #[case] expected: 
 
     let did_id = Uuid::new_v4().into();
     let expected = format!("{expected}:{did_id}");
-    assert_eq!(method.domain(did_id).unwrap(), expected)
+    assert_eq!(method.domain(did_id, None).unwrap(), expected)
 }

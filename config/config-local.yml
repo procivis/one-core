@@ -69,6 +69,10 @@ did:
     params:
       public:
         resolveToInsecureHttp: true
+  WEBVH:
+    params:
+      public:
+        resolveToInsecureHttp: true
 trustManagement:
   SIMPLE_TRUST_LIST:
     display: "trustManagement.simpleTrustList"

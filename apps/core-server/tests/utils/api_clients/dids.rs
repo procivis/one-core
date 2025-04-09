@@ -99,6 +99,11 @@ impl DidsApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_did_webvh(&self, did_id: &impl Display) -> Response {
+        let url = format!("/ssi/did-webvh/v1/{did_id}/did.jsonl");
+        self.client.get(&url).await
+    }
+
     pub async fn deactivate(&self, did_id: &impl Display) -> Response {
         let url = format!("/api/did/v1/{did_id}");
         let body = json!({
