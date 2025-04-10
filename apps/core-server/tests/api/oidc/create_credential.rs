@@ -350,7 +350,7 @@ async fn test_post_issuer_credential_with(
         )
         .await;
 
-    let (jwt, did) = proof_jwt(use_kid_in_proof, pop_nonce).await;
+    let jwt = proof_jwt(use_kid_in_proof, pop_nonce).await;
     let resp = context
         .api
         .ssi
@@ -371,6 +371,7 @@ async fn test_post_issuer_credential_with(
             .histories
             .get_by_entity_id(&credential.id.into())
             .await;
+        let credential = context.db.credentials.get(&credential.id).await;
         assert_eq!(
             credential_history
                 .values
@@ -380,7 +381,7 @@ async fn test_post_issuer_credential_with(
                 .target
                 .as_ref()
                 .unwrap(),
-            &did
+            &credential.holder_did.unwrap().id.to_string()
         );
     }
 
@@ -479,7 +480,7 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
-    let (jwt, _) = proof_jwt(true, None).await;
+    let jwt = proof_jwt(true, None).await;
     let resp = context
         .api
         .ssi

@@ -131,7 +131,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
             .target
             .as_ref()
             .unwrap(),
-        &verifier_did.did.to_string()
+        &verifier_did.id.to_string()
     )
 }
 

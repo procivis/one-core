@@ -212,14 +212,8 @@ pub(super) fn credentials_to_repository(
 
 pub(crate) fn target_from_credential(credential: &Credential) -> Option<String> {
     match credential.role {
-        CredentialRole::Holder => credential
-            .issuer_did
-            .as_ref()
-            .map(|did| did.did.to_string()),
-        CredentialRole::Issuer => credential
-            .holder_did
-            .as_ref()
-            .map(|did| did.did.to_string()),
+        CredentialRole::Holder => credential.issuer_did.as_ref().map(|did| did.id.to_string()),
+        CredentialRole::Issuer => credential.holder_did.as_ref().map(|did| did.id.to_string()),
         CredentialRole::Verifier => None,
     }
 }

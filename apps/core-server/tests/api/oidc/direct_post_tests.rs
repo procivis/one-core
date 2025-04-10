@@ -190,7 +190,7 @@ async fn test_direct_post_one_credential_correct() {
             .target
             .as_ref()
             .unwrap(),
-        "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n" // hardcoded in TOKEN2
+        &proof.holder_did.unwrap().id.to_string()
     );
 
     let claims = proof.claims.unwrap();

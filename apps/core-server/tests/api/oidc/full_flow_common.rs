@@ -262,13 +262,10 @@ pub(super) fn get_simple_context_bbsplus(
     (url, context)
 }
 
-pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> (String, String) {
+pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let holder_key = eddsa_key_2();
     let holder_key_id = format!("did:key:{}", holder_key.multibase);
-    (
-        proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id), nonce).await,
-        holder_key_id,
-    )
+    proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id), nonce).await
 }
 
 pub(super) async fn proof_jwt_for(

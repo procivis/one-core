@@ -225,7 +225,7 @@ pub(crate) fn organisation_id_from_proof(proof: &Proof) -> Result<OrganisationId
 pub(crate) fn target_from_proof(proof: &Proof) -> Option<String> {
     use one_core::model::proof::ProofRole as Role;
     match proof.role {
-        Role::Holder => proof.verifier_did.as_ref().map(|did| did.did.to_string()),
-        Role::Verifier => proof.holder_did.as_ref().map(|did| did.did.to_string()),
+        Role::Holder => proof.verifier_did.as_ref().map(|did| did.id.to_string()),
+        Role::Verifier => proof.holder_did.as_ref().map(|did| did.id.to_string()),
     }
 }

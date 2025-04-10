@@ -164,7 +164,7 @@ async fn test_issuance_accept_openid4vc() {
     assert!(history
         .values
         .iter()
-        .all(|entry| entry.target == Some(issuer_did.did.to_string())),);
+        .all(|entry| entry.target == Some(issuer_did.id.to_string())),);
     assert!(history
         .values
         .iter()
