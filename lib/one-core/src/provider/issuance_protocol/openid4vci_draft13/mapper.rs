@@ -1009,12 +1009,13 @@ pub(super) fn credentials_supported_mdoc(
         } else {
             None
         },
-        doctype: Some(schema.schema_id),
+        doctype: Some(schema.schema_id.clone()),
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
         ]),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
+        scope: Some(schema.schema_id),
         ..Default::default()
     };
 

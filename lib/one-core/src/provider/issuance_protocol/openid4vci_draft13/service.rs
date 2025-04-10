@@ -196,9 +196,10 @@ fn sdjwt_configuration(
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
-        vct,
+        vct: vct.clone(),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
+        scope: vct,
         ..Default::default()
     }
 }

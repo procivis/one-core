@@ -148,6 +148,8 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     #[from(with_fn = convert_inner)]
     pub vct: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub scope: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     #[schema(value_type = Object)]
