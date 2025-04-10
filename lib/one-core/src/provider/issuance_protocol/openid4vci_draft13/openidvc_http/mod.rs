@@ -306,9 +306,14 @@ impl OpenID4VCHTTP {
                 if methods
                     .iter()
                     .any(|method| holder_did.did.as_str().starts_with(method.as_str()))
+                    // swiyu specific workaround: in the swiyu configuration did:jwk is specified, but jwk is expected instead
+                    && methods != vec!["did:jwk".to_string()]
                 {
                     None
-                } else if methods.contains(&"jwk".to_string()) {
+                } else if methods.contains(&"jwk".to_string())
+                    // swiyu specific workaround
+                    || methods == vec!["did:jwk".to_string()]
+                {
                     let resolved = self
                         .did_method_provider
                         .resolve(&holder_did.did)
