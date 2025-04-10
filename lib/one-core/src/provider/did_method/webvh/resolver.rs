@@ -135,6 +135,7 @@ mod test {
     use crate::provider::did_method::error::DidMethodError::ResolutionError;
     use crate::provider::did_method::jwk::JWKDidMethod;
     use crate::provider::did_method::key::KeyDidMethod;
+    use crate::provider::did_method::keys::Keys;
     use crate::provider::did_method::model::DidVerificationMethod;
     use crate::provider::did_method::provider::DidMethodProviderImpl;
     use crate::provider::did_method::resolver::DidCachingLoader;
@@ -355,6 +356,7 @@ mod test {
             &did_method_provider,
             true,
             &Params {
+                keys: Keys::default(),
                 max_did_log_entry_check: Some(2),
                 resolve_to_insecure_http: false,
             },
@@ -393,23 +395,21 @@ mod test {
             "invalid_proof_verification_method_key.jsonl" => "Proof verification failed: verification method did:key:z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH#z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH is not allowed update_key",
             "wrong_index.jsonl" => "Unexpected versionId '1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW', expected index 2, got 1.",
             "invalid_sig.jsonl" => "Failed to verify integrity proof for log entry 1-QmQ5sMLi5vKyHhdaL1LaD3b2C1JY2rCckr2uyGN9KyxMy2: Invalid signature",
-            "prerotation_not_supported.jsonl" => "prerotation is not supported",
             "invalid_scid.jsonl" => "Invalid SCID: expected QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zY, got QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW",
             "proof_too_old.jsonl" => "Invalid proof: created time is before entry time.",
             "portable_true_after_first_entry.jsonl" => "portable flag can only be set to true in first entry",
             "entry_timestamp_too_old.jsonl" => "Invalid log entry 2-QmaidiuDMxyJc8rXAVv8QEY3k4yj96rTW1mzJjxagpNMTF: version time 2025-03-24 16:27:36.0 +00:00:00 is before version time of the previous entry",
             "challenge_mismatch.jsonl" => "Proof challenge mismatch, expected 2-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW, got 1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW.",
+            "invalid_update_key_for_prerotation.jsonl" => "Update key z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV not found in nextKeyHashes",
         };
         let folder = fs::read_dir("src/provider/did_method/webvh/test_data/failure").unwrap();
         resolve_log_files(folder, |result, file_name| {
-            assert!(
-                result.is_err(),
-                "Failed resolving did! Did log file: {}, result: {:#?}",
-                file_name,
-                result
+            assert2::let_assert!(
+                Err(ResolutionError(msg)) = result,
+                "Failed resolving did! Did log file: {file_name}"
             );
             let expected_msg = *expected_error_messages.get(&file_name as &str).unwrap();
-            assert!(matches!(result, Err(ResolutionError(msg)) if msg == expected_msg));
+            assert_eq!(msg, expected_msg, "Failed for file: {file_name}");
         })
         .await;
     }

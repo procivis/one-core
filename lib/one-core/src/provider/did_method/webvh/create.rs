@@ -6,6 +6,7 @@ use shared_types::DidValue;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
+use super::common::multihash_b58_encode;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
@@ -73,9 +74,11 @@ async fn create_with_options(
         .map(|key| {
             let key_ref = make_keyref(key, key_provider)?;
             let hash = SHA256.hash(key_ref.multibase.as_bytes()).map_err(|err| {
-                DidMethodError::ResolutionError(format!("Failed to hash next key: {err}"))
+                DidMethodError::CouldNotCreate(format!("Failed to hash next key: {err}"))
             })?;
-            b58btc_multihash(&hash)
+
+            multihash_b58_encode(&hash)
+                .map_err(|err| DidMethodError::CouldNotCreate(format!("{err:#}")))
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -164,15 +167,8 @@ fn canonicalize_multihash_encode(log: impl Serialize) -> Result<String, DidMetho
     let json = json_syntax::to_value(log)
         .map_err(|err| DidMethodError::CouldNotCreate(format!("failed serializing log: {err}")))?;
     let hash = canonicalized_hash(json)?;
-    b58btc_multihash(&hash)
-}
 
-fn b58btc_multihash(input: &[u8]) -> Result<String, DidMethodError> {
-    let multihash = multihash::Multihash::<32>::wrap(0x12, input).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("Failed to create multihash: {err}"))
-    })?;
-
-    Ok(bs58::encode(multihash.to_bytes()).into_string())
+    multihash_b58_encode(&hash).map_err(|err| DidMethodError::CouldNotCreate(format!("{err:#}")))
 }
 
 fn create_did_doc(
@@ -180,35 +176,65 @@ fn create_did_doc(
     did_doc_keys: DidDocKeys,
     key_provider: &dyn KeyProvider,
 ) -> Result<DidDocument, DidMethodError> {
-    let mut verification_method_list = vec![];
-
-    let mut map_keys_and_add_to_verification_method = |keys| {
-        let mut purpose: Vec<String> = vec![];
+    fn map_keys(
+        did: String,
+        keys: Vec<Key>,
+        verification_methods: &mut Vec<DidVerificationMethodDTO>,
+        key_provider: &dyn KeyProvider,
+    ) -> Result<Vec<String>, DidMethodError> {
+        let mut purpose = vec![];
         for key in keys {
             let key_ref = make_keyref(&key, key_provider)?;
             let verification_method_id = format!("{did}#key-{}", key.id);
-            let verification_method = create_verification_method(
-                verification_method_id.clone(),
-                did.clone(),
-                &key_ref.handle,
-            )?;
+            if !verification_methods
+                .iter()
+                .any(|vm| vm.id == verification_method_id)
+            {
+                let verification_method = create_verification_method(
+                    verification_method_id.clone(),
+                    did.clone(),
+                    &key_ref.handle,
+                )?;
+                verification_methods.push(verification_method);
+            }
             purpose.push(verification_method_id);
-            verification_method_list.push(verification_method);
         }
 
         Ok(purpose)
-    };
+    }
 
-    let authentication: Vec<String> =
-        map_keys_and_add_to_verification_method(did_doc_keys.authentication)?;
-    let assertion_method: Vec<String> =
-        map_keys_and_add_to_verification_method(did_doc_keys.assertion_method)?;
-    let key_agreement: Vec<String> =
-        map_keys_and_add_to_verification_method(did_doc_keys.key_agreement)?;
-    let capability_invocation: Vec<String> =
-        map_keys_and_add_to_verification_method(did_doc_keys.capability_invocation)?;
-    let capability_delegation: Vec<String> =
-        map_keys_and_add_to_verification_method(did_doc_keys.capability_delegation)?;
+    let mut verification_methods: Vec<DidVerificationMethodDTO> = vec![];
+
+    let authentication: Vec<String> = map_keys(
+        did.clone(),
+        did_doc_keys.authentication,
+        &mut verification_methods,
+        key_provider,
+    )?;
+    let assertion_method: Vec<String> = map_keys(
+        did.clone(),
+        did_doc_keys.assertion_method,
+        &mut verification_methods,
+        key_provider,
+    )?;
+    let key_agreement: Vec<String> = map_keys(
+        did.clone(),
+        did_doc_keys.key_agreement,
+        &mut verification_methods,
+        key_provider,
+    )?;
+    let capability_invocation: Vec<String> = map_keys(
+        did.clone(),
+        did_doc_keys.capability_invocation,
+        &mut verification_methods,
+        key_provider,
+    )?;
+    let capability_delegation: Vec<String> = map_keys(
+        did.clone(),
+        did_doc_keys.capability_delegation,
+        &mut verification_methods,
+        key_provider,
+    )?;
 
     Ok(DidDocument {
         context: vec![
@@ -216,7 +242,7 @@ fn create_did_doc(
             "https://w3id.org/security/multikey/v1".to_string(),
         ],
         id: did,
-        verification_method: verification_method_list,
+        verification_method: verification_methods,
         authentication,
         assertion_method,
         key_agreement,
@@ -481,7 +507,7 @@ mod test {
 
         assert_eq!(
             did.to_string(),
-            "did:tdw:QmR7TMLNbLcB5NiSvDKj6TNsNJPraL3eL7QgpbxaD2oDb9:test-domain.com"
+            "did:tdw:QmebvchWhS7oCUExpmwXepBR1LEEWdGds9dE2aApZfwq8q:test-domain.com"
         );
 
         let expected_log = include_str!("test_data/success/create_did_web_ok.jsonl");
@@ -489,7 +515,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_create_did_webvh_with_prerotation_ok() {
+    async fn test_create_did_webvh_with_prerotation_enabled_ok() {
         let KeyProviderSetup {
             mock: key_provider,
             active_key_setup: (active_key, _),
@@ -530,10 +556,11 @@ mod test {
 
         assert_eq!(
             did.to_string(),
-            "did:tdw:QmdLHzmDtS15ouKVSZm3JxvUnEphK6JxBfgS2UF3YH5jtf:test-domain.com"
+            "did:tdw:QmQrLmJJE8TmTpPkyDcT1TFCmPjbuWRmwvfRQg8omjez8X:test-domain.com"
         );
 
-        let expected_log = include_str!("test_data/create_did_web_with_prerotation_ok.jsonl");
+        let expected_log =
+            include_str!("test_data/success/create_did_web_with_prerotation_enabled.jsonl");
         assert_eq!(log, expected_log);
     }
 

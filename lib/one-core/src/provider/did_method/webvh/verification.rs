@@ -1,11 +1,15 @@
 use std::str::FromStr;
 
 use json_syntax::json;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use DidMethodError::{Deactivated, ResolutionError};
 
-use super::common::{canonicalized_hash, DidLogEntry, DidLogParameters, DidMethodVersion};
+use super::common::{
+    canonicalized_hash, multihash_b58_encode, DidLogEntry, DidLogParameters, DidMethodVersion,
+};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::error::DidMethodError;
@@ -40,6 +44,7 @@ pub async fn verify_did_log(
     let mut scid_or_version_id = &scid.clone();
     let mut last_entry_time = None;
     let now = OffsetDateTime::now_utc();
+
     for (index, (entry, raw_line)) in log_iter.enumerate() {
         // did log uses 1-based indices
         verify_version_id(scid_or_version_id, index + 1, raw_line)?;
@@ -58,11 +63,21 @@ pub async fn verify_did_log(
                 return Err(ResolutionError(format!("Invalid log entry {}: version time {} is before version time of the previous entry",entry.version_id, entry.version_time)));
             }
         }
+
         check_parameters(index, &entry.parameters)?;
+        check_prerotation(index, &active_parameters, &entry.parameters)?;
 
         // apply parameter changes
         if let Some(update_keys) = entry.parameters.update_keys.as_ref() {
             active_parameters.update_keys = Some(update_keys.clone());
+        }
+
+        if !entry.parameters.next_key_hashes.is_empty() {
+            active_parameters.next_key_hashes = entry.parameters.next_key_hashes.clone();
+        }
+
+        if !active_parameters.prerotation.is_some_and(|enabled| enabled) {
+            active_parameters.prerotation = entry.parameters.prerotation;
         }
     }
     Ok(())
@@ -73,10 +88,6 @@ fn check_parameters(index: usize, parameters: &DidLogParameters) -> Result<(), D
         return Err(Deactivated);
     }
 
-    if parameters.prerotation.is_some() {
-        return Err(ResolutionError("prerotation is not supported".to_string()));
-    }
-
     if index > 0 && parameters.portable.unwrap_or_default() {
         return Err(ResolutionError(
             "portable flag can only be set to true in first entry".to_string(),
@@ -85,6 +96,50 @@ fn check_parameters(index: usize, parameters: &DidLogParameters) -> Result<(), D
 
     let version_is_mandatory = index == 0;
     verify_version(parameters, version_is_mandatory)
+}
+
+fn check_prerotation(
+    index: usize,
+    active_parameters: &DidLogParameters,
+    entry_parameters: &DidLogParameters,
+) -> Result<(), DidMethodError> {
+    if index > 0 {
+        let prerotation = active_parameters.prerotation.unwrap_or_default();
+        let entry_prerotation = entry_parameters.prerotation.unwrap_or_default();
+        if prerotation && prerotation != entry_prerotation {
+            return Err(ResolutionError(
+                "prerotation set to true cannot be cannot be changed by subsequent entries"
+                    .to_string(),
+            ));
+        }
+
+        if prerotation {
+            // update keys must be present when prerotation is enabled
+            let Some(update_keys) = &entry_parameters.update_keys else {
+                return Err(DidMethodError::ResolutionError(format!(
+                    "Entry {} is missing update keys",
+                    index + 1
+                )));
+            };
+
+            for key in update_keys {
+                let key_hash = SHA256.hash(key.as_bytes()).map_err(|err| {
+                    DidMethodError::ResolutionError(format!("Failed to hash update key: {err}"))
+                })?;
+
+                let key_multihash = multihash_b58_encode(&key_hash)
+                    .map_err(|err| DidMethodError::ResolutionError(format!("{err:#}")))?;
+
+                if !active_parameters.next_key_hashes.contains(&key_multihash) {
+                    return Err(DidMethodError::ResolutionError(format!(
+                        "Update key {key} not found in nextKeyHashes"
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn verify_version(params: &DidLogParameters, mandatory: bool) -> Result<(), DidMethodError> {

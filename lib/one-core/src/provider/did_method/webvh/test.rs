@@ -11,6 +11,7 @@ use crate::provider::http_client::MockHttpClient;
 fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case] expected: &str) {
     let method = DidWebVh {
         params: Params {
+            keys: Keys::default(),
             max_did_log_entry_check: None,
             resolve_to_insecure_http: false,
         },

@@ -210,14 +210,14 @@ async fn test_webvh_did_method_config() {
         resp["did"]["WEBVH"]["params"]["keys"],
         json!({
             "min": 1,
-            "max": 1,
+            "max": 5,
             "assertionMethod": {
                 "min": 1,
-                "max": 1,
+                "max": 5,
             },
             "authentication": {
                 "min": 1,
-                "max": 1,
+                "max": 5,
             },
             "capabilityDelegation": {
                 "min": 1,

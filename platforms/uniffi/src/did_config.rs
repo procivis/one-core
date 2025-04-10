@@ -26,6 +26,7 @@ pub struct DidUniversalParams {
 #[serde(rename_all = "camelCase")]
 pub struct DidWebVhParams {
     #[serde(default)]
+    pub keys: Keys,
     pub max_did_log_entry_check: Option<u32>,
     #[serde(default)]
     pub resolve_to_insecure_http: bool,

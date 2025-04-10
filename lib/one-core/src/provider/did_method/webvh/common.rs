@@ -1,3 +1,4 @@
+use anyhow::Context;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
@@ -76,4 +77,11 @@ pub fn canonicalized_hash(mut data: json_syntax::Value) -> Result<Vec<u8>, DidMe
     SHA256.hash(data.to_string().as_bytes()).map_err(|err| {
         DidMethodError::ResolutionError(format!("Failed to hash canonicalized JSON: {}", err))
     })
+}
+
+pub fn multihash_b58_encode(input: &[u8]) -> Result<String, anyhow::Error> {
+    let multihash =
+        multihash::Multihash::<32>::wrap(0x12, input).context("Failed to create multihash")?;
+
+    Ok(bs58::encode(multihash.to_bytes()).into_string())
 }

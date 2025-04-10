@@ -27,6 +27,7 @@ mod verification;
 mod test;
 #[derive(Debug, Default)]
 pub struct Params {
+    pub keys: Keys,
     pub max_did_log_entry_check: Option<u32>,
     pub resolve_to_insecure_http: bool,
 }
@@ -209,10 +210,10 @@ impl DidMethod for DidWebVh {
     }
 
     fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        Keys::default().validate_keys(keys)
+        self.params.keys.validate_keys(keys)
     }
 
     fn get_keys(&self) -> Option<Keys> {
-        Some(Keys::default())
+        Some(self.params.keys.clone())
     }
 }

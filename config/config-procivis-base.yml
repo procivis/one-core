@@ -216,6 +216,25 @@ did:
     display: "did.webvh"
     order: 21
     params:
+      public:
+        keys:
+          min: 1
+          max: 5
+          authentication:
+            min: 1
+            max: 5
+          assertionMethod:
+            min: 1
+            max: 5
+          keyAgreement:
+            min: 1
+            max: 1
+          capabilityInvocation:
+            min: 1
+            max: 1
+          capabilityDelegation:
+            min: 1
+            max: 1
       private:
         maxDidLogEntryCheck: 10
 datatype:
