@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
-use super::jwt::model::{JWTPayload, ProofOfPossessionKey};
+use super::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use super::model::{AuthenticationFn, HolderBindingCtx, TokenVerifier, VerificationFn};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -69,7 +69,10 @@ pub async fn format_credential<T: Serialize>(
             )
             .map(|verification_method| verification_method.public_key_jwk.clone())
             .map(PublicKeyJwkDTO::from)
-            .map(|jwk| ProofOfPossessionKey { key_id: None, jwk })
+            .map(|jwk| ProofOfPossessionKey {
+                key_id: None,
+                jwk: ProofOfPossessionJwk::Jwk { jwk },
+            })
     } else {
         None
     };
@@ -287,7 +290,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         ) {
             (Some(subject), _) => Some(subject.to_string()),
             (None, Some(cnf)) => Some(
-                encode_to_did(&cnf.jwk)
+                encode_to_did(cnf.jwk.jwk())
                     .map(|did| did.to_string())
                     .map_err(|e| FormatterError::Failed(e.to_string()))?,
             ),
@@ -372,7 +375,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 ))?;
 
         if let Some(verification) = verification {
-            let kb_issuer = encode_to_did(&cnf.jwk).map_err(|err| {
+            let kb_issuer = encode_to_did(cnf.jwk.jwk()).map_err(|err| {
                 FormatterError::CouldNotExtractCredentials(format!(
                     "Failed to encode cnf JWK to did: {err}"
                 ))

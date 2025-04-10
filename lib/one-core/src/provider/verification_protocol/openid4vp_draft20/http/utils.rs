@@ -228,6 +228,8 @@ async fn parse_referenced_data_from_verifier_attestation_token(
             "missing `cnf` in attestation JWT token".to_string(),
         ))?
         .jwk
+        .jwk()
+        .to_owned()
         .into();
 
     alg.parse_jwk(&public_key_cnf)

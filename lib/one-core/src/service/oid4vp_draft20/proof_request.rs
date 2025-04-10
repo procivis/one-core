@@ -10,7 +10,7 @@ use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::jwt::model::{
-    JWTHeader, JWTPayload, ProofOfPossessionKey,
+    JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
@@ -102,7 +102,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     let proof_of_possession_key = Some(ProofOfPossessionKey {
         key_id: None,
-        jwk: jwk.into(),
+        jwk: ProofOfPossessionJwk::Jwk { jwk: jwk.into() },
     });
 
     let verifier_did = proof

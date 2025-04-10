@@ -19,7 +19,9 @@ use crate::model::credential_schema::LayoutType;
 use crate::model::did::KeyRole;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::credential_formatter::jwt::model::{JWTPayload, ProofOfPossessionKey};
+use crate::provider::credential_formatter::jwt::model::{
+    JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Issuer,
     MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
@@ -142,7 +144,9 @@ async fn test_format_credential() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: dummy_jwk().into(),
+            jwk: ProofOfPossessionJwk::Jwk {
+                jwk: dummy_jwk().into()
+            },
         })
     );
 

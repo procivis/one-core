@@ -13,7 +13,9 @@ use super::SDJWTFormatter;
 use crate::config::core_config::KeyAlgorithmType;
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::credential_formatter::jwt::model::{JWTPayload, ProofOfPossessionKey};
+use crate::provider::credential_formatter::jwt::model::{
+    JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Features, Issuer,
     MockTokenVerifier, PublishedClaim,
@@ -147,7 +149,9 @@ async fn test_format_credential_a() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: dummy_jwk().into(),
+            jwk: ProofOfPossessionJwk::Jwk {
+                jwk: dummy_jwk().into()
+            },
         })
     );
 
@@ -303,7 +307,9 @@ async fn test_format_credential_with_array() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: dummy_jwk().into(),
+            jwk: ProofOfPossessionJwk::Jwk {
+                jwk: dummy_jwk().into()
+            },
         })
     );
 

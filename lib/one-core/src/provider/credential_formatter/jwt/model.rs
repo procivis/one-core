@@ -58,6 +58,7 @@ pub struct JWTPayload<CustomPayload> {
     #[serde(rename = "vct", default)]
     pub vc_type: Option<String>,
 
+    /// <https://www.rfc-editor.org/rfc/rfc7800.html#section-3>
     #[serde(rename = "cnf", default)]
     pub proof_of_possession_key: Option<ProofOfPossessionKey>,
 
@@ -79,5 +80,25 @@ pub struct ProofOfPossessionKey {
     #[serde(rename = "kid", default)]
     pub key_id: Option<String>,
 
-    pub jwk: PublicKeyJwkDTO,
+    #[serde(flatten)]
+    pub jwk: ProofOfPossessionJwk,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum ProofOfPossessionJwk {
+    Jwk {
+        jwk: PublicKeyJwkDTO,
+    },
+    /// Swiyu SD-JWT is incorrectly formatting the `cnf` claim
+    Swiyu(PublicKeyJwkDTO),
+}
+
+impl ProofOfPossessionJwk {
+    pub fn jwk(&self) -> &PublicKeyJwkDTO {
+        match self {
+            ProofOfPossessionJwk::Jwk { jwk } => jwk,
+            ProofOfPossessionJwk::Swiyu(jwk) => jwk,
+        }
+    }
 }
