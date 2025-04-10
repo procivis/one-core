@@ -27,6 +27,11 @@ issuanceProtocol:
       public:
         redirectUri:
           allowedSchemes: ["http", "https"]
+  OPENID4VCI_DRAFT13_SWIYU:
+    params:
+      public:
+        redirectUri:
+          allowedSchemes: ["http", "https"]
 verificationProtocol:
   OPENID4VP_DRAFT20:
     params:
