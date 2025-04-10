@@ -167,13 +167,13 @@ pub struct OpenID4VCIIssuerMetadataCredentialSchemaRestDTO {
     pub r#type: CredentialSchemaType,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIDiscoveryResponseDTO)]
 pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub issuer: String,
-    pub authorization_endpoint: String,
+    pub authorization_endpoint: Option<String>,
     pub token_endpoint: String,
-    pub jwks_uri: String,
+    pub jwks_uri: Option<String>,
     pub response_types_supported: Vec<String>,
     pub grant_types_supported: Vec<String>,
     pub subject_types_supported: Vec<String>,

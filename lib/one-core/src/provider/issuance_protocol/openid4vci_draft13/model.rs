@@ -186,12 +186,16 @@ pub struct OpenID4VCIProofRequestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VCIDiscoveryResponseDTO {
     pub issuer: String,
-    pub authorization_endpoint: String,
+    pub authorization_endpoint: Option<String>,
     pub token_endpoint: String,
-    pub jwks_uri: String,
+    pub jwks_uri: Option<String>,
+    #[serde(default)]
     pub response_types_supported: Vec<String>,
+    #[serde(default)]
     pub grant_types_supported: Vec<String>,
+    #[serde(default)]
     pub subject_types_supported: Vec<String>,
+    #[serde(default)]
     pub id_token_signing_alg_values_supported: Vec<String>,
 }
 

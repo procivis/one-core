@@ -1,12 +1,9 @@
 use std::collections::HashMap;
-use std::fmt;
 
 use anyhow::Context;
-use indexmap::IndexMap;
 use one_crypto::jwe::EncryptionAlgorithm;
 use one_dto_mapper::{convert_inner, Into};
-use serde::de::{MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, DidId, DidValue, KeyId};
 use strum::Display;
@@ -31,29 +28,6 @@ use crate::service::key::dto::PublicKeyJwkDTO;
 pub(crate) struct BleOpenId4VpResponse {
     pub vp_token: String,
     pub presentation_submission: PresentationSubmissionMappingDTO,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct HolderInteractionData {
-    pub issuer_url: String,
-    pub credential_endpoint: String,
-    #[serde(default)]
-    pub token_endpoint: Option<String>,
-    #[serde(default)]
-    pub grants: Option<OpenID4VCIGrants>,
-    #[serde(default)]
-    pub access_token: Option<Vec<u8>>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub access_token_expires_at: Option<OffsetDateTime>,
-    #[serde(default)]
-    pub refresh_token: Option<Vec<u8>>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub refresh_token_expires_at: Option<OffsetDateTime>,
-    #[serde(default)]
-    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    #[serde(default)]
-    pub credential_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,27 +58,6 @@ impl JwePayload {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub(crate) struct Timestamp(pub i64);
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
-    pub pre_authorized_code_used: bool,
-    pub access_token_hash: Vec<u8>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub access_token_expires_at: Option<OffsetDateTime>,
-    #[serde(default)]
-    pub refresh_token_hash: Option<Vec<u8>>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub refresh_token_expires_at: Option<OffsetDateTime>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct OpenID4VCICredentialDefinitionRequestDTO {
-    pub r#type: Vec<String>,
-    #[serde(rename = "credentialSubject")]
-    pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
-}
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -250,18 +203,6 @@ pub(crate) struct OpenID4VPAuthorizationRequestParams {
 
     #[serde(default)]
     pub redirect_uri: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub(crate) struct OpenID4VCIDiscoveryResponseDTO {
-    pub issuer: String,
-    pub authorization_endpoint: String,
-    pub token_endpoint: String,
-    pub jwks_uri: String,
-    pub response_types_supported: Vec<String>,
-    pub grant_types_supported: Vec<String>,
-    pub subject_types_supported: Vec<String>,
-    pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -490,264 +431,6 @@ pub(crate) struct ShareResponse<T> {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct UpdateResponse {
     pub update_proof: Option<UpdateProofRequest>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCICredentialOfferDTO {
-    pub credential_issuer: String,
-    pub credential_configuration_ids: Vec<String>,
-    pub grants: OpenID4VCIGrants,
-
-    // This is a custom field with credential values
-    pub credential_subject: Option<ExtendedSubjectDTO>,
-    // This is a custom field with the issuer did
-    pub issuer_did: Option<DidValue>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct ExtendedSubjectDTO {
-    pub keys: Option<ExtendedSubjectClaimsDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, Default)]
-pub(crate) struct ExtendedSubjectClaimsDTO {
-    #[serde(flatten)]
-    pub claims: IndexMap<String, OpenID4VCICredentialValueDetails>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCICredentialOfferCredentialDTO {
-    pub format: String,
-    #[serde(default)]
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    #[serde(default)]
-    pub doctype: Option<String>,
-    #[serde(default)]
-    pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCIGrants {
-    #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
-    pub code: OpenID4VCIGrant,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCIGrant {
-    #[serde(rename = "pre-authorized_code")]
-    pub pre_authorized_code: String,
-    #[serde(default)]
-    pub tx_code: Option<OpenID4VCITxCode>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCITxCode {
-    #[serde(default)]
-    pub input_mode: OpenID4VCITxCodeInputMode,
-    #[serde(default)]
-    pub length: Option<i64>,
-    #[serde(default)]
-    pub description: Option<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, Default)]
-pub(crate) enum OpenID4VCITxCodeInputMode {
-    #[serde(rename = "numeric")]
-    #[strum(serialize = "numeric")]
-    #[default]
-    Numeric,
-    #[serde(rename = "text")]
-    #[strum(serialize = "text")]
-    Text,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Debug, Default, PartialEq, Eq)]
-pub(crate) struct OpenID4VCICredentialSubjectItem {
-    // Rest of the keys as objects
-    #[serde(flatten, deserialize_with = "empty_is_none")]
-    pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
-
-    // Array of objects descritpion
-    #[serde(flatten, deserialize_with = "empty_is_none")]
-    pub arrays: Option<IndexMap<String, Vec<OpenID4VCICredentialSubjectItem>>>,
-
-    // Additional unexpected keys with just string values
-    #[serde(flatten, deserialize_with = "empty_is_none")]
-    pub additional_values: Option<IndexMap<String, serde_json::Value>>,
-
-    #[serde(default)]
-    pub display: Option<Vec<CredentialSubjectDisplay>>,
-    #[serde(default)]
-    pub value_type: Option<String>,
-    #[serde(default)]
-    pub mandatory: Option<bool>,
-
-    // This is custom and optional - keeps the presentation order of claims
-    #[serde(default)]
-    pub order: Option<Vec<String>>,
-}
-
-impl<'de> Deserialize<'de> for OpenID4VCICredentialSubjectItem {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // Create a custom visitor for handling dynamic keys
-        struct OpenID4VCICredentialSubjectItemVisitor;
-
-        impl<'de> Visitor<'de> for OpenID4VCICredentialSubjectItemVisitor {
-            type Value = OpenID4VCICredentialSubjectItem;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a map representing OpenID4VCICredentialSubjectItem")
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: MapAccess<'de>,
-            {
-                let mut claims = IndexMap::new();
-                let mut arrays = IndexMap::new();
-                let mut additional_values = IndexMap::new();
-                let mut display = None;
-                let mut value_type = None;
-                let mut mandatory = None;
-                let mut order = None;
-
-                while let Some(key) = map.next_key::<String>()? {
-                    match key.as_str() {
-                        // Predefined keys
-                        "display" => {
-                            display = Some(map.next_value()?);
-                        }
-                        "value_type" => {
-                            value_type = Some(map.next_value::<String>()?.to_uppercase());
-                        }
-                        "mandatory" => {
-                            mandatory = Some(map.next_value()?);
-                        }
-                        "order" => {
-                            order = Some(map.next_value()?);
-                        }
-                        _ => {
-                            // Dynamic keys
-                            let next_value = map.next_value::<serde_json::Value>()?;
-
-                            // Classify the field by inspecting its type
-                            if next_value.is_object() {
-                                match serde_json::from_value::<OpenID4VCICredentialSubjectItem>(
-                                    next_value.clone(),
-                                ) {
-                                    Ok(obj) => {
-                                        // Check if array
-                                        if let Some(value_type) = obj
-                                            .value_type
-                                            .as_ref()
-                                            .and_then(|vt| vt.strip_suffix("[]"))
-                                        {
-                                            arrays.insert(
-                                                key,
-                                                vec![OpenID4VCICredentialSubjectItem {
-                                                    value_type: Some(value_type.to_string()),
-                                                    ..Default::default()
-                                                }],
-                                            );
-                                        } else {
-                                            claims.insert(key, obj);
-                                        }
-                                    }
-                                    Err(_) => {
-                                        // If it fails to deserialize, add it to additional_values
-                                        additional_values.insert(key, next_value);
-                                    }
-                                }
-                            } else if next_value.is_array() {
-                                // Handle arrays
-                                // First try to deserialize as our custom array
-                                match serde_json::from_value::<Vec<OpenID4VCICredentialSubjectItem>>(
-                                    next_value.clone(),
-                                ) {
-                                    Ok(arr) => {
-                                        arrays.insert(key, arr);
-                                    }
-                                    Err(_) => {
-                                        // If it fails, add as additional value
-                                        additional_values.insert(key, next_value);
-                                    }
-                                }
-                            } else if next_value.is_string()
-                                || next_value.is_boolean()
-                                || next_value.is_number()
-                            {
-                                additional_values.insert(key, next_value);
-                            } else {
-                                // For any other type, add to additional values
-                                additional_values.insert(key, next_value);
-                            }
-                        }
-                    }
-                }
-
-                Ok(OpenID4VCICredentialSubjectItem {
-                    claims: if claims.is_empty() {
-                        None
-                    } else {
-                        Some(claims)
-                    },
-                    arrays: if arrays.is_empty() {
-                        None
-                    } else {
-                        Some(arrays)
-                    },
-                    additional_values: if additional_values.is_empty() {
-                        None
-                    } else {
-                        Some(additional_values)
-                    },
-                    display,
-                    value_type,
-                    mandatory,
-                    order,
-                })
-            }
-        }
-
-        deserializer.deserialize_map(OpenID4VCICredentialSubjectItemVisitor)
-    }
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub(crate) struct CredentialSubjectDisplay {
-    pub name: Option<String>,
-    pub locale: Option<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct OpenID4VCICredentialValueDetails {
-    pub value: String,
-    pub value_type: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct OpenID4VCICredentialOfferClaim {
-    pub value: OpenID4VCICredentialOfferClaimValue,
-    pub value_type: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub(crate) enum OpenID4VCICredentialOfferClaimValue {
-    Nested(IndexMap<String, OpenID4VCICredentialOfferClaim>),
-    String(String),
 }
 
 /// Interaction data used for OpenID4VP (HTTP) on holder side

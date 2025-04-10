@@ -208,9 +208,9 @@ pub(crate) fn create_service_discovery_response(
 ) -> Result<OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError> {
     Ok(OpenID4VCIDiscoveryResponseDTO {
         issuer: base_url.to_owned(),
-        authorization_endpoint: format!("{base_url}/authorize"),
+        authorization_endpoint: Some(format!("{base_url}/authorize")),
         token_endpoint: format!("{base_url}/token"),
-        jwks_uri: format!("{base_url}/jwks"),
+        jwks_uri: Some(format!("{base_url}/jwks")),
         response_types_supported: vec!["token".to_string()],
         grant_types_supported: vec![
             "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
