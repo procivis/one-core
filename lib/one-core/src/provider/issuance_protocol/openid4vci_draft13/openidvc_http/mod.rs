@@ -1088,7 +1088,8 @@ async fn handle_credential_invitation(
     .await?;
     let interaction_id = interaction.id;
 
-    let claim_keys = build_claim_keys(credential_config, &credential_offer.credential_subject);
+    let claims_with_opt_values =
+        build_claim_keys(credential_config, &credential_offer.credential_subject);
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match storage_access
@@ -1101,13 +1102,20 @@ async fn handle_credential_invitation(
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
 
-            let claims_with_values = claim_keys.and_then(|claim_keys| {
-                map_offered_claims_to_credential_schema(
-                    &credential_schema,
-                    credential_id,
-                    &claim_keys,
-                )
-            });
+            let claims_with_values =
+                claims_with_opt_values.and_then(|(claim_keys, missing_claim_values)| {
+                    if missing_claim_values {
+                        return Err(IssuanceProtocolError::Failed(
+                            "Missing claim values".to_string(),
+                        ));
+                    }
+
+                    map_offered_claims_to_credential_schema(
+                        &credential_schema,
+                        credential_id,
+                        &claim_keys,
+                    )
+                });
 
             let claims = match (claims_with_values, credential_schema.external_schema) {
                 (Ok(claims_with_values), _) => claims_with_values,
@@ -1121,13 +1129,25 @@ async fn handle_credential_invitation(
                     claim_schemas
                         .iter()
                         .filter_map(|claim_schema| {
+                            let default_value = if claim_schema.schema.data_type
+                                == DatatypeType::Boolean.to_string()
+                            {
+                                "false"
+                            } else if claim_schema.schema.data_type
+                                == DatatypeType::Number.to_string()
+                            {
+                                "0"
+                            } else {
+                                ""
+                            };
+
                             if claim_schema.schema.data_type != DatatypeType::Object.to_string() {
                                 Some(Claim {
                                     id: Uuid::new_v4(),
                                     credential_id,
                                     created_date: OffsetDateTime::now_utc(),
                                     last_modified: OffsetDateTime::now_utc(),
-                                    value: "".to_string(),
+                                    value: default_value.to_string(),
                                     path: claim_schema.schema.key.clone(),
                                     schema: Some(claim_schema.schema.clone()),
                                 })
@@ -1146,7 +1166,7 @@ async fn handle_credential_invitation(
             let response = handle_invitation_operations
                 .create_new_schema(
                     schema_data,
-                    &claim_keys?,
+                    &claims_with_opt_values.map(|(claims, _)| claims)?,
                     &credential_id,
                     credential_config,
                     &issuer_metadata,
@@ -1284,7 +1304,7 @@ async fn create_and_store_interaction(
 fn build_claim_keys(
     credential_configuration: &OpenID4VCICredentialConfigurationData,
     credential_subject: &Option<ExtendedSubjectDTO>,
-) -> Result<IndexMap<String, OpenID4VCICredentialValueDetails>, IssuanceProtocolError> {
+) -> Result<(IndexMap<String, OpenID4VCICredentialValueDetails>, bool), IssuanceProtocolError> {
     let claim_object = match (
         &credential_configuration.credential_definition,
         &credential_configuration.claims,
@@ -1318,22 +1338,25 @@ fn build_claim_keys(
         // there is no credential definition
 
         let missing_keys = collect_mandatory_keys(claim_object, None);
-        Ok(missing_keys
-            .into_iter()
-            .map(|(missing_claim_path, value_type)| {
-                (
-                    missing_claim_path,
-                    OpenID4VCICredentialValueDetails {
-                        value: "".to_owned(),
-                        value_type,
-                    },
-                )
-            })
-            .collect())
+        Ok((
+            missing_keys
+                .into_iter()
+                .map(|(missing_claim_path, value_type)| {
+                    (
+                        missing_claim_path,
+                        OpenID4VCICredentialValueDetails {
+                            value: "".to_owned(),
+                            value_type,
+                        },
+                    )
+                })
+                .collect(),
+            true,
+        ))
 
         //END OF WORKAROUND
     } else {
-        Ok(keys.claims)
+        Ok((keys.claims, false))
     }
 }
 
