@@ -29,6 +29,9 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::error::KeyStorageError;
+use crate::provider::key_storage::model::KeySecurity;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
@@ -271,6 +274,7 @@ pub struct PublicKeyWithJwk {
 pub fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_provider: &dyn KeyProvider,
 ) -> Result<PublicKeyWithJwk, ServiceError> {
     let verifier_did = proof
         .verifier_did
@@ -302,10 +306,31 @@ pub fn get_encryption_key_jwk_from_proof(
             encryption_key.key_type.to_owned(),
         ))?;
 
+    /*
+     * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params
+     * This needs more investigation and a refactor to support creating shared secret
+     * through key storage
+     */
+    let key_storage = key_provider
+        .get_key_storage(&encryption_key.storage_type)
+        .ok_or(KeyStorageError::NotSupported(
+            encryption_key.storage_type.to_owned(),
+        ))?;
+    let r#use = if key_storage
+        .get_capabilities()
+        .security
+        .iter()
+        .any(|v| *v != KeySecurity::RemoteSecureElement)
+    {
+        Some("enc".to_string())
+    } else {
+        None
+    };
+
     Ok(PublicKeyWithJwk {
         key_id: encryption_key.id,
         jwk: key_algorithm
-            .reconstruct_key(&encryption_key.public_key, None, Some("enc".to_string()))?
+            .reconstruct_key(&encryption_key.public_key, None, r#use)?
             .public_key_as_jwk()?,
     })
 }

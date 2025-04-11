@@ -27,7 +27,9 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::MockRevocationMethod;
@@ -500,6 +502,7 @@ async fn test_get_client_metadata_success() {
     let mut proof_repository = MockProofRepository::default();
     let mut key_algorithm = MockKeyAlgorithm::default();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let mut key_provider = MockKeyProvider::default();
 
     let now = OffsetDateTime::now_utc();
     let proof_id: ProofId = Uuid::new_v4().into();
@@ -582,9 +585,23 @@ async fn test_get_client_metadata_success() {
         key_algorithm_provider
             .expect_key_algorithm_from_name()
             .return_once(|_| Some(Arc::new(key_algorithm)));
+
+        key_provider.expect_get_key_storage().return_once(|_| {
+            let mut key_storage = MockKeyStorage::default();
+            key_storage
+                .expect_get_capabilities()
+                .return_once(|| KeyStorageCapabilities {
+                    features: vec![],
+                    algorithms: vec![],
+                    security: vec![KeySecurity::Software],
+                });
+
+            Some(Arc::new(key_storage))
+        });
     }
     let service = setup_service(Mocks {
         key_algorithm_provider,
+        key_provider,
         proof_repository,
         config: generic_config().core,
         ..Default::default()

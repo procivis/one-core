@@ -47,6 +47,9 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
 use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
@@ -84,6 +87,7 @@ use crate::util::ble_resource::BleWaiter;
 struct Repositories {
     pub proof_repository: MockProofRepository,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
+    pub key_provider: MockKeyProvider,
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
     pub claim_repository: MockClaimRepository,
@@ -105,6 +109,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
     ProofService::new(
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.key_algorithm_provider),
+        Arc::new(repositories.key_provider),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.claim_repository),
@@ -2818,6 +2823,20 @@ async fn test_share_proof_created_success() {
         .expect_key_algorithm_from_name()
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
+    let mut key_provider = MockKeyProvider::new();
+    key_provider.expect_get_key_storage().return_once(|_| {
+        let mut key_storage = MockKeyStorage::default();
+        key_storage
+            .expect_get_capabilities()
+            .return_once(|| KeyStorageCapabilities {
+                features: vec![],
+                algorithms: vec![],
+                security: vec![KeySecurity::Software],
+            });
+
+        Some(Arc::new(key_storage))
+    });
+
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
     protocol
@@ -2888,6 +2907,7 @@ async fn test_share_proof_created_success() {
         history_repository,
         interaction_repository,
         key_algorithm_provider,
+        key_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2980,12 +3000,27 @@ async fn test_share_proof_pending_success() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut key_provider = MockKeyProvider::new();
+    key_provider.expect_get_key_storage().return_once(|_| {
+        let mut key_storage = MockKeyStorage::default();
+        key_storage
+            .expect_get_capabilities()
+            .return_once(|| KeyStorageCapabilities {
+                features: vec![],
+                algorithms: vec![],
+                security: vec![KeySecurity::Software],
+            });
+
+        Some(Arc::new(key_storage))
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
         history_repository,
         interaction_repository,
         key_algorithm_provider,
+        key_provider,
         config: generic_config().core,
         ..Default::default()
     });

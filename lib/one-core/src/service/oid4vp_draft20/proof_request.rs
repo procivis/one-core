@@ -34,12 +34,14 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri
     interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_provider: &dyn KeyProvider,
 ) -> Result<String, VerificationProtocolError> {
     let client_response = generate_authorization_request_params(
         proof,
         interaction_data,
         interaction_id,
         key_algorithm_provider,
+        key_provider,
         ClientIdScheme::RedirectUri,
     )?;
 
@@ -85,6 +87,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         interaction_data,
         interaction_id,
         key_algorithm_provider.as_ref(),
+        key_provider,
         ClientIdScheme::VerifierAttestation,
     )?;
 
@@ -198,6 +201,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
         interaction_data,
         interaction_id,
         key_algorithm_provider.as_ref(),
+        key_provider,
         ClientIdScheme::X509SanDns,
     )?;
 
@@ -273,6 +277,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
         interaction_data,
         interaction_id,
         key_algorithm_provider.as_ref(),
+        key_provider,
         ClientIdScheme::Did,
     )?;
 
@@ -331,9 +336,10 @@ fn generate_authorization_request_params(
     interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_provider: &dyn KeyProvider,
     client_id_scheme: ClientIdScheme,
 ) -> Result<OpenID4VPAuthorizationRequestParams, VerificationProtocolError> {
-    let client_metadata = generate_client_metadata(proof, key_algorithm_provider)?;
+    let client_metadata = generate_client_metadata(proof, key_algorithm_provider, key_provider)?;
 
     let OpenID4VPVerifierInteractionContent {
         nonce,
@@ -374,9 +380,10 @@ fn generate_authorization_request_params(
 fn generate_client_metadata(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_provider: &dyn KeyProvider,
 ) -> Result<OpenID4VPClientMetadata, VerificationProtocolError> {
     let vp_formats = create_open_id_for_vp_formats();
-    let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider)
+    let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, key_provider)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(create_open_id_for_vp_client_metadata(

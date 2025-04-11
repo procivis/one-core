@@ -115,6 +115,7 @@ impl OID4VPDraft20Service {
                     interaction_data,
                     &interaction.id,
                     &*self.key_algorithm_provider,
+                    &*self.key_provider,
                 )
                 .await?
             }
@@ -183,7 +184,11 @@ impl OID4VPDraft20Service {
         )?;
 
         let formats = create_open_id_for_vp_formats();
-        let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
+        let jwk = get_encryption_key_jwk_from_proof(
+            &proof,
+            &*self.key_algorithm_provider,
+            &*self.key_provider,
+        )?;
 
         Ok(create_open_id_for_vp_client_metadata(
             jwk.key_id,

@@ -563,6 +563,7 @@ impl OneCore {
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),
                 key_algorithm_provider.clone(),
+                key_provider.clone(),
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_claim_repository(),

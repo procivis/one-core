@@ -4,6 +4,7 @@ use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
@@ -27,6 +28,7 @@ pub mod service;
 pub struct ProofService {
     proof_repository: Arc<dyn ProofRepository>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_provider: Arc<dyn KeyProvider>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
@@ -51,6 +53,7 @@ impl ProofService {
     pub(crate) fn new(
         proof_repository: Arc<dyn ProofRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_provider: Arc<dyn KeyProvider>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
         claim_repository: Arc<dyn ClaimRepository>,
@@ -71,6 +74,7 @@ impl ProofService {
         Self {
             proof_repository,
             key_algorithm_provider,
+            key_provider,
             proof_schema_repository,
             did_repository,
             claim_repository,
