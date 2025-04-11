@@ -9,7 +9,7 @@ use utoipauto::utoipauto;
 use crate::build_info::{build, APP_VERSION};
 use crate::ServerConfig;
 
-pub fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::OpenApi {
+pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
     #[derive(OpenApi)]
     #[openapi(

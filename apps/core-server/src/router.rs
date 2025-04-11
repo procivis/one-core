@@ -279,23 +279,23 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         Router::new()
             .route(
                 "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
-                get(ssi::controller::oid4vci_draft13_get_issuer_metadata),
+                get(ssi::issuance::draft13::controller::oid4vci_draft13_get_issuer_metadata),
             )
             .route(
                 "/ssi/openid4vci/draft-13/{id}/.well-known/openid-configuration",
-                get(ssi::controller::oid4vci_draft13_service_discovery),
+                get(ssi::issuance::draft13::controller::oid4vci_draft13_service_discovery),
             )
             .route(
                 "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}",
-                get(ssi::controller::oid4vci_draft13_get_credential_offer),
+                get(ssi::issuance::draft13::controller::oid4vci_draft13_get_credential_offer),
             )
             .route(
                 "/ssi/openid4vci/draft-13/{id}/token",
-                post(ssi::controller::oid4vci_draft13_create_token),
+                post(ssi::issuance::draft13::controller::oid4vci_draft13_create_token),
             )
             .route(
                 "/ssi/openid4vci/draft-13/{id}/credential",
-                post(ssi::controller::oid4vci_draft13_create_credential),
+                post(ssi::issuance::draft13::controller::oid4vci_draft13_create_credential),
             )
             .route(
                 "/ssi/openid4vp/draft-20/response",

@@ -1,4 +1,3 @@
 pub mod controller;
 pub mod dto;
-pub mod issuance;
 mod mapper;
