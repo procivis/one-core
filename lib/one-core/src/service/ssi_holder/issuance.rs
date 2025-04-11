@@ -8,6 +8,7 @@ use super::dto::HandleInvitationResultDTO;
 use super::SSIHolderService;
 use crate::common_mapper::value_to_model_claims;
 use crate::common_validator::throw_if_credential_state_not_eq;
+use crate::config::core_config::IssuanceProtocolType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -135,7 +136,13 @@ impl SSIHolderService {
                 .as_ref()
                 .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
-            let format = if &credential.exchange == "OPENID4VCI_DRAFT13" {
+            let issuance_protocol_type = self
+                .config
+                .issuance_protocol
+                .get_fields(&credential.exchange)?
+                .r#type;
+
+            let format = if issuance_protocol_type == IssuanceProtocolType::OpenId4VciDraft13 {
                 let format_type = self
                     .config
                     .format

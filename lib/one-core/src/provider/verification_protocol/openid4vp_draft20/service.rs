@@ -523,6 +523,7 @@ async fn accept_proof(
             issuer_did,
             holder_did,
             first_claim.mdoc_mso.to_owned(),
+            &proof.exchange,
         )?;
 
         proof_claims.append(

@@ -169,7 +169,13 @@ impl OID4VCIDraft13Service {
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
-        if credential.exchange != "OPENID4VCI_DRAFT13" {
+        let issuance_protocol_type = self
+            .config
+            .issuance_protocol
+            .get_fields(&credential.exchange)?
+            .r#type;
+
+        if issuance_protocol_type != IssuanceProtocolType::OpenId4VciDraft13 {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
         let credential_schema = credential

@@ -730,13 +730,14 @@ pub fn extract_presentation_ctx_from_interaction_content(
     }
 }
 
-pub fn extracted_credential_to_model(
+pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
     claims: Vec<(serde_json::Value, ClaimSchema)>,
     issuer_did: &DidValue,
     holder_did: &DidValue,
     mdoc_mso: Option<MobileSecurityObject>,
+    verification_protocol: &str,
 ) -> Result<ProvedCredential, OpenID4VCError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -770,7 +771,7 @@ pub fn extracted_credential_to_model(
             last_modified: now,
             deleted_at: None,
             credential: vec![],
-            exchange: "OPENID4VCI_DRAFT13".to_string(),
+            exchange: verification_protocol.to_string(),
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
             claims: Some(model_claims.to_owned()),
