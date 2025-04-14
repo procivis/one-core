@@ -98,7 +98,7 @@ async fn create_with_options(
     let state = DidDocState { value: did_doc };
     let log = DidLogEntry {
         version_id: SCID_PLACEHOLDER.to_string(),
-        version_time: options.version_time.unwrap_or(OffsetDateTime::now_utc()),
+        version_time: options.version_time.unwrap_or(now_utc()),
         parameters,
         state,
         proof: vec![],
@@ -113,7 +113,7 @@ async fn create_with_options(
     let proof = build_proof(
         &log,
         &active_key,
-        options.proof_created.unwrap_or(OffsetDateTime::now_utc()),
+        options.proof_created.unwrap_or(now_utc()),
     )
     .await?;
     log.proof = vec![proof];
@@ -355,6 +355,10 @@ fn update_version(mut entry: DidLogEntry, entry_hash: &str) -> DidLogEntry {
     entry
 }
 
+fn now_utc() -> OffsetDateTime {
+    OffsetDateTime::now_utc().replace_nanosecond(0).unwrap()
+}
+
 struct KeyRef {
     multibase: String,
     handle: KeyHandle,
@@ -384,8 +388,6 @@ impl Serialize for DidLogEntry {
 
         let version_time = self
             .version_time
-            .replace_nanosecond(0)
-            .unwrap()
             .format(&Rfc3339)
             .map_err(serde::ser::Error::custom)?;
         seq.serialize_element(&version_time)?;
@@ -393,10 +395,8 @@ impl Serialize for DidLogEntry {
         seq.serialize_element(&self.parameters)?;
         seq.serialize_element(&self.state)?;
 
-        match self.proof.as_slice() {
-            [] => {}
-            [proof] => seq.serialize_element(proof)?,
-            proofs => seq.serialize_element(proofs)?,
+        if !self.proof.is_empty() {
+            seq.serialize_element(&self.proof)?;
         }
 
         seq.end()
@@ -405,7 +405,7 @@ impl Serialize for DidLogEntry {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DidDocument {
+struct DidDocument {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub id: String,
