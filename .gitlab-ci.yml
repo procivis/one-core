@@ -54,8 +54,7 @@ stages:
   - deploy
   - sdk_build
   - sdk_artifact
-  - e2e_tests
-  - api_tests
+  - extra_tests
   - github
   - ci_tools
 
@@ -122,20 +121,16 @@ before_script:
         coverage_format: cobertura
         path: cobertura.xml
 
-.run_e2e_tests:
+.run_tests:
+  stage: extra_tests
+  needs:
+    - job: publish
+      artifacts: true
   variables:
     CORE_IMAGE_TAG: ${APP_VERSION}
-  trigger:
-    project: procivis/one/one-e2e-tests
-    branch: main
-    strategy: depend
-
-.run_api_tests:
-  allow_failure: false
-  variables:
-    CORE_IMAGE_TAG: ${APP_VERSION}
-    API_TEST_RUN_CORE: true
-    API_TEST_RUN_BFF: false
+    API_TEST_RUN_CORE: false
+    FE_E2E_TEST: false
+    CHECK_LINT: false
   trigger:
     project: procivis/one/one-tests
     branch: main
@@ -362,22 +357,18 @@ sdk:generate_binding_files:
     expire_in: 10 days
 
 tests:e2e:
-  stage: e2e_tests
   when: manual
-  needs:
-    - job: publish
-      artifacts: true
+  variables:
+    FE_E2E_TEST: true
   extends:
-    - .run_e2e_tests
+    - .run_tests
     - .rule:manual_main_or_tag
 
 tests:api:
-  stage: api_tests
-  needs:
-    - job: publish
-      artifacts: true
+  variables:
+    API_TEST_RUN_CORE: true
   extends:
-    - .run_api_tests
+    - .run_tests
     - .rule:only_main_or_tag
 
 .deploy_trigger:
@@ -449,24 +440,28 @@ tests:publish:
     - .docker_publish
     - .rule:except_main_branch
 
-e2e:trigger_tests:
+trigger_tests:e2e:
   stage: tests
   when: manual
+  variables:
+    FE_E2E_TEST: true
   needs:
     - job: tests:publish
       artifacts: true
   extends:
-    - .run_e2e_tests
+    - .run_tests
     - .rule:run_tests
 
-api:trigger_tests:
+trigger_tests:api:
   stage: tests
   when: manual
+  variables:
+    API_TEST_RUN_CORE: true
   needs:
     - job: tests:publish
       artifacts: true
   extends:
-    - .run_api_tests
+    - .run_tests
     - .rule:except_main_branch
 
 dtrack:generate-bom:
