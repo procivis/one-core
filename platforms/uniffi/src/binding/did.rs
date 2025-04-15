@@ -18,7 +18,7 @@ impl OneCoreBinding {
         let core = self.use_core().await?;
         Ok(core
             .did_service
-            .create_did(request.try_into()?, None)
+            .create_did(request.try_into()?)
             .await?
             .to_string())
     }

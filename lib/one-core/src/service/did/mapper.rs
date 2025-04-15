@@ -69,6 +69,13 @@ pub(super) fn did_from_did_request(
     found_keys: DidCreateKeys,
     now: OffsetDateTime,
 ) -> Did {
+    let update_keys = found_keys.update_keys.into_iter().flat_map(|keys| {
+        keys.into_iter().map(|key| RelatedKey {
+            role: KeyRole::UpdateKey,
+            key,
+        })
+    });
+
     let keys = [
         (KeyRole::Authentication, found_keys.authentication),
         (KeyRole::AssertionMethod, found_keys.assertion_method),
@@ -89,6 +96,7 @@ pub(super) fn did_from_did_request(
             key,
         })
     })
+    .chain(update_keys)
     .collect();
 
     Did {

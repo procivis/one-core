@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
-use futures::future::BoxFuture;
 use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -13,13 +12,15 @@ use super::dto::{
 use super::mapper::did_from_did_request;
 use super::validator::validate_deactivation_request;
 use super::DidService;
+use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::did_method::dto::DidDocumentDTO;
-use crate::provider::did_method::error::DidMethodProviderError;
+use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::did_method::DidCreateKeys;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{
     map_did_model_to_did_web_response, map_key_to_verification_method,
@@ -166,11 +167,7 @@ impl DidService {
     /// # Arguments
     ///
     /// * `request` - did data
-    pub async fn create_did(
-        &self,
-        request: CreateDidRequestDTO,
-        update_keys_fut: Option<BoxFuture<'_, Result<Vec<KeyId>, ServiceError>>>,
-    ) -> Result<DidId, ServiceError> {
+    pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
         validate_did_method(&request.did_method, &self.config.did)?;
 
         let did_method_key = &request.did_method;
@@ -180,6 +177,14 @@ impl DidService {
             .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
 
         validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())?;
+
+        let Some(organisation) = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?
+        else {
+            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
+        };
 
         let keys = request.keys.to_owned();
 
@@ -221,51 +226,38 @@ impl DidService {
 
         let mut keys = build_keys_request(&request.keys, keys)?;
 
-        if !capabilities.supported_update_key_types.is_empty() {
-            let Some(update_keys_fut) = update_keys_fut else {
-                return Err(ServiceError::Other(
-                    "Missing update key for did:webvh creation".to_string(),
-                ));
-            };
-            let update_keys = update_keys_fut.await.map_err(|err| {
-                ServiceError::Other(format!("Failed creating update keys for did:webvh: {err}"))
-            })?;
-            let update_keys = self.key_repository.get_keys(&update_keys).await?;
+        let mut update_keys = None;
+        if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
+            let update_key = generate_update_key(
+                &request.name,
+                new_did_id,
+                organisation.clone(),
+                update_key_type,
+                &*self.key_provider,
+            )
+            .await?;
 
-            for key in &update_keys {
-                if !capabilities
-                    .supported_update_key_types
-                    .iter()
-                    .any(|supported_key_type| key.key_type == supported_key_type.as_ref())
-                {
-                    return Err(ServiceError::Other(
-                        "The provided key type is not supported as updateKey".to_string(),
-                    ));
-                }
-            }
-
-            keys.update_keys = Some(update_keys)
+            update_keys = Some(vec![update_key]);
+            keys.update_keys = update_keys.clone();
         }
 
         let did_value = did_method
             .create(Some(new_did_id), &request.params, Some(keys.clone()))
             .await?;
 
-        let now = OffsetDateTime::now_utc();
-        let Some(organisation) = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?
-        else {
-            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
-        };
+        if let Some(update_keys) = update_keys {
+            for key in update_keys {
+                self.key_repository.create_key(key).await?;
+            }
+        }
 
+        let now = OffsetDateTime::now_utc();
         let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now);
         let did_value = did.did.clone();
 
         let did_id = self
             .did_repository
-            .create_did(did.to_owned())
+            .create_did(did)
             .await
             .map_err(|err| match err {
                 DataLayerError::AlreadyExists => {
@@ -375,4 +367,42 @@ fn build_keys_request(
     }
 
     Ok(create_keys)
+}
+
+async fn generate_update_key(
+    did_name: &str,
+    did_id: DidId,
+    organisation: Organisation,
+    update_key_type: &KeyAlgorithmType,
+    key_provider: &dyn KeyProvider,
+) -> Result<Key, ServiceError> {
+    let key_storage_type = KeyStorageType::Internal;
+    let key_storage = key_provider
+        .get_key_storage(key_storage_type.as_ref())
+        .ok_or_else(|| {
+            DidMethodError::CouldNotCreate(format!(
+                "Missing {key_storage_type} storage type for generating update keys"
+            ))
+        })?;
+
+    let key_id = Uuid::new_v4().into();
+    let key = key_storage
+        .generate(key_id, update_key_type.as_ref())
+        .await
+        .map_err(|err| {
+            DidMethodError::CouldNotCreate(format!("Failed generating update keys: {err}"))
+        })?;
+    let key = Key {
+        id: key_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: key.public_key,
+        name: format!("{did_name}-{did_id}"),
+        key_reference: key.key_reference,
+        storage_type: key_storage_type.to_string(),
+        key_type: update_key_type.to_string(),
+        organisation: Some(organisation.clone()),
+    };
+
+    Ok(key)
 }

@@ -23,6 +23,7 @@ use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{DidCreated, DidMethod, MockDidMethod};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::repository::did_repository::MockDidRepository;
@@ -55,6 +56,7 @@ fn setup_service(
         Duration::seconds(999),
     );
     let did_method_provider = DidMethodProviderImpl::new(did_caching_loader, did_methods);
+    let key_provider = MockKeyProvider::new();
 
     DidService::new(
         did_repository,
@@ -62,6 +64,7 @@ fn setup_service(
         Arc::new(organisation_repository),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
+        Arc::new(key_provider),
         Arc::new(CoreConfig {
             did: did_config,
             ..CoreConfig::default()
@@ -323,7 +326,7 @@ async fn test_create_did_success() {
         get_did_config(),
     );
 
-    let result = service.create_did(create_request, None).await;
+    let result = service.create_did(create_request).await;
     result.unwrap();
 }
 
@@ -414,7 +417,7 @@ async fn test_create_did_value_already_exists() {
         get_did_config(),
     );
 
-    let result = service.create_did(create_request, None).await;
+    let result = service.create_did(create_request).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
@@ -455,7 +458,7 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
         get_did_config(),
     );
 
-    let result = service.create_did(create_request, None).await;
+    let result = service.create_did(create_request).await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(

@@ -437,7 +437,18 @@ pub enum KeyAlgorithmType {
 pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
 )]
 pub enum KeyStorageType {
     #[serde(rename = "INTERNAL")]

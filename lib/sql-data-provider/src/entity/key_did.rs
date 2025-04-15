@@ -65,4 +65,6 @@ pub enum KeyRole {
     CapabilityInvocation,
     #[sea_orm(string_value = "CAPABILITY_DELEGATION")]
     CapabilityDelegation,
+    #[sea_orm(string_value = "UPDATE_KEY")]
+    UpdateKey,
 }

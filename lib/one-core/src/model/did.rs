@@ -32,6 +32,7 @@ pub enum KeyRole {
     KeyAgreement,
     CapabilityInvocation,
     CapabilityDelegation,
+    UpdateKey,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

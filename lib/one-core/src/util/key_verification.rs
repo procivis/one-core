@@ -41,6 +41,7 @@ impl TokenVerifier for KeyVerification {
             KeyRole::KeyAgreement => did_document.key_agreement,
             KeyRole::CapabilityInvocation => did_document.capability_invocation,
             KeyRole::CapabilityDelegation => did_document.capability_delegation,
+            KeyRole::UpdateKey => None,
         }
         .ok_or(SignerError::MissingKey)?;
 

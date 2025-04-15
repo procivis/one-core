@@ -94,6 +94,7 @@ mod m20250331_143210_rename_es256_to_ecdsa;
 mod m20250401_110914_add_log_column_to_did_table;
 mod m20250401_140204_add_reactivated_history_enum;
 mod m20250403_083609_exchange_rename;
+mod m20250414_111854_add_update_key_enum_to_key_did;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -190,6 +191,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250401_140204_add_reactivated_history_enum::Migration),
             Box::new(m20250403_083609_exchange_rename::Migration),
             Box::new(m20250401_110914_add_log_column_to_did_table::Migration),
+            Box::new(m20250414_111854_add_update_key_enum_to_key_did::Migration),
         ]
     }
 }

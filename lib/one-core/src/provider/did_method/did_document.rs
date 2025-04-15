@@ -7,7 +7,7 @@ impl DidDocument {
         id: Option<&str>,
         key_role: Option<KeyRole>,
     ) -> Option<&DidVerificationMethod> {
-        let keys_for_role = key_role.map(|role| self.verification_method_ids_for_role(role));
+        let keys_for_role = key_role.and_then(|role| self.verification_method_ids_for_role(role));
 
         let mut verification_methods = self.verification_method.iter().filter(|vm| {
             keys_for_role
@@ -23,13 +23,14 @@ impl DidDocument {
         }
     }
 
-    pub fn verification_method_ids_for_role(&self, role: KeyRole) -> Vec<String> {
+    pub fn verification_method_ids_for_role(&self, role: KeyRole) -> Option<Vec<String>> {
         match role {
-            KeyRole::Authentication => self.authentication.clone().unwrap_or_default(),
-            KeyRole::AssertionMethod => self.assertion_method.clone().unwrap_or_default(),
-            KeyRole::KeyAgreement => self.key_agreement.clone().unwrap_or_default(),
-            KeyRole::CapabilityInvocation => self.capability_invocation.clone().unwrap_or_default(),
-            KeyRole::CapabilityDelegation => self.capability_delegation.clone().unwrap_or_default(),
+            KeyRole::Authentication => self.authentication.clone(),
+            KeyRole::AssertionMethod => self.assertion_method.clone(),
+            KeyRole::KeyAgreement => self.key_agreement.clone(),
+            KeyRole::CapabilityInvocation => self.capability_invocation.clone(),
+            KeyRole::CapabilityDelegation => self.capability_delegation.clone(),
+            KeyRole::UpdateKey => None,
         }
     }
 }
