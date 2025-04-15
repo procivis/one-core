@@ -172,7 +172,13 @@ impl VerificationProtocol for ScanToVerify {
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
         VerificationProtocolCapabilities {
             supported_transports: vec!["HTTP".to_owned()],
-            did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::MDL],
+            did_methods: vec![
+                DidType::Key,
+                DidType::Jwk,
+                DidType::Web,
+                DidType::MDL,
+                DidType::WebVh,
+            ],
         }
     }
 }

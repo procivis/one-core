@@ -128,7 +128,13 @@ impl IssuanceProtocol for OpenID4VC {
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
         IssuanceProtocolCapabilities {
-            did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::MDL],
+            did_methods: vec![
+                DidType::Key,
+                DidType::Jwk,
+                DidType::Web,
+                DidType::MDL,
+                DidType::WebVh,
+            ],
         }
     }
 }

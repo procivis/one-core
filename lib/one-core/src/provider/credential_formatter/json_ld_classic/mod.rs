@@ -298,7 +298,13 @@ impl CredentialFormatter for JsonLdClassic {
             signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
-            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
+            issuance_did_methods: vec![
+                DidType::Key,
+                DidType::Web,
+                DidType::Jwk,
+                DidType::X509,
+                DidType::WebVh,
+            ],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
             proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             revocation_methods: vec![

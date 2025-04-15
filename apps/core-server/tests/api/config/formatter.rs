@@ -14,26 +14,40 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    assert_eq!(
-        resp["format"]["JWT"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ECDSA", "DILITHIUM"])
-    );
-    assert_eq!(
-        resp["format"]["SD_JWT"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ECDSA", "DILITHIUM"])
-    );
-    assert_eq!(
-        resp["format"]["JSON_LD_CLASSIC"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ECDSA"])
-    );
-    assert_eq!(
-        resp["format"]["JSON_LD_BBSPLUS"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ECDSA", "DILITHIUM"])
-    );
-    assert_eq!(
-        resp["format"]["MDOC"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ECDSA"])
-    );
+    for (format, capability, expected) in [
+        (
+            "JWT",
+            "verificationKeyAlgorithms",
+            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+        ),
+        (
+            "SD_JWT",
+            "verificationKeyAlgorithms",
+            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+        ),
+        (
+            "SD_JWT_VC",
+            "verificationKeyAlgorithms",
+            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+        ),
+        (
+            "JSON_LD_CLASSIC",
+            "verificationKeyAlgorithms",
+            json!(["EDDSA", "ECDSA"]),
+        ),
+        (
+            "JSON_LD_BBSPLUS",
+            "verificationKeyAlgorithms",
+            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+        ),
+        (
+            "MDOC",
+            "verificationKeyAlgorithms",
+            json!(["EDDSA", "ECDSA"]),
+        ),
+    ] {
+        check(&resp, format, capability, expected);
+    }
 }
 
 #[tokio::test]
@@ -143,4 +157,42 @@ async fn test_format_params_have_embed_layout_properties() {
     for format in resp["format"].as_object().unwrap().values() {
         assert!(!format["params"]["embedLayoutProperties"].is_null());
     }
+}
+
+#[tokio::test]
+async fn test_config_formatter_issuance_did_methods_capability() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.config.get().await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    for format in [
+        "JWT",
+        "SD_JWT",
+        "SD_JWT_VC",
+        "JSON_LD_CLASSIC",
+        "JSON_LD_BBSPLUS",
+    ] {
+        check(
+            &resp,
+            format,
+            "issuanceDidMethods",
+            json!(["KEY", "WEB", "JWK", "X509", "WEBVH"]),
+        );
+    }
+
+    check(&resp, "MDOC", "issuanceDidMethods", json!(["MDL"]));
+}
+
+#[track_caller]
+fn check(resp: &serde_json::Value, format: &str, capability: &str, expected: serde_json::Value) {
+    assert_eq!(
+        resp["format"][format]["capabilities"][capability], expected,
+        "Failed for format:{format} and capability:{capability}"
+    );
 }

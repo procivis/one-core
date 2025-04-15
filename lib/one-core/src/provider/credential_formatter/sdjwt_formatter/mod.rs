@@ -225,7 +225,13 @@ impl CredentialFormatter for SDJWTFormatter {
                 Features::SupportsCredentialDesign,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
-            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::X509],
+            issuance_did_methods: vec![
+                DidType::Key,
+                DidType::Web,
+                DidType::Jwk,
+                DidType::X509,
+                DidType::WebVh,
+            ],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
             proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
             revocation_methods: vec![

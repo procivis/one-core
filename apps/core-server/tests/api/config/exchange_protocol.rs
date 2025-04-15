@@ -19,7 +19,16 @@ async fn test_exchange_protocol_capabilities() {
         json!(["HTTP", "BLE", "MQTT"])
     );
     assert_eq!(
+        resp["verificationProtocol"]["OPENID4VP_DRAFT20"]["capabilities"]["didMethods"],
+        json!(["KEY", "JWK", "WEB", "MDL", "WEBVH"])
+    );
+
+    assert_eq!(
         resp["verificationProtocol"]["MDOC_OPENID4VP"]["capabilities"]["supportedTransports"],
         json!(["HTTP", "BLE", "MQTT"])
+    );
+    assert_eq!(
+        resp["verificationProtocol"]["MDOC_OPENID4VP"]["capabilities"]["didMethods"],
+        json!(["MDL"])
     );
 }

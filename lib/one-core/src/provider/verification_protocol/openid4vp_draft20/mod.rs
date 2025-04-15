@@ -565,7 +565,13 @@ impl VerificationProtocol for OpenID4VC {
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
-        let mut did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::MDL];
+        let mut did_methods = vec![
+            DidType::Key,
+            DidType::Jwk,
+            DidType::Web,
+            DidType::MDL,
+            DidType::WebVh,
+        ];
         if self
             .params
             .verifier
