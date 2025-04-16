@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
 
-use super::ble::MessageSize;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::MessageSize;
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPBleData {

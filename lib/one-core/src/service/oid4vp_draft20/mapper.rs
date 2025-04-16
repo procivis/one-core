@@ -5,7 +5,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use crate::repository::did_repository::DidRepository;

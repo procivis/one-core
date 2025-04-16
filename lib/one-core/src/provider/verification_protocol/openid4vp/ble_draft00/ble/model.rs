@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::BLEPeer;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
 };
 
@@ -26,8 +26,8 @@ mod tests {
 
     use super::*;
     use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
-    use crate::provider::verification_protocol::openid4vp_draft20::model::OpenID4VPVerifierInteractionContent;
-    use crate::provider::verification_protocol::openid4vp_draft20::peer_encryption::PeerEncryption;
+    use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
+    use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
     use crate::provider::verification_protocol::{
         deserialize_interaction_data, serialize_interaction_data,
     };

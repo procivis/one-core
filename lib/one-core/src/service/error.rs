@@ -30,7 +30,7 @@ use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp_draft20::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
 
 #[derive(Debug, Error)]

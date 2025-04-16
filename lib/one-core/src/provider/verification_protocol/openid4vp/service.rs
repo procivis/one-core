@@ -26,14 +26,14 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::mapper::{
+use crate::provider::verification_protocol::openid4vp::mapper::{
     extract_presentation_ctx_from_interaction_content, extracted_credential_to_model,
     parse_interaction_content, vec_last_position_from_token_path,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     AcceptProofResult, OpenID4VPPresentationDefinition, RequestData,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::validator::{
+use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;

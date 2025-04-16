@@ -12,13 +12,13 @@ use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::http::x509::extract_x5c_san_dns;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::draft20::http::x509::extract_x5c_san_dns;
+use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPAuthorizationRequestParams,
     OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData, OpenID4VpParams,
     OpenID4VpPresentationFormat,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::util::key_verification::KeyVerification;
 use crate::util::x509::is_dns_name_matching;
 

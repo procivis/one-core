@@ -15,20 +15,20 @@ use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::mqtt_client::MqttTopic;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp_draft20::async_verifier_flow::{
+use crate::provider::verification_protocol::openid4vp::async_verifier_flow::{
     async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
     AsyncVerifierFlowParams, FlowState,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp_draft20::key_agreement_key::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
-    OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
-};
-use crate::provider::verification_protocol::openid4vp_draft20::mqtt::model::{
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::mqtt::model::{
     MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::model::{
+    OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+};
+use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;

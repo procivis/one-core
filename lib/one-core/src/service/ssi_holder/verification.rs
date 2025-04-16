@@ -25,7 +25,7 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     InvitationResponseDTO, OpenID4VPHolderInteractionData, PresentedCredential, UpdateResponse,
 };
 use crate::service::error::{

@@ -18,10 +18,6 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::OpenID4VPBleData;
-use super::http::mappers::map_credential_formats_to_presentation_format;
-use super::key_agreement_key::KeyAgreementKey;
-use super::mapper::create_presentation_submission;
 use crate::config::core_config::{self, TransportType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::{Interaction, InteractionId};
@@ -40,14 +36,17 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp_draft20::mapper::create_open_id_for_vp_presentation_definition;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::draft20::http::mappers::map_credential_formats_to_presentation_format;
+use crate::provider::verification_protocol::openid4vp::dto::OpenID4VPBleData;
+use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    create_open_id_for_vp_presentation_definition, create_presentation_submission,
+};
+use crate::provider::verification_protocol::openid4vp::model::{
     InvitationResponseDTO, OpenID4VpParams, PresentedCredential, UpdateResponse,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::peer_encryption::PeerEncryption;
-use crate::provider::verification_protocol::openid4vp_draft20::{
-    FormatMapper, TypeToDescriptorMapper,
-};
+use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::{FormatMapper, TypeToDescriptorMapper};
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, VerificationProtocolError,
 };

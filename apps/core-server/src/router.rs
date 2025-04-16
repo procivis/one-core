@@ -299,20 +299,20 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             )
             .route(
                 "/ssi/openid4vp/draft-20/response",
-                post(ssi::controller::oid4vp_draft20_direct_post)
+                post(ssi::verification::draft20::controller::oid4vp_draft20_direct_post)
                     .layer(DefaultBodyLimit::disable()),
             )
             .route(
                 "/ssi/openid4vp/draft-20/{id}/presentation-definition",
-                get(ssi::controller::oid4vp_draft20_presentation_definition),
+                get(ssi::verification::draft20::controller::oid4vp_draft20_presentation_definition),
             )
             .route(
                 "/ssi/openid4vp/draft-20/{id}/client-metadata",
-                get(ssi::controller::oid4vp_draft20_client_metadata),
+                get(ssi::verification::draft20::controller::oid4vp_draft20_client_metadata),
             )
             .route(
                 "/ssi/openid4vp/draft-20/{id}/client-request",
-                get(ssi::controller::oid4vp_draft20_client_request),
+                get(ssi::verification::draft20::controller::oid4vp_draft20_client_request),
             )
             .route(
                 "/ssi/revocation/v1/list/{id}",

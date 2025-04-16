@@ -25,22 +25,22 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
-use crate::provider::verification_protocol::openid4vp_draft20::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp_draft20::key_agreement_key::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp_draft20::mapper::create_format_map;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::mqtt::model::{
+    MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
+};
+use crate::provider::verification_protocol::openid4vp::ble_draft00::mqtt::{
+    generate_session_keys, ConfigParams, OpenId4VcMqtt,
+};
+use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
+use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
     OpenID4VCRedirectUriParams, OpenID4VPAuthorizationRequestParams,
     OpenID4VPPresentationDefinition, OpenID4VpParams,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::mqtt::model::{
-    MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
-};
-use crate::provider::verification_protocol::openid4vp_draft20::mqtt::{
-    generate_session_keys, ConfigParams, OpenId4VcMqtt,
-};
-use crate::provider::verification_protocol::openid4vp_draft20::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;

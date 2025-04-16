@@ -1,6 +1,6 @@
 use crate::config::core_config::FormatType;
-use crate::provider::verification_protocol::openid4vp_draft20::model::PresentedCredential;
-use crate::provider::verification_protocol::openid4vp_draft20::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::model::PresentedCredential;
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 
 pub(crate) fn map_credential_formats_to_presentation_format(
     presented: &[PresentedCredential],

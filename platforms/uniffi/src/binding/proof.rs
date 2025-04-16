@@ -8,7 +8,7 @@ use one_core::provider::verification_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::verification_protocol::openid4vp_draft20::model::ClientIdScheme;
+use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO,

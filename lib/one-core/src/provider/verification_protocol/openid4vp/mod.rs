@@ -6,16 +6,16 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
-use ble::model::BLEOpenID4VPInteractionData;
-use ble::OpenID4VCBLE;
+use ble_draft00::ble::model::BLEOpenID4VPInteractionData;
+use ble_draft00::ble::OpenID4VCBLE;
+use ble_draft00::mqtt::model::MQTTOpenID4VPInteractionDataHolder;
+use ble_draft00::mqtt::OpenId4VcMqtt;
+use draft20::http::OpenID4VCHTTP;
 use futures::future::BoxFuture;
 use futures::FutureExt;
-use http::OpenID4VCHTTP;
 use key_agreement_key::KeyAgreementKey;
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
 use model::{ClientIdScheme, OpenID4VPHolderInteractionData};
-use mqtt::model::MQTTOpenID4VPInteractionDataHolder;
-use mqtt::OpenId4VcMqtt;
 use one_dto_mapper::convert_inner;
 use serde_json::json;
 use shared_types::KeyId;
@@ -38,23 +38,23 @@ use crate::provider::verification_protocol::dto::{CredentialGroup, CredentialGro
 use crate::provider::verification_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
-    InvitationResponseDTO, OpenID4VPClientMetadata, OpenID4VpParams, OpenID4VpPresentationFormat,
-    PresentedCredential, ShareResponse, UpdateResponse,
+use crate::provider::verification_protocol::openid4vp::model::{
+    InvitationResponseDTO, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
+    OpenID4VpParams, OpenID4VpPresentationFormat, PresentedCredential, ShareResponse,
+    UpdateResponse,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
 use crate::util::oidc::map_from_openid4vp_format;
 
 mod async_verifier_flow;
-pub(crate) mod ble;
+pub mod ble_draft00;
+pub mod draft20;
 pub mod dto;
 pub mod error;
-pub mod http;
 mod key_agreement_key;
 pub(crate) mod mapper;
 pub mod model;
-pub(crate) mod mqtt;
 mod peer_encryption;
 pub mod proof_formatter;
 pub mod service;

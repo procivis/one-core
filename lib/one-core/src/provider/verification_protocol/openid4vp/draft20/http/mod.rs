@@ -13,19 +13,6 @@ use utils::{
 };
 use uuid::Uuid;
 
-use super::mapper::{
-    create_open_id_for_vp_presentation_definition, create_open_id_for_vp_sharing_url_encoded,
-    create_presentation_submission,
-};
-use super::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    InvitationResponseDTO, JwePayload, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpParams, OpenID4VpPresentationFormat,
-    PresentationSubmissionMappingDTO, PresentedCredential, ShareResponse, UpdateResponse,
-};
-use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -40,8 +27,23 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::http::jwe_presentation::ec_key_from_metadata;
-use crate::provider::verification_protocol::openid4vp_draft20::http::mdoc::mdoc_presentation_context;
+use crate::provider::verification_protocol::openid4vp::draft20::http::jwe_presentation::ec_key_from_metadata;
+use crate::provider::verification_protocol::openid4vp::draft20::http::mdoc::mdoc_presentation_context;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    create_open_id_for_vp_presentation_definition, create_open_id_for_vp_sharing_url_encoded,
+    create_presentation_submission,
+};
+use crate::provider::verification_protocol::openid4vp::model::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
+    InvitationResponseDTO, JwePayload, OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, OpenID4VpParams, OpenID4VpPresentationFormat,
+    PresentationSubmissionMappingDTO, PresentedCredential, ShareResponse, UpdateResponse,
+};
+use crate::provider::verification_protocol::openid4vp::{
+    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
+};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 mod jwe_presentation;

@@ -14,7 +14,7 @@ use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
 };
 use crate::repository::interaction_repository::InteractionRepository;

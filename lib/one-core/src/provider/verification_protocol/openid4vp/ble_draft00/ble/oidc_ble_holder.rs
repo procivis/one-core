@@ -30,13 +30,13 @@ use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::{
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::dto::{Chunk, ChunkExt, Chunks};
-use crate::provider::verification_protocol::openid4vp_draft20::key_agreement_key::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::dto::{Chunk, ChunkExt, Chunks};
+use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::model::{
     BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, PresentationSubmissionMappingDTO,
 };
 use crate::provider::verification_protocol::{

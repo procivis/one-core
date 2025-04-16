@@ -6,7 +6,7 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::provider::credential_formatter::model::FormatPresentationCtx;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
-use crate::provider::verification_protocol::openid4vp_draft20::model::OpenID4VPHolderInteractionData;
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 
 pub(crate) fn mdoc_presentation_context(
     interaction_data: &OpenID4VPHolderInteractionData,

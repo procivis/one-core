@@ -19,12 +19,12 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp_draft20::mapper::create_open_id_for_vp_formats;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
+use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPAuthorizationRequestParams,
     OpenID4VPClientMetadata, OpenID4VPVerifierInteractionContent,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::service::{
+use crate::provider::verification_protocol::openid4vp::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_presentation_definition,
 };
 use crate::util::oidc::determine_response_mode;

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use one_crypto::jwe::Header;
 
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO,
 };

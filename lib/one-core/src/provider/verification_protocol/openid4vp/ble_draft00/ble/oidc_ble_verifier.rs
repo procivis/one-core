@@ -31,16 +31,16 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 };
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::verification_protocol::openid4vp_draft20::async_verifier_flow::{
+use crate::provider::verification_protocol::openid4vp::async_verifier_flow::{
     async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
     AsyncVerifierFlowParams, FlowState,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::BLEParse;
-use crate::provider::verification_protocol::openid4vp_draft20::dto::{Chunk, ChunkExt, Chunks};
-use crate::provider::verification_protocol::openid4vp_draft20::key_agreement_key::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::BLEParse;
+use crate::provider::verification_protocol::openid4vp::dto::{Chunk, ChunkExt, Chunks};
+use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::model::{
     BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{

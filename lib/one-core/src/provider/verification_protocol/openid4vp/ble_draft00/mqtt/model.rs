@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::common_mapper::secret_slice;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
 };
 
@@ -50,7 +50,7 @@ pub struct MQTTOpenID4VPInteractionDataVerifier {
 mod tests {
 
     use super::*;
-    use crate::provider::verification_protocol::openid4vp_draft20::model::OpenID4VPVerifierInteractionContent;
+    use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
     use crate::provider::verification_protocol::{
         deserialize_interaction_data, serialize_interaction_data,
     };

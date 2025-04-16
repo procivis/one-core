@@ -52,12 +52,12 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp::model::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VpPresentationFormat,
     PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, PresentedCredential,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::{
+use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
 use crate::service::error::{BusinessLogicError, ServiceError};

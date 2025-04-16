@@ -31,13 +31,13 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
     OpenID4VCRedirectUriParams, OpenID4VPAlgs, OpenID4VPClientMetadata,
     OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition, OpenID4VpParams,
     OpenID4VpPresentationFormat, ShareResponse,
 };
-use crate::provider::verification_protocol::openid4vp_draft20::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
 };

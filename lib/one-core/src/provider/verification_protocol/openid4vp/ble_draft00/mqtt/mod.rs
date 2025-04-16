@@ -16,13 +16,6 @@ use tracing::Instrument;
 use url::Url;
 use uuid::Uuid;
 
-use super::mapper::{
-    create_open_id_for_vp_presentation_definition, create_presentation_submission,
-};
-use super::model::{
-    InvitationResponseDTO, OpenID4VPPresentationDefinition, OpenID4VpParams, PresentedCredential,
-    UpdateResponse,
-};
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
@@ -45,12 +38,19 @@ use crate::provider::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp_draft20::dto::OpenID4VPMqttQueryParams;
-use crate::provider::verification_protocol::openid4vp_draft20::http::mappers::map_credential_formats_to_presentation_format;
-use crate::provider::verification_protocol::openid4vp_draft20::key_agreement_key::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp_draft20::model::OpenID4VPAuthorizationRequestParams;
-use crate::provider::verification_protocol::openid4vp_draft20::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::draft20::http::mappers::map_credential_formats_to_presentation_format;
+use crate::provider::verification_protocol::openid4vp::dto::OpenID4VPMqttQueryParams;
+use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    create_open_id_for_vp_presentation_definition, create_presentation_submission,
+};
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VPAuthorizationRequestParams;
+use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::{
+    InvitationResponseDTO, OpenID4VPPresentationDefinition, OpenID4VpParams, PresentedCredential,
+    UpdateResponse,
+};
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
 };
@@ -94,7 +94,7 @@ struct SubscriptionHandle {
 
 impl OpenId4VcMqtt {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         mqtt_client: Arc<dyn MqttClient>,
         config: Arc<CoreConfig>,
         params: ConfigParams,
@@ -132,7 +132,7 @@ impl OpenId4VcMqtt {
             && query_has_key("topicId")
     }
 
-    pub async fn holder_handle_invitation(
+    pub(crate) async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
@@ -359,7 +359,7 @@ impl OpenId4VcMqtt {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn holder_submit_proof(
+    pub(crate) async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,

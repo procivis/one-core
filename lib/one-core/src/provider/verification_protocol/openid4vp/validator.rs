@@ -21,9 +21,9 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::verification_protocol::openid4vp_draft20::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp_draft20::mapper::vec_last_position_from_token_path;
-use crate::provider::verification_protocol::openid4vp_draft20::model::ValidatedProofClaimDTO;
+use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp::mapper::vec_last_position_from_token_path;
+use crate::provider::verification_protocol::openid4vp::model::ValidatedProofClaimDTO;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 

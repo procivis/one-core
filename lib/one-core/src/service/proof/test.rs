@@ -49,9 +49,9 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp_draft20::ble::BLEPeer;
-use crate::provider::verification_protocol::openid4vp_draft20::model::{
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::BLEPeer;
+use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
     ShareResponse,
 };
