@@ -128,8 +128,6 @@ before_script:
       artifacts: true
   variables:
     CORE_IMAGE_TAG: ${APP_VERSION}
-    API_TEST_RUN_CORE: false
-    FE_E2E_TEST: false
     CHECK_LINT: false
   trigger:
     project: procivis/one/one-tests
@@ -137,7 +135,6 @@ before_script:
     strategy: depend
     forward:
       pipeline_variables: true
-
 
 build:
   stage: build
@@ -366,7 +363,7 @@ tests:e2e:
 
 tests:api:
   variables:
-    API_TEST_RUN_CORE: true
+    API_TEST: "CORE"
   extends:
     - .run_tests
     - .rule:only_main_or_tag
@@ -456,7 +453,7 @@ trigger_tests:api:
   stage: tests
   when: manual
   variables:
-    API_TEST_RUN_CORE: true
+    API_TEST: "CORE"
   needs:
     - job: tests:publish
       artifacts: true
