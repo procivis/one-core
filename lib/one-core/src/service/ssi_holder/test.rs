@@ -38,6 +38,7 @@ use crate::provider::verification_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -176,6 +177,79 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
             let Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) = reject_proof_for_state(state).await
         );
     }
+}
+
+#[tokio::test]
+async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state_is_set_to_errored()
+{
+    let interaction_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
+    let protocol = "OPENID4VP_DRAFT20";
+
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof_by_interaction_id()
+        .once()
+        .return_once(move |_, _| {
+            Ok(Some(Proof {
+                id: proof_id,
+                exchange: protocol.to_string(),
+                state: ProofStateEnum::Requested,
+                interaction: Some(Interaction {
+                    id: interaction_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    host: Some("http://www.host.co".parse().unwrap()),
+                    data: None,
+                    organisation: None,
+                }),
+                ..dummy_proof()
+            }))
+        });
+
+    proof_repository
+        .expect_update_proof()
+        .withf(move |actual_proof_id, actual_proof_state, _| {
+            assert_eq!(actual_proof_id, &proof_id);
+            assert_eq!(actual_proof_state.state, Some(ProofStateEnum::Error));
+            true
+        })
+        .once()
+        .return_once(move |_, _, _| Ok(()));
+
+    let mut verification_protocol_mock = MockVerificationProtocol::default();
+    verification_protocol_mock
+        .expect_holder_reject_proof()
+        .withf(move |proof| {
+            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
+            true
+        })
+        .once()
+        .return_once(move |_| Err(VerificationProtocolError::Failed("error".to_string())));
+
+    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
+    verification_protocol_provider
+        .expect_get_protocol()
+        .withf(move |_protocol| {
+            assert_eq!(_protocol, protocol);
+            true
+        })
+        .once()
+        .return_once(move |_| Some(Arc::new(verification_protocol_mock)));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let service = SSIHolderService {
+        proof_repository: Arc::new(proof_repository),
+        verification_protocol_provider: Arc::new(verification_protocol_provider),
+        history_repository: Arc::new(history_repository),
+        ..mock_ssi_holder_service()
+    };
+
+    service.reject_proof_request(&interaction_id).await.unwrap();
 }
 
 #[tokio::test]

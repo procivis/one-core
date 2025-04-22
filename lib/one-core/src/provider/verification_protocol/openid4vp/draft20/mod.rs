@@ -276,7 +276,8 @@ impl VerificationProtocol for OpenID4VP20HTTP {
     }
 
     async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
+        // Rejection not supported and handled as no-op on holder side
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
