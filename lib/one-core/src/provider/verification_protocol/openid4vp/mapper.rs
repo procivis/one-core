@@ -1,28 +1,24 @@
 use std::collections::HashMap;
 use std::ops::Add;
-use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer};
-use shared_types::{DidValue, KeyId, ProofId};
+use shared_types::{DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
-use url::Url;
 use uuid::Uuid;
 
+use super::draft20::model::OpenID4VP20AuthorizationRequest;
 use super::model::{
-    ClientIdScheme, CredentialSchemaBackgroundPropertiesRequestDTO,
-    CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    DidListItemResponseDTO, LdpVcAlgs, OpenID4VPAlgs, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, DidListItemResponseDTO, LdpVcAlgs, OpenID4VPAlgs,
     OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
     OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVcSdJwtAlgs,
-    OpenID4VPVerifierInteractionContent, OpenID4VpParams, ProvedCredential,
+    OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
-use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::{value_to_model_claims, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
@@ -40,10 +36,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{AuthenticationFn, ExtractPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -61,13 +54,7 @@ use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::service::oid4vp_draft20::proof_request::{
-    generate_authorization_request_client_id_scheme_did,
-    generate_authorization_request_client_id_scheme_verifier_attestation,
-    generate_authorization_request_client_id_scheme_x509_san_dns,
-};
-use crate::util::oidc::{determine_response_mode, map_to_openid4vp_format};
+use crate::util::oidc::map_to_openid4vp_format;
 
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
@@ -429,257 +416,7 @@ pub(crate) fn create_presentation_submission(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
-    base_url: &str,
-    openidvc_params: &OpenID4VpParams,
-    client_id: String,
-    interaction_id: InteractionId,
-    interaction_data: &OpenID4VPVerifierInteractionContent,
-    nonce: String,
-    proof: &Proof,
-    key_id: KeyId,
-    encryption_key_jwk: PublicKeyJwkDTO,
-    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
-    client_id_scheme: ClientIdScheme,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
-) -> Result<String, VerificationProtocolError> {
-    let params = if openidvc_params.use_request_uri {
-        get_params_with_request_uri(base_url, proof.id, client_id, client_id_scheme)
-    } else {
-        match client_id_scheme {
-            ClientIdScheme::RedirectUri => get_params_for_redirect_uri(
-                base_url,
-                openidvc_params,
-                client_id,
-                interaction_id,
-                nonce,
-                proof,
-                key_id,
-                encryption_key_jwk,
-                vp_formats,
-                interaction_data,
-            )?,
-            ClientIdScheme::X509SanDns => {
-                let token = generate_authorization_request_client_id_scheme_x509_san_dns(
-                    proof,
-                    interaction_data.to_owned(),
-                    &interaction_id,
-                    key_algorithm_provider,
-                    key_provider,
-                )
-                .await?;
-                get_params_with_request(token, client_id, client_id_scheme)
-            }
-            ClientIdScheme::VerifierAttestation => {
-                let token = generate_authorization_request_client_id_scheme_verifier_attestation(
-                    proof,
-                    interaction_data.to_owned(),
-                    &interaction_id,
-                    key_algorithm_provider,
-                    key_provider,
-                    did_method_provider,
-                )
-                .await?;
-                get_params_with_request(token, client_id, client_id_scheme)
-            }
-            ClientIdScheme::Did => {
-                let token = generate_authorization_request_client_id_scheme_did(
-                    proof,
-                    interaction_data.to_owned(),
-                    &interaction_id,
-                    key_algorithm_provider,
-                    key_provider,
-                    did_method_provider,
-                )
-                .await?;
-                get_params_with_request(token, client_id, client_id_scheme)
-            }
-        }
-    };
-
-    let encoded_params = serde_urlencoded::to_string(params)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-    Ok(encoded_params)
-}
-
-fn get_params_with_request_uri(
-    base_url: &str,
-    proof_id: ProofId,
-    client_id: String,
-    client_id_scheme: ClientIdScheme,
-) -> OpenID4VPAuthorizationRequestQueryParams {
-    OpenID4VPAuthorizationRequestQueryParams {
-        client_id,
-        request_uri: Some(format!(
-            "{base_url}/ssi/openid4vp/draft-20/{}/client-request",
-            proof_id
-        )),
-        client_id_scheme: Some(client_id_scheme),
-        state: None,
-        nonce: None,
-        response_type: None,
-        response_mode: None,
-        response_uri: None,
-        client_metadata: None,
-        client_metadata_uri: None,
-        presentation_definition: None,
-        presentation_definition_uri: None,
-        request: None,
-        redirect_uri: None,
-    }
-}
-
-fn get_params_with_request(
-    request: String,
-    client_id: String,
-    client_id_scheme: ClientIdScheme,
-) -> OpenID4VPAuthorizationRequestQueryParams {
-    OpenID4VPAuthorizationRequestQueryParams {
-        client_id,
-        request: Some(request),
-        client_id_scheme: Some(client_id_scheme),
-        state: None,
-        nonce: None,
-        response_type: None,
-        response_mode: None,
-        response_uri: None,
-        client_metadata: None,
-        client_metadata_uri: None,
-        presentation_definition: None,
-        presentation_definition_uri: None,
-        request_uri: None,
-        redirect_uri: None,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn get_params_for_redirect_uri(
-    base_url: &str,
-    openidvc_params: &OpenID4VpParams,
-    client_id: String,
-    interaction_id: InteractionId,
-    nonce: String,
-    proof: &Proof,
-    key_id: KeyId,
-    encryption_key_jwk: PublicKeyJwkDTO,
-    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
-    interaction_data: &OpenID4VPVerifierInteractionContent,
-) -> Result<OpenID4VPAuthorizationRequestQueryParams, VerificationProtocolError> {
-    let mut presentation_definition = None;
-    let mut presentation_definition_uri = None;
-    if openidvc_params.presentation_definition_by_value {
-        let pd = serde_json::to_string(&interaction_data.presentation_definition)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        presentation_definition = Some(pd);
-    } else {
-        presentation_definition_uri = Some(format!(
-            "{base_url}/ssi/openid4vp/draft-20/{}/presentation-definition",
-            proof.id
-        ));
-    }
-
-    let mut client_metadata = None;
-    let mut client_metadata_uri = None;
-    if openidvc_params.client_metadata_by_value {
-        let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(
-            key_id,
-            encryption_key_jwk,
-            vp_formats,
-        ))
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        client_metadata = Some(metadata);
-    } else {
-        client_metadata_uri = Some(format!(
-            "{base_url}/ssi/openid4vp/draft-20/{}/client-metadata",
-            proof.id
-        ));
-    }
-
-    Ok(OpenID4VPAuthorizationRequestQueryParams {
-        client_id: client_id.to_string(),
-        client_id_scheme: Some(ClientIdScheme::RedirectUri),
-        response_type: Some("vp_token".to_string()),
-        state: Some(interaction_id.to_string()),
-        nonce: Some(nonce),
-        response_mode: Some(determine_response_mode(proof)?),
-        response_uri: Some(client_id),
-        client_metadata,
-        client_metadata_uri,
-        presentation_definition,
-        presentation_definition_uri,
-        request: None,
-        request_uri: None,
-        redirect_uri: None,
-    })
-}
-
-impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPHolderInteractionData {
-    type Error = VerificationProtocolError;
-
-    fn try_from(value: OpenID4VPAuthorizationRequestQueryParams) -> Result<Self, Self::Error> {
-        let url_parse = |uri: String| {
-            Url::parse(&uri).map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
-        };
-
-        fn json_parse<T: for<'a> Deserialize<'a>>(
-            input: String,
-        ) -> Result<T, VerificationProtocolError> {
-            serde_json::from_str(&input)
-                .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
-        }
-
-        Ok(Self {
-            client_id: value.client_id,
-            client_id_scheme: value
-                .client_id_scheme
-                .unwrap_or(ClientIdScheme::RedirectUri),
-            response_type: value.response_type,
-            response_mode: value.response_mode,
-            response_uri: value.response_uri.map(url_parse).transpose()?,
-            state: value.state,
-            nonce: value.nonce,
-            client_metadata: value.client_metadata.map(json_parse).transpose()?,
-            client_metadata_uri: value.client_metadata_uri.map(url_parse).transpose()?,
-            presentation_definition: value.presentation_definition.map(json_parse).transpose()?,
-            presentation_definition_uri: value
-                .presentation_definition_uri
-                .map(url_parse)
-                .transpose()?,
-            redirect_uri: value.redirect_uri,
-            verifier_did: None,
-        })
-    }
-}
-
-impl From<OpenID4VPAuthorizationRequestParams> for OpenID4VPHolderInteractionData {
-    fn from(value: OpenID4VPAuthorizationRequestParams) -> Self {
-        Self {
-            client_id: value.client_id,
-            client_id_scheme: value
-                .client_id_scheme
-                .unwrap_or(ClientIdScheme::RedirectUri),
-            response_type: value.response_type,
-            response_mode: value.response_mode,
-            response_uri: value.response_uri,
-            state: value.state,
-            nonce: value.nonce,
-            client_metadata: value.client_metadata,
-            client_metadata_uri: value.client_metadata_uri,
-            presentation_definition: value.presentation_definition,
-            presentation_definition_uri: value.presentation_definition_uri,
-            redirect_uri: value.redirect_uri,
-            verifier_did: None,
-        }
-    }
-}
-
-pub fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+pub(crate) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
     T: for<'a> Deserialize<'a>,
@@ -876,7 +613,7 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
     }
 }
 
-impl OpenID4VPAuthorizationRequestParams {
+impl OpenID4VP20AuthorizationRequest {
     pub async fn as_signed_jwt(
         &self,
         did: &DidValue,
@@ -908,4 +645,37 @@ impl OpenID4VPAuthorizationRequestParams {
         };
         Ok(unsigned_jwt.tokenize(Some(auth_fn)).await?)
     }
+}
+
+pub(crate) fn map_credential_formats_to_presentation_format(
+    presented: &[PresentedCredential],
+) -> Result<(String, String), VerificationProtocolError> {
+    // MDOC credential(s) are sent as a MDOC presentation, using the MDOC formatter
+    if presented.len() == 1
+        && presented
+            .iter()
+            .all(|cred| cred.credential_schema.format == FormatType::Mdoc.to_string())
+    {
+        return Ok((FormatType::Mdoc.to_string(), "mso_mdoc".to_owned()));
+    }
+
+    // The SD_JWT presentations can contains only one credential
+    if presented.len() == 1
+        && presented.iter().all(|cred| {
+            cred.credential_schema.format == FormatType::SdJwt.to_string()
+                || cred.credential_schema.format == FormatType::SdJwtVc.to_string()
+        })
+    {
+        return Ok((FormatType::SdJwt.to_string(), "vc+sd-jwt".to_owned()));
+    }
+
+    if presented.iter().all(|cred| {
+        cred.credential_schema.format == FormatType::JsonLdClassic.to_string()
+            || cred.credential_schema.format == FormatType::JsonLdBbsPlus.to_string()
+    }) {
+        return Ok((FormatType::JsonLdClassic.to_string(), "ldp_vp".to_owned()));
+    }
+
+    // Fallback, handle all other formats via enveloped JWT
+    Ok((FormatType::Jwt.to_string(), "jwt_vp_json".to_owned()))
 }

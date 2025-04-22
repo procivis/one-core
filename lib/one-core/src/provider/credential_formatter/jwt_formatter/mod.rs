@@ -301,7 +301,11 @@ impl CredentialFormatter for JWTFormatter {
                 DidType::WebVh,
             ],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
-            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
+            proof_exchange_protocols: vec![
+                VerificationProtocolType::OpenId4VpDraft20,
+                VerificationProtocolType::OpenId4VpDraft25,
+                VerificationProtocolType::OpenId4VpProximityDraft00,
+            ],
             revocation_methods: vec![
                 RevocationType::None,
                 RevocationType::BitstringStatusList,

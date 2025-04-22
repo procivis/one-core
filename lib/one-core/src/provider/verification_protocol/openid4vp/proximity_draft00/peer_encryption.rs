@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::common_mapper::secret_slice;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct PeerEncryption {
+pub(crate) struct PeerEncryption {
     #[serde(with = "secret_slice")]
     sender_aes_key: SecretSlice<u8>,
     #[serde(with = "secret_slice")]
@@ -19,7 +19,7 @@ pub struct PeerEncryption {
 }
 
 impl PeerEncryption {
-    pub fn new(
+    pub(crate) fn new(
         sender_aes_key: SecretSlice<u8>,
         receiver_aes_key: SecretSlice<u8>,
         nonce: [u8; 12],
@@ -31,7 +31,7 @@ impl PeerEncryption {
         }
     }
 
-    pub fn encrypt<T>(&self, data: &T) -> anyhow::Result<Vec<u8>>
+    pub(crate) fn encrypt<T>(&self, data: &T) -> anyhow::Result<Vec<u8>>
     where
         T: Serialize,
     {
@@ -54,7 +54,7 @@ impl PeerEncryption {
             .context("AES encryption error")
     }
 
-    pub fn decrypt<T>(&self, ciphertext: &[u8]) -> anyhow::Result<T>
+    pub(crate) fn decrypt<T>(&self, ciphertext: &[u8]) -> anyhow::Result<T>
     where
         T: DeserializeOwned,
     {

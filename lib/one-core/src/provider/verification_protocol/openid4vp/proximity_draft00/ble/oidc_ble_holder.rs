@@ -12,8 +12,8 @@ use tokio::select;
 use uuid::Uuid;
 
 use super::{
-    BLEParse, BLEPeer, IdentityRequest, MessageSize, TransferSummaryReport, CONTENT_SIZE_UUID,
-    DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
+    BLEParse, BLEPeer, IdentityRequest, TransferSummaryReport, CONTENT_SIZE_UUID, DISCONNECT_UUID,
+    IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
     TRANSFER_SUMMARY_REPORT_UUID,
 };
 use crate::common_mapper::{get_or_create_did, DidRole};
@@ -30,15 +30,18 @@ use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::{
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::{
+    BleOpenId4VpResponse, PresentationSubmissionMappingDTO,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
-use crate::provider::verification_protocol::openid4vp::dto::{Chunk, ChunkExt, Chunks};
-use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp::model::{
-    BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, PresentationSubmissionMappingDTO,
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
+    Chunk, ChunkExt, Chunks, MessageSize,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, VerificationProtocolError,
 };
@@ -576,7 +579,7 @@ async fn read_presentation_request(
     connected_verifier: &BLEPeer,
     verification_fn: VerificationFn,
     ble_central: Arc<dyn BleCentral>,
-) -> Result<OpenID4VPAuthorizationRequestParams, VerificationProtocolError> {
+) -> Result<OpenID4VP20AuthorizationRequest, VerificationProtocolError> {
     let request_size: MessageSize =
         read(REQUEST_SIZE_UUID, connected_verifier, ble_central.clone())
             .parse()
@@ -661,7 +664,7 @@ async fn read_presentation_request(
                 ))
             })?;
 
-    let authz_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
+    let authz_request = Jwt::<OpenID4VP20AuthorizationRequest>::build_from_token(
         &decrypted_request_jwt,
         Some(&verification_fn),
         None,

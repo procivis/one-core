@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::BLEPeer;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
-    BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+    BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
 };
 
 /// Interaction data used for OpenID4VP over BLE
@@ -15,7 +16,7 @@ pub(crate) struct BLEOpenID4VPInteractionData {
     pub task_id: Uuid,
     pub peer: BLEPeer,
     pub identity_request_nonce: Option<String>,
-    pub openid_request: OpenID4VPAuthorizationRequestParams,
+    pub openid_request: OpenID4VP20AuthorizationRequest,
     pub presentation_submission: Option<BleOpenId4VpResponse>,
     pub presentation_definition: OpenID4VPPresentationDefinition,
 }
@@ -27,7 +28,7 @@ mod tests {
     use super::*;
     use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
     use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
-    use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
+    use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
     use crate::provider::verification_protocol::{
         deserialize_interaction_data, serialize_interaction_data,
     };
@@ -47,7 +48,7 @@ mod tests {
                 ),
             },
             identity_request_nonce: None,
-            openid_request: OpenID4VPAuthorizationRequestParams {
+            openid_request: OpenID4VP20AuthorizationRequest {
                 client_id: "client_id".to_string(),
                 client_id_scheme: None,
                 state: None,

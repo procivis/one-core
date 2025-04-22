@@ -8,6 +8,7 @@ use shared_types::DidValue;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
+use super::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::config::core_config::TransportType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
@@ -15,7 +16,7 @@ use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VPPresentationDefinition,
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -29,12 +30,12 @@ type ReceivePresentationFn<C, T> =
 type InteractionDataMapper<C, T> = fn(
     nonce: String,
     presentation_definition: OpenID4VPPresentationDefinition,
-    request: OpenID4VPAuthorizationRequestParams,
+    request: OpenID4VP20AuthorizationRequest,
     submission: T,
     context: Arc<C>,
 ) -> Result<Vec<u8>, VerificationProtocolError>;
 
-pub struct AsyncTransportHooks<C, T> {
+pub(crate) struct AsyncTransportHooks<C, T> {
     pub wallet_connect: BoxFuture<'static, Result<C, VerificationProtocolError>>,
     pub wallet_disconnect: fn(context: Arc<C>) -> BoxFuture<'static, ()>,
     pub wallet_reject: fn(context: Arc<C>) -> BoxFuture<'static, ()>,
@@ -43,7 +44,7 @@ pub struct AsyncTransportHooks<C, T> {
     pub interaction_data_from_response: InteractionDataMapper<C, T>,
 }
 
-pub struct AsyncVerifierFlowParams<'a> {
+pub(crate) struct AsyncVerifierFlowParams<'a> {
     pub proof: &'a Proof,
     pub presentation_definition: OpenID4VPPresentationDefinition,
     pub did: &'a DidValue,
@@ -55,13 +56,13 @@ pub struct AsyncVerifierFlowParams<'a> {
 }
 
 #[derive(Debug)]
-pub enum FlowState {
+pub(crate) enum FlowState {
     Cancelled,
     Rejected,
     Finished,
 }
 
-pub async fn async_verifier_flow<C, T>(
+pub(crate) async fn async_verifier_flow<C, T>(
     params: AsyncVerifierFlowParams<'_>,
     hooks: AsyncTransportHooks<C, T>,
     auth_fn: AuthenticationFn,
@@ -91,7 +92,7 @@ pub async fn async_verifier_flow<C, T>(
         })?;
 
     let nonce = utilities::generate_nonce();
-    let request = OpenID4VPAuthorizationRequestParams {
+    let request = OpenID4VP20AuthorizationRequest {
         nonce: Some(nonce.to_owned()),
         response_type: None,
         response_mode: None,
@@ -180,11 +181,11 @@ async fn send_request_and_receive_response<'a, C, T>(
 }
 
 /// Function that returns a `BoxFuture` that never completes.
-pub fn never<T>(_: T) -> BoxFuture<'static, ()> {
+pub(crate) fn never<T>(_: T) -> BoxFuture<'static, ()> {
     future::pending().boxed()
 }
 
-pub async fn set_proof_state_infallible(
+pub(crate) async fn set_proof_state_infallible(
     proof: &Proof,
     state: ProofStateEnum,
     error_metadata: Option<HistoryErrorMetadata>,

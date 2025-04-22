@@ -19,7 +19,8 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::draft25::mappers::encode_client_id_with_scheme;
+use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VP25AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
@@ -339,7 +340,7 @@ fn generate_authorization_request_params(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
     client_id_scheme: ClientIdScheme,
-) -> Result<OpenID4VP20AuthorizationRequest, VerificationProtocolError> {
+) -> Result<OpenID4VP25AuthorizationRequest, VerificationProtocolError> {
     let client_metadata = generate_client_metadata(proof, key_algorithm_provider, key_provider)?;
 
     let OpenID4VPVerifierInteractionContent {
@@ -359,11 +360,11 @@ fn generate_authorization_request_params(
         oidc_verifier_presentation_definition(proof, presentation_definition)
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    Ok(OpenID4VP20AuthorizationRequest {
+    let client_id = encode_client_id_with_scheme(client_id, client_id_scheme);
+    Ok(OpenID4VP25AuthorizationRequest {
         response_type: Some("vp_token".to_string()),
         response_mode: Some(determine_response_mode(proof)?),
         client_id,
-        client_id_scheme: Some(client_id_scheme),
         client_metadata: Some(client_metadata),
         presentation_definition: Some(presentation_definition),
         response_uri: Some(
@@ -372,7 +373,6 @@ fn generate_authorization_request_params(
         ),
         nonce: Some(nonce),
         state: Some(interaction_id.to_string()),
-        client_metadata_uri: None,
         presentation_definition_uri: None,
         redirect_uri: None,
     })

@@ -18,7 +18,10 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
-use crate::config::core_config::{self, TransportType};
+use super::dto::MessageSize;
+use super::peer_encryption::PeerEncryption;
+use super::{KeyAgreementKey, OpenID4VPProximityDraft00Params};
+use crate::config::core_config::{self, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
@@ -29,30 +32,32 @@ use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
-use crate::provider::credential_formatter::model::FormatPresentationCtx;
+use crate::provider::credential_formatter::model::{FormatPresentationCtx, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp::draft20::http::mappers::map_credential_formats_to_presentation_format;
 use crate::provider::verification_protocol::openid4vp::dto::OpenID4VPBleData;
-use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
+    map_credential_formats_to_presentation_format,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, OpenID4VpParams, PresentedCredential, UpdateResponse,
+    InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
-use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
-use crate::provider::verification_protocol::openid4vp::{FormatMapper, TypeToDescriptorMapper};
+use crate::provider::verification_protocol::openid4vp::{
+    get_presentation_definition_with_local_credentials, FormatMapper, TypeToDescriptorMapper,
+};
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, VerificationProtocolError,
 };
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::{Abort, BleWaiter};
 use crate::util::key_verification::KeyVerification;
 
@@ -73,8 +78,6 @@ pub const TRANSFER_SUMMARY_REPORT_UUID: &str = "0000000A-5026-444A-9E0E-D6F2450F
 pub const DISCONNECT_UUID: &str = "0000000B-5026-444A-9E0E-D6F2450F3A77";
 
 pub static OIDC_BLE_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
-
-pub type MessageSize = u16;
 
 // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#name-transfer-summary-report
 pub(crate) type TransferSummaryReport = Vec<u16>;
@@ -190,7 +193,7 @@ pub(crate) struct OpenID4VCBLE {
     key_provider: Arc<dyn KeyProvider>,
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
-    params: OpenID4VpParams,
+    params: OpenID4VPProximityDraft00Params,
 }
 
 impl OpenID4VCBLE {
@@ -205,7 +208,7 @@ impl OpenID4VCBLE {
         key_provider: Arc<dyn KeyProvider>,
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
-        params: OpenID4VpParams,
+        params: OpenID4VPProximityDraft00Params,
     ) -> Self {
         Self {
             proof_repository,
@@ -229,10 +232,52 @@ impl OpenID4VCBLE {
             && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
     }
 
+    pub(crate) async fn holder_get_presentation_definition(
+        &self,
+        proof: &Proof,
+        context: serde_json::Value,
+        storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
+        let interaction_data: BLEOpenID4VPInteractionData =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        let presentation_definition = interaction_data
+            .openid_request
+            .presentation_definition
+            .ok_or(VerificationProtocolError::Failed(
+                "Presentation definition not found".to_string(),
+            ))?;
+
+        get_presentation_definition_with_local_credentials(
+            presentation_definition,
+            proof,
+            None,
+            storage_access,
+            &self.config,
+        )
+        .await
+    }
+
+    pub(crate) fn holder_get_holder_binding_context(
+        &self,
+        _proof: &Proof,
+        context: serde_json::Value,
+    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
+        let interaction_data: BLEOpenID4VPInteractionData =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        Ok(Some(HolderBindingCtx {
+            nonce: interaction_data.nonce,
+            audience: interaction_data.client_id,
+        }))
+    }
+
     pub(crate) async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
+        _storage_access: &StorageAccess,
+        _transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         if !self.holder_can_handle(&url) {
             return Err(VerificationProtocolError::Failed(
@@ -295,7 +340,7 @@ impl OpenID4VCBLE {
         let proof_id = Uuid::new_v4().into();
         let mut proof = proof_from_handle_invitation(
             &proof_id,
-            "OPENID4VP_DRAFT20",
+            VerificationProtocolType::OpenId4VpProximityDraft00.as_ref(),
             None,
             None,
             interaction,
@@ -474,7 +519,7 @@ impl OpenID4VCBLE {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn verifier_share_proof(
+    pub(super) async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -484,7 +529,7 @@ impl OpenID4VCBLE {
         key_agreement: KeyAgreementKey,
         cancellation_token: CancellationToken,
         callback: Option<Shared<BoxFuture<'static, ()>>>,
-    ) -> Result<String, VerificationProtocolError> {
+    ) -> Result<Url, VerificationProtocolError> {
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
             interaction_id,
@@ -552,7 +597,7 @@ impl OpenID4VCBLE {
             )
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-        ble_verifier
+        let url = ble_verifier
             .share_proof(
                 presentation_definition,
                 proof.to_owned(),
@@ -564,10 +609,15 @@ impl OpenID4VCBLE {
                 callback,
                 &self.params.url_scheme,
             )
-            .await
+            .await?;
+
+        Url::parse(&url).map_err(|e| VerificationProtocolError::Failed(e.to_string()))
     }
 
-    pub(crate) async fn retract_proof(&self) -> Result<(), VerificationProtocolError> {
+    pub(crate) async fn retract_proof(
+        &self,
+        _proof: &Proof,
+    ) -> Result<(), VerificationProtocolError> {
         self.ble
             .as_ref()
             .ok_or_else(|| {

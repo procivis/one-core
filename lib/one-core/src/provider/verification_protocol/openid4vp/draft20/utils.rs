@@ -5,6 +5,10 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use super::model::{
+    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams,
+    OpenID4VP20HolderInteractionData,
+};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -12,12 +16,12 @@ use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::openid4vp::draft20::http::x509::extract_x5c_san_dns;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData, OpenID4VpParams,
+    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4Vp20Params,
     OpenID4VpPresentationFormat,
 };
+use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
+use crate::provider::verification_protocol::openid4vp::x509::extract_x5c_san_dns;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::util::key_verification::KeyVerification;
 use crate::util::x509::is_dns_name_matching;
@@ -37,20 +41,12 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     serde_json::to_vec(&dto).map_err(VerificationProtocolError::JsonError)
 }
 
-fn parse_referenced_data_from_unsigned_token(
-    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
-) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
-    let result: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
-    assert!(result.verifier_did.is_none());
-    Ok(result)
-}
-
 async fn parse_referenced_data_from_x509_san_dns_token(
-    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
+    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     x509_ca_certificate: &str,
-) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
+) -> Result<(OpenID4VP20AuthorizationRequest, Option<String>), VerificationProtocolError> {
     let x5c = request_token
         .header
         .x5c
@@ -95,18 +91,18 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
-
     // The response_uri must match client_id
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-5.7-12.2.1
-    if response_content
+    if request_token
+        .payload
+        .custom
         .response_uri
         .as_ref()
         .is_none_or(|response_uri| {
             !response_uri.domain().is_some_and(|response_domain| {
-                response_content.client_id == response_domain
+                request_token.payload.custom.client_id == response_domain
                     || is_dns_name_matching(
-                        &format!("*.{}", response_content.client_id),
+                        &format!("*.{}", request_token.payload.custom.client_id),
                         response_domain,
                     )
             })
@@ -117,18 +113,14 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         ));
     }
 
-    Ok(OpenID4VPHolderInteractionData {
-        client_id_scheme: ClientIdScheme::X509SanDns,
-        verifier_did: Some(did_value.to_string()),
-        ..response_content
-    })
+    Ok((request_token.payload.custom, Some(did_value.to_string())))
 }
 
 async fn parse_referenced_data_from_did_signed_token(
-    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
+    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
+) -> Result<(OpenID4VP20AuthorizationRequest, Option<String>), VerificationProtocolError> {
     let client_id = request_token.payload.custom.client_id.clone();
 
     let Some(kid) = request_token.header.key_id.clone() else {
@@ -174,21 +166,14 @@ async fn parse_referenced_data_from_did_signed_token(
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
-
-    Ok(OpenID4VPHolderInteractionData {
-        client_id: client_id.clone(),
-        client_id_scheme: ClientIdScheme::Did,
-        verifier_did: Some(client_id),
-        ..response_content
-    })
+    Ok((request_token.payload.custom, Some(verifier_did.to_string())))
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
-    request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams>,
+    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
+) -> Result<(OpenID4VP20AuthorizationRequest, Option<String>), VerificationProtocolError> {
     let attestation_jwt = request_token
         .header
         .jwt
@@ -245,14 +230,15 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
     validate_against_redirect_uris(
         &attestation_jwt.payload.custom.redirect_uris,
-        response_content.redirect_uri.as_deref(),
+        request_token.payload.custom.redirect_uri.as_deref(),
     )?;
     validate_against_redirect_uris(
         &attestation_jwt.payload.custom.redirect_uris,
-        response_content
+        request_token
+            .payload
+            .custom
             .response_uri
             .as_ref()
             .map(|url| url.as_str()),
@@ -265,45 +251,25 @@ async fn parse_referenced_data_from_verifier_attestation_token(
             "missing `sub` in attestation JWT token".to_string(),
         ))?;
 
-    let verifier_did = attestation_jwt.payload.issuer;
-
-    Ok(OpenID4VPHolderInteractionData {
-        client_id,
-        client_id_scheme: ClientIdScheme::VerifierAttestation,
-        verifier_did,
-        ..response_content
-    })
+    Ok((
+        OpenID4VP20AuthorizationRequest {
+            client_id,
+            client_id_scheme: Some(ClientIdScheme::VerifierAttestation),
+            ..request_token.payload.custom
+        },
+        attestation_jwt.payload.issuer,
+    ))
 }
 
-fn validate_against_redirect_uris(
-    redirect_uris: &[String],
-    uri: Option<&str>,
-) -> Result<(), VerificationProtocolError> {
-    if redirect_uris.is_empty() {
-        return Ok(());
-    }
-
-    if let Some(uri) = uri {
-        if !redirect_uris.iter().any(|v| v == uri) {
-            return Err(VerificationProtocolError::Failed(
-                "redirect_uri or response_uri is not allowed by verifier_attestation token"
-                    .to_string(),
-            ));
-        }
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn interaction_data_from_query(
+pub(crate) async fn interaction_data_from_openid4vp_20_query(
     query: &str,
     client: &Arc<dyn HttpClient>,
     allow_insecure_http_transport: bool,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-    params: &OpenID4VpParams,
-) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
-    let query_params: OpenID4VPAuthorizationRequestQueryParams = serde_qs::from_str(query)
+    params: &OpenID4Vp20Params,
+) -> Result<OpenID4VP20HolderInteractionData, VerificationProtocolError> {
+    let query_params: OpenID4VP20AuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
     let mut request = query_params.request.to_owned();
@@ -345,10 +311,11 @@ pub(crate) async fn interaction_data_from_query(
         }
     }
 
-    let mut interaction_data: OpenID4VPHolderInteractionData = query_params.try_into()?;
+    let interaction_data: OpenID4VP20AuthorizationRequest = query_params.try_into()?;
+    let mut interaction_data: OpenID4VP20HolderInteractionData = interaction_data.into();
 
     if let Some(token) = request {
-        let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
+        let request_token: DecomposedToken<OpenID4VP20AuthorizationRequest> =
             Jwt::decompose_token(&token)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
@@ -378,23 +345,23 @@ pub(crate) async fn interaction_data_from_query(
             tracing::warn!("`aud` claim missing in request JWT payload");
         }
 
-        let referenced_params = match &interaction_data.client_id_scheme {
+        let (referenced_params, verifier_did) = match &interaction_data.client_id_scheme {
             ClientIdScheme::VerifierAttestation => {
                 parse_referenced_data_from_verifier_attestation_token(
                     request_token,
                     key_algorithm_provider,
                     did_method_provider,
                 )
-                .await
+                .await?
             }
-            ClientIdScheme::RedirectUri => parse_referenced_data_from_unsigned_token(request_token),
+            ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
             ClientIdScheme::Did => {
                 parse_referenced_data_from_did_signed_token(
                     request_token,
                     key_algorithm_provider,
                     did_method_provider,
                 )
-                .await
+                .await?
             }
             ClientIdScheme::X509SanDns => {
                 parse_referenced_data_from_x509_san_dns_token(
@@ -407,9 +374,9 @@ pub(crate) async fn interaction_data_from_query(
                         ),
                     )?,
                 )
-                .await
+                .await?
             }
-        }?;
+        };
 
         // client_id from the query params must match client_id inisde the token
         if referenced_params.client_id != interaction_data.client_id {
@@ -419,7 +386,8 @@ pub(crate) async fn interaction_data_from_query(
         }
 
         // use referenced params
-        interaction_data = referenced_params;
+        interaction_data = referenced_params.into();
+        interaction_data.verifier_did = verifier_did;
     }
 
     if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()
@@ -488,7 +456,7 @@ pub(crate) async fn interaction_data_from_query(
 }
 
 pub(crate) fn validate_interaction_data(
-    interaction_data: &OpenID4VPHolderInteractionData,
+    interaction_data: &OpenID4VP20HolderInteractionData,
 ) -> Result<(), VerificationProtocolError> {
     if interaction_data.redirect_uri.is_some() {
         return Err(VerificationProtocolError::InvalidRequest(

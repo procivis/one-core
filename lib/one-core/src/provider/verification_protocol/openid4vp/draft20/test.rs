@@ -11,8 +11,8 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::OpenID4VCHTTP;
-use crate::config::core_config::{FormatType, KeyAlgorithmType};
+use super::OpenID4VP20HTTP;
+use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
@@ -34,12 +34,12 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
     OpenID4VCRedirectUriParams, OpenID4VPAlgs, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition, OpenID4VpParams,
+    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition, OpenID4Vp20Params,
     OpenID4VpPresentationFormat, ShareResponse,
 };
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
+    deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::storage_proxy::MockStorageProxy;
@@ -51,11 +51,11 @@ struct TestInputs {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
-    pub params: Option<OpenID4VpParams>,
+    pub params: Option<OpenID4Vp20Params>,
 }
 
-fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
-    OpenID4VCHTTP::new(
+fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
+    OpenID4VP20HTTP::new(
         Some("http://base_url".to_string()),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.did_method_provider),
@@ -65,11 +65,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
         inputs
             .params
             .unwrap_or(generic_params(ClientIdScheme::RedirectUri)),
+        Arc::new(CoreConfig::default()),
     )
 }
 
-fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4VpParams {
-    OpenID4VpParams {
+fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp20Params {
+    OpenID4Vp20Params {
         client_metadata_by_value: false,
         presentation_definition_by_value: false,
         allow_insecure_http_transport: true,
@@ -220,6 +221,7 @@ async fn test_share_proof() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            None,
             ClientIdScheme::RedirectUri,
         )
         .await
@@ -319,6 +321,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            None,
             ClientIdScheme::RedirectUri,
         )
         .await
@@ -385,7 +388,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
 #[tokio::test]
 async fn test_share_proof_with_use_request_uri() {
     let protocol = setup_protocol(TestInputs {
-        params: Some(OpenID4VpParams {
+        params: Some(OpenID4Vp20Params {
             use_request_uri: true,
             ..generic_params(ClientIdScheme::RedirectUri)
         }),
@@ -476,6 +479,7 @@ async fn test_share_proof_with_use_request_uri() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            None,
             ClientIdScheme::Did,
         )
         .await
@@ -510,7 +514,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
 
     let protocol = setup_protocol(TestInputs {
         formatter_provider,
-        params: Some(OpenID4VpParams {
+        params: Some(OpenID4Vp20Params {
             use_request_uri: true,
             ..generic_params(ClientIdScheme::RedirectUri)
         }),
@@ -542,6 +546,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            None,
             ClientIdScheme::RedirectUri,
         )
         .await
@@ -599,7 +604,12 @@ async fn test_handle_invitation_proof_success() {
         .returning(move |request| Ok(request.id));
 
     protocol
-        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy)
+        .holder_handle_invitation(
+            url,
+            dummy_organisation(None),
+            &storage_proxy,
+            "HTTP".to_string(),
+        )
         .await
         .unwrap();
 
@@ -634,6 +644,7 @@ async fn test_handle_invitation_proof_success() {
             url_using_uri_instead_of_values,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap();
@@ -659,7 +670,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
         .mount(&mock_server)
         .await;
 
-    let url: Url = format!("openid4vp://?client_id={client_id}&request_uri={client_request_uri}",)
+    let url: Url = format!("openid4vp://?client_id={client_id}&client_id_scheme=redirect_uri&request_uri={client_request_uri}",)
         .parse()
         .unwrap();
 
@@ -670,7 +681,12 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
         .returning(move |request| Ok(request.id));
 
     protocol
-        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy)
+        .holder_handle_invitation(
+            url,
+            dummy_organisation(None),
+            &storage_proxy,
+            "HTTP".to_string(),
+        )
         .await
         .unwrap();
 }
@@ -702,7 +718,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(key_alg))));
 
     let protocol = setup_protocol(TestInputs {
-        params: Some(generic_params(ClientIdScheme::RedirectUri)),
+        params: Some(generic_params(ClientIdScheme::Did)),
         did_method_provider,
         key_algorithm_provider,
         ..Default::default()
@@ -728,9 +744,11 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         .mount(&mock_server)
         .await;
 
-    let url: Url = format!("openid4vp://?client_id={client_id}&request_uri={client_request_uri}",)
-        .parse()
-        .unwrap();
+    let url: Url = format!(
+        "openid4vp://?client_id={client_id}&client_id_scheme=did&request_uri={client_request_uri}",
+    )
+    .parse()
+    .unwrap();
 
     let mut storage_proxy = MockStorageProxy::default();
     storage_proxy
@@ -745,7 +763,12 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         .returning(move |request| Ok(request.id));
 
     protocol
-        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy)
+        .holder_handle_invitation(
+            url,
+            dummy_organisation(None),
+            &storage_proxy,
+            "HTTP".to_string(),
+        )
         .await
         .unwrap();
 }
@@ -785,6 +808,7 @@ async fn test_handle_invitation_proof_failed() {
             incorrect_response_type,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -796,7 +820,12 @@ async fn test_handle_invitation_proof_failed() {
     let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                             , callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .holder_handle_invitation(missing_nonce, dummy_organisation(None), &storage_proxy)
+        .holder_handle_invitation(
+            missing_nonce,
+            dummy_organisation(None),
+            &storage_proxy,
+            "HTTP".to_string(),
+        )
         .await
         .unwrap_err();
     assert!(matches!(
@@ -811,6 +840,7 @@ async fn test_handle_invitation_proof_failed() {
             incorrect_client_id_scheme,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -826,6 +856,7 @@ async fn test_handle_invitation_proof_failed() {
             incorrect_response_mode,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -841,6 +872,7 @@ async fn test_handle_invitation_proof_failed() {
             incorrect_client_id_scheme,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -857,6 +889,7 @@ async fn test_handle_invitation_proof_failed() {
             missing_metadata_field,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -872,6 +905,7 @@ async fn test_handle_invitation_proof_failed() {
             both_client_metadata_and_uri_specified,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -887,6 +921,7 @@ async fn test_handle_invitation_proof_failed() {
             both_presentation_definition_and_uri_specified,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -896,7 +931,7 @@ async fn test_handle_invitation_proof_failed() {
     ));
 
     let protocol_https_only = setup_protocol(TestInputs {
-        params: Some(OpenID4VpParams {
+        params: Some(OpenID4Vp20Params {
             allow_insecure_http_transport: false,
             ..generic_params(ClientIdScheme::RedirectUri)
         }),
@@ -911,6 +946,7 @@ async fn test_handle_invitation_proof_failed() {
             client_metadata_uri_is_not_https,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -927,6 +963,7 @@ async fn test_handle_invitation_proof_failed() {
             presentation_definition_uri_is_not_https,
             dummy_organisation(None),
             &storage_proxy,
+            "HTTP".to_string(),
         )
         .await
         .unwrap_err();
@@ -983,7 +1020,7 @@ async fn test_can_handle_presentation_success_with_custom_url_scheme() {
     });
 
     let test_url = format!("{url_scheme}://?response_type=vp_token&nonce=123&client_id_scheme=redirect_uri&client_id=abc&client_metadata=foo&response_mode=direct_post&response_uri=uri&presentation_definition=def");
-    assert!(protocol.can_handle(&test_url.parse().unwrap()))
+    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[test]
@@ -997,7 +1034,7 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
     });
 
     let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
-    assert!(!protocol.can_handle(&test_url.parse().unwrap()))
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[tokio::test]
@@ -1043,6 +1080,7 @@ async fn test_share_proof_custom_scheme() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            None,
             ClientIdScheme::RedirectUri,
         )
         .await
@@ -1050,8 +1088,8 @@ async fn test_share_proof_custom_scheme() {
     assert!(url.starts_with(url_scheme));
 }
 
-fn test_params(presentation_url_scheme: &str) -> OpenID4VpParams {
-    OpenID4VpParams {
+fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
+    OpenID4Vp20Params {
         client_metadata_by_value: false,
         presentation_definition_by_value: false,
         allow_insecure_http_transport: true,

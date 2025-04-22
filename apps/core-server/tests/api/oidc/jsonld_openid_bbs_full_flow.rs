@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+use one_core::config::core_config::VerificationProtocolType;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
 use one_crypto::hasher::sha256::SHA256;
@@ -17,18 +18,40 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
-async fn test_openid4vc_jsonld_bbsplus_flow_bitstring_json_ld_classic() {
+async fn test_openid4vc_jsonld_bbsplus_flow_bitstring_json_ld_classic_openid4vp_draft20() {
     let additional_config = r#"revocation:
   BITSTRINGSTATUSLIST:
     params:
       public:
         format: 'JSON_LD_CLASSIC'"#
         .to_string();
-    test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST", Some(additional_config)).await
+    test_openid4vc_jsonld_bbsplus_flow(
+        "BITSTRINGSTATUSLIST",
+        VerificationProtocolType::OpenId4VpDraft20,
+        Some(additional_config),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn test_openid4vc_jsonld_bbsplus_flow_bitstring_json_ld_classic_openid4vp_draft25() {
+    let additional_config = r#"revocation:
+  BITSTRINGSTATUSLIST:
+    params:
+      public:
+        format: 'JSON_LD_CLASSIC'"#
+        .to_string();
+    test_openid4vc_jsonld_bbsplus_flow(
+        "BITSTRINGSTATUSLIST",
+        VerificationProtocolType::OpenId4VpDraft25,
+        Some(additional_config),
+    )
+    .await
 }
 
 async fn test_openid4vc_jsonld_bbsplus_flow(
     revocation_method: &str,
+    verification_protocol: VerificationProtocolType,
     additional_config: Option<String>,
 ) {
     // GIVEN
@@ -172,10 +195,19 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         .await;
 
     let interaction_id = Uuid::new_v4();
+    let response_uri = match verification_protocol {
+        VerificationProtocolType::OpenId4VpDraft20 => {
+            format!("{base_url}/ssi/openid4vp/draft-20/response")
+        }
+        VerificationProtocolType::OpenId4VpDraft25 => {
+            format!("{base_url}/ssi/openid4vp/draft-25/response")
+        }
+        _ => unreachable!(),
+    };
     let proof_interaction_data = json!({
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
-        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "client_id": response_uri,
+        "response_uri": response_uri,
         "nonce": nonce,
         "presentation_definition": {
             "id": interaction_id.to_string(),
@@ -233,7 +265,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             Some(&server_remote_holder_did),
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VP_DRAFT20",
+            verification_protocol.as_ref(),
             Some(&proof_interaction),
             server_local_verifier_key,
         )
@@ -332,7 +364,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         "state": proof_interaction.id,
         "nonce": nonce,
         "client_id_scheme": "redirect_uri",
-        "client_id": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "client_id": response_uri,
         "client_metadata": {
             "jwks": {
                 "keys": [{
@@ -373,7 +405,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             "client_id_scheme": "redirect_uri"
         },
         "response_mode": "direct_post",
-        "response_uri": format!("{base_url}/ssi/openid4vp/draft-20/response"),
+        "response_uri": response_uri,
         "presentation_definition": {
             "id": proof_interaction.id,
             "input_descriptors": [{
@@ -431,7 +463,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             Some(&holder_local_holder_did),
             None,
             ProofStateEnum::Requested,
-            "OPENID4VP_DRAFT20",
+            verification_protocol.as_ref(),
             Some(&holder_interaction),
             holder_local_holer_key,
         )

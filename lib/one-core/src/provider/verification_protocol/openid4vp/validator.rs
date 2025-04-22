@@ -21,6 +21,7 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::vec_last_position_from_token_path;
 use crate::provider::verification_protocol::openid4vp::model::ValidatedProofClaimDTO;
@@ -99,6 +100,25 @@ fn is_revocation_credential(credential: &DetailCredential) -> bool {
             && credential.claims.claims.contains_key("statusPurpose"))
 }
 
+pub(super) fn validate_against_redirect_uris(
+    redirect_uris: &[String],
+    uri: Option<&str>,
+) -> Result<(), VerificationProtocolError> {
+    if redirect_uris.is_empty() {
+        return Ok(());
+    }
+
+    if let Some(uri) = uri {
+        if !redirect_uris.iter().any(|v| v == uri) {
+            return Err(VerificationProtocolError::Failed(
+                "redirect_uri or response_uri is not allowed by verifier_attestation token"
+                    .to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
     presentation: Presentation,

@@ -84,7 +84,7 @@ mod test_issuance;
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 
-pub(crate) struct OpenID4VCHTTP {
+pub(crate) struct OpenID4VP20HTTP {
     client: Arc<dyn HttpClient>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -100,7 +100,7 @@ pub(crate) struct OpenID4VCHTTP {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl OpenID4VCHTTP {
+impl OpenID4VP20HTTP {
     pub(crate) fn new(
         base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository>,

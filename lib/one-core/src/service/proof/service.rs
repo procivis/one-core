@@ -59,7 +59,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::verification_protocol::openid4vp::model::{OpenID4VpParams, ShareResponse};
+use crate::provider::verification_protocol::openid4vp::model::{OpenID4Vp20Params, ShareResponse};
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -304,6 +304,7 @@ impl ProofService {
             .verification_protocol
             .get_fields(&request.exchange)?
             .r#type;
+
         if exchange_type == VerificationProtocolType::ScanToVerify {
             return self
                 .handle_scan_to_verify(
@@ -464,7 +465,7 @@ impl ProofService {
             MissingProviderError::ExchangeProtocol(proof.exchange.to_owned()),
         )?;
 
-        let exchange_params: OpenID4VpParams =
+        let exchange_params: OpenID4Vp20Params =
             self.config.verification_protocol.get(&proof.exchange)?;
 
         let client_id_scheme = request

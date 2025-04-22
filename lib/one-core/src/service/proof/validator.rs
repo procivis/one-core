@@ -7,7 +7,9 @@ use crate::config::core_config::{
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VpParams;
+use crate::provider::verification_protocol::openid4vp::model::{
+    OpenID4Vp20Params, OpenID4Vp25Params,
+};
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -111,31 +113,34 @@ pub(super) fn validate_redirect_uri(
     config: &VerificationProtocolConfig,
 ) -> Result<(), ServiceError> {
     let fields = config.get_fields(exchange)?;
-    match fields.r#type {
+
+    let redirect_uri_config = match fields.r#type {
         VerificationProtocolType::OpenId4VpDraft20 => {
-            if let Some(redirect_uri) = redirect_uri {
-                let exchange_params: OpenID4VpParams = config.get(exchange)?;
-
-                if !exchange_params.redirect_uri.enabled {
-                    return Err(ValidationError::InvalidRedirectUri.into());
-                }
-
-                let url =
-                    Url::parse(redirect_uri).map_err(|_| ValidationError::InvalidRedirectUri)?;
-
-                if !exchange_params
-                    .redirect_uri
-                    .allowed_schemes
-                    .contains(&url.scheme().to_string())
-                {
-                    return Err(ValidationError::InvalidRedirectUri.into());
-                }
-            }
-
-            Ok(())
+            let exchange_params: OpenID4Vp20Params = config.get(exchange)?;
+            Some(exchange_params.redirect_uri)
         }
-        _ => Ok(()),
+        VerificationProtocolType::OpenId4VpDraft25 => {
+            let exchange_params: OpenID4Vp25Params = config.get(exchange)?;
+            Some(exchange_params.redirect_uri)
+        }
+        _ => None,
+    };
+
+    if let Some(redirect_uri) = redirect_uri {
+        let Some(config) = redirect_uri_config else {
+            return Err(ValidationError::InvalidRedirectUri.into());
+        };
+
+        if !config.enabled {
+            return Err(ValidationError::InvalidRedirectUri.into());
+        }
+        let url = Url::parse(redirect_uri).map_err(|_| ValidationError::InvalidRedirectUri)?;
+
+        if !config.allowed_schemes.contains(&url.scheme().to_string()) {
+            return Err(ValidationError::InvalidRedirectUri.into());
+        }
     }
+    Ok(())
 }
 
 pub(super) fn validate_verification_key_storage_compatibility(

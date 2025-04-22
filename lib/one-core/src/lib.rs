@@ -26,6 +26,7 @@ use service::did::DidService;
 use service::jsonld::JsonLdService;
 use service::oid4vci_draft13::OID4VCIDraft13Service;
 use service::oid4vp_draft20::OID4VPDraft20Service;
+use service::oid4vp_draft25::OID4VPDraft25Service;
 use service::organisation::OrganisationService;
 use service::proof::ProofService;
 use service::proof_schema::ProofSchemaService;
@@ -114,6 +115,7 @@ pub struct OneCore {
     pub revocation_list_service: RevocationListService,
     pub oid4vci_draft13_service: OID4VCIDraft13Service,
     pub oid4vp_draft20_service: OID4VPDraft20Service,
+    pub oid4vp_draft25_service: OID4VPDraft25Service,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub task_service: TaskService,
@@ -518,6 +520,19 @@ impl OneCore {
                 key_algorithm_provider.clone(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
+                data_provider.get_credential_repository(),
+                data_provider.get_proof_repository(),
+                data_provider.get_key_repository(),
+                key_provider.clone(),
+                config.clone(),
+                data_provider.get_did_repository(),
+                formatter_provider.clone(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                revocation_method_provider.clone(),
+                data_provider.get_validity_credential_repository(),
+            ),
+            oid4vp_draft25_service: OID4VPDraft25Service::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_key_repository(),

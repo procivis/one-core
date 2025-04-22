@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use openid4vci_draft13::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO,
 };
-use openid4vci_draft13::openidvc_http::OpenID4VCHTTP;
+use openid4vci_draft13::openidvc_http::OpenID4VP20HTTP;
 use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::CredentialId;
@@ -87,7 +87,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     params.url_scheme.to_string(),
                 )?;
 
-                let http = OpenID4VCHTTP::new(
+                let http = OpenID4VP20HTTP::new(
                     core_base_url.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),

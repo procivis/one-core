@@ -111,6 +111,20 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         redirectUri:
                             enabled: true
                             allowedSchemes: [ https ]
+            OPENID4VP_DRAFT25:
+                display: 'display'
+                order: 2
+                type: 'OPENID4VP_DRAFT25'
+                params:
+                    public:
+                        verifier:
+                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+                            defaultClientIdScheme: verifier_attestation
+                        holder:
+                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+                        redirectUri:
+                            enabled: true
+                            allowedSchemes: [ https ]
             ISO_MDL:
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'
@@ -396,7 +410,10 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             crate::config::core_config::DidType::WebVh,
         ],
         issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
-        proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
+        proof_exchange_protocols: vec![
+            VerificationProtocolType::OpenId4VpDraft20,
+            VerificationProtocolType::OpenId4VpDraft25,
+        ],
         revocation_methods: vec![
             RevocationType::None,
             RevocationType::BitstringStatusList,

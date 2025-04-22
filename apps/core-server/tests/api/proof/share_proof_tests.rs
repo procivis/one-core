@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
+use one_core::config::core_config::VerificationProtocolType;
 use one_core::model::history::HistoryAction;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::Value;
@@ -140,7 +141,7 @@ async fn test_share_proof_success_mdoc() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VP_DRAFT20",
+            VerificationProtocolType::OpenId4VpDraft20.as_ref(),
             None,
             key,
         )

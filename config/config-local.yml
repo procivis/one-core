@@ -57,6 +57,12 @@ verificationProtocol:
       public:
         redirectUri:
           allowedSchemes: ["http", "https"]
+  OPENID4VP_DRAFT25:
+    params:
+      public:
+        allowInsecureHttpTransport: true
+        redirectUri:
+          allowedSchemes: ["http", "https"]
 keyStorage:
   INTERNAL:
     params:

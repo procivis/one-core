@@ -8,7 +8,7 @@ use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::OpenID4VCHTTP;
+use super::OpenID4VP20HTTP;
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -200,7 +200,7 @@ async fn test_issuer_submit_succeeds() {
             }))
         });
 
-    let provider = OpenID4VCHTTP::new(
+    let provider = OpenID4VP20HTTP::new(
         Some("http://example.com/".to_string()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
@@ -378,7 +378,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         })
         .return_once(|_| Ok(()));
 
-    let service = OpenID4VCHTTP::new(
+    let service = OpenID4VP20HTTP::new(
         Some("https://example.com/test/".to_string()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
@@ -563,7 +563,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
     );
 
-    let service = OpenID4VCHTTP::new(
+    let service = OpenID4VP20HTTP::new(
         Some("https://example.com/test/".to_string()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
@@ -657,7 +657,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
     );
 
-    let service = OpenID4VCHTTP::new(
+    let service = OpenID4VP20HTTP::new(
         Some("base_url".to_string()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),

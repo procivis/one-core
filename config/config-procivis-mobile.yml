@@ -37,7 +37,12 @@ verificationProtocol:
   ISO_MDL:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
-    order: 3
+    order: 4
+  OPENID4VP_PROXIMITY_DRAFT00:
+    display: "exchange.openid00_proximity"
+    order: 5
+    type: "OPENID4VP_PROXIMITY_DRAFT00"
+    params: {}
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"

@@ -25,26 +25,28 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::mqtt::model::{
-    MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
-};
-use crate::provider::verification_protocol::openid4vp::ble_draft00::mqtt::{
-    generate_session_keys, ConfigParams, OpenId4VcMqtt,
-};
-use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
-    OpenID4VCRedirectUriParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPPresentationDefinition, OpenID4VpParams,
+    ClientIdScheme, OpenID4VPPresentationDefinition,
 };
-use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
+    MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::{
+    generate_session_keys, ConfigParams, OpenId4VcMqtt,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
+    KeyAgreementKey, OpenID4VPProximityDraft00Params,
+};
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
+use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 #[derive(Default)]
@@ -86,33 +88,11 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
                 .parse()
                 .unwrap(),
         },
-        OpenID4VpParams {
-            client_metadata_by_value: false,
-            presentation_definition_by_value: false,
-            allow_insecure_http_transport: true,
-            use_request_uri: false,
+        OpenID4VPProximityDraft00Params {
             url_scheme: inputs
                 .presentation_url_scheme
                 .unwrap_or("openid4vp")
                 .to_string(),
-            x509_ca_certificate: None,
-            holder: OpenID4VCPresentationHolderParams {
-                supported_client_id_schemes: vec![
-                    ClientIdScheme::RedirectUri,
-                    ClientIdScheme::VerifierAttestation,
-                ],
-            },
-            verifier: OpenID4VCPresentationVerifierParams {
-                default_client_id_scheme: ClientIdScheme::RedirectUri,
-                supported_client_id_schemes: vec![
-                    ClientIdScheme::RedirectUri,
-                    ClientIdScheme::VerifierAttestation,
-                ],
-            },
-            redirect_uri: OpenID4VCRedirectUriParams {
-                enabled: true,
-                allowed_schemes: vec!["https".to_string()],
-            },
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
@@ -282,7 +262,7 @@ async fn test_handle_invitation_success() {
     let (verifier_key, verifier_public_key) = generate_verifier_key();
     let holder_identity_request = Arc::new(Mutex::new(None));
     let handle = holder_identity_request.clone();
-    let request = OpenID4VPAuthorizationRequestParams {
+    let request = OpenID4VP20AuthorizationRequest {
         client_id: client_id.to_string(),
         nonce: Some("nonce".to_string()),
         presentation_definition: Some(OpenID4VPPresentationDefinition {
@@ -345,6 +325,8 @@ async fn test_handle_invitation_success() {
             .parse()
             .unwrap();
 
+    let mock_storage_access = MockStorageProxy::default();
+
     let protocol = setup_protocol(TestInputs {
         mqtt_client,
         interaction_repository,
@@ -354,7 +336,12 @@ async fn test_handle_invitation_success() {
         ..Default::default()
     });
     protocol
-        .holder_handle_invitation(valid, dummy_organisation(None))
+        .holder_handle_invitation(
+            valid,
+            dummy_organisation(None),
+            &mock_storage_access,
+            "MQTT".to_string(),
+        )
         .await
         .unwrap();
 }
@@ -586,8 +573,8 @@ async fn test_share_proof_for_mqtt_returns_url() {
         .find_map(|(key, value)| (key == "key").then_some(value))
         .unwrap();
 
+    assert_eq!(proof_id_query_value, interaction_id.to_string());
     assert_eq!(custom_url_scheme, url.scheme());
-    assert_eq!(interaction_id.to_string(), proof_id_query_value);
     assert_eq!(broker_url, broker_url_query_value);
 }
 

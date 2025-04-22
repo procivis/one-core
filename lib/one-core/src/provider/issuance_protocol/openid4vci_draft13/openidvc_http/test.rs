@@ -13,7 +13,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::OpenID4VCHTTP;
+use super::OpenID4VP20HTTP;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -62,8 +62,8 @@ struct TestInputs {
     pub params: Option<OpenID4VCIParams>,
 }
 
-fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
-    OpenID4VCHTTP::new(
+fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
+    OpenID4VP20HTTP::new(
         Some("http://base_url".to_string()),
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),

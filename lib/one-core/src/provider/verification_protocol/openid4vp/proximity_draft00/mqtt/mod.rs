@@ -16,6 +16,8 @@ use tracing::Instrument;
 use url::Url;
 use uuid::Uuid;
 
+use super::key_agreement_key::KeyAgreementKey;
+use super::OpenID4VPProximityDraft00Params;
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
@@ -28,28 +30,28 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, FormatPresentationCtx, TokenVerifier,
+    AuthenticationFn, FormatPresentationCtx, HolderBindingCtx, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
+use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp::draft20::http::mappers::map_credential_formats_to_presentation_format;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::dto::OpenID4VPMqttQueryParams;
-use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
+    map_credential_formats_to_presentation_format,
 };
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPAuthorizationRequestParams;
-use crate::provider::verification_protocol::openid4vp::peer_encryption::PeerEncryption;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::provider::verification_protocol::openid4vp::{
-    InvitationResponseDTO, OpenID4VPPresentationDefinition, OpenID4VpParams, PresentedCredential,
-    UpdateResponse,
+    get_presentation_definition_with_local_credentials, InvitationResponseDTO,
+    OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
 };
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
@@ -57,6 +59,7 @@ use crate::provider::verification_protocol::{
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::storage_proxy::StorageAccess;
 use crate::util::key_verification::KeyVerification;
 
 pub mod model;
@@ -65,11 +68,11 @@ mod oidc_mqtt_verifier;
 #[cfg(test)]
 mod test;
 
-pub struct OpenId4VcMqtt {
+pub(crate) struct OpenId4VcMqtt {
     mqtt_client: Arc<dyn MqttClient>,
     config: Arc<CoreConfig>,
     params: ConfigParams,
-    openid_params: OpenID4VpParams,
+    openid_params: OpenID4VPProximityDraft00Params,
     handle: Mutex<HashMap<ProofId, SubscriptionHandle>>,
 
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -84,7 +87,7 @@ pub struct OpenId4VcMqtt {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigParams {
+pub(crate) struct ConfigParams {
     broker_url: Url,
 }
 
@@ -98,7 +101,7 @@ impl OpenId4VcMqtt {
         mqtt_client: Arc<dyn MqttClient>,
         config: Arc<CoreConfig>,
         params: ConfigParams,
-        openid_params: OpenID4VpParams,
+        openid_params: OpenID4VPProximityDraft00Params,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
@@ -123,7 +126,127 @@ impl OpenId4VcMqtt {
         }
     }
 
-    pub fn holder_can_handle(&self, url: &Url) -> bool {
+    async fn subscribe_to_topic(
+        &self,
+        topic: String,
+    ) -> Result<Box<dyn MqttTopic>, VerificationProtocolError> {
+        let (host, port) = extract_host_and_port(&self.params.broker_url)?;
+
+        self
+            .mqtt_client
+            .subscribe(
+                host,
+                port,
+                topic.clone(),
+            )
+            .await
+            .map_err(move |error| {
+                tracing::error!(%error, "Failed to subscribe to `{topic}` topic during proof sharing");
+                VerificationProtocolError::Failed(format!("Failed to subscribe to `{topic}` topic"))
+            })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    pub(crate) async fn start_detached_subscriber(
+        &self,
+        topic_prefix: String,
+        keypair: KeyAgreementKey,
+        proof: Proof,
+        presentation_definition: OpenID4VPPresentationDefinition,
+        verifier_did: Did,
+        auth_fn: AuthenticationFn,
+        interaction_id: InteractionId,
+        cancellation_token: CancellationToken,
+        callback: Option<Shared<BoxFuture<'static, ()>>>,
+    ) -> Result<(), VerificationProtocolError> {
+        let (identify, presentation_definition_topic, accept, reject) = tokio::try_join!(
+            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/identify"),
+            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-definition"),
+            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/accept"),
+            self.subscribe_to_topic(topic_prefix + "/presentation-submission/reject"),
+        )?;
+
+        let topics = Topics {
+            identify: Mutex::from(identify),
+            presentation_definition: Mutex::from(presentation_definition_topic),
+            accept: Mutex::from(accept),
+            reject: Mutex::from(reject),
+        };
+
+        let proof_id = proof.id;
+        let handle = tokio::spawn(
+            mqtt_verifier_flow(
+                topics,
+                keypair,
+                proof,
+                presentation_definition,
+                auth_fn,
+                verifier_did,
+                self.proof_repository.clone(),
+                self.interaction_repository.clone(),
+                interaction_id,
+                cancellation_token,
+                callback,
+            )
+            .in_current_span(),
+        );
+
+        let old = self.handle.lock().await.insert(
+            proof_id,
+            SubscriptionHandle {
+                task_handle: handle,
+            },
+        );
+
+        if let Some(old) = old {
+            old.task_handle.abort()
+        };
+
+        Ok(())
+    }
+
+    pub(crate) fn holder_get_holder_binding_context(
+        &self,
+        _proof: &Proof,
+        context: serde_json::Value,
+    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        Ok(Some(HolderBindingCtx {
+            nonce: interaction_data.nonce,
+            audience: interaction_data.client_id,
+        }))
+    }
+
+    pub(crate) async fn holder_get_presentation_definition(
+        &self,
+        proof: &Proof,
+        context: serde_json::Value,
+        storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        let presentation_definition =
+            interaction_data
+                .presentation_definition
+                .ok_or(VerificationProtocolError::Failed(
+                    "Presentation definition not found".to_string(),
+                ))?;
+
+        get_presentation_definition_with_local_credentials(
+            presentation_definition,
+            proof,
+            None,
+            storage_access,
+            &self.config,
+        )
+        .await
+    }
+
+    pub(crate) fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         self.openid_params.url_scheme == url.scheme()
@@ -136,6 +259,8 @@ impl OpenId4VcMqtt {
         &self,
         url: Url,
         organisation: Organisation,
+        _storage_access: &StorageAccess,
+        _transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         tracing::debug!("MQTT Handle invitation: {url}");
 
@@ -228,7 +353,7 @@ impl OpenId4VcMqtt {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         let verification_fn: Box<dyn TokenVerifier> = verification_fn;
-        let presentation_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
+        let presentation_request = Jwt::<OpenID4VP20AuthorizationRequest>::build_from_token(
             &presentation_request,
             Some(&verification_fn),
             None,
@@ -313,7 +438,7 @@ impl OpenId4VcMqtt {
         })
     }
 
-    pub async fn holder_reject_proof(
+    pub(crate) async fn holder_reject_proof(
         &self,
         proof: &Proof,
     ) -> Result<(), VerificationProtocolError> {
@@ -479,7 +604,7 @@ impl OpenId4VcMqtt {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
-    pub async fn verifier_share_proof(
+    pub(crate) async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -574,90 +699,15 @@ impl OpenId4VcMqtt {
         Ok(url)
     }
 
-    async fn subscribe_to_topic(
+    pub(crate) async fn retract_proof(
         &self,
-        topic: String,
-    ) -> Result<Box<dyn MqttTopic>, VerificationProtocolError> {
-        let (host, port) = extract_host_and_port(&self.params.broker_url)?;
-
-        self
-            .mqtt_client
-            .subscribe(
-                host,
-                port,
-                topic.clone(),
-            )
-            .await
-            .map_err(move |error| {
-                tracing::error!(%error, "Failed to subscribe to `{topic}` topic during proof sharing");
-                VerificationProtocolError::Failed(format!("Failed to subscribe to `{topic}` topic"))
-            })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
-    async fn start_detached_subscriber(
-        &self,
-        topic_prefix: String,
-        keypair: KeyAgreementKey,
-        proof: Proof,
-        presentation_definition: OpenID4VPPresentationDefinition,
-        verifier_did: Did,
-        auth_fn: AuthenticationFn,
-        interaction_id: InteractionId,
-        cancellation_token: CancellationToken,
-        callback: Option<Shared<BoxFuture<'static, ()>>>,
+        proof: &Proof,
     ) -> Result<(), VerificationProtocolError> {
-        let (identify, presentation_definition_topic, accept, reject) = tokio::try_join!(
-            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/identify"),
-            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-definition"),
-            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/accept"),
-            self.subscribe_to_topic(topic_prefix + "/presentation-submission/reject"),
-        )?;
-
-        let topics = Topics {
-            identify: Mutex::from(identify),
-            presentation_definition: Mutex::from(presentation_definition_topic),
-            accept: Mutex::from(accept),
-            reject: Mutex::from(reject),
-        };
-
-        let proof_id = proof.id;
-        let handle = tokio::spawn(
-            mqtt_verifier_flow(
-                topics,
-                keypair,
-                proof,
-                presentation_definition,
-                auth_fn,
-                verifier_did,
-                self.proof_repository.clone(),
-                self.interaction_repository.clone(),
-                interaction_id,
-                cancellation_token,
-                callback,
-            )
-            .in_current_span(),
-        );
-
-        let old = self.handle.lock().await.insert(
-            proof_id,
-            SubscriptionHandle {
-                task_handle: handle,
-            },
-        );
-
-        if let Some(old) = old {
+        if let Some(old) = self.handle.lock().await.remove(&proof.id) {
             old.task_handle.abort()
         };
 
         Ok(())
-    }
-
-    pub async fn retract_proof(&self, proof_id: &ProofId) {
-        if let Some(old) = self.handle.lock().await.remove(proof_id) {
-            old.task_handle.abort()
-        };
     }
 }
 

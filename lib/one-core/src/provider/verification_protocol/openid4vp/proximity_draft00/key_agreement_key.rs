@@ -8,12 +8,12 @@ use x25519_dalek::{PublicKey, ReusableSecret};
 
 // Ephemeral x25519 key pair, discarded after the symmetric keys are derived
 #[derive(Clone)]
-pub struct KeyAgreementKey {
+pub(super) struct KeyAgreementKey {
     secret_key: ReusableSecret,
 }
 
 impl KeyAgreementKey {
-    pub fn new_random() -> Self {
+    pub(crate) fn new_random() -> Self {
         Self {
             secret_key: ReusableSecret::random_from_rng(OsRng),
         }
@@ -23,7 +23,7 @@ impl KeyAgreementKey {
     // Two keys need to be derived
     // Messages to the wallet are encrypted using the session key SKWallet
     // Messages to the verifier are encrypted using the session key SKVerifier
-    pub fn derive_session_secrets(
+    pub(crate) fn derive_session_secrets(
         self,
         their_public_key: [u8; 32],
         nonce: [u8; 12],
@@ -49,7 +49,7 @@ impl KeyAgreementKey {
         Ok((wallet_key, verifier_key))
     }
 
-    pub fn public_key_bytes(&self) -> [u8; 32] {
+    pub(crate) fn public_key_bytes(&self) -> [u8; 32] {
         PublicKey::from(&self.secret_key).to_bytes()
     }
 }

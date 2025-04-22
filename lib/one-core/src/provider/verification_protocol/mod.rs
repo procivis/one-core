@@ -4,10 +4,10 @@ use std::sync::Arc;
 use dto::{PresentationDefinitionResponseDTO, VerificationProtocolCapabilities};
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
-use openid4vp::ble_draft00::ble::OpenID4VCBLE;
-use openid4vp::ble_draft00::mqtt::OpenId4VcMqtt;
-use openid4vp::draft20::http::OpenID4VCHTTP;
-use openid4vp::model::{ClientIdScheme, OpenID4VpPresentationFormat};
+use openid4vp::draft20::OpenID4VP20HTTP;
+use openid4vp::draft25::OpenID4VP25HTTP;
+use openid4vp::model::{ClientIdScheme, OpenID4Vp25Params, OpenID4VpPresentationFormat};
+use openid4vp::proximity_draft00::{OpenID4VPProximityDraft00, OpenID4VPProximityDraft00Params};
 use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::KeyId;
@@ -15,7 +15,7 @@ use url::Url;
 
 use super::mqtt_client::MqttClient;
 use crate::config::core_config::{
-    CoreConfig, FormatType, TransportType, VerificationProtocolConfig, VerificationProtocolType,
+    CoreConfig, FormatType, VerificationProtocolConfig, VerificationProtocolType,
 };
 use crate::config::ConfigValidationError;
 use crate::model::did::Did;
@@ -30,9 +30,8 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, OpenID4VpParams, PresentedCredential, ShareResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4Vp20Params, PresentedCredential, ShareResponse, UpdateResponse,
 };
-use crate::provider::verification_protocol::openid4vp::OpenID4VC;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -44,6 +43,7 @@ pub mod error;
 pub mod iso_mdl;
 mod mapper;
 pub mod openid4vp;
+
 pub(crate) mod provider;
 pub mod scan_to_verify;
 
@@ -95,13 +95,52 @@ pub(crate) fn verification_protocol_providers_from_config(
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
-            VerificationProtocolType::OpenId4VpDraft20 => {
-                let params = fields.deserialize::<OpenID4VpParams>().map_err(|source| {
-                    ConfigValidationError::FieldsDeserialization {
+            VerificationProtocolType::OpenId4VpDraft25 => {
+                let params = fields
+                    .deserialize::<OpenID4Vp25Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
-                    }
-                })?;
+                    })?;
+
+                // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
+                if params
+                    .holder
+                    .supported_client_id_schemes
+                    .contains(&ClientIdScheme::X509SanDns)
+                    || params
+                        .verifier
+                        .supported_client_id_schemes
+                        .contains(&ClientIdScheme::X509SanDns)
+                {
+                    params
+                        .x509_ca_certificate
+                        .as_ref()
+                        .ok_or(ConfigValidationError::MissingX509CaCertificate)?;
+                };
+
+                let http25 = OpenID4VP25HTTP::new(
+                    core_base_url.clone(),
+                    formatter_provider.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    key_provider.clone(),
+                    client.clone(),
+                    params.clone(),
+                    config.clone(),
+                );
+
+                let protocol = Arc::new(http25);
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
+                providers.insert(name.to_string(), protocol);
+            }
+            VerificationProtocolType::OpenId4VpDraft20 => {
+                let params = fields
+                    .deserialize::<OpenID4Vp20Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    })?;
 
                 // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
                 if params
@@ -126,19 +165,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     params.url_scheme.to_string(),
                 )?;
 
-                let ble = OpenID4VCBLE::new(
-                    data_provider.get_proof_repository(),
-                    data_provider.get_interaction_repository(),
-                    data_provider.get_did_repository(),
-                    did_method_provider.clone(),
-                    formatter_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    key_provider.clone(),
-                    ble.clone(),
-                    config.clone(),
-                    params.clone(),
-                );
-                let http = OpenID4VCHTTP::new(
+                let http20 = OpenID4VP20HTTP::new(
                     core_base_url.clone(),
                     formatter_provider.clone(),
                     did_method_provider.clone(),
@@ -146,30 +173,35 @@ pub(crate) fn verification_protocol_providers_from_config(
                     key_provider.clone(),
                     client.clone(),
                     params.clone(),
+                    config.clone(),
                 );
 
-                let mut mqtt = None;
-                if let Some(mqtt_client) = mqtt_client.clone() {
-                    if let Ok(transport_params) = config.transport.get(TransportType::Mqtt.as_ref())
-                    {
-                        mqtt = Some(OpenId4VcMqtt::new(
-                            mqtt_client.clone(),
-                            config.clone(),
-                            transport_params,
-                            params.clone(),
-                            data_provider.get_interaction_repository(),
-                            data_provider.get_proof_repository(),
-                            data_provider.get_did_repository(),
-                            key_algorithm_provider.clone(),
-                            formatter_provider.clone(),
-                            did_method_provider.clone(),
-                            key_provider.clone(),
-                        ));
-                    };
-                }
-                let protocol = Arc::new(OpenID4VC::new(config.clone(), params, http, ble, mqtt));
+                let protocol = Arc::new(http20);
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
+            }
+            VerificationProtocolType::OpenId4VpProximityDraft00 => {
+                let params = fields
+                    .deserialize::<OpenID4VPProximityDraft00Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    })?;
+
+                let protocol = OpenID4VPProximityDraft00::new(
+                    mqtt_client.clone(),
+                    config.clone(),
+                    params.clone(),
+                    data_provider.get_interaction_repository(),
+                    data_provider.get_proof_repository(),
+                    data_provider.get_did_repository(),
+                    key_algorithm_provider.clone(),
+                    formatter_provider.clone(),
+                    did_method_provider.clone(),
+                    key_provider.clone(),
+                );
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
+                providers.insert(name.to_string(), Arc::new(protocol));
             }
             VerificationProtocolType::IsoMdl => {
                 let protocol = Arc::new(IsoMdl::new(
@@ -263,9 +295,7 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         &self,
         _proof: &Proof,
         _context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        Ok(None)
-    }
+    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError>;
 
     /// Generates QR-code content to start the proof request flow.
     async fn verifier_share_proof(

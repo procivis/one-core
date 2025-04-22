@@ -6,7 +6,7 @@ use one_dto_mapper::{convert_inner, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, DidId, DidValue, KeyId};
-use strum::Display;
+use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -25,7 +25,7 @@ use crate::provider::verification_protocol::dto::PresentationDefinitionRequested
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct BleOpenId4VpResponse {
+pub struct BleOpenId4VpResponse {
     pub vp_token: String,
     pub presentation_submission: PresentationSubmissionMappingDTO,
 }
@@ -149,62 +149,6 @@ pub struct OpenID4VPClientMetadata {
 pub struct OpenID4VPClientMetadataJwks {
     pub keys: Vec<OpenID4VPClientMetadataJwkDTO>,
 }
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
-    pub client_id: String,
-    pub client_id_scheme: Option<ClientIdScheme>,
-    pub state: Option<String>,
-    pub nonce: Option<String>,
-    pub response_type: Option<String>,
-    pub response_mode: Option<String>,
-    pub response_uri: Option<String>,
-    pub client_metadata: Option<String>,
-    pub client_metadata_uri: Option<String>,
-    pub presentation_definition: Option<String>,
-    pub presentation_definition_uri: Option<String>,
-
-    // https://www.rfc-editor.org/rfc/rfc9101.html#name-authorization-request
-    pub request: Option<String>,
-    pub request_uri: Option<String>,
-
-    pub redirect_uri: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub(crate) struct OpenID4VPAuthorizationRequestParams {
-    pub client_id: String,
-    #[serde(default)]
-    pub client_id_scheme: Option<ClientIdScheme>,
-
-    #[serde(default)]
-    pub state: Option<String>,
-    #[serde(default)]
-    pub nonce: Option<String>,
-
-    #[serde(default)]
-    pub response_type: Option<String>,
-    #[serde(default)]
-    pub response_mode: Option<String>,
-    #[serde(default)]
-    pub response_uri: Option<Url>,
-
-    #[serde(default, deserialize_with = "deserialize_with_serde_json")]
-    pub client_metadata: Option<OpenID4VPClientMetadata>,
-    #[serde(default)]
-    pub client_metadata_uri: Option<Url>,
-
-    #[serde(default, deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    #[serde(default)]
-    pub presentation_definition_uri: Option<Url>,
-
-    #[serde(default)]
-    pub redirect_uri: Option<String>,
-}
-
 #[derive(Clone, Debug)]
 pub(super) struct ValidatedProofClaimDTO {
     pub proof_input_claim: ProofInputClaimSchema,
@@ -516,7 +460,7 @@ mod unix_timestamp {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4VpParams {
+pub(crate) struct OpenID4Vp20Params {
     #[serde(default)]
     pub client_metadata_by_value: bool,
     #[serde(default)]
@@ -535,8 +479,24 @@ pub(crate) struct OpenID4VpParams {
     pub redirect_uri: OpenID4VCRedirectUriParams,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4Vp25Params {
+    #[serde(default)]
+    pub allow_insecure_http_transport: bool,
+    #[serde(default)]
+    pub use_request_uri: bool,
+
+    #[serde(default = "default_presentation_url_scheme")]
+    pub url_scheme: String,
+    #[serde(default)]
+    pub x509_ca_certificate: Option<String>,
+    pub holder: OpenID4VCPresentationHolderParams,
+    pub verifier: OpenID4VCPresentationVerifierParams,
+    pub redirect_uri: OpenID4VCRedirectUriParams,
+}
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
-fn default_presentation_url_scheme() -> String {
+pub(crate) fn default_presentation_url_scheme() -> String {
     "openid4vp".to_string()
 }
 
@@ -553,7 +513,7 @@ pub(crate) struct OpenID4VCPresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display, EnumString)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ClientIdScheme {

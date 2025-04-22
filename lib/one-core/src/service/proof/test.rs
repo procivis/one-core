@@ -52,12 +52,12 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::BLEPeer;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
-    ShareResponse,
+    ClientIdScheme, OpenID4VPPresentationDefinition, ShareResponse,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::claim_repository::MockClaimRepository;
@@ -3290,7 +3290,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     SecretSlice::from(vec![1; 32]),
                     [2; 12],
                 ),
-                openid_request: OpenID4VPAuthorizationRequestParams {
+                openid_request: OpenID4VP20AuthorizationRequest {
                     client_id: "did:example:123".to_string(),
                     response_uri: None,
                     response_mode: None,

@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use anyhow::Context;
 use itertools::Itertools;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_dto_mapper::convert_inner;
@@ -16,12 +15,12 @@ use super::proof_request::{
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
-use super::OID4VPDraft20Service;
+use super::OID4VPDraft25Service;
 use crate::common_mapper::{
     encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_did, DidRole,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
@@ -43,8 +42,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
     OpenID4VPVerifierInteractionContent, RequestData,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
 use crate::provider::verification_protocol::openid4vp::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_direct_post,
 };
@@ -52,11 +49,11 @@ use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::service::oid4vp_draft20::mapper::parse_interaction_content;
-use crate::service::oid4vp_draft20::validator::validate_config_entity_presence;
+use crate::service::oid4vp_draft25::mapper::parse_interaction_content;
+use crate::service::oid4vp_draft25::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 
-impl OID4VPDraft20Service {
+impl OID4VPDraft25Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
@@ -86,7 +83,7 @@ impl OID4VPDraft20Service {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft20,
+            VerificationProtocolType::OpenId4VpDraft25,
             &self.config,
             &proof.exchange,
         )?;
@@ -178,7 +175,7 @@ impl OID4VPDraft20Service {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft20,
+            VerificationProtocolType::OpenId4VpDraft25,
             &self.config,
             &proof.exchange,
         )?;
@@ -195,103 +192,6 @@ impl OID4VPDraft20Service {
             jwk.jwk.into(),
             formats,
         ))
-    }
-
-    // TODO (Eugeniu) - this method is used as part of the OIDC BLE flow
-    // as soon as ONE-2754 is finalized, we should remove this method, and move
-    // all logic to the provider instead. This is a temporary solution.
-    pub async fn ble_mqtt_presentation(&self, proof_id: ProofId) {
-        let Ok(Some(proof)) = self
-            .proof_repository
-            .get_proof(
-                &proof_id,
-                &ProofRelations {
-                    schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                ..Default::default()
-                            }),
-                        }),
-                    }),
-                    interaction: Some(InteractionRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-        else {
-            tracing::error!(%proof_id, "Missing proof");
-            return;
-        };
-
-        let request_data_fn = || {
-            let interaction_data = proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref())
-                .context("Missing interaction data")?;
-
-            if proof.transport == TransportType::Ble.as_ref() {
-                let interaction_data =
-                    serde_json::from_slice::<BLEOpenID4VPInteractionData>(interaction_data)
-                        .context("BLE interaction data deserialization")?;
-
-                let response = interaction_data
-                    .presentation_submission
-                    .context("BLE interaction missing presentation_submission")?;
-
-                let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
-
-                let request_data = RequestData {
-                    presentation_submission: response.presentation_submission,
-                    vp_token: response.vp_token,
-                    state,
-                    mdoc_generated_nonce: interaction_data.identity_request_nonce,
-                    encryption_key: None,
-                };
-
-                anyhow::Ok(request_data)
-            } else {
-                let interaction_data =
-                    serde_json::from_slice::<MQTTOpenID4VPInteractionDataVerifier>(
-                        interaction_data,
-                    )
-                    .context("MQTT interaction data deserialization")?;
-
-                let response = interaction_data.presentation_submission;
-                let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
-
-                let request_data = RequestData {
-                    presentation_submission: response.presentation_submission,
-                    vp_token: response.vp_token,
-                    state,
-                    mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
-                    encryption_key: None,
-                };
-
-                anyhow::Ok(request_data)
-            }
-        };
-
-        let request_data = match request_data_fn() {
-            Ok(request_data) => request_data,
-            Err(error) => {
-                let message = format!("Failed parsing interaction data: {error}");
-                tracing::info!(message);
-                let error_metadata = HistoryErrorMetadata {
-                    error_code: BR_0000,
-                    message,
-                };
-                self.mark_proof_as_failed(&proof.id, error_metadata).await;
-                return;
-            }
-        };
-
-        if let Err(error) = self.verify_submission(proof, request_data).await {
-            tracing::error!(%error, "Proof submission failed");
-        }
     }
 
     pub async fn direct_post(
@@ -331,7 +231,7 @@ impl OID4VPDraft20Service {
         self.verify_submission(proof, unpacked_request).await
     }
 
-    pub(crate) async fn verify_submission(
+    async fn verify_submission(
         &self,
         proof: Proof,
         unpacked_request: RequestData,
@@ -501,7 +401,7 @@ impl OID4VPDraft20Service {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft20,
+            VerificationProtocolType::OpenId4VpDraft25,
             &self.config,
             &proof.exchange,
         )?;

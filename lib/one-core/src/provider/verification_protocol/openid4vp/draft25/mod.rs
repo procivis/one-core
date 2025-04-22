@@ -2,76 +2,83 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
-use mappers::map_credential_formats_to_presentation_format;
+use futures::future::BoxFuture;
+use mappers::create_openid4vp25_authorization_request;
 use one_crypto::utilities;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
-    deserialize_interaction_data, interaction_data_from_query, serialize_interaction_data,
-    validate_interaction_data,
+    deserialize_interaction_data, interaction_data_from_openid4vp_25_query,
+    serialize_interaction_data, validate_interaction_data,
 };
 use uuid::Uuid;
 
+use super::jwe_presentation::{self, ec_key_from_metadata};
+use super::mapper::map_credential_formats_to_presentation_format;
+use super::mdoc::mdoc_presentation_context;
+use super::model::OpenID4Vp25Params;
+use crate::config::core_config::{CoreConfig, DidType, VerificationProtocolType};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
-use crate::provider::credential_formatter::model::FormatPresentationCtx;
+use crate::provider::credential_formatter::model::{
+    DetailCredential, FormatPresentationCtx, HolderBindingCtx,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::verification_protocol::dto::{
+    PresentationDefinitionResponseDTO, VerificationProtocolCapabilities,
+};
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
-use crate::provider::verification_protocol::openid4vp::draft20::http::jwe_presentation::ec_key_from_metadata;
-use crate::provider::verification_protocol::openid4vp::draft20::http::mdoc::mdoc_presentation_context;
 use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_presentation_definition, create_open_id_for_vp_sharing_url_encoded,
-    create_presentation_submission,
+    create_open_id_for_vp_presentation_definition, create_presentation_submission,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     InvitationResponseDTO, JwePayload, OpenID4VPClientMetadataJwkDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpParams, OpenID4VpPresentationFormat,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
     PresentationSubmissionMappingDTO, PresentedCredential, ShareResponse, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
+use crate::provider::verification_protocol::VerificationProtocol;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
-mod jwe_presentation;
 pub mod mappers;
-mod utils;
-mod x509;
-
-mod mdoc;
+pub(crate) mod model;
 #[cfg(test)]
 mod test;
+mod utils;
 
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
-const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
+const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
 
-pub(crate) struct OpenID4VCHTTP {
+pub(crate) struct OpenID4VP25HTTP {
     client: Arc<dyn HttpClient>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
-    params: OpenID4VpParams,
+    params: OpenID4Vp25Params,
+    config: Arc<CoreConfig>,
 }
 
-#[allow(clippy::too_many_arguments)]
-impl OpenID4VCHTTP {
+impl OpenID4VP25HTTP {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         base_url: Option<String>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -79,7 +86,8 @@ impl OpenID4VCHTTP {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
-        params: OpenID4VpParams,
+        params: OpenID4Vp25Params,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             base_url,
@@ -89,26 +97,163 @@ impl OpenID4VCHTTP {
             key_provider,
             client,
             params,
+            config,
         }
     }
 
-    pub(crate) fn can_handle(&self, url: &Url) -> bool {
+    async fn encryption_info_from_metadata(
+        &self,
+        interaction_data: &OpenID4VPHolderInteractionData,
+    ) -> Result<
+        Option<(
+            OpenID4VPClientMetadataJwkDTO,
+            AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+        )>,
+        VerificationProtocolError,
+    > {
+        let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
+            // metadata_uri (if any) has been resolved before, no need to check
+            return Ok(None);
+        };
+
+        if !matches!(
+            client_metadata.authorization_encrypted_response_alg,
+            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
+        ) {
+            // Encrypted presentations not supported
+            return Ok(None);
+        }
+
+        let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
+            // Encrypted presentations not supported
+            None => return Ok(None),
+            Some(alg) => alg,
+        };
+
+        if client_metadata.jwks.keys.is_empty() {
+            if let Some(ref uri) = client_metadata.jwks_uri {
+                let jwks = self
+                    .client
+                    .get(uri)
+                    .send()
+                    .await
+                    .context("send error")
+                    .map_err(VerificationProtocolError::Transport)?
+                    .error_for_status()
+                    .context("status error")
+                    .map_err(VerificationProtocolError::Transport)?;
+
+                client_metadata.jwks = jwks
+                    .json()
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            }
+        }
+        let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
+            return Ok(None);
+        };
+        Ok(Some((verifier_key, encryption_alg)))
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+#[async_trait::async_trait]
+impl VerificationProtocol for OpenID4VP25HTTP {
+    async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
+        Ok(())
+    }
+
+    fn holder_get_holder_binding_context(
+        &self,
+        _proof: &Proof,
+        context: serde_json::Value,
+    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
+        let interaction_data: OpenID4VPHolderInteractionData =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        Ok(Some(HolderBindingCtx {
+            nonce: interaction_data
+                .nonce
+                .ok_or(VerificationProtocolError::Failed(
+                    "missing nonce".to_string(),
+                ))?,
+            audience: interaction_data.client_id,
+        }))
+    }
+
+    fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         self.params.url_scheme == url.scheme()
+            && !query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
             && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
-                || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_QUERY_PARAM_KEY))
     }
 
-    pub(crate) async fn holder_handle_invitation(
+    async fn holder_get_presentation_definition(
+        &self,
+        proof: &Proof,
+        context: serde_json::Value,
+        storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
+        let interaction_data: OpenID4VPHolderInteractionData =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        let presentation_definition =
+            interaction_data
+                .presentation_definition
+                .ok_or(VerificationProtocolError::Failed(
+                    "Presentation definition not found".to_string(),
+                ))?;
+
+        super::get_presentation_definition_with_local_credentials(
+            presentation_definition,
+            proof,
+            interaction_data.client_metadata,
+            storage_access,
+            &self.config,
+        )
+        .await
+    }
+
+    fn get_capabilities(&self) -> VerificationProtocolCapabilities {
+        let mut did_methods = vec![
+            DidType::Key,
+            DidType::Jwk,
+            DidType::Web,
+            DidType::MDL,
+            DidType::WebVh,
+        ];
+        if self
+            .params
+            .verifier
+            .supported_client_id_schemes
+            .contains(&ClientIdScheme::X509SanDns)
+        {
+            did_methods = vec![DidType::MDL];
+        }
+
+        VerificationProtocolCapabilities {
+            supported_transports: vec!["HTTP".to_owned()],
+            did_methods,
+        }
+    }
+
+    async fn verifier_handle_proof(
+        &self,
+        _proof: &Proof,
+        _submission: &[u8],
+    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
+        todo!()
+    }
+    async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
         storage_access: &StorageAccess,
+        _transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
-        if !self.can_handle(&url) {
+        if !self.holder_can_handle(&url) {
             return Err(VerificationProtocolError::Failed(
                 "No OpenID4VC query params detected".to_string(),
             ));
@@ -127,15 +272,12 @@ impl OpenID4VCHTTP {
         .await
     }
 
-    pub(crate) async fn holder_reject_proof(
-        &self,
-        _proof: &Proof,
-    ) -> Result<(), VerificationProtocolError> {
+    async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn holder_submit_proof(
+    async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -283,69 +425,17 @@ impl OpenID4VCHTTP {
         }
     }
 
-    async fn encryption_info_from_metadata(
-        &self,
-        interaction_data: &OpenID4VPHolderInteractionData,
-    ) -> Result<
-        Option<(
-            OpenID4VPClientMetadataJwkDTO,
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-        )>,
-        VerificationProtocolError,
-    > {
-        let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
-            // metadata_uri (if any) has been resolved before, no need to check
-            return Ok(None);
-        };
-
-        if !matches!(
-            client_metadata.authorization_encrypted_response_alg,
-            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
-        ) {
-            // Encrypted presentations not supported
-            return Ok(None);
-        }
-
-        let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
-            // Encrypted presentations not supported
-            None => return Ok(None),
-            Some(alg) => alg,
-        };
-
-        if client_metadata.jwks.keys.is_empty() {
-            if let Some(ref uri) = client_metadata.jwks_uri {
-                let jwks = self
-                    .client
-                    .get(uri)
-                    .send()
-                    .await
-                    .context("send error")
-                    .map_err(VerificationProtocolError::Transport)?
-                    .error_for_status()
-                    .context("status error")
-                    .map_err(VerificationProtocolError::Transport)?;
-
-                client_metadata.jwks = jwks
-                    .json()
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-            }
-        }
-        let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
-            return Ok(None);
-        };
-        Ok(Some((verifier_key, encryption_alg)))
-    }
-
-    pub(crate) async fn verifier_share_proof(
+    async fn verifier_share_proof(
         &self,
         proof: &Proof,
-        format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
+        format_to_type_mapper: FormatMapper,
         key_id: KeyId,
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
+        _callback: Option<BoxFuture<'static, ()>>,
         client_id_scheme: ClientIdScheme,
-    ) -> Result<ShareResponse<OpenID4VPVerifierInteractionContent>, VerificationProtocolError> {
+    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         // Pass the expected presentation content to interaction for verification
@@ -360,7 +450,7 @@ impl OpenID4VCHTTP {
         let Some(base_url) = &self.base_url else {
             return Err(VerificationProtocolError::Failed("Missing base_url".into()));
         };
-        let response_uri = format!("{base_url}/ssi/openid4vp/draft-20/response");
+        let response_uri = format!("{base_url}/ssi/openid4vp/draft-25/response");
         let nonce = utilities::generate_alphanumeric(32);
 
         let client_id = match client_id_scheme {
@@ -396,10 +486,10 @@ impl OpenID4VCHTTP {
             response_uri: Some(response_uri),
         };
 
-        let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
+        let offer = create_openid4vp25_authorization_request(
             base_url,
             &self.params,
-            client_id,
+            client_id.clone(),
             interaction_id,
             &interaction_content,
             nonce,
@@ -414,10 +504,14 @@ impl OpenID4VCHTTP {
         )
         .await?;
 
+        let encoded_offer = serde_urlencoded::to_string(offer)
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
         Ok(ShareResponse {
             url: format!("{}://?{encoded_offer}", self.params.url_scheme),
             interaction_id,
-            context: interaction_content,
+            context: serde_json::to_value(&interaction_content)
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
         })
     }
 }
@@ -492,7 +586,7 @@ async fn handle_proof_invitation(
     organisation: Option<Organisation>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-    params: &OpenID4VpParams,
+    params: &OpenID4Vp25Params,
 ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
     let query = url
         .query()
@@ -500,22 +594,29 @@ async fn handle_proof_invitation(
             "Query cannot be empty".to_string(),
         ))?;
 
-    let interaction_data = interaction_data_from_query(
-        query,
-        client,
-        allow_insecure_http_transport,
-        key_algorithm_provider,
-        did_method_provider,
-        params,
-    )
-    .await?;
-    validate_interaction_data(&interaction_data)?;
-    let data = serialize_interaction_data(&interaction_data)?;
+    let holder_interaction_data = {
+        let (interaction_data, verifier_did) = interaction_data_from_openid4vp_25_query(
+            query,
+            client,
+            allow_insecure_http_transport,
+            key_algorithm_provider,
+            did_method_provider,
+            params,
+        )
+        .await?;
+
+        let mut holder_state: OpenID4VPHolderInteractionData = interaction_data.try_into()?;
+        holder_state.verifier_did = verifier_did;
+        holder_state
+    };
+
+    validate_interaction_data(&holder_interaction_data)?;
+    let data = serialize_interaction_data(&holder_interaction_data)?;
 
     let now = OffsetDateTime::now_utc();
     let interaction = create_and_store_interaction(
         storage_access,
-        interaction_data
+        holder_interaction_data
             .response_uri
             .ok_or(VerificationProtocolError::Failed(
                 "response_uri is None".to_string(),
@@ -530,8 +631,8 @@ async fn handle_proof_invitation(
     let proof_id = Uuid::new_v4().into();
     let proof = proof_from_handle_invitation(
         &proof_id,
-        "OPENID4VP_DRAFT20",
-        interaction_data.redirect_uri,
+        VerificationProtocolType::OpenId4VpDraft25.as_ref(),
+        holder_interaction_data.redirect_uri,
         None,
         interaction,
         now,

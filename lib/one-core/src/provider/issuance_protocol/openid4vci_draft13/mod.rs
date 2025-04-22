@@ -2,7 +2,7 @@
 //! https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
 
 use async_trait::async_trait;
-use openidvc_http::OpenID4VCHTTP;
+use openidvc_http::OpenID4VP20HTTP;
 use serde_json::json;
 use shared_types::CredentialId;
 use url::Url;
@@ -31,11 +31,11 @@ pub mod service;
 pub mod validator;
 
 pub(crate) struct OpenID4VC {
-    openid_http: OpenID4VCHTTP,
+    openid_http: OpenID4VP20HTTP,
 }
 
 impl OpenID4VC {
-    pub fn new(openid_http: OpenID4VCHTTP) -> Self {
+    pub fn new(openid_http: OpenID4VP20HTTP) -> Self {
         Self { openid_http }
     }
 }

@@ -15,9 +15,9 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::{
-    BLEPeer, IdentityRequest, MessageSize, TransferSummaryReport, CONTENT_SIZE_UUID,
-    DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID,
-    SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
+    BLEParse, BLEPeer, IdentityRequest, TransferSummaryReport, CONTENT_SIZE_UUID, DISCONNECT_UUID,
+    IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
+    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
@@ -35,14 +35,16 @@ use crate::provider::verification_protocol::openid4vp::async_verifier_flow::{
     async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
     AsyncVerifierFlowParams, FlowState,
 };
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp::ble_draft00::ble::BLEParse;
-use crate::provider::verification_protocol::openid4vp::dto::{Chunk, ChunkExt, Chunks};
-use crate::provider::verification_protocol::openid4vp::key_agreement_key::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
-    BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
+    BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
+    Chunk, ChunkExt, Chunks, MessageSize,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::{
     deserialize_interaction_data, VerificationProtocolError,
 };
@@ -693,7 +695,7 @@ fn receive_presentation(
 fn interaction_data_from_response(
     nonce: String,
     presentation_definition: OpenID4VPPresentationDefinition,
-    openid_request: OpenID4VPAuthorizationRequestParams,
+    openid_request: OpenID4VP20AuthorizationRequest,
     submission: BleOpenId4VpResponse,
     context: Arc<BleVerifierContext>,
 ) -> Result<Vec<u8>, VerificationProtocolError> {

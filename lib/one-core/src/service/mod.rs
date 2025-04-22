@@ -11,6 +11,7 @@ pub mod jsonld;
 pub mod key;
 pub mod oid4vci_draft13;
 pub mod oid4vp_draft20;
+pub mod oid4vp_draft25;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;

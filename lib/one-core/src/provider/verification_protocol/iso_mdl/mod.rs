@@ -33,7 +33,9 @@ use crate::model::proof::Proof;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
-use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use crate::provider::credential_formatter::model::{
+    DetailCredential, FormatPresentationCtx, HolderBindingCtx,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -87,6 +89,14 @@ impl IsoMdl {
 impl VerificationProtocol for IsoMdl {
     fn holder_can_handle(&self, _url: &Url) -> bool {
         false
+    }
+
+    fn holder_get_holder_binding_context(
+        &self,
+        _proof: &Proof,
+        _context: serde_json::Value,
+    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
+        Ok(None)
     }
 
     async fn holder_handle_invitation(

@@ -288,12 +288,18 @@ pub enum VerificationProtocolType {
     #[serde(rename = "OPENID4VP_DRAFT20")]
     #[strum(serialize = "OPENID4VP_DRAFT20")]
     OpenId4VpDraft20,
+    #[serde(rename = "OPENID4VP_DRAFT25")]
+    #[strum(serialize = "OPENID4VP_DRAFT25")]
+    OpenId4VpDraft25,
     #[serde(rename = "SCAN_TO_VERIFY")]
     #[strum(serialize = "SCAN_TO_VERIFY")]
     ScanToVerify,
     #[serde(rename = "ISO_MDL")]
     #[strum(serialize = "ISO_MDL")]
     IsoMdl,
+    #[serde(rename = "OPENID4VP_PROXIMITY_DRAFT00")]
+    #[strum(serialize = "OPENID4VP_PROXIMITY_DRAFT00")]
+    OpenId4VpProximityDraft00,
 }
 
 pub type RevocationConfig = ConfigBlock<RevocationType>;
