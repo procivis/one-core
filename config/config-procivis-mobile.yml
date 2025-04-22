@@ -29,20 +29,20 @@ transport:
       private:
         brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
 verificationProtocol:
+  OPENID4VP_PROXIMITY_DRAFT00:
+    display: "exchange.openid00_proximity"
+    order: 4
+    type: "OPENID4VP_PROXIMITY_DRAFT00"
+    params: {}
   SCAN_TO_VERIFY:
     type: "SCAN_TO_VERIFY"
     enabled: false
     display: "exchange.scanToVerify"
-    order: 2
+    order: 5
   ISO_MDL:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
-    order: 4
-  OPENID4VP_PROXIMITY_DRAFT00:
-    display: "exchange.openid00_proximity"
-    order: 5
-    type: "OPENID4VP_PROXIMITY_DRAFT00"
-    params: {}
+    order: 6
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"

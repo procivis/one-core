@@ -63,6 +63,11 @@ verificationProtocol:
         allowInsecureHttpTransport: true
         redirectUri:
           allowedSchemes: ["http", "https"]
+  OPENID4VP_PROXIMITY_DRAFT00:
+    display: "exchange.openid00_proximity"
+    order: 4
+    type: "OPENID4VP_PROXIMITY_DRAFT00"
+    params: {}
 keyStorage:
   INTERNAL:
     params:
