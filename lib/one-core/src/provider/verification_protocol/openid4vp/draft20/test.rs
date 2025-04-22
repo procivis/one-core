@@ -42,6 +42,7 @@ use crate::provider::verification_protocol::{
     deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::dummy_organisation;
 
@@ -88,6 +89,7 @@ fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp20Params {
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
+                ClientIdScheme::Did,
             ],
         },
         redirect_uri: OpenID4VCRedirectUriParams {
@@ -222,7 +224,9 @@ async fn test_share_proof() {
             vp_formats,
             type_to_descriptor_mapper,
             None,
-            ClientIdScheme::RedirectUri,
+            Some(ShareProofRequestParamsDTO {
+                client_id_scheme: Some(ClientIdScheme::RedirectUri),
+            }),
         )
         .await
         .unwrap();
@@ -322,7 +326,9 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
             vp_formats,
             type_to_descriptor_mapper,
             None,
-            ClientIdScheme::RedirectUri,
+            Some(ShareProofRequestParamsDTO {
+                client_id_scheme: Some(ClientIdScheme::RedirectUri),
+            }),
         )
         .await
         .unwrap();
@@ -480,7 +486,9 @@ async fn test_share_proof_with_use_request_uri() {
             vp_formats,
             type_to_descriptor_mapper,
             None,
-            ClientIdScheme::Did,
+            Some(ShareProofRequestParamsDTO {
+                client_id_scheme: Some(ClientIdScheme::Did),
+            }),
         )
         .await
         .unwrap();
@@ -547,7 +555,9 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
             vp_formats,
             type_to_descriptor_mapper,
             None,
-            ClientIdScheme::RedirectUri,
+            Some(ShareProofRequestParamsDTO {
+                client_id_scheme: Some(ClientIdScheme::RedirectUri),
+            }),
         )
         .await
         .unwrap();
@@ -1081,7 +1091,9 @@ async fn test_share_proof_custom_scheme() {
             vp_formats,
             type_to_descriptor_mapper,
             None,
-            ClientIdScheme::RedirectUri,
+            Some(ShareProofRequestParamsDTO {
+                client_id_scheme: Some(ClientIdScheme::RedirectUri),
+            }),
         )
         .await
         .unwrap();

@@ -35,6 +35,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
 
@@ -307,7 +308,7 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
-        client_id_scheme: ClientIdScheme,
+        params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError>;
 
     /// Checks if the submitted presentation complies with the given proof request.

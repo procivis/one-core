@@ -53,6 +53,7 @@ use crate::provider::verification_protocol::openid4vp::{
 };
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub mod mappers;
 pub(crate) mod model;
@@ -436,7 +437,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
-        client_id_scheme: ClientIdScheme,
+        params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let interaction_id = Uuid::new_v4();
 
@@ -454,6 +455,22 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         };
         let response_uri = format!("{base_url}/ssi/openid4vp/draft-20/response");
         let nonce = utilities::generate_alphanumeric(32);
+
+        let client_id_scheme = params
+            .unwrap_or_default()
+            .client_id_scheme
+            .unwrap_or(self.params.verifier.default_client_id_scheme);
+
+        if !self
+            .params
+            .verifier
+            .supported_client_id_schemes
+            .contains(&client_id_scheme)
+        {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "Unsupported client_id_scheme".into(),
+            ));
+        }
 
         let client_id = match client_id_scheme {
             ClientIdScheme::RedirectUri | ClientIdScheme::VerifierAttestation => {

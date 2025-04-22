@@ -15,8 +15,8 @@ use url::Url;
 use uuid::Uuid;
 
 use super::model::{
-    default_presentation_url_scheme, ClientIdScheme, InvitationResponseDTO,
-    OpenID4VpPresentationFormat, PresentedCredential, ShareResponse, UpdateResponse,
+    default_presentation_url_scheme, InvitationResponseDTO, OpenID4VpPresentationFormat,
+    PresentedCredential, ShareResponse, UpdateResponse,
 };
 use crate::config::core_config::{CoreConfig, DidType, TransportType};
 use crate::model::did::Did;
@@ -40,7 +40,7 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::service::proof::dto::CreateProofInteractionData;
+use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
 
 pub mod ble;
@@ -310,7 +310,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
-        _client_id_scheme: ClientIdScheme,
+        _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let transport = get_transport(proof)?;
         let callback = callback.map(|fut| fut.shared());

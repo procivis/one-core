@@ -41,11 +41,12 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential,
-    ShareResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential, ShareResponse,
+    UpdateResponse,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
 
 mod ble;
@@ -243,7 +244,7 @@ impl VerificationProtocol for IsoMdl {
         _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
-        _client_id_scheme: ClientIdScheme,
+        _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         unimplemented!()
     }

@@ -29,6 +29,7 @@ use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 #[derive(Default)]
 struct TestInputs {
@@ -126,7 +127,9 @@ async fn test_share_proof() {
             vp_formats,
             type_to_descriptor_mapper,
             None,
-            ClientIdScheme::RedirectUri,
+            Some(ShareProofRequestParamsDTO {
+                client_id_scheme: Some(ClientIdScheme::RedirectUri),
+            }),
         )
         .await
         .unwrap();

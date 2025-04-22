@@ -22,11 +22,11 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential,
-    ShareResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential, ShareResponse,
+    UpdateResponse,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::service::proof::dto::ScanToVerifyRequestDTO;
+use crate::service::proof::dto::{ScanToVerifyRequestDTO, ShareProofRequestParamsDTO};
 use crate::util::key_verification::KeyVerification;
 
 pub mod dto;
@@ -111,7 +111,7 @@ impl VerificationProtocol for ScanToVerify {
         _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
-        _client_id_scheme: ClientIdScheme,
+        _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         unimplemented!()
     }
