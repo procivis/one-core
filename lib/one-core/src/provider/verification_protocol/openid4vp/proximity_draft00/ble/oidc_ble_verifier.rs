@@ -31,13 +31,13 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 };
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::verification_protocol::openid4vp::async_verifier_flow::{
-    async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
-    AsyncVerifierFlowParams, FlowState,
-};
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
     BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
+    async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
+    AsyncVerifierFlowParams, FlowState,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
@@ -94,7 +94,7 @@ impl OpenID4VCBLEVerifier {
         interaction_id: InteractionId,
         keypair: KeyAgreementKey,
         cancellation_token: CancellationToken,
-        callback: Option<Shared<BoxFuture<'static, ()>>>,
+        on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
         url_scheme: &str,
     ) -> Result<String, VerificationProtocolError> {
         let proof_repository = self.proof_repository.clone();
@@ -162,7 +162,7 @@ impl OpenID4VCBLEVerifier {
                     stop_server(&*peripheral).await;
                     match &result {
                         Ok(FlowState::Finished) => {
-                            if let Some(callback) = callback {
+                            if let Some(callback) = on_submission_callback {
                                 callback.await;
                             }
                         }

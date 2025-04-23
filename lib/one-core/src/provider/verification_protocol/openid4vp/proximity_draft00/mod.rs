@@ -43,6 +43,7 @@ use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
 
+mod async_verifier_flow;
 pub mod ble;
 mod dto;
 mod key_agreement_key;
@@ -309,11 +310,11 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         _encryption_key_jwk: PublicKeyJwkDTO,
         _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-        callback: Option<BoxFuture<'static, ()>>,
+        on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let transport = get_transport(proof)?;
-        let callback = callback.map(|fut| fut.shared());
+        let on_submission_callback = on_submission_callback.map(|fut| fut.shared());
 
         match transport.as_slice() {
             [TransportType::Ble] => {
@@ -329,7 +330,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                         interaction_id,
                         key_agreement,
                         CancellationToken::new(),
-                        callback,
+                        on_submission_callback,
                     )
                     .await
                     .map(|url| ShareResponse {
@@ -358,7 +359,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     interaction_id,
                     key_agreement,
                     CancellationToken::new(),
-                    callback,
+                    on_submission_callback,
                 )
                 .await
                 .map(|url| ShareResponse {
@@ -388,7 +389,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                         interaction_id,
                         key_agreement.clone(),
                         cancellation_token.clone(),
-                        callback.clone(),
+                        on_submission_callback.clone(),
                     )
                     .await?;
 
@@ -402,7 +403,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                         interaction_id,
                         key_agreement,
                         cancellation_token,
-                        callback,
+                        on_submission_callback,
                     )
                     .await?;
 

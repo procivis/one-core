@@ -16,12 +16,12 @@ use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::mqtt_client::MqttTopic;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::async_verifier_flow::{
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
     async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
     AsyncVerifierFlowParams, FlowState,
 };
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
@@ -50,7 +50,7 @@ pub(crate) async fn mqtt_verifier_flow(
     interaction_repository: Arc<dyn InteractionRepository>,
     interaction_id: InteractionId,
     cancellation_token: CancellationToken,
-    callback: Option<Shared<BoxFuture<'static, ()>>>,
+    on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
 ) -> Result<(), VerificationProtocolError> {
     let hooks = AsyncTransportHooks {
         wallet_connect: wallet_connect(topics, keypair),
@@ -75,7 +75,7 @@ pub(crate) async fn mqtt_verifier_flow(
     let result = async_verifier_flow(flow_params, hooks, auth_fn).await;
     match &result {
         Ok(FlowState::Finished) => {
-            if let Some(callback) = callback {
+            if let Some(callback) = on_submission_callback {
                 callback.await;
             }
         }

@@ -18,9 +18,11 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::ble_resource::BleWaiter;
+
 pub mod dto;
 mod iso_mdl;
 mod mapper;
+mod proximity_callback;
 mod scan_to_verify;
 pub mod service;
 

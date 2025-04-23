@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
+use dto::OpenID4VPMqttQueryParams;
 use futures::future::{BoxFuture, Shared};
 use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessionKeys};
 use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
@@ -42,7 +43,6 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::dto::OpenID4VPMqttQueryParams;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
     map_credential_formats_to_presentation_format,
@@ -62,6 +62,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::key_verification::KeyVerification;
 
+pub mod dto;
 pub mod model;
 mod oidc_mqtt_verifier;
 
@@ -158,7 +159,7 @@ impl OpenId4VcMqtt {
         auth_fn: AuthenticationFn,
         interaction_id: InteractionId,
         cancellation_token: CancellationToken,
-        callback: Option<Shared<BoxFuture<'static, ()>>>,
+        on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<(), VerificationProtocolError> {
         let (identify, presentation_definition_topic, accept, reject) = tokio::try_join!(
             self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/identify"),
@@ -187,7 +188,7 @@ impl OpenId4VcMqtt {
                 self.interaction_repository.clone(),
                 interaction_id,
                 cancellation_token,
-                callback,
+                on_submission_callback,
             )
             .in_current_span(),
         );
@@ -613,7 +614,7 @@ impl OpenId4VcMqtt {
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
         cancellation_token: CancellationToken,
-        callback: Option<Shared<BoxFuture<'static, ()>>>,
+        on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<Url, VerificationProtocolError> {
         let url = {
             let mut url: Url = format!("{}://connect", self.openid_params.url_scheme)
@@ -692,7 +693,7 @@ impl OpenId4VcMqtt {
             auth_fn,
             interaction_id,
             cancellation_token,
-            callback,
+            on_submission_callback,
         )
         .await?;
 

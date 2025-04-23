@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Add;
 
-use one_dto_mapper::convert_inner;
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use serde::{Deserialize, Deserializer};
 use shared_types::{DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -19,7 +19,9 @@ use super::model::{
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVcSdJwtAlgs,
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
-use crate::common_mapper::{value_to_model_claims, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{
+    get_or_create_did, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
+};
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -29,6 +31,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
+use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
@@ -36,6 +39,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{AuthenticationFn, ExtractPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::verification_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
@@ -53,6 +57,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
+use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::oidc::map_to_openid4vp_format;
 
@@ -678,4 +683,74 @@ pub(crate) fn map_credential_formats_to_presentation_format(
 
     // Fallback, handle all other formats via enveloped JWT
     Ok((FormatType::Jwt.to_string(), "jwt_vp_json".to_owned()))
+}
+
+pub(crate) async fn credential_from_proved(
+    proved_credential: ProvedCredential,
+    organisation: &Organisation,
+    did_repository: &dyn DidRepository,
+    did_method_provider: &dyn DidMethodProvider,
+) -> Result<Credential, ServiceError> {
+    let issuer_did = get_or_create_did(
+        did_method_provider,
+        did_repository,
+        &Some(organisation.to_owned()),
+        &proved_credential.issuer_did_value,
+        DidRole::Issuer,
+    )
+    .await?;
+    let holder_did = get_or_create_did(
+        did_method_provider,
+        did_repository,
+        &Some(organisation.to_owned()),
+        &proved_credential.holder_did_value,
+        DidRole::Holder,
+    )
+    .await?;
+
+    Ok(Credential {
+        id: proved_credential.credential.id,
+        created_date: proved_credential.credential.created_date,
+        issuance_date: proved_credential.credential.issuance_date,
+        last_modified: proved_credential.credential.last_modified,
+        deleted_at: proved_credential.credential.deleted_at,
+        credential: proved_credential.credential.credential,
+        exchange: proved_credential.credential.exchange,
+        redirect_uri: proved_credential.credential.redirect_uri,
+        role: proved_credential.credential.role,
+        state: proved_credential.credential.state,
+        claims: convert_inner_of_inner(proved_credential.credential.claims),
+        issuer_did: Some(issuer_did),
+        holder_did: Some(holder_did),
+        schema: proved_credential
+            .credential
+            .schema
+            .map(|schema| from_provider_schema(schema, organisation.to_owned())),
+        interaction: None,
+        revocation_list: None,
+        key: proved_credential.credential.key,
+        suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
+    })
+}
+
+fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) -> CredentialSchema {
+    CredentialSchema {
+        id: schema.id,
+        deleted_at: schema.deleted_at,
+        created_date: schema.created_date,
+        last_modified: schema.last_modified,
+        name: schema.name,
+        external_schema: schema.external_schema,
+        format: schema.format,
+        revocation_method: schema.revocation_method,
+        wallet_storage_type: convert_inner(schema.wallet_storage_type),
+        layout_type: schema.layout_type,
+        layout_properties: convert_inner(schema.layout_properties),
+        imported_source_url: schema.imported_source_url,
+        schema_id: schema.schema_id,
+        schema_type: schema.schema_type,
+        claim_schemas: convert_inner_of_inner(schema.claim_schemas),
+        organisation: organisation.into(),
+        allow_suspension: schema.allow_suspension,
+    }
 }

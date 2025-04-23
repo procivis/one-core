@@ -4,6 +4,7 @@
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{anyhow, Result};
+use dto::OpenID4VPBleData;
 use futures::future::{BoxFuture, Shared};
 use futures::{Stream, TryStreamExt};
 use model::BLEOpenID4VPInteractionData;
@@ -40,7 +41,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp::dto::OpenID4VPBleData;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
     map_credential_formats_to_presentation_format,
@@ -61,6 +61,7 @@ use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::{Abort, BleWaiter};
 use crate::util::key_verification::KeyVerification;
 
+pub mod dto;
 pub mod mappers;
 pub mod model;
 pub mod oidc_ble_holder;
@@ -528,7 +529,7 @@ impl OpenID4VCBLE {
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
         cancellation_token: CancellationToken,
-        callback: Option<Shared<BoxFuture<'static, ()>>>,
+        on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<Url, VerificationProtocolError> {
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
@@ -606,7 +607,7 @@ impl OpenID4VCBLE {
                 interaction_id,
                 key_agreement,
                 cancellation_token,
-                callback,
+                on_submission_callback,
                 &self.params.url_scheme,
             )
             .await?;

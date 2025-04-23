@@ -2913,7 +2913,7 @@ async fn test_share_proof_created_success() {
     });
 
     let result = service
-        .share_proof(&proof_id, ShareProofRequestDTO::default(), None)
+        .share_proof(&proof_id, ShareProofRequestDTO::default())
         .await
         .unwrap();
 
@@ -3026,7 +3026,7 @@ async fn test_share_proof_pending_success() {
     });
 
     let result = service
-        .share_proof(&proof_id, ShareProofRequestDTO::default(), None)
+        .share_proof(&proof_id, ShareProofRequestDTO::default())
         .await;
     assert!(result.is_ok());
 }
@@ -3052,7 +3052,7 @@ async fn test_share_proof_invalid_state() {
     });
 
     let result = service
-        .share_proof(&proof_id, ShareProofRequestDTO::default(), None)
+        .share_proof(&proof_id, ShareProofRequestDTO::default())
         .await;
     assert!(matches!(
         result,

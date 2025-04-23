@@ -307,7 +307,7 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-        callback: Option<BoxFuture<'static, ()>>,
+        on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError>;
 

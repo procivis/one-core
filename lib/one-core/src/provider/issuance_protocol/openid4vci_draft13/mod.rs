@@ -20,7 +20,6 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 
-pub mod dto;
 pub mod error;
 pub mod handle_invitation_operations;
 pub(crate) mod mapper;

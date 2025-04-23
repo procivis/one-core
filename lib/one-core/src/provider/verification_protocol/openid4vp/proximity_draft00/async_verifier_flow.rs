@@ -8,13 +8,13 @@ use shared_types::DidValue;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
-use super::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::config::core_config::TransportType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPPresentationDefinition,
 };

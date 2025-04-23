@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use futures::FutureExt;
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::verification_protocol::dto::{
@@ -120,22 +119,8 @@ impl OneCoreBinding {
         params: ShareProofRequestBindingDTO,
     ) -> Result<ShareProofResponseBindingDTO, BindingError> {
         let id = into_id(&proof_id)?;
-        let request = params.into();
-
         let core = self.use_core().await?;
-        let oid4vp_service = core.oid4vp_draft20_service.clone();
-        let callback = Some(
-            async move {
-                oid4vp_service.ble_mqtt_presentation(id).await;
-            }
-            .boxed(),
-        );
-
-        let response = core
-            .proof_service
-            .share_proof(&id, request, callback)
-            .await?;
-
+        let response = core.proof_service.share_proof(&id, params.into()).await?;
         Ok(ShareProofResponseBindingDTO::from(response))
     }
 

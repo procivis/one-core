@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Context;
-use futures::future::BoxFuture;
 use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -438,7 +437,6 @@ impl ProofService {
         &self,
         id: &ProofId,
         request: ShareProofRequestDTO,
-        callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
         let proof = self.get_proof_with_state(id).await?;
 
@@ -484,6 +482,8 @@ impl ProofService {
 
         let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
 
+        let on_submission_callback = Some(self.get_on_submission_ble_mqtt_callback(*id));
+
         let ShareResponse {
             url,
             interaction_id,
@@ -496,7 +496,7 @@ impl ProofService {
                 jwk.jwk.into(),
                 formats,
                 type_to_descriptor_mapper,
-                callback,
+                on_submission_callback,
                 request.params,
             )
             .await?;

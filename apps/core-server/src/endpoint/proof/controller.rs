@@ -2,7 +2,6 @@ use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use futures::future::FutureExt;
 use one_core::service::error::{ServiceError, ValidationError};
 use shared_types::ProofId;
 
@@ -192,18 +191,10 @@ pub(crate) async fn share_proof(
         );
     }
 
-    let service = state.core.oid4vp_draft20_service.clone();
-    let callback = Some(
-        async move {
-            service.ble_mqtt_presentation(id).await;
-        }
-        .boxed(),
-    );
-
     let result = state
         .core
         .proof_service
-        .share_proof(&id, request.unwrap_or_default().0.into(), callback)
+        .share_proof(&id, request.unwrap_or_default().0.into())
         .await;
     CreatedOrErrorResponse::from_result(result, state, "sharing proof")
 }
