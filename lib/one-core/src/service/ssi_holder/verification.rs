@@ -25,9 +25,10 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
-use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, OpenID4VPHolderInteractionData, PresentedCredential, UpdateResponse,
+use crate::provider::verification_protocol::dto::{
+    InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
     ValidationError,

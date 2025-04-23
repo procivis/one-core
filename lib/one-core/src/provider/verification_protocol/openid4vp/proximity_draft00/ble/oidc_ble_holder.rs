@@ -31,9 +31,8 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    BleOpenId4VpResponse, PresentationSubmissionMappingDTO,
-};
+use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::BleOpenId4VpResponse;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,

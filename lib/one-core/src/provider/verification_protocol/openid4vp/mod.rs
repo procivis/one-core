@@ -6,17 +6,18 @@ use std::collections::{HashMap, HashSet};
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
 use one_dto_mapper::convert_inner;
 
-use super::dto::PresentationDefinitionResponseDTO;
+use super::dto::{
+    CredentialGroup, CredentialGroupItem, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentedCredential, UpdateResponse,
+};
 use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
 use crate::model::proof::Proof;
-use crate::provider::verification_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::verification_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
-    PresentedCredential, UpdateResponse,
+    OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
 };
 use crate::util::oidc::map_from_openid4vp_format;
 

@@ -7,7 +7,7 @@ use url::Url;
 
 use super::model::{
     OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams,
-    OpenID4VP20HolderInteractionData,
+    OpenID4VP20HolderInteractionData, OpenID4Vp20Params,
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
@@ -17,8 +17,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4Vp20Params,
-    OpenID4VpPresentationFormat,
+    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
 use crate::provider::verification_protocol::openid4vp::x509::extract_x5c_san_dns;

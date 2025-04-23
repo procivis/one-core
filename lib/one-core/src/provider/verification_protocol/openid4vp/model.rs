@@ -2,33 +2,23 @@ use std::collections::HashMap;
 
 use anyhow::Context;
 use one_crypto::jwe::EncryptionAlgorithm;
-use one_dto_mapper::{convert_inner, Into};
+use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, DidId, DidValue, KeyId};
+use shared_types::{ClaimSchemaId, DidValue, KeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::mapper::deserialize_with_serde_json;
+use super::mapper::{deserialize_with_serde_json, unix_timestamp};
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
-use crate::model::credential_schema::{CredentialSchema, LayoutProperties, WalletStorageTypeEnum};
-use crate::model::did::DidType;
-use crate::model::interaction::InteractionId;
-use crate::model::proof::{Proof, UpdateProofRequest};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::verification_protocol::dto::PresentationDefinitionRequestedCredentialResponseDTO;
 use crate::service::key::dto::PublicKeyJwkDTO;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BleOpenId4VpResponse {
-    pub vp_token: String,
-    pub presentation_submission: PresentationSubmissionMappingDTO,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JwePayload {
@@ -54,10 +44,6 @@ impl JwePayload {
         Ok(payload)
     }
 }
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(transparent)]
-pub(crate) struct Timestamp(pub i64);
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -94,13 +80,6 @@ pub struct NestedPresentationSubmissionDescriptorDTO {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostResponseDTO {
     pub redirect_uri: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(untagged)]
-pub(crate) enum PresentationToken {
-    One(String),
-    Multiple(Vec<String>),
 }
 
 // https://datatracker.ietf.org/doc/html/rfc7518#section-4.1
@@ -265,7 +244,7 @@ pub struct LdpVcAlgs {
 }
 
 #[derive(Debug)]
-pub(crate) struct RequestData {
+pub(crate) struct SubmissionRequestData {
     pub presentation_submission: PresentationSubmissionMappingDTO,
     pub vp_token: String,
     pub state: Uuid,
@@ -285,96 +264,6 @@ pub(crate) struct ProvedCredential {
 pub(crate) struct AcceptProofResult {
     pub proved_credentials: Vec<ProvedCredential>,
     pub proved_claims: Vec<Claim>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct InvitationResponseDTO {
-    pub interaction_id: InteractionId,
-    pub proof: Proof,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Into)]
-#[into(LayoutProperties)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialSchemaLayoutPropertiesRequestDTO {
-    #[into(with_fn = convert_inner)]
-    pub background: Option<CredentialSchemaBackgroundPropertiesRequestDTO>,
-    #[into(with_fn = convert_inner)]
-    pub logo: Option<CredentialSchemaLogoPropertiesRequestDTO>,
-    pub primary_attribute: Option<String>,
-    pub secondary_attribute: Option<String>,
-    pub picture_attribute: Option<String>,
-    #[into(with_fn = convert_inner)]
-    pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialSchemaLogoPropertiesRequestDTO {
-    pub font_color: Option<String>,
-    pub background_color: Option<String>,
-    pub image: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialSchemaBackgroundPropertiesRequestDTO {
-    pub color: Option<String>,
-    pub image: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialSchemaCodePropertiesRequestDTO {
-    pub attribute: String,
-    pub r#type: CredentialSchemaCodeTypeEnum,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum CredentialSchemaCodeTypeEnum {
-    Barcode,
-    Mrz,
-    QrCode,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DidListItemResponseDTO {
-    pub id: DidId,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub did: DidValue,
-    #[serde(rename = "type")]
-    pub did_type: DidType,
-    #[serde(rename = "method")]
-    pub did_method: String,
-    pub deactivated: bool,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct PresentedCredential {
-    pub presentation: String,
-    pub credential_schema: CredentialSchema,
-    pub request: PresentationDefinitionRequestedCredentialResponseDTO,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct ShareResponse<T> {
-    pub url: String,
-    pub interaction_id: Uuid,
-    pub context: T,
-}
-
-#[derive(Clone, Debug, Default)]
-pub(crate) struct UpdateResponse {
-    pub update_proof: Option<UpdateProofRequest>,
 }
 
 /// Interaction data used for OpenID4VP (HTTP) on holder side
@@ -404,97 +293,6 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub verifier_did: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-/// deserializes matching `ProofRequestClaimRestDTO`
-pub(crate) struct ProofClaimSchema {
-    pub id: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub key: String,
-    pub datatype: String,
-    pub required: bool,
-    pub credential_schema: ProofCredentialSchema,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-/// deserializes matching `CredentialSchemaListValueResponseRestDTO`
-pub(crate) struct ProofCredentialSchema {
-    pub id: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    pub schema_type: String,
-    pub schema_id: String,
-}
-
-mod unix_timestamp {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-    use time::OffsetDateTime;
-
-    pub(crate) fn serialize<S>(datetime: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        datetime.unix_timestamp().serialize(serializer)
-    }
-
-    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let timestamp = i64::deserialize(deserializer)?;
-
-        OffsetDateTime::from_unix_timestamp(timestamp).map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4Vp20Params {
-    #[serde(default)]
-    pub client_metadata_by_value: bool,
-    #[serde(default)]
-    pub presentation_definition_by_value: bool,
-    #[serde(default)]
-    pub allow_insecure_http_transport: bool,
-    #[serde(default)]
-    pub use_request_uri: bool,
-
-    #[serde(default = "default_presentation_url_scheme")]
-    pub url_scheme: String,
-    #[serde(default)]
-    pub x509_ca_certificate: Option<String>,
-    pub holder: OpenID4VCPresentationHolderParams,
-    pub verifier: OpenID4VCPresentationVerifierParams,
-    pub redirect_uri: OpenID4VCRedirectUriParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4Vp25Params {
-    #[serde(default)]
-    pub allow_insecure_http_transport: bool,
-    #[serde(default)]
-    pub use_request_uri: bool,
-
-    #[serde(default = "default_presentation_url_scheme")]
-    pub url_scheme: String,
-    #[serde(default)]
-    pub x509_ca_certificate: Option<String>,
-    pub holder: OpenID4VCPresentationHolderParams,
-    pub verifier: OpenID4VCPresentationVerifierParams,
-    pub redirect_uri: OpenID4VCRedirectUriParams,
-}
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
 pub(crate) fn default_presentation_url_scheme() -> String {
     "openid4vp".to_string()

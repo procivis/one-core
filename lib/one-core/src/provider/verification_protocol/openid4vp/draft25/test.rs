@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use super::model::OpenID4Vp25Params;
 use super::OpenID4VP25HTTP;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
@@ -18,12 +19,12 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
     OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
-    OpenID4Vp25Params, ShareResponse,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,

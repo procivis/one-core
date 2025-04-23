@@ -31,7 +31,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     parse_interaction_content, vec_last_position_from_token_path,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    AcceptProofResult, OpenID4VPPresentationDefinition, RequestData,
+    AcceptProofResult, OpenID4VPPresentationDefinition, SubmissionRequestData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
@@ -103,9 +103,8 @@ pub(crate) fn oidc_verifier_presentation_definition(
     Ok(presentation_definition)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn oidc_verifier_direct_post(
-    request: RequestData,
+pub(crate) async fn oid4vp_verifier_process_submission(
+    request: SubmissionRequestData,
     proof: Proof,
     interaction_data: &[u8],
     did_method_provider: &Arc<dyn DidMethodProvider>,
@@ -143,7 +142,7 @@ pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String
 
 #[allow(clippy::too_many_arguments)]
 async fn process_proof_submission(
-    submission: RequestData,
+    submission: SubmissionRequestData,
     proof: &Proof,
     interaction_data: &[u8],
     did_method_provider: &Arc<dyn DidMethodProvider>,

@@ -9,11 +9,8 @@ use uuid::Uuid;
 
 use super::draft20::model::OpenID4VP20AuthorizationRequest;
 use super::model::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaLayoutPropertiesRequestDTO,
-    CredentialSchemaLogoPropertiesRequestDTO, DidListItemResponseDTO, LdpVcAlgs, OpenID4VPAlgs,
-    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
+    LdpVcAlgs, OpenID4VPAlgs, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVcSdJwtAlgs,
@@ -26,10 +23,8 @@ use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
-    CredentialSchemaType, LayoutProperties, LogoProperties,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType,
 };
-use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -44,7 +39,7 @@ use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::verification_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
 };
 use crate::provider::verification_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
@@ -52,7 +47,7 @@ use crate::provider::verification_protocol::mapper::{
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VpPresentationFormat,
-    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, PresentedCredential,
+    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
@@ -532,92 +527,6 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-impl From<CredentialSchemaBackgroundPropertiesRequestDTO> for BackgroundProperties {
-    fn from(value: CredentialSchemaBackgroundPropertiesRequestDTO) -> Self {
-        Self {
-            color: value.color,
-            image: value.image,
-        }
-    }
-}
-
-impl From<CredentialSchemaLogoPropertiesRequestDTO> for LogoProperties {
-    fn from(value: CredentialSchemaLogoPropertiesRequestDTO) -> Self {
-        Self {
-            font_color: value.font_color,
-            background_color: value.background_color,
-            image: value.image,
-        }
-    }
-}
-
-impl From<CredentialSchemaCodePropertiesRequestDTO> for CodeProperties {
-    fn from(value: CredentialSchemaCodePropertiesRequestDTO) -> Self {
-        Self {
-            attribute: value.attribute,
-            r#type: value.r#type.into(),
-        }
-    }
-}
-
-impl From<CredentialSchemaCodeTypeEnum> for CodeTypeEnum {
-    fn from(value: CredentialSchemaCodeTypeEnum) -> Self {
-        match value {
-            CredentialSchemaCodeTypeEnum::Barcode => Self::Barcode,
-            CredentialSchemaCodeTypeEnum::Mrz => Self::Mrz,
-            CredentialSchemaCodeTypeEnum::QrCode => Self::QrCode,
-        }
-    }
-}
-
-impl From<Did> for DidListItemResponseDTO {
-    fn from(value: Did) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            did: value.did,
-            did_type: value.did_type,
-            did_method: value.did_method,
-            deactivated: value.deactivated,
-        }
-    }
-}
-
-impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
-    fn from(value: LayoutProperties) -> Self {
-        Self {
-            background: value.background.map(|value| {
-                CredentialSchemaBackgroundPropertiesRequestDTO {
-                    color: value.color,
-                    image: value.image,
-                }
-            }),
-            logo: value
-                .logo
-                .map(|v| CredentialSchemaLogoPropertiesRequestDTO {
-                    font_color: v.font_color,
-                    background_color: v.background_color,
-                    image: v.image,
-                }),
-            primary_attribute: value.primary_attribute,
-            secondary_attribute: value.secondary_attribute,
-            picture_attribute: value.picture_attribute,
-            code: value
-                .code
-                .map(|v| CredentialSchemaCodePropertiesRequestDTO {
-                    attribute: v.attribute,
-                    r#type: match v.r#type {
-                        CodeTypeEnum::Barcode => CredentialSchemaCodeTypeEnum::Barcode,
-                        CodeTypeEnum::Mrz => CredentialSchemaCodeTypeEnum::Mrz,
-                        CodeTypeEnum::QrCode => CredentialSchemaCodeTypeEnum::QrCode,
-                    },
-                }),
-        }
-    }
-}
-
 impl OpenID4VP20AuthorizationRequest {
     pub async fn as_signed_jwt(
         &self,
@@ -752,5 +661,26 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         claim_schemas: convert_inner_of_inner(schema.claim_schemas),
         organisation: organisation.into(),
         allow_suspension: schema.allow_suspension,
+    }
+}
+
+pub(super) mod unix_timestamp {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use time::OffsetDateTime;
+
+    pub(crate) fn serialize<S>(datetime: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        datetime.unix_timestamp().serialize(serializer)
+    }
+
+    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let timestamp = i64::deserialize(deserializer)?;
+
+        OffsetDateTime::from_unix_timestamp(timestamp).map_err(serde::de::Error::custom)
     }
 }

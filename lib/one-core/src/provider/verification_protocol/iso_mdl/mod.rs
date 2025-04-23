@@ -14,10 +14,11 @@ use shared_types::KeyId;
 use url::Url;
 
 use super::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    InvitationResponseDTO, PresentationDefinitionFieldDTO,
+    PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
+    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
@@ -40,10 +41,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
-use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential, ShareResponse,
-    UpdateResponse,
-};
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;

@@ -14,10 +14,7 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
-use super::model::{
-    default_presentation_url_scheme, InvitationResponseDTO, OpenID4VpPresentationFormat,
-    PresentedCredential, ShareResponse, UpdateResponse,
-};
+use super::model::{default_presentation_url_scheme, OpenID4VpPresentationFormat};
 use crate::config::core_config::{CoreConfig, DidType, TransportType};
 use crate::model::did::Did;
 use crate::model::key::Key;
@@ -30,7 +27,8 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::MqttClient;
 use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionResponseDTO, VerificationProtocolCapabilities,
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::{

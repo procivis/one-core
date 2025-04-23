@@ -41,10 +41,10 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
-    OpenID4VPVerifierInteractionContent, RequestData,
+    OpenID4VPVerifierInteractionContent, SubmissionRequestData,
 };
 use crate::provider::verification_protocol::openid4vp::service::{
-    create_open_id_for_vp_client_metadata, oidc_verifier_direct_post,
+    create_open_id_for_vp_client_metadata, oid4vp_verifier_process_submission,
 };
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
@@ -235,7 +235,7 @@ impl OID4VPDraft20Service {
     pub(crate) async fn verify_submission(
         &self,
         proof: Proof,
-        unpacked_request: RequestData,
+        unpacked_request: SubmissionRequestData,
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
         let organisation = proof
             .schema
@@ -277,7 +277,7 @@ impl OID4VPDraft20Service {
             }
         }
 
-        match oidc_verifier_direct_post(
+        match oid4vp_verifier_process_submission(
             unpacked_request,
             proof.to_owned(),
             interaction_data,
@@ -440,14 +440,14 @@ impl OID4VPDraft20Service {
     async fn unpack_direct_post_request(
         &self,
         request: OpenID4VPDirectPostRequestDTO,
-    ) -> Result<RequestData, ServiceError> {
+    ) -> Result<SubmissionRequestData, ServiceError> {
         match request {
             OpenID4VPDirectPostRequestDTO {
                 presentation_submission: Some(presentation_submission),
                 vp_token: Some(vp_token),
                 state: Some(state),
                 response: None,
-            } => Ok(RequestData {
+            } => Ok(SubmissionRequestData {
                 presentation_submission,
                 vp_token,
                 state,
@@ -501,7 +501,7 @@ impl OID4VPDraft20Service {
                     ServiceError::Other(format!("Failed deserializing JWE payload: {err}"))
                 })?;
 
-                Ok(RequestData {
+                Ok(SubmissionRequestData {
                     presentation_submission: payload.presentation_submission,
                     vp_token: payload.vp_token,
                     state: payload

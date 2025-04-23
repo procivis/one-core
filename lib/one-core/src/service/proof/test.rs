@@ -51,10 +51,12 @@ use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
+use crate::provider::verification_protocol::dto::{
+    ShareResponse, VerificationProtocolCapabilities,
+};
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPPresentationDefinition, ShareResponse,
+    ClientIdScheme, OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;

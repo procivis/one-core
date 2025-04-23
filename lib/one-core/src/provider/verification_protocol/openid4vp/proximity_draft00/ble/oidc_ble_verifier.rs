@@ -14,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use super::dto::BleOpenId4VpResponse;
 use super::{
     BLEParse, BLEPeer, IdentityRequest, TransferSummaryReport, CONTENT_SIZE_UUID, DISCONNECT_UUID,
     IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
@@ -32,9 +33,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
-};
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
     async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
     AsyncVerifierFlowParams, FlowState,

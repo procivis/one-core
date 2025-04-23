@@ -46,7 +46,9 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::verification_protocol::dto::{
+    PresentationDefinitionResponseDTO, ShareResponse,
+};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     receive_mdl_request, start_mdl_server, MdocBleHolderInteractionData,
@@ -58,7 +60,6 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::verification_protocol::openid4vp::model::ShareResponse;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,

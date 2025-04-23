@@ -1,16 +1,20 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde::Deserialize;
 use shared_types::KeyId;
+use url::Url;
 
-use super::model::OpenID4VP25AuthorizationRequestQueryParams;
+use super::model::{
+    OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
+};
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPVerifierInteractionContent, OpenID4Vp25Params,
+    ClientIdScheme, OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
@@ -181,4 +185,76 @@ pub fn decode_client_id_with_scheme(
     };
 
     Ok((client_id.to_string(), client_id_scheme))
+}
+
+impl TryFrom<OpenID4VP25AuthorizationRequestQueryParams> for OpenID4VP25AuthorizationRequest {
+    type Error = VerificationProtocolError;
+
+    fn try_from(
+        query_params: OpenID4VP25AuthorizationRequestQueryParams,
+    ) -> Result<Self, Self::Error> {
+        fn json_parse<T: for<'a> Deserialize<'a>>(
+            input: String,
+        ) -> Result<T, VerificationProtocolError> {
+            serde_json::from_str(&input)
+                .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
+        }
+
+        let (client_id, _) = decode_client_id_with_scheme(query_params.client_id)?;
+
+        Ok(OpenID4VP25AuthorizationRequest {
+            client_id,
+            state: query_params.state,
+            nonce: query_params.nonce,
+            response_type: query_params.response_type,
+            response_mode: query_params.response_mode,
+            presentation_definition_uri: query_params
+                .presentation_definition_uri
+                .map(|uri| {
+                    uri.parse().map_err(|_| {
+                        VerificationProtocolError::InvalidRequest(
+                            "invalid presentation_definition_uri".to_string(),
+                        )
+                    })
+                })
+                .transpose()?,
+            response_uri: query_params
+                .response_uri
+                .map(|uri| Url::parse(&uri))
+                .transpose()
+                .map_err(|_| {
+                    VerificationProtocolError::InvalidRequest("invalid response_uri".to_string())
+                })?,
+            client_metadata: query_params.client_metadata.map(json_parse).transpose()?,
+            presentation_definition: query_params
+                .presentation_definition
+                .map(json_parse)
+                .transpose()?,
+            redirect_uri: query_params.redirect_uri,
+        })
+    }
+}
+
+impl TryFrom<OpenID4VP25AuthorizationRequest> for OpenID4VPHolderInteractionData {
+    type Error = VerificationProtocolError;
+
+    fn try_from(value: OpenID4VP25AuthorizationRequest) -> Result<Self, Self::Error> {
+        let (client_id, client_id_scheme) = decode_client_id_with_scheme(value.client_id)?;
+
+        Ok(Self {
+            client_id,
+            response_type: value.response_type,
+            state: value.state,
+            nonce: value.nonce,
+            client_id_scheme,
+            client_metadata: value.client_metadata,
+            client_metadata_uri: None,
+            response_mode: value.response_mode,
+            response_uri: value.response_uri,
+            presentation_definition: value.presentation_definition,
+            presentation_definition_uri: value.presentation_definition_uri,
+            redirect_uri: value.redirect_uri,
+            verifier_did: None,
+        })
+    }
 }

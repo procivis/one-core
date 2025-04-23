@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use futures::future::BoxFuture;
 use mappers::create_openid4vp25_authorization_request;
+use model::OpenID4Vp25Params;
 use one_crypto::utilities;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
@@ -17,7 +18,6 @@ use uuid::Uuid;
 use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::map_credential_formats_to_presentation_format;
 use super::mdoc::mdoc_presentation_context;
-use super::model::OpenID4Vp25Params;
 use crate::config::core_config::{CoreConfig, DidType, VerificationProtocolType};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
@@ -33,7 +33,8 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionResponseDTO, VerificationProtocolCapabilities,
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -43,11 +44,10 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    InvitationResponseDTO, JwePayload, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, JwePayload,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
-    PresentationSubmissionMappingDTO, PresentedCredential, ShareResponse, UpdateResponse,
+    PresentationSubmissionMappingDTO,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,

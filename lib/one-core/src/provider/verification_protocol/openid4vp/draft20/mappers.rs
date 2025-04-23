@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde::Deserialize;
 use shared_types::KeyId;
+use url::Url;
 
-use super::model::OpenID4VP20AuthorizationRequestQueryParams;
+use super::model::{
+    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams,
+    OpenID4VP20HolderInteractionData, OpenID4Vp20Params,
+};
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -11,8 +16,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPVerifierInteractionContent, OpenID4Vp20Params,
-    OpenID4VpPresentationFormat,
+    ClientIdScheme, OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -181,4 +185,61 @@ fn get_params_for_redirect_uri(
         request_uri: None,
         redirect_uri: None,
     })
+}
+
+impl TryFrom<OpenID4VP20AuthorizationRequestQueryParams> for OpenID4VP20AuthorizationRequest {
+    type Error = VerificationProtocolError;
+
+    fn try_from(value: OpenID4VP20AuthorizationRequestQueryParams) -> Result<Self, Self::Error> {
+        let url_parse = |uri: String| {
+            Url::parse(&uri).map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
+        };
+
+        fn json_parse<T: for<'a> Deserialize<'a>>(
+            input: String,
+        ) -> Result<T, VerificationProtocolError> {
+            serde_json::from_str(&input)
+                .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
+        }
+
+        Ok(OpenID4VP20AuthorizationRequest {
+            client_id: value.client_id,
+            client_id_scheme: value.client_id_scheme,
+            state: value.state,
+            nonce: value.nonce,
+            response_type: value.response_type,
+            response_mode: value.response_mode,
+            response_uri: value.response_uri.map(url_parse).transpose()?,
+            client_metadata: value.client_metadata.map(json_parse).transpose()?,
+            client_metadata_uri: value.client_metadata_uri.map(url_parse).transpose()?,
+            presentation_definition: value.presentation_definition.map(json_parse).transpose()?,
+            presentation_definition_uri: value
+                .presentation_definition_uri
+                .map(url_parse)
+                .transpose()?,
+            redirect_uri: value.redirect_uri,
+        })
+    }
+}
+
+impl From<OpenID4VP20AuthorizationRequest> for OpenID4VP20HolderInteractionData {
+    fn from(value: OpenID4VP20AuthorizationRequest) -> Self {
+        Self {
+            client_id: value.client_id,
+            client_id_scheme: value
+                .client_id_scheme
+                .unwrap_or(ClientIdScheme::RedirectUri),
+            response_type: value.response_type,
+            response_mode: value.response_mode,
+            response_uri: value.response_uri,
+            state: value.state,
+            nonce: value.nonce,
+            client_metadata: value.client_metadata,
+            client_metadata_uri: value.client_metadata_uri,
+            presentation_definition: value.presentation_definition,
+            presentation_definition_uri: value.presentation_definition_uri,
+            redirect_uri: value.redirect_uri,
+            verifier_did: None,
+        }
+    }
 }

@@ -7,7 +7,10 @@ use futures::future::BoxFuture;
 use shared_types::KeyId;
 use url::Url;
 
-use super::dto::{PresentationDefinitionResponseDTO, VerificationProtocolCapabilities};
+use super::dto::{
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
+};
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
@@ -21,10 +24,7 @@ use crate::provider::credential_formatter::model::{DetailCredential, HolderBindi
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, OpenID4VpPresentationFormat, PresentedCredential, ShareResponse,
-    UpdateResponse,
-};
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::{ScanToVerifyRequestDTO, ShareProofRequestParamsDTO};
 use crate::util::key_verification::KeyVerification;

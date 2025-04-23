@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::mappers::decode_client_id_with_scheme;
-use super::model::{OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams};
+use super::model::{
+    OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
+};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -16,7 +18,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
-    OpenID4Vp25Params, OpenID4VpPresentationFormat,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
 use crate::provider::verification_protocol::openid4vp::x509::extract_x5c_san_dns;

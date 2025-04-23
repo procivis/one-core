@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::dto::BleOpenId4VpResponse;
 use super::BLEPeer;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
-};
+use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 
 /// Interaction data used for OpenID4VP over BLE
 /// used on both holder and verifier side

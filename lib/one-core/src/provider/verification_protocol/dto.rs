@@ -6,7 +6,11 @@ use time::OffsetDateTime;
 
 use crate::config::core_config::DidType;
 use crate::model::credential::Credential;
-use crate::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
+};
+use crate::model::interaction::InteractionId;
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -121,4 +125,29 @@ pub(crate) struct CredentialGroupItem {
 pub(crate) struct VerificationProtocolCapabilities {
     pub supported_transports: Vec<String>,
     pub did_methods: Vec<DidType>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct InvitationResponseDTO {
+    pub interaction_id: InteractionId,
+    pub proof: Proof,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PresentedCredential {
+    pub presentation: String,
+    pub credential_schema: CredentialSchema,
+    pub request: PresentationDefinitionRequestedCredentialResponseDTO,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ShareResponse<T> {
+    pub url: String,
+    pub interaction_id: InteractionId,
+    pub context: T,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct UpdateResponse {
+    pub update_proof: Option<UpdateProofRequest>,
 }

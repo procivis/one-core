@@ -38,15 +38,14 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::verification_protocol::dto::{
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, UpdateResponse,
+};
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
     map_credential_formats_to_presentation_format,
-};
-use crate::provider::verification_protocol::openid4vp::model::{
-    InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::{
     get_presentation_definition_with_local_credentials, FormatMapper, TypeToDescriptorMapper,

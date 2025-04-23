@@ -49,8 +49,9 @@ verificationProtocol:
         redirectUri:
           allowedSchemes: ["http", "https"]
   OPENID4VP_PROXIMITY_DRAFT00:
-    display: "exchange.openid00_proximity"
-    enabled: false
+    display:
+      en: "OpenID4VP Proximity"
+      de: "OpenID4VP Nähe"
     order: 4
     type: "OPENID4VP_PROXIMITY_DRAFT00"
     params: {}
