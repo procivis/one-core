@@ -1276,7 +1276,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .once()
         .withf(|h| {
             h.entity_type == HistoryEntityType::CredentialSchema
-                && h.action == HistoryAction::Created
+                && h.action == HistoryAction::Imported
         })
         .returning(|_| Ok(Uuid::new_v4().into()));
     history_repository
@@ -1482,7 +1482,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .once()
         .withf(|h| {
             h.entity_type == HistoryEntityType::CredentialSchema
-                && h.action == HistoryAction::Created
+                && h.action == HistoryAction::Imported
         })
         .returning(|_| Ok(Uuid::new_v4().into()));
     history_repository

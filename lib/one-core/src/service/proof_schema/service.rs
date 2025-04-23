@@ -376,7 +376,7 @@ impl ProofSchemaService {
         log_history_event_credential_schema(
             &*self.history_repository,
             &credential_schema,
-            HistoryAction::Created,
+            HistoryAction::Imported,
         )
         .await;
 
