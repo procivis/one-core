@@ -40,6 +40,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
+use crate::util::ble_resource::BleWaiter;
 
 mod async_verifier_flow;
 pub mod ble;
@@ -71,6 +72,7 @@ impl OpenID4VPProximityDraft00 {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        ble: Option<BleWaiter>,
     ) -> Self {
         let openid_ble = OpenID4VCBLE::new(
             proof_repository.clone(),
@@ -80,7 +82,7 @@ impl OpenID4VPProximityDraft00 {
             formatter_provider.clone(),
             key_algorithm_provider.clone(),
             key_provider.clone(),
-            None,
+            ble,
             config.clone(),
             params.clone(),
         );

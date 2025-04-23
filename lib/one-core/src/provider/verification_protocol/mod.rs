@@ -202,6 +202,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_provider.clone(),
+                    ble.clone(),
                 );
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), Arc::new(protocol));
