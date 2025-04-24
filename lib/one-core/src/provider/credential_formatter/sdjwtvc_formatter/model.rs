@@ -6,9 +6,12 @@ use serde_with::{serde_as, skip_serializing_none};
 use url::Url;
 
 #[skip_serializing_none]
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SdJwtVc {
+    #[serde(rename = "vct")]
+    pub vc_type: String,
+
     #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<String>,
 

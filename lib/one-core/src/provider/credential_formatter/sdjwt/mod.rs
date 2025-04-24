@@ -37,25 +37,21 @@ pub(crate) enum SdJwtType {
     SdJwtVc,
 }
 
-pub async fn format_credential<T: Serialize>(
+pub(crate) async fn format_credential<T: Serialize>(
     credential: VcdmCredential,
     additional_inputs: SdJwtFormattingInputs,
     auth_fn: AuthenticationFn,
     hasher: &dyn Hasher,
     did_method_provider: &dyn DidMethodProvider,
     credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
-    cred_and_digests_to_payload: fn(VcdmCredential, Vec<String>) -> Result<T, FormatterError>,
+    digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<String, FormatterError> {
     let issuer = credential.issuer.to_did_value()?.to_string();
     let id = credential.id.clone();
     let issued_at = credential.valid_from.or(credential.issuance_date);
     let expires_at = credential.valid_until.or(credential.expiration_date);
-    let (payload, disclosures) = format_hashed_credential(
-        credential,
-        hasher,
-        credential_to_claims,
-        cred_and_digests_to_payload,
-    )?;
+    let (payload, disclosures) =
+        format_hashed_credential(credential, hasher, credential_to_claims, digests_to_payload)?;
 
     let proof_of_possession_key = if let Some(ref holder_did) = additional_inputs.holder_did {
         let did_document = did_method_provider
@@ -87,7 +83,6 @@ pub async fn format_credential<T: Serialize>(
         issuer: Some(issuer),
         jwt_id: id.map(|id| id.to_string()),
         custom: payload,
-        vc_type: additional_inputs.vc_type,
         proof_of_possession_key,
     };
 
@@ -111,11 +106,11 @@ fn format_hashed_credential<T>(
     credential: VcdmCredential,
     hasher: &dyn Hasher,
     credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
-    cred_and_digests_to_payload: fn(VcdmCredential, Vec<String>) -> Result<T, FormatterError>,
+    digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<(T, Vec<String>), FormatterError> {
     let claims = credential_to_claims(&credential)?;
     let (disclosures, digests) = compute_object_disclosures(&claims, hasher)?;
-    let payload = cred_and_digests_to_payload(credential, digests)?;
+    let payload = digests_to_payload(digests)?;
     Ok((payload, disclosures))
 }
 
@@ -126,7 +121,7 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
     };
     let jwt: DecomposedToken<AnyPayload> = Jwt::decompose_token(without_claims)?;
 
-    if jwt.payload.vc_type.is_some() {
+    if jwt.payload.custom.contains_key("vct") {
         Ok(SdJwtType::SdJwtVc)
     } else {
         Ok(SdJwtType::SdJwt)
@@ -210,7 +205,7 @@ async fn append_key_binding_token(
 }
 
 impl<Payload: DeserializeOwned> Jwt<Payload> {
-    pub async fn build_from_token_with_disclosures(
+    pub(crate) async fn build_from_token_with_disclosures(
         token: &str,
         crypto: &dyn CryptoProvider,
         verification: Option<&VerificationFn>,
@@ -334,7 +329,6 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,
-            vc_type: decomposed_token.payload.vc_type,
             proof_of_possession_key: decomposed_token.payload.proof_of_possession_key,
         };
 

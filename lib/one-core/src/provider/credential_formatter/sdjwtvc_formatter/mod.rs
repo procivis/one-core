@@ -82,11 +82,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "vc+sd-jwt".to_string(),
-            vc_type: Some(schema_id),
         };
-        let payload_from_cred_and_digests = |cred: VcdmCredential, digests: Vec<String>| {
-            sdjwt_vc_from_credential(cred, digests, HASH_ALG)
-        };
+
+        let cred = vcdm.clone();
+        let payload_from_digests =
+            |digests: Vec<String>| sdjwt_vc_from_credential(cred, digests, HASH_ALG, schema_id);
 
         format_credential(
             vcdm,
@@ -95,7 +95,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             &*self.crypto.get_hasher(HASH_ALG)?,
             &*self.did_method_provider,
             credential_to_claims,
-            payload_from_cred_and_digests,
+            payload_from_digests,
         )
         .await
     }
@@ -405,6 +405,7 @@ fn sdjwt_vc_from_credential(
     credential: VcdmCredential,
     mut hashed_claims: Vec<String>,
     algorithm: &str,
+    vc_type: String,
 ) -> Result<SdJwtVc, FormatterError> {
     hashed_claims.sort_unstable();
 
@@ -424,5 +425,6 @@ fn sdjwt_vc_from_credential(
             custom_claims: Default::default(),
         }),
         public_claims: Default::default(),
+        vc_type,
     })
 }

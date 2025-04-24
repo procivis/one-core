@@ -74,11 +74,11 @@ impl CredentialFormatter for SDJWTFormatter {
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "SD_JWT".to_string(),
-            vc_type: None,
         };
-        let payload_from_cred_and_digests = |cred: VcdmCredential, digests: Vec<String>| {
-            vc_from_credential(cred, digests, HASH_ALG)
-        };
+
+        let cred = vcdm.clone();
+        let payload_from_digests =
+            |digests: Vec<String>| vc_from_credential(cred, digests, HASH_ALG);
         format_credential(
             vcdm,
             inputs,
@@ -86,7 +86,7 @@ impl CredentialFormatter for SDJWTFormatter {
             &*self.crypto.get_hasher(HASH_ALG)?,
             &*self.did_method_provider,
             credential_to_claims,
-            payload_from_cred_and_digests,
+            payload_from_digests,
         )
         .await
     }

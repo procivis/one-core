@@ -95,7 +95,6 @@ pub struct SdJwtFormattingInputs {
     pub holder_key_id: Option<String>,
     pub leeway: u64,
     pub token_type: String,
-    pub vc_type: Option<String>,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]

@@ -552,7 +552,6 @@ impl OpenID4VP20AuthorizationRequest {
                 subject: None,
                 audience: None,
                 jwt_id: None,
-                vc_type: None,
                 proof_of_possession_key: None,
                 custom: self.clone(),
             },

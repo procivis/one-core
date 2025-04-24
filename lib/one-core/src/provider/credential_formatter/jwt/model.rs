@@ -55,9 +55,6 @@ pub struct JWTPayload<CustomPayload> {
     #[serde(rename = "jti", default)]
     pub jwt_id: Option<String>,
 
-    #[serde(rename = "vct", default)]
-    pub vc_type: Option<String>,
-
     /// <https://www.rfc-editor.org/rfc/rfc7800.html#section-3>
     #[serde(rename = "cnf", default)]
     pub proof_of_possession_key: Option<ProofOfPossessionKey>,
