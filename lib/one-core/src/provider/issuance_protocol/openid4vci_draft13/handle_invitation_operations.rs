@@ -7,14 +7,12 @@ use uuid::Uuid;
 
 use super::mapper::{fetch_procivis_schema, from_create_request, parse_procivis_schema_claim};
 use super::model::OpenID4VCICredentialConfigurationData;
-use crate::config::core_config::CoreConfig;
 use crate::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaType, LayoutProperties, LayoutType,
     LogoProperties,
 };
 use crate::model::organisation::Organisation;
-use crate::provider::caching_loader::json_schema::JsonSchemaCache;
-use crate::provider::caching_loader::vct::VctTypeMetadataCache;
+use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
@@ -31,30 +29,25 @@ use crate::provider::issuance_protocol::{
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::util::oidc::map_from_openid4vp_format;
-pub struct HandleInvitationOperationsImpl {
+
+pub(crate) struct HandleInvitationOperationsImpl {
     pub organisation: Organisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
-    pub vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
-    pub json_schema_cache: Arc<JsonSchemaCache>,
-    pub config: Arc<CoreConfig>,
+    pub vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     pub http_client: Arc<dyn HttpClient>,
 }
 
 impl HandleInvitationOperationsImpl {
-    pub fn new(
+    pub(crate) fn new(
         organisation: Organisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
-        vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
-        json_schema_cache: Arc<JsonSchemaCache>,
-        config: Arc<CoreConfig>,
+        vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         http_client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
             vct_type_metadata_cache,
-            json_schema_cache,
-            config,
             http_client,
         }
     }
@@ -267,15 +260,15 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     let mut layout_properties = None;
 
                     if let Some(vct) = &credential_config.vct {
-                        let metadata = self
+                        let metadata_cache_item = self
                             .vct_type_metadata_cache
                             .get(vct)
                             .await
                             .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
-                        if let Some(metadata) = metadata {
-                            schema_name = metadata.name.clone();
-                            layout_properties = map_layout_properties(metadata);
+                        if let Some(metadata_cache_item) = metadata_cache_item {
+                            schema_name = metadata_cache_item.metadata.name.clone();
+                            layout_properties = map_layout_properties(metadata_cache_item.metadata);
                         }
                     }
 

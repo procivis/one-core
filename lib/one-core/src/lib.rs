@@ -294,10 +294,6 @@ impl OneCoreBuilder {
                 .ok_or(OneCoreBuildError::MissingRequiredField(
                     "VCT type metadata cache is required",
                 ))?,
-            self.json_schema_cache
-                .ok_or(OneCoreBuildError::MissingRequiredField(
-                    "JSON schema cache is required",
-                ))?,
             self.trust_list_cache
                 .ok_or(OneCoreBuildError::MissingRequiredField(
                     "Trust list cache is required",
@@ -318,7 +314,6 @@ impl OneCore {
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
         client: Arc<dyn HttpClient>,
         vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
-        json_schema_cache: Arc<JsonSchemaCache>,
         trust_list_cache: Arc<TrustListCache>,
     ) -> Result<OneCore, OneCoreBuildError> {
         // For now we will just put them here.
@@ -632,7 +627,6 @@ impl OneCore {
                 config.clone(),
                 client.clone(),
                 vct_type_metadata_cache,
-                json_schema_cache,
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),

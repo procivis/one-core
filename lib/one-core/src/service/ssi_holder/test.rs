@@ -16,7 +16,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -843,14 +842,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         config: Arc::new(generic_config().core),
         client: client.clone(),
         vct_type_metadata_cache: Arc::new(VctTypeMetadataCache::new(
-            Arc::new(VctTypeMetadataResolver::new(client.clone())),
-            remote_entity_storage.clone(),
-            0,
-            Duration::seconds(60),
-            Duration::seconds(60),
-        )),
-        json_schema_cache: Arc::new(JsonSchemaCache::new(
-            Arc::new(JsonSchemaResolver::new(client)),
+            Arc::new(VctTypeMetadataResolver::new(client)),
             remote_entity_storage,
             0,
             Duration::seconds(60),

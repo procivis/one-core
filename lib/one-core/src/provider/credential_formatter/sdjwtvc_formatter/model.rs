@@ -12,6 +12,9 @@ pub struct SdJwtVc {
     #[serde(rename = "vct")]
     pub vc_type: String,
 
+    #[serde(rename = "vct#integrity", default)]
+    pub vct_integrity: Option<String>,
+
     #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<String>,
 

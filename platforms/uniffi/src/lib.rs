@@ -497,6 +497,7 @@ async fn initialize(
 
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
+                let vct_type_metadata_cache = vct_type_metadata_cache.clone();
                 let client = client.clone();
                 Box::new(move |format_config, datatype_config, providers| {
                     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> =
@@ -549,6 +550,7 @@ async fn initialize(
                                     params,
                                     crypto.clone(),
                                     did_method_provider.clone(),
+                                    vct_type_metadata_cache.clone(),
                                 )) as _
                             }
                             FormatType::JsonLdClassic => {

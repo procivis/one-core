@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use time::OffsetDateTime;
 
 use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
@@ -32,11 +34,28 @@ pub enum VctCacheError {
 
     #[error("Failed deserializing value: {0}")]
     InvalidValue(#[from] serde_json::Error),
+
+    #[error("VCT cache failure: {0}")]
+    Failed(String),
+}
+
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait::async_trait]
+pub trait VctTypeMetadataFetcher: Send + Sync {
+    async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, VctCacheError>;
 }
 
 pub struct VctTypeMetadataCache {
     inner: CachingLoader<VctTypeMetadataResolverError>,
     resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError> + Send>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcTypeMetadataCacheItem {
+    pub metadata: SdJwtVcTypeMetadataResponseDTO,
+
+    /// vct#integrity
+    pub integrity: Option<String>,
 }
 
 impl VctTypeMetadataCache {
@@ -86,21 +105,29 @@ impl VctTypeMetadataCache {
 
         Ok(())
     }
+}
 
-    pub async fn get(
-        &self,
-        vct: &str,
-    ) -> Result<Option<SdJwtVcTypeMetadataResponseDTO>, VctCacheError> {
+#[async_trait::async_trait]
+impl VctTypeMetadataFetcher for VctTypeMetadataCache {
+    async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, VctCacheError> {
         // Only make HTTP requests for http and https schemes
         if let Ok(url) = url::Url::parse(vct) {
             if url.scheme() == "http" || url.scheme() == "https" {
-                let (metadata, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
-                return Ok(Some(serde_json::from_slice(&metadata)?));
+                let (bytes, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
+
+                let hash_base64 = SHA256
+                    .hash_base64(&bytes)
+                    .map_err(|e| VctCacheError::Failed(e.to_string()))?;
+
+                return Ok(Some(SdJwtVcTypeMetadataCacheItem {
+                    metadata: serde_json::from_slice(&bytes)?,
+                    integrity: Some(format!("sha256-{hash_base64}")),
+                }));
             }
         }
 
         // For all other cases (non-HTTP URLs or invalid URLs), just check the cache
-        let metadata = self
+        let metadata: Option<SdJwtVcTypeMetadataResponseDTO> = self
             .inner
             .get_if_cached(vct)
             .await?
@@ -108,7 +135,10 @@ impl VctTypeMetadataCache {
             .map(serde_json::from_slice)
             .transpose()?;
 
-        Ok(metadata)
+        Ok(metadata.map(|metadata| SdJwtVcTypeMetadataCacheItem {
+            metadata,
+            integrity: None,
+        }))
     }
 }
 

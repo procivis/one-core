@@ -18,6 +18,9 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::LayoutType;
 use crate::model::did::KeyRole;
 use crate::model::key::Key;
+use crate::provider::caching_loader::vct::{
+    MockVctTypeMetadataFetcher, SdJwtVcTypeMetadataCacheItem,
+};
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::jwt::model::{
     JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -45,6 +48,7 @@ use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{dummy_did_document, dummy_jwk};
 use crate::util::key_verification::KeyVerification;
 
@@ -79,6 +83,26 @@ async fn test_format_credential() {
     did_method_provider
         .expect_resolve()
         .return_once(move |_| Ok(holder_did));
+
+    let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
+    vct_metadata_cache
+        .expect_get()
+        .with(eq("http://schema.test/id"))
+        .return_once(|_| {
+            Ok(Some(SdJwtVcTypeMetadataCacheItem {
+                metadata: SdJwtVcTypeMetadataResponseDTO {
+                    vct: "http://schema.test/id".to_string(),
+                    name: None,
+                    display: vec![],
+                    claims: vec![],
+                    schema: None,
+                    schema_uri: None,
+                    layout_properties: None,
+                },
+                integrity: Some("integrity".to_string()),
+            }))
+        });
+
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
             leeway,
@@ -86,6 +110,7 @@ async fn test_format_credential() {
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
+        Arc::new(vct_metadata_cache),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -155,6 +180,9 @@ async fn test_format_credential() {
 
     let vc = payload.custom;
 
+    assert_eq!(vc.vc_type, "http://schema.test/id".to_string());
+    assert_eq!(vc.vct_integrity, Some("integrity".to_string()));
+
     assert!(vc
         .digests
         .iter()
@@ -200,6 +228,7 @@ async fn test_extract_credentials() {
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -290,6 +319,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -373,6 +403,7 @@ async fn test_extract_presentation() {
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -444,6 +475,7 @@ fn test_schema_id() {
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
     );
     let vct_type = "xyz some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -600,7 +632,31 @@ async fn test_format_extract_round_trip() {
             ),
         ]),
     ));
-    let formatter = SDJWTVCFormatter::new(params, crypto, did_method_provider.clone());
+
+    let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
+    vct_metadata_cache
+        .expect_get()
+        .with(eq("credential-schema-id"))
+        .return_once(|_| {
+            Ok(Some(SdJwtVcTypeMetadataCacheItem {
+                metadata: SdJwtVcTypeMetadataResponseDTO {
+                    vct: "credential-schema-id".to_string(),
+                    name: None,
+                    display: vec![],
+                    claims: vec![],
+                    schema: None,
+                    schema_uri: None,
+                    layout_properties: None,
+                },
+                integrity: None,
+            }))
+        });
+    let formatter = SDJWTVCFormatter::new(
+        params,
+        crypto,
+        did_method_provider.clone(),
+        Arc::new(vct_metadata_cache),
+    );
 
     let mut auth_fn = MockSignatureProvider::new();
     let public_key = key_pair.public.clone();

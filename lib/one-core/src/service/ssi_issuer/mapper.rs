@@ -32,7 +32,7 @@ impl Default for JsonLDContextDTO {
     }
 }
 
-pub fn generate_jsonld_context_response(
+pub(crate) fn generate_jsonld_context_response(
     claim_schemas: &Vec<CredentialSchemaClaim>,
     base_url: &str,
 ) -> Result<HashMap<String, JsonLDEntityDTO>, ServiceError> {
@@ -89,7 +89,10 @@ fn insert_claim(
     Ok(())
 }
 
-pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, ServiceError> {
+pub(crate) fn get_url_with_fragment(
+    base_url: &str,
+    fragment: &str,
+) -> Result<String, ServiceError> {
     let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
     // We need to url encode the fragment in case `#` is used in a claim name
     url.set_fragment(Some(&urlencoding::encode(fragment)));

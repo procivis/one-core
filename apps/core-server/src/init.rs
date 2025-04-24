@@ -350,8 +350,18 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
     let caching_loader =
         initialize_jsonld_cache_loader(&app_config.core.cache_entities, data_repository.clone());
 
+    let vct_type_metadata_cache = Arc::new(
+        initialize_vct_type_metadata_cache(
+            &app_config.core.cache_entities,
+            data_repository.get_remote_entity_cache_repository().clone(),
+            client.clone(),
+        )
+        .await,
+    );
+
     let formatter_provider_creator: FormatterProviderCreator = {
         let caching_loader = caching_loader.clone();
+        let vct_type_metadata_cache = vct_type_metadata_cache.clone();
         let client = client.clone();
         Box::new(move |format_config, datatype_config, providers| {
             let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
@@ -402,6 +412,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             params,
                             crypto.clone(),
                             did_method_provider.clone(),
+                            vct_type_metadata_cache.clone(),
                         )) as _
                     }
                     FormatType::JsonLdClassic => {
@@ -481,15 +492,6 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
             Arc::new(CredentialFormatterProviderImpl::new(formatters))
         })
     };
-
-    let vct_type_metadata_cache = Arc::new(
-        initialize_vct_type_metadata_cache(
-            &app_config.core.cache_entities,
-            data_repository.get_remote_entity_cache_repository().clone(),
-            client.clone(),
-        )
-        .await,
-    );
 
     let json_schema_cache = Arc::new(
         initialize_json_schema_loader(

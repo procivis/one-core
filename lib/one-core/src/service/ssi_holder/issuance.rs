@@ -329,8 +329,6 @@ impl SSIHolderService {
             organisation.clone(),
             self.credential_schema_repository.clone(),
             self.vct_type_metadata_cache.clone(),
-            self.json_schema_cache.clone(),
-            self.config.clone(),
             self.client.clone(),
         );
 

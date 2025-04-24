@@ -354,6 +354,10 @@ pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
     #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub claims: Vec<SdJwtVcClaimRestDTO>,
+    #[serde(default)]
+    pub schema: Option<serde_json::Value>,
+    #[serde(default)]
+    pub schema_uri: Option<Url>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }

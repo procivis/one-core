@@ -30,6 +30,7 @@ use crate::config::core_config::{
     VerificationProtocolType,
 };
 use crate::model::did::Did;
+use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
@@ -50,6 +51,7 @@ use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 pub struct SDJWTVCFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     params: Params,
 }
 
@@ -74,9 +76,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let schema_id = vcdm
             .credential_schema
             .as_ref()
-            .and_then(|schemas| schemas.iter().next())
+            .and_then(|schemas| schemas.first())
             .map(|schema| schema.id.to_owned())
             .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
+
         let inputs = SdJwtFormattingInputs {
             holder_did: credential_data.holder_did,
             holder_key_id: credential_data.holder_key_id,
@@ -84,9 +87,17 @@ impl CredentialFormatter for SDJWTVCFormatter {
             token_type: "vc+sd-jwt".to_string(),
         };
 
+        let vct_integrity = self
+            .vct_type_metadata_cache
+            .get(&schema_id)
+            .await
+            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?
+            .and_then(|item| item.integrity);
+
         let cred = vcdm.clone();
-        let payload_from_digests =
-            |digests: Vec<String>| sdjwt_vc_from_credential(cred, digests, HASH_ALG, schema_id);
+        let payload_from_digests = |digests: Vec<String>| {
+            sdjwt_vc_from_credential(cred, digests, HASH_ALG, schema_id, vct_integrity)
+        };
 
         format_credential(
             vcdm,
@@ -331,11 +342,13 @@ impl SDJWTVCFormatter {
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     ) -> Self {
         Self {
             params,
             crypto,
             did_method_provider,
+            vct_type_metadata_cache,
         }
     }
 }
@@ -406,6 +419,7 @@ fn sdjwt_vc_from_credential(
     mut hashed_claims: Vec<String>,
     algorithm: &str,
     vc_type: String,
+    vct_integrity: Option<String>,
 ) -> Result<SdJwtVc, FormatterError> {
     hashed_claims.sort_unstable();
 
@@ -417,6 +431,7 @@ fn sdjwt_vc_from_credential(
             .collect();
         serde_json::from_value(obj).ok()
     });
+
     Ok(SdJwtVc {
         digests: hashed_claims,
         hash_alg: Some(algorithm.to_owned()),
@@ -426,5 +441,6 @@ fn sdjwt_vc_from_credential(
         }),
         public_claims: Default::default(),
         vc_type,
+        vct_integrity,
     })
 }
