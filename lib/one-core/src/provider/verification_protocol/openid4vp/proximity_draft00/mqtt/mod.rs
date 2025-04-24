@@ -15,23 +15,22 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::Instrument;
 use url::Url;
-use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
-use super::OpenID4VPProximityDraft00Params;
+use super::{
+    create_interaction_and_proof, create_presentation, prepare_proof_share,
+    CreatePresentationParams, OpenID4VPProximityDraft00Params, ProofShareParams,
+};
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    OID4VPHandover, SessionTranscript,
-};
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, FormatPresentationCtx, HolderBindingCtx, TokenVerifier,
+    AuthenticationFn, HolderBindingCtx, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -40,13 +39,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
-use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_presentation_definition, create_presentation_submission,
-    map_credential_formats_to_presentation_format,
-};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::provider::verification_protocol::openid4vp::{
@@ -362,7 +355,7 @@ impl OpenId4VcMqtt {
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-        let organisation = Some(organisation);
+        let organisation_as_option = Some(organisation.clone());
         let verifier_did = {
             let did_value =
                 DidValue::from_did_url(presentation_request.payload.custom.client_id.as_str())
@@ -376,7 +369,7 @@ impl OpenId4VcMqtt {
             get_or_create_did(
                 &*self.did_method_provider,
                 &*self.did_repository,
-                &organisation,
+                &organisation_as_option,
                 &did_value,
                 DidRole::Verifier,
             )
@@ -389,7 +382,7 @@ impl OpenId4VcMqtt {
             })?
         };
 
-        let interaction_data = MQTTOpenID4VPInteractionDataHolder {
+        let mqtt_interaction_data = MQTTOpenID4VPInteractionDataHolder {
             broker_url: host.to_string(),
             broker_port: port,
             client_id: presentation_request.payload.custom.client_id,
@@ -402,36 +395,19 @@ impl OpenId4VcMqtt {
             topic_id,
         };
 
-        let now = OffsetDateTime::now_utc();
-        let interaction = Interaction {
-            id: Uuid::new_v4(),
-            created_date: now,
-            last_modified: now,
-            host: None,
-            data: Some(serde_json::to_vec(&interaction_data).map_err(|err| {
-                VerificationProtocolError::Failed(format!("Interaction data: {err}"))
-            })?),
+        let interaction_data = Some(serde_json::to_vec(&mqtt_interaction_data).map_err(|err| {
+            VerificationProtocolError::Failed(format!("Interaction data: {err}"))
+        })?);
+
+        let (interaction_id, proof) = create_interaction_and_proof(
+            interaction_data,
             organisation,
-        };
-
-        let interaction_id = self
-            .interaction_repository
-            .create_interaction(interaction.clone())
-            .await
-            .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?;
-
-        let proof_id: ProofId = Uuid::new_v4().into();
-        let proof = proof_from_handle_invitation(
-            &proof_id,
-            VerificationProtocolType::OpenId4VpDraft20.as_ref(),
-            None,
             Some(verifier_did),
-            interaction,
-            OffsetDateTime::now_utc(),
-            None,
-            TransportType::Mqtt.as_ref(),
-            ProofStateEnum::Requested,
-        );
+            VerificationProtocolType::OpenId4VpDraft20,
+            TransportType::Mqtt,
+            &*self.interaction_repository,
+        )
+        .await?;
 
         Ok(InvitationResponseDTO {
             interaction_id,
@@ -502,70 +478,20 @@ impl OpenId4VcMqtt {
                 .and_then(|interaction| interaction.data.as_ref()),
         )?;
 
-        let tokens: Vec<String> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.presentation.to_owned())
-            .collect();
-
-        let token_formats: Vec<String> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
-            .collect();
-
-        let (format, oidc_format) =
-            map_credential_formats_to_presentation_format(&credential_presentations)?;
-
-        let presentation_formatter = self.formatter_provider.get_formatter(&format).ok_or(
-            VerificationProtocolError::Failed("Formatter not found".to_string()),
-        )?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(key, jwk_key_id, self.key_algorithm_provider.clone())
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_definition_id = interaction_data
-            .presentation_definition
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "Missing presentation definition".into(),
-            ))?
-            .id
-            .to_owned();
-
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
+        let (vp_token, presentation_submission) = create_presentation(CreatePresentationParams {
             credential_presentations,
-            &oidc_format,
-        )?;
-
-        let mut ctx = FormatPresentationCtx {
-            nonce: Some(interaction_data.nonce.clone()),
-            token_formats: Some(token_formats),
-            ..Default::default()
-        };
-
-        if format == "MDOC" {
-            ctx.mdoc_session_transcript = Some(
-                to_cbor(&SessionTranscript {
-                    handover: OID4VPHandover::compute(
-                        &interaction_data.client_id,
-                        &interaction_data.client_id,
-                        &interaction_data.nonce,
-                        &interaction_data.identity_request_nonce,
-                    )
-                    .into(),
-                    device_engagement_bytes: None,
-                    e_reader_key_bytes: None,
-                })
-                .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
-            );
-        }
-
-        let vp_token = presentation_formatter
-            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            presentation_definition: interaction_data.presentation_definition.as_ref(),
+            holder_did,
+            key,
+            jwk_key_id,
+            client_id: &interaction_data.client_id,
+            identity_request_nonce: Some(&interaction_data.identity_request_nonce),
+            nonce: &interaction_data.nonce,
+            formatter_provider: &*self.formatter_provider,
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            key_provider: &*self.key_provider,
+        })
+        .await?;
 
         let response = MQTTOpenId4VpResponse {
             vp_token,
@@ -616,6 +542,20 @@ impl OpenId4VcMqtt {
         cancellation_token: CancellationToken,
         on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<Url, VerificationProtocolError> {
+        let (presentation_definition, verifier_did, auth_fn) =
+            prepare_proof_share(ProofShareParams {
+                interaction_id,
+                proof,
+                type_to_descriptor,
+                format_to_type_mapper,
+                key_id,
+                did_method_provider: &*self.did_method_provider,
+                formatter_provider: &*self.formatter_provider,
+                key_provider: &*self.key_provider,
+                key_algorithm_provider: self.key_algorithm_provider.clone(),
+            })
+            .await?;
+
         let url = {
             let mut url: Url = format!("{}://connect", self.openid_params.url_scheme)
                 .parse()
@@ -633,14 +573,6 @@ impl OpenId4VcMqtt {
             url
         };
 
-        let presentation_definition = create_open_id_for_vp_presentation_definition(
-            interaction_id,
-            proof,
-            type_to_descriptor,
-            format_to_type_mapper,
-            &*self.formatter_provider,
-        )?;
-
         if !self
             .config
             .transport
@@ -651,39 +583,7 @@ impl OpenId4VcMqtt {
             ));
         }
 
-        let Some(verifier_did) = proof.verifier_did.as_ref() else {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "Verifier DID missing for proof {}",
-                { proof.id }
-            )));
-        };
-
-        let Ok(verifier_key) = verifier_did.find_key(&key_id, KeyRole::Authentication) else {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "Verifier key {} not found for proof {}",
-                key_id,
-                { proof.id }
-            )));
-        };
-
-        let verifier_jwk_key_id = self
-            .did_method_provider
-            .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
-            .await
-            .map_err(|err| {
-                VerificationProtocolError::Failed(format!("Failed resolving did {err}"))
-            })?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(
-                verifier_key,
-                Some(verifier_jwk_key_id),
-                self.key_algorithm_provider.clone(),
-            )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
         let topic_prefix = format!("/proof/{}", interaction_id);
-
         self.start_detached_subscriber(
             topic_prefix,
             key_agreement,

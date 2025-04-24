@@ -9,18 +9,28 @@ use key_agreement_key::KeyAgreementKey;
 use mqtt::OpenId4VcMqtt;
 use serde::Deserialize;
 use serde_json::json;
-use shared_types::KeyId;
+use shared_types::{KeyId, ProofId};
+use time::OffsetDateTime;
 use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
-use super::model::{default_presentation_url_scheme, OpenID4VpPresentationFormat};
-use crate::config::core_config::{CoreConfig, DidType, TransportType};
-use crate::model::did::Did;
+use super::model::{
+    default_presentation_url_scheme, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
+    PresentationSubmissionMappingDTO,
+};
+use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
+use crate::model::did::{Did, KeyRole};
+use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    OID4VPHandover, SessionTranscript,
+};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, DetailCredential, FormatPresentationCtx, HolderBindingCtx,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -31,6 +41,12 @@ use crate::provider::verification_protocol::dto::{
     UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
+use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    create_open_id_for_vp_presentation_definition, create_presentation_submission,
+    map_credential_formats_to_presentation_format,
+};
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
@@ -512,4 +528,201 @@ fn merge_query_params(mut first: Url, second: Url) -> Url {
     first.query_pairs_mut().extend_pairs(query_params);
 
     first
+}
+
+pub(super) async fn create_interaction_and_proof(
+    interaction_data: Option<Vec<u8>>,
+    organisation: Organisation,
+    verifier_did: Option<Did>,
+    verification_protocol_type: VerificationProtocolType,
+    transport_type: TransportType,
+    interaction_repository: &dyn InteractionRepository,
+) -> Result<(InteractionId, Proof), VerificationProtocolError> {
+    let now = OffsetDateTime::now_utc();
+    let interaction = Interaction {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+        host: None,
+        data: interaction_data,
+        organisation: Some(organisation),
+    };
+
+    let interaction_id = interaction_repository
+        .create_interaction(interaction.clone())
+        .await
+        .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?;
+
+    let proof_id: ProofId = Uuid::new_v4().into();
+    Ok((
+        interaction_id,
+        proof_from_handle_invitation(
+            &proof_id,
+            verification_protocol_type.as_ref(),
+            None,
+            verifier_did,
+            interaction,
+            now,
+            None,
+            transport_type.as_ref(),
+            ProofStateEnum::Requested,
+        ),
+    ))
+}
+
+pub(super) struct CreatePresentationParams<'a> {
+    credential_presentations: Vec<PresentedCredential>,
+    presentation_definition: Option<&'a OpenID4VPPresentationDefinition>,
+    holder_did: &'a Did,
+    key: &'a Key,
+    jwk_key_id: Option<String>,
+
+    client_id: &'a str,
+    identity_request_nonce: Option<&'a str>,
+    nonce: &'a str,
+
+    formatter_provider: &'a dyn CredentialFormatterProvider,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_provider: &'a dyn KeyProvider,
+}
+
+pub(super) async fn create_presentation(
+    params: CreatePresentationParams<'_>,
+) -> Result<(String, PresentationSubmissionMappingDTO), VerificationProtocolError> {
+    let tokens: Vec<String> = params
+        .credential_presentations
+        .iter()
+        .map(|presented_credential| presented_credential.presentation.to_owned())
+        .collect();
+
+    let token_formats: Vec<String> = params
+        .credential_presentations
+        .iter()
+        .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
+        .collect();
+
+    let (format, oidc_format) =
+        map_credential_formats_to_presentation_format(&params.credential_presentations)?;
+
+    let presentation_formatter = params.formatter_provider.get_formatter(&format).ok_or(
+        VerificationProtocolError::Failed("Formatter not found".to_string()),
+    )?;
+
+    let auth_fn = params
+        .key_provider
+        .get_signature_provider(params.key, params.jwk_key_id, params.key_algorithm_provider)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    let presentation_definition_id = params
+        .presentation_definition
+        .ok_or(VerificationProtocolError::Failed(
+            "Missing presentation definition".into(),
+        ))?
+        .id
+        .to_owned();
+
+    let presentation_submission = create_presentation_submission(
+        presentation_definition_id,
+        params.credential_presentations,
+        &oidc_format,
+    )?;
+
+    let mut ctx = FormatPresentationCtx {
+        nonce: Some(params.nonce.to_string()),
+        token_formats: Some(token_formats),
+        ..Default::default()
+    };
+
+    if format == "MDOC" {
+        let mdoc_generated_nonce = params.identity_request_nonce.ok_or_else(|| {
+            VerificationProtocolError::Failed(
+                "Cannot format MDOC - missing identity request nonce".to_string(),
+            )
+        })?;
+
+        ctx.mdoc_session_transcript = Some(
+            to_cbor(&SessionTranscript {
+                handover: OID4VPHandover::compute(
+                    params.client_id,
+                    params.client_id,
+                    params.nonce,
+                    mdoc_generated_nonce,
+                )
+                .into(),
+                device_engagement_bytes: None,
+                e_reader_key_bytes: None,
+            })
+            .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
+        );
+    }
+
+    let vp_token = presentation_formatter
+        .format_presentation(
+            &tokens,
+            &params.holder_did.did,
+            &params.key.key_type,
+            auth_fn,
+            ctx,
+        )
+        .await
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    Ok((vp_token, presentation_submission))
+}
+
+pub(super) struct ProofShareParams<'a> {
+    interaction_id: InteractionId,
+    proof: &'a Proof,
+    type_to_descriptor: TypeToDescriptorMapper,
+    format_to_type_mapper: FormatMapper,
+    key_id: KeyId,
+
+    did_method_provider: &'a dyn DidMethodProvider,
+    formatter_provider: &'a dyn CredentialFormatterProvider,
+    key_provider: &'a dyn KeyProvider,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+}
+
+pub(super) async fn prepare_proof_share(
+    params: ProofShareParams<'_>,
+) -> Result<(OpenID4VPPresentationDefinition, Did, AuthenticationFn), VerificationProtocolError> {
+    let presentation_definition = create_open_id_for_vp_presentation_definition(
+        params.interaction_id,
+        params.proof,
+        params.type_to_descriptor,
+        params.format_to_type_mapper,
+        params.formatter_provider,
+    )?;
+
+    let Some(verifier_did) = params.proof.verifier_did.as_ref() else {
+        return Err(VerificationProtocolError::InvalidRequest(format!(
+            "Verifier DID missing for proof {}",
+            { params.proof.id }
+        )));
+    };
+
+    let Ok(verifier_key) = verifier_did.find_key(&params.key_id, KeyRole::Authentication) else {
+        return Err(VerificationProtocolError::InvalidRequest(format!(
+            "Verifier key {} not found for proof {}",
+            params.key_id,
+            { params.proof.id }
+        )));
+    };
+
+    let verifier_jwk_key_id = params
+        .did_method_provider
+        .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
+        .await
+        .map_err(|err| VerificationProtocolError::Failed(format!("Failed resolving did {err}")))?;
+
+    let auth_fn = params
+        .key_provider
+        .get_signature_provider(
+            verifier_key,
+            Some(verifier_jwk_key_id),
+            params.key_algorithm_provider,
+        )
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    Ok((presentation_definition, verifier_did.clone(), auth_fn))
 }

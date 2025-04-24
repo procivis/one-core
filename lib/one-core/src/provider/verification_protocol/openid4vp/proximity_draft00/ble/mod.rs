@@ -14,38 +14,31 @@ use secrecy::SecretSlice;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shared_types::KeyId;
-use time::OffsetDateTime;
 use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
 use super::dto::MessageSize;
 use super::peer_encryption::PeerEncryption;
-use super::{KeyAgreementKey, OpenID4VPProximityDraft00Params};
+use super::{
+    create_interaction_and_proof, create_presentation, prepare_proof_share,
+    CreatePresentationParams, KeyAgreementKey, OpenID4VPProximityDraft00Params, ProofShareParams,
+};
 use crate::config::core_config::{self, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    OID4VPHandover, SessionTranscript,
-};
-use crate::provider::credential_formatter::model::{FormatPresentationCtx, HolderBindingCtx};
+use crate::provider::credential_formatter::model::HolderBindingCtx;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, UpdateResponse,
-};
-use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
-use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_presentation_definition, create_presentation_submission,
-    map_credential_formats_to_presentation_format,
 };
 use crate::provider::verification_protocol::openid4vp::{
     get_presentation_definition_with_local_credentials, FormatMapper, TypeToDescriptorMapper,
@@ -322,33 +315,15 @@ impl OpenID4VCBLE {
             ));
         }
 
-        let now = OffsetDateTime::now_utc();
-        let interaction = Interaction {
-            id: Uuid::new_v4(),
-            created_date: now,
-            last_modified: now,
-            host: None,
-            data: None,
-            organisation: Some(organisation.clone()),
-        };
-        let interaction_id = self
-            .interaction_repository
-            .create_interaction(interaction.clone())
-            .await
-            .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?;
-
-        let proof_id = Uuid::new_v4().into();
-        let mut proof = proof_from_handle_invitation(
-            &proof_id,
-            VerificationProtocolType::OpenId4VpProximityDraft00.as_ref(),
+        let (interaction_id, mut proof) = create_interaction_and_proof(
             None,
+            organisation.clone(),
             None,
-            interaction,
-            now,
-            None,
-            "BLE",
-            ProofStateEnum::Requested,
-        );
+            VerificationProtocolType::OpenId4VpProximityDraft00,
+            TransportType::Ble,
+            &*self.interaction_repository,
+        )
+        .await?;
 
         let verification_fn = Box::new(KeyVerification {
             did_method_provider: self.did_method_provider.clone(),
@@ -434,82 +409,25 @@ impl OpenID4VCBLE {
             ));
         }
 
-        let tokens: Vec<String> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.presentation.to_owned())
-            .collect();
-
-        let token_formats: Vec<String> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
-            .collect();
-
-        let (format, oidc_format) =
-            map_credential_formats_to_presentation_format(&credential_presentations)?;
-
-        let presentation_formatter = self
-            .formatter_provider
-            .get_formatter(&format)
-            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(key, jwk_key_id, self.key_algorithm_provider.clone())
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_definition_id = openid_request
-            .presentation_definition
-            .as_ref()
-            .ok_or_else(|| {
-                VerificationProtocolError::Failed("presentation_definition not found".to_string())
-            })?
-            .id
-            .to_owned();
-
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
-            credential_presentations,
-            &oidc_format,
-        )?;
-
         let nonce = openid_request
             .nonce
-            .as_ref()
+            .as_deref()
             .ok_or_else(|| VerificationProtocolError::Failed("nonce missing".to_string()))?;
 
-        let mut ctx = FormatPresentationCtx {
-            nonce: Some(nonce.to_owned()),
-            token_formats: Some(token_formats),
-            ..Default::default()
-        };
-
-        if format == "MDOC" {
-            let mdoc_generated_nonce = identity_request_nonce.as_deref().ok_or_else(|| {
-                VerificationProtocolError::Failed(
-                    "Cannot format MDOC - missing identity request nonce".to_string(),
-                )
-            })?;
-
-            ctx.mdoc_session_transcript = Some(
-                to_cbor(&SessionTranscript {
-                    handover: OID4VPHandover::compute(
-                        &openid_request.client_id,
-                        &openid_request.client_id,
-                        nonce,
-                        mdoc_generated_nonce,
-                    )
-                    .into(),
-                    device_engagement_bytes: None,
-                    e_reader_key_bytes: None,
-                })
-                .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
-            );
-        }
-
-        let vp_token = presentation_formatter
-            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let (vp_token, presentation_submission) = create_presentation(CreatePresentationParams {
+            credential_presentations,
+            presentation_definition: openid_request.presentation_definition.as_ref(),
+            holder_did,
+            key,
+            jwk_key_id,
+            client_id: &openid_request.client_id,
+            identity_request_nonce: identity_request_nonce.as_deref(),
+            nonce,
+            formatter_provider: &*self.formatter_provider,
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            key_provider: &*self.key_provider,
+        })
+        .await?;
 
         ble_holder
             .submit_presentation(vp_token, presentation_submission, &interaction_data)
@@ -530,14 +448,19 @@ impl OpenID4VCBLE {
         cancellation_token: CancellationToken,
         on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<Url, VerificationProtocolError> {
-        // Pass the expected presentation content to interaction for verification
-        let presentation_definition = create_open_id_for_vp_presentation_definition(
-            interaction_id,
-            proof,
-            type_to_descriptor,
-            format_to_type_mapper,
-            &*self.formatter_provider,
-        )?;
+        let (presentation_definition, verifier_did, auth_fn) =
+            prepare_proof_share(ProofShareParams {
+                interaction_id,
+                proof,
+                type_to_descriptor,
+                format_to_type_mapper,
+                key_id,
+                did_method_provider: &*self.did_method_provider,
+                formatter_provider: &*self.formatter_provider,
+                key_provider: &*self.key_provider,
+                key_algorithm_provider: self.key_algorithm_provider.clone(),
+            })
+            .await?;
 
         if !self
             .config
@@ -564,38 +487,6 @@ impl OpenID4VCBLE {
                 "BLE adapter not enabled".into(),
             ));
         }
-
-        let Some(verifier_did) = proof.verifier_did.as_ref() else {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "Verifier DID missing for proof {}",
-                { proof.id }
-            )));
-        };
-
-        let Ok(verifier_key) = verifier_did.find_key(&key_id, KeyRole::Authentication) else {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "Verifier key {} not found for proof {}",
-                key_id,
-                { proof.id }
-            )));
-        };
-
-        let verifier_jwk_key_id = self
-            .did_method_provider
-            .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
-            .await
-            .map_err(|err| {
-                VerificationProtocolError::Failed(format!("Failed resolving did {err}"))
-            })?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(
-                verifier_key,
-                Some(verifier_jwk_key_id),
-                self.key_algorithm_provider.clone(),
-            )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         let url = ble_verifier
             .share_proof(
