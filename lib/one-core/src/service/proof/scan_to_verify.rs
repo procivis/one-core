@@ -4,7 +4,7 @@ use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use super::ProofService;
 use crate::common_mapper::{extracted_credential_to_model, get_or_create_did, DidRole};
-use crate::config::validator::transport::get_first_available_transport_type;
+use crate::config::validator::transport::get_first_available_transport;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
@@ -33,7 +33,10 @@ impl ProofService {
         let submission_data = serde_json::to_vec(&submission)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-        let (transport, _) = get_first_available_transport_type(&self.config.transport)?;
+        let (transport, _) = get_first_available_transport(
+            &self.config.transport,
+            &exchange_protocol.get_capabilities().supported_transports,
+        )?;
 
         let proof =
             proof_for_scan_to_verify(&exchange, proof_schema, transport, submission_data.clone());

@@ -468,7 +468,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         ];
 
         VerificationProtocolCapabilities {
-            supported_transports: vec!["BLE".to_owned(), "MQTT".to_owned()],
+            supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods,
         }
     }

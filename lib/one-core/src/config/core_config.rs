@@ -569,13 +569,6 @@ where
         Ok(fields)
     }
 
-    pub fn get_first_enabled(&self) -> Option<(&str, &Fields<T>)> {
-        let mut enabled: Vec<_> = self.iter().filter(|(_, f)| f.enabled()).collect();
-        enabled.sort_by_key(|(_, fields)| fields.order);
-
-        enabled.into_iter().next()
-    }
-
     #[cfg(test)]
     pub fn insert(&mut self, key: String, fields: Fields<T>) {
         self.0.insert(key, fields);

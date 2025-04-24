@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use crate::config::core_config::DidType;
+use crate::config::core_config::{DidType, TransportType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
@@ -123,7 +123,7 @@ pub(crate) struct CredentialGroupItem {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct VerificationProtocolCapabilities {
-    pub supported_transports: Vec<String>,
+    pub supported_transports: Vec<TransportType>,
     pub did_methods: Vec<DidType>,
 }
 

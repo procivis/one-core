@@ -1,4 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
+
+use itertools::Itertools;
 
 use crate::config::core_config::{Fields, TransportConfig, TransportType};
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
@@ -9,11 +11,16 @@ pub(crate) enum SelectedTransportType {
     Multiple(Vec<String>),
 }
 
-pub(crate) fn get_first_available_transport_type(
-    config: &TransportConfig,
-) -> Result<(&str, TransportType), ValidationError> {
+pub(crate) fn get_first_available_transport<'config>(
+    config: &'config TransportConfig,
+    supported_options: &[TransportType],
+) -> Result<(&'config str, TransportType), ValidationError> {
     config
-        .get_first_enabled()
+        .iter()
+        .filter(|(_, fields)| fields.enabled())
+        .filter(|(_, fields)| supported_options.contains(&fields.r#type))
+        .sorted_by_key(|(_, fields)| fields.order)
+        .next()
         .map(|(ty, fields)| (ty, fields.r#type))
         .ok_or(ValidationError::MissingDefaultTransport)
 }
@@ -24,10 +31,17 @@ pub(crate) fn validate_and_select_transport_type(
     exchange_protocol_capabilities: &VerificationProtocolCapabilities,
 ) -> Result<SelectedTransportType, ValidationError> {
     let check_transport_capabilities = |transport| {
+        let r#type = config
+            .get_fields(transport)
+            .map_err(|e| ValidationError::InvalidTransportType {
+                value: transport.into(),
+                source: e.into(),
+            })?
+            .r#type;
+
         if !exchange_protocol_capabilities
             .supported_transports
-            .iter()
-            .any(|t| t == transport)
+            .contains(&r#type)
         {
             return Err(ValidationError::TransportNotAllowedForExchange);
         }
@@ -38,8 +52,10 @@ pub(crate) fn validate_and_select_transport_type(
     match transport.as_deref() {
         // transport not provided in request, we select the first in order from the config
         None | Some([]) => {
-            let (selected_transport, _) = get_first_available_transport_type(config)?;
-            check_transport_capabilities(selected_transport)?;
+            let (selected_transport, _) = get_first_available_transport(
+                config,
+                &exchange_protocol_capabilities.supported_transports,
+            )?;
 
             Ok(SelectedTransportType::Single(selected_transport.to_owned()))
         }
@@ -55,25 +71,20 @@ pub(crate) fn validate_and_select_transport_type(
                 BTreeSet::from_iter([TransportType::Ble, TransportType::Mqtt]);
 
             let mut requested_combination = BTreeSet::new();
-            let mut selected_transports = BTreeMap::new();
-
             for transport in multiple_transports {
                 let fields = validate_transport_type(transport, config)?;
                 check_transport_capabilities(transport)?;
 
                 requested_combination.insert(fields.r#type);
-
-                let order = fields.order.unwrap_or_default();
-                selected_transports.insert(order, transport.to_owned());
             }
 
             if requested_combination != allowed_combination {
                 return Err(ValidationError::TransportsCombinationNotAllowed);
             }
 
-            let selected_transports = selected_transports.into_values().collect();
-
-            Ok(SelectedTransportType::Multiple(selected_transports))
+            Ok(SelectedTransportType::Multiple(
+                multiple_transports.to_vec(),
+            ))
         }
     }
 }
@@ -104,7 +115,7 @@ mod test {
     fn test_selects_first_in_order_transport_from_config_if_transport_is_none() {
         let config = config(&["BLE", "MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
-            supported_transports: vec!["BLE".into(), "MQTT".into()],
+            supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
         };
 
@@ -120,7 +131,7 @@ mod test {
     fn test_selects_one_transport() {
         let config = config(&["MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
-            supported_transports: vec!["MQTT".into()],
+            supported_transports: vec![TransportType::Mqtt],
             did_methods: vec![],
         };
 
@@ -140,7 +151,7 @@ mod test {
     fn test_selects_multiple_transports() {
         let config = config(&["BLE", "MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
-            supported_transports: vec!["BLE".into(), "MQTT".into()],
+            supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
         };
 
@@ -181,7 +192,11 @@ mod test {
     fn test_fails_when_transport_combination_is_not_allowed() {
         let config = config(&["BLE", "MQTT", "HTTP"]);
         let capabilities = VerificationProtocolCapabilities {
-            supported_transports: vec!["BLE".into(), "MQTT".into(), "HTTP".into()],
+            supported_transports: vec![
+                TransportType::Ble,
+                TransportType::Mqtt,
+                TransportType::Http,
+            ],
             did_methods: vec![],
         };
 

@@ -15,7 +15,7 @@ use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
-use crate::config::core_config::DidType;
+use crate::config::core_config::{DidType, TransportType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -178,7 +178,7 @@ impl VerificationProtocol for ScanToVerify {
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
         VerificationProtocolCapabilities {
-            supported_transports: vec!["HTTP".to_owned()],
+            supported_transports: vec![TransportType::Http],
             did_methods: vec![
                 DidType::Key,
                 DidType::Jwk,

@@ -2060,7 +2060,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
-                supported_transports: vec!["HTTP".to_owned()],
+                supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
             }
         });
@@ -2187,7 +2187,7 @@ async fn test_create_proof_without_related_key() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
-                supported_transports: vec!["HTTP".to_owned()],
+                supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
             }
         });
@@ -2309,7 +2309,7 @@ async fn test_create_proof_with_related_key() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
-                supported_transports: vec!["HTTP".to_owned()],
+                supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
             }
         });

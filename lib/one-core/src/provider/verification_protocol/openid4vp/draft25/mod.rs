@@ -18,7 +18,7 @@ use uuid::Uuid;
 use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::map_credential_formats_to_presentation_format;
 use super::mdoc::mdoc_presentation_context;
-use crate::config::core_config::{CoreConfig, DidType, VerificationProtocolType};
+use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -235,7 +235,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         }
 
         VerificationProtocolCapabilities {
-            supported_transports: vec!["HTTP".to_owned()],
+            supported_transports: vec![TransportType::Http],
             did_methods,
         }
     }
