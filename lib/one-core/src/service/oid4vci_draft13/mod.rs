@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -25,6 +26,7 @@ pub struct OID4VCIDraft13Service {
     did_repository: Arc<dyn DidRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -39,6 +41,7 @@ impl OID4VCIDraft13Service {
         did_repository: Arc<dyn DidRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         Self {
             core_base_url,
@@ -50,6 +53,7 @@ impl OID4VCIDraft13Service {
             did_repository,
             did_method_provider,
             key_algorithm_provider,
+            formatter_provider,
         }
     }
 }

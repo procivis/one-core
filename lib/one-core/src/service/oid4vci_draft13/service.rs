@@ -41,7 +41,9 @@ use crate::provider::issuance_protocol::openid4vci_draft13::service::{
     get_credential_schema_base_url, oidc_issuer_create_token, parse_access_token,
     parse_refresh_token,
 };
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+};
 use crate::service::oid4vci_draft13::mapper::interaction_data_to_dto;
 use crate::service::oid4vci_draft13::validator::{
     throw_if_access_token_invalid, throw_if_credential_request_invalid,
@@ -90,6 +92,22 @@ impl OID4VCIDraft13Service {
             .r#type;
         let oidc_format = map_to_openid4vp_format(&format_type).map(|s| s.to_string())?;
 
+        let formatter = self
+            .formatter_provider
+            .get_formatter(&schema.format)
+            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?;
+
+        let credential_signing_alg_values_supported = formatter
+            .get_capabilities()
+            .signing_key_algorithms
+            .into_iter()
+            .filter_map(|alg_type| {
+                self.key_algorithm_provider
+                    .key_algorithm_from_type(alg_type)
+                    .and_then(|alg| alg.issuance_jose_alg_id())
+            })
+            .collect();
+
         create_issuer_metadata_response(
             &base_url,
             &oidc_format,
@@ -97,8 +115,10 @@ impl OID4VCIDraft13Service {
             &self.config,
             &self.did_method_provider.supported_method_names(),
             Some(map_proof_types_supported(
-                self.key_algorithm_provider.supported_jose_alg_ids(),
+                self.key_algorithm_provider
+                    .supported_verification_jose_alg_ids(),
             )),
+            credential_signing_alg_values_supported,
         )
         .map_err(Into::into)
     }

@@ -49,7 +49,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError>;
 
-    fn supported_jose_alg_ids(&self) -> Vec<String>;
+    fn supported_verification_jose_alg_ids(&self) -> Vec<String>;
 }
 
 pub struct KeyAlgorithmProviderImpl {
@@ -170,7 +170,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
             .map_err(KeyAlgorithmProviderError::KeyAlgorithm)
     }
 
-    fn supported_jose_alg_ids(&self) -> Vec<String> {
+    fn supported_verification_jose_alg_ids(&self) -> Vec<String> {
         self.algorithms
             .values()
             .flat_map(|key_alg| key_alg.verification_jose_alg_ids())

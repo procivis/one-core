@@ -518,6 +518,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
+                formatter_provider.clone(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 data_provider.get_credential_repository(),

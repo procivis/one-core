@@ -23,6 +23,9 @@ use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
@@ -33,6 +36,7 @@ use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -50,6 +54,7 @@ struct Mocks {
     pub did_repository: MockDidRepository,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
+    pub formatter_provider: MockCredentialFormatterProvider,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -64,6 +69,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.did_repository),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
+        Arc::new(mocks.formatter_provider),
     )
 }
 
@@ -189,8 +195,33 @@ async fn test_get_issuer_metadata_jwt() {
         .return_once(|| vec!["key".to_string()]);
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_supported_jose_alg_ids()
+        .expect_supported_verification_jose_alg_ids()
         .return_once(|| vec!["ES256".to_string()]);
+
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_issuance_jose_alg_id()
+        .return_once(|| Some("ES256".to_string()));
+
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .return_once(move |_| Some(Arc::new(key_algorithm)));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            ..Default::default()
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq("JWT"))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let mut repository = MockCredentialSchemaRepository::default();
     let mut schema = generic_credential_schema();
     schema.organisation = Some(generic_organisation());
@@ -211,6 +242,7 @@ async fn test_get_issuer_metadata_jwt() {
         did_method_provider,
         key_algorithm_provider,
         config: generic_config().core,
+        formatter_provider,
         ..Default::default()
     });
     let result = service.get_issuer_metadata(&schema.id).await;
@@ -230,6 +262,10 @@ async fn test_get_issuer_metadata_jwt() {
             .get("jwt")
             .unwrap()
             .proof_signing_alg_values_supported,
+        vec!["ES256".to_string()]
+    );
+    assert_eq!(
+        credential.credential_signing_alg_values_supported.unwrap(),
         vec!["ES256".to_string()]
     );
     assert!(credential.claims.is_none()); // This is present of mdoc only
@@ -257,8 +293,32 @@ async fn test_get_issuer_metadata_sd_jwt() {
         .return_once(|| vec!["key".to_string()]);
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_supported_jose_alg_ids()
+        .expect_supported_verification_jose_alg_ids()
         .return_once(|| vec!["ES256".to_string()]);
+
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_issuance_jose_alg_id()
+        .return_once(|| Some("ES256".to_string()));
+
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .return_once(move |_| Some(Arc::new(key_algorithm)));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            ..Default::default()
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq("SD_JWT"))
+        .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
     schema.organisation = Some(generic_organisation());
@@ -280,6 +340,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
         did_method_provider,
         key_algorithm_provider,
         config: generic_config().core,
+        formatter_provider,
         ..Default::default()
     });
     let result = service.get_issuer_metadata(&schema.id).await.unwrap();
@@ -298,6 +359,10 @@ async fn test_get_issuer_metadata_sd_jwt() {
             .get("jwt")
             .unwrap()
             .proof_signing_alg_values_supported,
+        vec!["ES256".to_string()]
+    );
+    assert_eq!(
+        credential.credential_signing_alg_values_supported.unwrap(),
         vec!["ES256".to_string()]
     );
     let credential_definition = credential.credential_definition.as_ref().unwrap();
@@ -324,8 +389,32 @@ async fn test_get_issuer_metadata_mdoc() {
         .return_once(|| vec!["key".to_string()]);
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_supported_jose_alg_ids()
+        .expect_supported_verification_jose_alg_ids()
         .return_once(|| vec!["ES256".to_string()]);
+
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_issuance_jose_alg_id()
+        .return_once(|| Some("ES256".to_string()));
+
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .return_once(move |_| Some(Arc::new(key_algorithm)));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            ..Default::default()
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq("MDOC"))
+        .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".to_string();
@@ -373,6 +462,7 @@ async fn test_get_issuer_metadata_mdoc() {
         did_method_provider,
         key_algorithm_provider,
         config: generic_config().core,
+        formatter_provider,
         ..Default::default()
     });
     let result = service.get_issuer_metadata(&schema.id).await.unwrap();
@@ -811,6 +901,7 @@ async fn test_create_credential_success() {
         did_repository,
         key_algorithm_provider,
         did_method_provider,
+        ..Default::default()
     });
 
     let result = service
@@ -984,6 +1075,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         did_repository,
         key_algorithm_provider,
         did_method_provider,
+        ..Default::default()
     });
 
     let result = service
@@ -1157,6 +1249,7 @@ async fn test_create_credential_success_mdoc() {
         did_repository,
         key_algorithm_provider,
         did_method_provider,
+        ..Default::default()
     });
 
     let result = service
