@@ -484,20 +484,23 @@ async fn test_get_issuer_metadata_mdoc() {
     );
     let claims = credential.claims.unwrap();
     assert_eq!(
-        IndexMap::from([(
-            "location".to_string(),
-            OpenID4VCICredentialSubjectItem {
-                claims: Some(IndexMap::from([(
-                    "X".to_string(),
-                    OpenID4VCICredentialSubjectItem {
-                        value_type: Some("string".to_string()),
-                        mandatory: Some(true),
-                        ..Default::default()
-                    }
-                )])),
-                ..Default::default()
-            }
-        )]),
+        OpenID4VCICredentialSubjectItem {
+            claims: Some(IndexMap::from([(
+                "location".to_string(),
+                OpenID4VCICredentialSubjectItem {
+                    claims: Some(IndexMap::from([(
+                        "X".to_string(),
+                        OpenID4VCICredentialSubjectItem {
+                            value_type: Some("string".to_string()),
+                            mandatory: Some(true),
+                            ..Default::default()
+                        }
+                    )])),
+                    ..Default::default()
+                }
+            )])),
+            ..Default::default()
+        },
         claims
     );
     assert!(credential.credential_definition.is_none()); // Invalid for mdoc

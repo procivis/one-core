@@ -1319,10 +1319,7 @@ fn build_claim_keys(
                 "Incorrect or missing credential claims".to_string(),
             ))
         }
-        (None, Some(mdoc_claims)) => &OpenID4VCICredentialSubjectItem {
-            claims: Some(mdoc_claims.clone()),
-            ..Default::default()
-        },
+        (None, Some(mdoc_claims)) => mdoc_claims,
         (Some(credential_definition), None) => credential_definition
             .credential_subject
             .as_ref()

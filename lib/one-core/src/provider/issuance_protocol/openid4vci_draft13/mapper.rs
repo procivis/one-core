@@ -375,12 +375,14 @@ fn parse_schema_element(
 }
 
 pub(crate) fn parse_mdoc_schema_claims(
-    values: IndexMap<String, OpenID4VCICredentialSubjectItem>,
+    values: OpenID4VCICredentialSubjectItem,
     element_order: Option<Vec<String>>,
 ) -> Vec<CredentialClaimSchemaRequestDTO> {
     let mut claims_by_namespace: Vec<_> = values
-        .into_iter()
-        .map(|(namespace, subject)| parse_schema_element(&namespace, &subject, false))
+        .claims
+        .iter()
+        .flat_map(|map| map.iter())
+        .map(|(namespace, subject)| parse_schema_element(namespace, subject, false))
         .collect();
 
     if let Some(order) = element_order {
@@ -1002,8 +1004,7 @@ pub(super) fn credentials_supported_mdoc(
         format: map_to_openid4vp_format(&format_type)
             .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?
             .to_string(),
-        // We only take objects from the initial structure as arrays are not allowed on the first level
-        claims: claim_schema.claims,
+        claims: Some(claim_schema),
         order: if element_order.len() > 1 {
             Some(element_order)
         } else {

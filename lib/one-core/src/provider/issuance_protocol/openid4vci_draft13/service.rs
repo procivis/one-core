@@ -196,23 +196,29 @@ fn sdjwt_configuration(
     credential_signing_alg_values_supported: Vec<String>,
 ) -> OpenID4VCICredentialConfigurationData {
     let schema_name = credential_schema.name.to_owned();
-    OpenID4VCICredentialConfigurationData {
+    let mut credential_configuration_data = OpenID4VCICredentialConfigurationData {
         wallet_storage_type,
         format: oidc_format.into(),
-        credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-            r#type: vec!["VerifiableCredential".to_string()],
-            credential_subject: Some(claims),
-        }),
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
-        vct: vct.clone(),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
-        scope: vct,
         credential_signing_alg_values_supported: Some(credential_signing_alg_values_supported),
         ..Default::default()
+    };
+    if let Some(vct) = vct {
+        credential_configuration_data.vct = Some(vct.clone());
+        credential_configuration_data.scope = Some(vct);
+        credential_configuration_data.claims = Some(claims)
+    } else {
+        credential_configuration_data.credential_definition =
+            Some(OpenID4VCICredentialDefinitionRequestDTO {
+                r#type: vec!["VerifiableCredential".to_string()],
+                credential_subject: Some(claims),
+            })
     }
+    credential_configuration_data
 }
 
 pub(crate) fn create_service_discovery_response(

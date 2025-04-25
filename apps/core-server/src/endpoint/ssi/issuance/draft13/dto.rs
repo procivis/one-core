@@ -61,7 +61,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
             }
         }",
     )]
-    pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
+    pub claims: Option<OpenID4VCICredentialSubjectItem>,
     #[from(with_fn = convert_inner_of_inner)]
     pub order: Option<Vec<String>>,
     #[from(with_fn = convert_inner)]

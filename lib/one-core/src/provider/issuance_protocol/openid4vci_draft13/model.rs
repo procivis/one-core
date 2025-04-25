@@ -74,7 +74,7 @@ pub struct OpenID4VCICredentialConfigurationData {
     pub context: Option<Vec<ContextType>>,
     pub order: Option<Vec<String>>,
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
+    pub claims: Option<OpenID4VCICredentialSubjectItem>,
     pub doctype: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
