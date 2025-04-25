@@ -358,7 +358,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
                     "nonce is None".to_string(),
                 ))?;
 
-        let holder_nonce = utilities::generate_nonce();
+        let holder_nonce = utilities::generate_alphanumeric(32);
         let ctx = if format == "MDOC" {
             mdoc_presentation_context(
                 &interaction_data,

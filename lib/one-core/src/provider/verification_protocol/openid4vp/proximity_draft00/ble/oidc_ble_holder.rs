@@ -4,8 +4,7 @@ use std::vec;
 
 use anyhow::Context;
 use futures::{stream, Stream, StreamExt, TryFutureExt};
-use rand::rngs::OsRng;
-use rand::Rng;
+use one_crypto::utilities::generate_random_bytes;
 use shared_types::{DidValue, ProofId};
 use time::OffsetDateTime;
 use tokio::select;
@@ -537,7 +536,7 @@ fn session_key_and_identity_request(
 ) -> Result<(IdentityRequest, BLEPeer), VerificationProtocolError> {
     let key_agreement_key = KeyAgreementKey::new_random();
     let public_key = key_agreement_key.public_key_bytes();
-    let nonce: [u8; 12] = OsRng.gen();
+    let nonce = generate_random_bytes::<12>();
 
     let (receiver_key, sender_key) = key_agreement_key
         .derive_session_secrets(verifier_public_key, nonce)

@@ -27,8 +27,7 @@ use one_core::model::revocation_list::{
 };
 use one_core::repository::DataRepository;
 use one_crypto::encryption::encrypt_string;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use one_crypto::utilities::generate_alphanumeric;
 use sea_orm::ConnectionTrait;
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, KeyId, ProofId};
@@ -42,13 +41,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub fn unwrap_or_random(op: Option<String>) -> String {
-    op.unwrap_or_else(|| {
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(10)
-            .map(char::from)
-            .collect()
-    })
+    op.unwrap_or_else(|| generate_alphanumeric(10))
 }
 
 #[derive(Debug, Default)]

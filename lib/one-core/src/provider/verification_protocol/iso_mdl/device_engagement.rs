@@ -362,7 +362,7 @@ fn get_cbor_map_value(
 #[cfg(test)]
 mod test {
     use hex_literal::hex;
-    use rand::rngs::OsRng;
+    use one_crypto::utilities::get_rng;
     use uuid::uuid;
 
     use super::*;
@@ -411,8 +411,9 @@ mod test {
     }
 
     fn get_example_engagement() -> DeviceEngagement {
-        let pk =
-            x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(OsRng));
+        let pk = x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(
+            get_rng(),
+        ));
 
         DeviceEngagement {
             security: Security {

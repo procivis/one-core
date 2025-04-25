@@ -15,8 +15,8 @@ use coset::{
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::{DataElementValue, DeviceNamespaces};
+use one_crypto::utilities::generate_random_bytes;
 use one_crypto::SignerError;
-use rand::RngCore;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
@@ -965,12 +965,7 @@ fn try_build_namespaces(
 
         for (item_key, item_value) in namespace_object {
             // random has to be minimum 16 bytes
-            let random = {
-                let mut r = vec![0u8; 32];
-                rand::thread_rng().fill_bytes(&mut r);
-
-                Bstr(r)
-            };
+            let random = Bstr(generate_random_bytes::<32>().to_vec());
 
             let signed_item = IssuerSignedItem {
                 digest_id,

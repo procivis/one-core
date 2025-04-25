@@ -7,8 +7,6 @@ use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use hmac::Mac;
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -16,7 +14,7 @@ use serde_with::skip_serializing_none;
 use strum::Display;
 
 use crate::encryption::EncryptionError;
-use crate::utilities::generate_random_seed_16;
+use crate::utilities::{generate_random_bytes, get_rng};
 use crate::HmacSha256;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -137,7 +135,7 @@ fn encrypt_in_place_aes_gcm(
     associated_data: &[u8],
     key: &SecretSlice<u8>,
 ) -> Result<AeadOutput, EncryptionError> {
-    let iv = Aes256Gcm::generate_nonce(&mut ChaCha20Rng::from_entropy());
+    let iv = Aes256Gcm::generate_nonce(get_rng());
     let cipher = Aes256Gcm::new(GenericArray::from_slice(key.expose_secret()));
     let tag = cipher
         .encrypt_in_place_detached(&iv, associated_data, buf)
@@ -173,7 +171,7 @@ fn encrypt_in_place_aes_cbc_hs256(
         buf.append(&mut vec![0u8; padding]);
     }
 
-    let iv = generate_random_seed_16();
+    let iv = generate_random_bytes::<16>();
     let cipher128 = Aes128CbcEnc::new(
         GenericArray::from_slice(aes_key),
         GenericArray::from_slice(&iv),

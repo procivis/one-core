@@ -7,11 +7,11 @@ use p256::elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
 use p256::elliptic_curve::{JwkEcKey, SecretKey};
 use p256::pkcs8::DecodePublicKey;
 use p256::{AffinePoint, EncodedPoint, NistP256, PublicKey};
-use rand::thread_rng;
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::encryption::EncryptionError;
 use crate::jwe::{decode_b64, RemoteJwk};
+use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
 
 pub struct ECDSASigner {}
@@ -87,7 +87,7 @@ impl ECDSASigner {
     }
 
     pub fn generate_key_pair() -> (SecretSlice<u8>, Vec<u8>) {
-        let sk = SigningKey::random(&mut thread_rng());
+        let sk = SigningKey::random(&mut get_rng());
         let pk = VerifyingKey::from(&sk);
         (
             sk.to_bytes().to_vec().into(),

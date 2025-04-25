@@ -4,11 +4,10 @@ use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use chacha20poly1305::aead::{Aead, Nonce};
 use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit};
 use cocoon::MiniCocoon;
-use rand::rngs::OsRng;
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use super::password::{derive_key, derive_key_with_salt};
-use crate::utilities;
+use crate::utilities::{self, get_rng};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EncryptionError {
@@ -28,7 +27,7 @@ pub fn encrypt_file(
     let cipher = ChaCha20Poly1305::new_from_slice(key.key.expose_secret())
         .map_err(|err| EncryptionError::Crypto(err.to_string()))?;
 
-    let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+    let nonce = ChaCha20Poly1305::generate_nonce(get_rng());
 
     let mut content = vec![];
     input_file.read_to_end(&mut content)?;
@@ -91,7 +90,7 @@ pub fn encrypt_data(
 ) -> Result<Vec<u8>, EncryptionError> {
     let mut cocoon = MiniCocoon::from_key(
         encryption_key.expose_secret(),
-        &utilities::generate_random_seed_32(),
+        &utilities::generate_random_bytes::<32>(),
     );
     cocoon
         .wrap(data.expose_secret())

@@ -1,7 +1,7 @@
-use aes_gcm::aead::OsRng;
 use anyhow::Context;
 use hkdf::Hkdf;
 use one_crypto::hasher::sha256::SHA256;
+use one_crypto::utilities::get_rng;
 use one_crypto::Hasher;
 use secrecy::{ExposeSecretMut, SecretSlice};
 use x25519_dalek::{PublicKey, ReusableSecret};
@@ -15,7 +15,7 @@ pub(super) struct KeyAgreementKey {
 impl KeyAgreementKey {
     pub(crate) fn new_random() -> Self {
         Self {
-            secret_key: ReusableSecret::random_from_rng(OsRng),
+            secret_key: ReusableSecret::random_from_rng(get_rng()),
         }
     }
 

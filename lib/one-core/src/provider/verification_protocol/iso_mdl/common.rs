@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context};
 use coset::iana::{self, EnumI64};
 use coset::{AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label};
 use hkdf::Hkdf;
-use rand::rngs::OsRng;
+use one_crypto::utilities::get_rng;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
@@ -182,7 +182,7 @@ pub(crate) struct KeyAgreement<PK> {
 
 impl KeyAgreement<EDeviceKey> {
     pub fn new() -> Self {
-        let sk = EphemeralSecret::random_from_rng(OsRng);
+        let sk = EphemeralSecret::random_from_rng(get_rng());
         let pk = EDeviceKey::new(PublicKey::from(&sk));
 
         KeyAgreement { pk, sk }
@@ -203,7 +203,7 @@ impl KeyAgreement<EDeviceKey> {
 
 impl KeyAgreement<EReaderKey> {
     pub(super) fn new() -> Self {
-        let sk = EphemeralSecret::random_from_rng(OsRng);
+        let sk = EphemeralSecret::random_from_rng(get_rng());
         let pk = EReaderKey::new(PublicKey::from(&sk));
 
         KeyAgreement { pk, sk }

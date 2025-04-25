@@ -132,7 +132,7 @@ use one_crypto::signer::bbs::BBSSigner;
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::signer::eddsa::EDDSASigner;
-use one_crypto::utilities::generate_random_seed_32;
+use one_crypto::utilities::generate_random_bytes;
 use one_crypto::CryptoProviderImpl;
 use secrecy::SecretSlice;
 use service::credential_service::CredentialService;
@@ -191,7 +191,7 @@ impl OneDevCore {
                 key_algorithm_provider.clone(),
                 InternalKeyProviderParams {
                     // use a stable key in production scenarios, this is just good enough for examples
-                    encryption: SecretSlice::from(generate_random_seed_32().to_vec()),
+                    encryption: SecretSlice::from(generate_random_bytes::<32>().to_vec()),
                 },
             )) as _,
         )]);

@@ -308,7 +308,7 @@ pub(crate) fn oidc_issuer_create_token(
                 expires_in: Timestamp((now + access_token_expires_in).unix_timestamp()),
                 refresh_token: None,
                 refresh_token_expires_in: None,
-                c_nonce: Some(utilities::generate_nonce()),
+                c_nonce: Some(utilities::generate_alphanumeric(32)),
             }
         }
 

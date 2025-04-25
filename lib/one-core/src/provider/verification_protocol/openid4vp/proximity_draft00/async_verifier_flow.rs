@@ -91,7 +91,7 @@ pub(crate) async fn async_verifier_flow<C, T>(
             VerificationProtocolError::Failed(format!("Failed to update proof transport: {err}"))
         })?;
 
-    let nonce = utilities::generate_nonce();
+    let nonce = utilities::generate_alphanumeric(32);
     let request = OpenID4VP20AuthorizationRequest {
         nonce: Some(nonce.to_owned()),
         response_type: None,

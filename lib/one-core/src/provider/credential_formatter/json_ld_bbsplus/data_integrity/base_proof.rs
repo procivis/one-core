@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_ld::Loader;
 use one_crypto::signer::bbs::BbsInput;
-use one_crypto::utilities::{build_hmac_sha256, generate_random_seed_32};
+use one_crypto::utilities::{build_hmac_sha256, generate_random_bytes};
 use one_crypto::Hasher;
 use time::OffsetDateTime;
 
@@ -149,7 +149,7 @@ pub(super) async fn base_proof_transformation(
     hmac_key: Option<[u8; 32]>,
 ) -> Result<TransformedDocument, FormatterError> {
     // 1. Initialize hmac to an HMAC API using a locally generated and exportable HMAC key.
-    let hmac_key = hmac_key.unwrap_or_else(generate_random_seed_32);
+    let hmac_key = hmac_key.unwrap_or_else(generate_random_bytes::<32>);
     let hmac = build_hmac_sha256(&hmac_key).ok_or_else(|| {
         FormatterError::Failed("Failed to build HMAC-SHA256 for specified key".to_string())
     })?;

@@ -6,8 +6,7 @@ use dto::OpenID4VPMqttQueryParams;
 use futures::future::{BoxFuture, Shared};
 use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessionKeys};
 use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
-use rand::rngs::OsRng;
-use rand::Rng;
+use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use shared_types::{DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
@@ -617,7 +616,7 @@ fn generate_session_keys(
 ) -> Result<MQTTSessionKeys, VerificationProtocolError> {
     let key_agreement_key = KeyAgreementKey::new_random();
     let public_key = key_agreement_key.public_key_bytes();
-    let nonce: [u8; 12] = OsRng.gen();
+    let nonce = generate_random_bytes::<12>();
 
     let (receiver_key, sender_key) = key_agreement_key
         .derive_session_secrets(verifier_public_key, nonce)
