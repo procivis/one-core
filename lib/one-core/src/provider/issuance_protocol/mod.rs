@@ -7,7 +7,6 @@ use indexmap::IndexMap;
 use openid4vci_draft13::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO,
 };
-use openid4vci_draft13::openidvc_http::OpenID4VP20HTTP;
 use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::CredentialId;
@@ -27,7 +26,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, OpenID4VCIParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VC;
+use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -87,8 +86,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     params.url_scheme.to_string(),
                 )?;
 
-                let http = OpenID4VP20HTTP::new(
-                    core_base_url.clone(),
+                let protocol = Arc::new(OpenID4VCI13::new(
+                    client.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     revocation_list_repository.clone(),
@@ -97,12 +96,10 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
-                    client.clone(),
+                    core_base_url.clone(),
                     config.clone(),
                     params.clone(),
-                );
-
-                let protocol = Arc::new(OpenID4VC::new(http));
+                ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }

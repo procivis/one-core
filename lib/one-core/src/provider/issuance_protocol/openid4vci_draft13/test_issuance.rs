@@ -8,7 +8,6 @@ use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::OpenID4VP20HTTP;
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -33,6 +32,8 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIParams, OpenID4VCRedirectUriParams,
 };
+use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
@@ -200,8 +201,8 @@ async fn test_issuer_submit_succeeds() {
             }))
         });
 
-    let provider = OpenID4VP20HTTP::new(
-        Some("http://example.com/".to_string()),
+    let provider = OpenID4VCI13::new(
+        Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(revocation_list_repository),
@@ -210,7 +211,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(MockHttpClient::new()),
+        Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
         OpenID4VCIParams {
             pre_authorized_code_expires_in: 10,
@@ -227,7 +228,7 @@ async fn test_issuer_submit_succeeds() {
     );
 
     let result = provider
-        .issue_credential(
+        .issuer_issue_credential(
             &credential_id,
             dummy_did(),
             format!("{}#0", dummy_did().did),
@@ -277,7 +278,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .return_once(move |_, _| {
             let mut credential = credential_copy;
-            credential.schema = Some(crate::model::credential_schema::CredentialSchema {
+            credential.schema = Some(CredentialSchema {
                 organisation: Some(dummy_organisation(None)),
                 ..credential.schema.unwrap()
             });
@@ -378,8 +379,8 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         })
         .return_once(|_| Ok(()));
 
-    let service = OpenID4VP20HTTP::new(
-        Some("https://example.com/test/".to_string()),
+    let service = OpenID4VCI13::new(
+        Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(revocation_list_repository),
@@ -388,7 +389,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(MockHttpClient::new()),
+        Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
         OpenID4VCIParams {
             pre_authorized_code_expires_in: 10,
@@ -405,7 +406,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     );
 
     service
-        .issue_credential(
+        .issuer_issue_credential(
             &credential_id,
             dummy_did(),
             format!("{}#0", dummy_did().did),
@@ -563,8 +564,8 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
     );
 
-    let service = OpenID4VP20HTTP::new(
-        Some("https://example.com/test/".to_string()),
+    let service = OpenID4VCI13::new(
+        Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(revocation_list_repository),
@@ -573,7 +574,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(MockHttpClient::new()),
+        Some("https://example.com/test/".to_string()),
         Arc::new(config),
         OpenID4VCIParams {
             pre_authorized_code_expires_in: 10,
@@ -590,7 +591,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     );
 
     service
-        .issue_credential(
+        .issuer_issue_credential(
             &credential_id,
             dummy_did(),
             format!("{}#0", dummy_did().did),
@@ -657,8 +658,8 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
     );
 
-    let service = OpenID4VP20HTTP::new(
-        Some("base_url".to_string()),
+    let service = OpenID4VCI13::new(
+        Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(MockRevocationListRepository::new()),
@@ -667,7 +668,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(MockHttpClient::new()),
+        Some("base_url".to_string()),
         Arc::new(config),
         OpenID4VCIParams {
             pre_authorized_code_expires_in: 10,
@@ -686,7 +687,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     assert2::assert!(
         let IssuanceProtocolError::InvalidRequest(_) =
         service
-        .issue_credential(&credential_id, dummy_did(), format!("{}#0", dummy_did().did))
+        .issuer_issue_credential(&credential_id, dummy_did(), format!("{}#0", dummy_did().did))
         .await
         .err()
         .unwrap()

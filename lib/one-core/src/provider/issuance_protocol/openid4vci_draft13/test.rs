@@ -13,7 +13,6 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::OpenID4VP20HTTP;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -34,9 +33,10 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIParams, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
-use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
+use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
 use crate::provider::issuance_protocol::{
-    BasicSchemaData, BuildCredentialSchemaResponse, MockHandleInvitationOperations,
+    BasicSchemaData, BuildCredentialSchemaResponse, IssuanceProtocol,
+    MockHandleInvitationOperations,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -62,9 +62,9 @@ struct TestInputs {
     pub params: Option<OpenID4VCIParams>,
 }
 
-fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
-    OpenID4VP20HTTP::new(
-        Some("http://base_url".to_string()),
+fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
+    OpenID4VCI13::new(
+        Arc::new(ReqwestClient::default()),
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.revocation_list_repository),
@@ -73,7 +73,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
-        Arc::new(ReqwestClient::default()),
+        Some("http://base_url".to_string()),
         Arc::new(inputs.config),
         inputs.params.unwrap_or(OpenID4VCIParams {
             pre_authorized_code_expires_in: 10,
@@ -1175,7 +1175,7 @@ async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     });
 
     let test_url = format!("{url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
-    assert!(protocol.can_handle(&test_url.parse().unwrap()))
+    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[test]
@@ -1189,7 +1189,7 @@ fn test_can_handle_issuance_fail_with_custom_url_scheme() {
     });
 
     let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
-    assert!(!protocol.can_handle(&test_url.parse().unwrap()))
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[test]
@@ -1202,7 +1202,7 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
     });
 
     let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
-    assert!(!protocol.can_handle(&test_url.parse().unwrap()))
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[tokio::test]
