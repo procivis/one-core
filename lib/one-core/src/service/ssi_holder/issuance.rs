@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
+use tracing::log;
 use url::Url;
 
 use super::dto::HandleInvitationResultDTO;
@@ -12,14 +13,15 @@ use crate::config::core_config::IssuanceProtocolType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    Clearable, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
+    Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::history::HistoryAction;
 use crate::model::interaction::{InteractionId, InteractionRelations};
+use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
@@ -99,107 +101,145 @@ impl SSIHolderService {
             .get_capabilities()
             .security;
 
+        // Errors are gathered into vec, so we can try to accept all credentials.
+        let mut errors = vec![];
+
         for credential in credentials {
-            throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
-
-            let wallet_storage_matches = match credential
-                .schema
-                .as_ref()
-                .and_then(|schema| schema.wallet_storage_type.as_ref())
-            {
-                Some(WalletStorageTypeEnum::Hardware) => {
-                    key_security.contains(&KeySecurity::Hardware)
-                }
-                Some(WalletStorageTypeEnum::Software) => {
-                    key_security.contains(&KeySecurity::Software)
-                }
-                Some(WalletStorageTypeEnum::RemoteSecureElement) => {
-                    key_security.contains(&KeySecurity::RemoteSecureElement)
-                }
-                None => true,
-            };
-
-            if !wallet_storage_matches {
-                return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
-            }
-
-            let storage_access = StorageProxyImpl::new(
-                self.interaction_repository.clone(),
-                self.credential_schema_repository.clone(),
-                self.credential_repository.clone(),
-                self.did_repository.clone(),
-                self.did_method_provider.clone(),
-            );
-
-            let schema = credential
-                .schema
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
-
-            let issuance_protocol_type = self
-                .config
-                .issuance_protocol
-                .get_fields(&credential.exchange)?
-                .r#type;
-
-            let format = if issuance_protocol_type == IssuanceProtocolType::OpenId4VciDraft13 {
-                let format_type = self
-                    .config
-                    .format
-                    .get_fields(&schema.format)
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-                    .r#type;
-
-                map_to_openid4vp_format(&format_type)
-                    .map(|s| s.to_string())
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            } else {
-                schema.format.to_owned()
-            };
-
-            let issuer_response = self
-                .issuance_protocol_provider
-                .get_protocol(&credential.exchange)
-                .ok_or(MissingProviderError::ExchangeProtocol(
-                    credential.exchange.clone(),
-                ))?
-                .holder_accept_credential(
+            if let Err(error) = self
+                .accept_and_save_credential(
                     &credential,
                     &did,
+                    &key_security,
                     selected_key,
-                    Some(holder_jwk_key_id.clone()),
-                    &format,
-                    &storage_access,
+                    &holder_jwk_key_id,
                     tx_code.clone(),
                 )
-                .await?;
+                .await
+            {
+                log::error!("Failed to accept credential: {error}");
 
-            let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
-            let claims = self
-                .extract_claims(&credential.id, &issuer_response.credential, schema)
-                .await?;
+                let _result = self
+                    .credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Error),
+                            ..Default::default()
+                        },
+                    )
+                    .await;
 
-            self.credential_repository
-                .update_credential(
-                    credential.id,
-                    UpdateCredentialRequest {
-                        state: Some(CredentialStateEnum::Accepted),
-                        suspend_end_date: Clearable::DontTouch,
-                        credential: Some(issuer_response.credential.bytes().collect()),
-                        holder_did_id: Some(did_id),
-                        key: Some(selected_key.id),
-                        claims: Some(claims),
-                        ..Default::default()
-                    },
-                )
-                .await?;
-            log_history_event_credential(
-                &*self.history_repository,
-                &credential,
-                HistoryAction::Issued,
-            )
-            .await;
+                errors.push(error);
+            }
         }
+
+        if let Some(error) = errors.into_iter().next() {
+            return Err(error);
+        }
+
+        Ok(())
+    }
+
+    async fn accept_and_save_credential(
+        &self,
+        credential: &Credential,
+        holder_did: &Did,
+        key_security: &[KeySecurity],
+        selected_key: &Key,
+        holder_jwk_key_id: &str,
+        tx_code: Option<String>,
+    ) -> Result<(), ServiceError> {
+        throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)?;
+
+        let wallet_storage_matches = match credential
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.wallet_storage_type.as_ref())
+        {
+            Some(WalletStorageTypeEnum::Hardware) => key_security.contains(&KeySecurity::Hardware),
+            Some(WalletStorageTypeEnum::Software) => key_security.contains(&KeySecurity::Software),
+            Some(WalletStorageTypeEnum::RemoteSecureElement) => {
+                key_security.contains(&KeySecurity::RemoteSecureElement)
+            }
+            None => true,
+        };
+
+        if !wallet_storage_matches {
+            return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
+        }
+
+        let storage_access = StorageProxyImpl::new(
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+            self.did_repository.clone(),
+            self.did_method_provider.clone(),
+        );
+
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+
+        let issuance_protocol_type = self
+            .config
+            .issuance_protocol
+            .get_fields(&credential.exchange)?
+            .r#type;
+
+        let format = if issuance_protocol_type == IssuanceProtocolType::OpenId4VciDraft13 {
+            let format_type = self
+                .config
+                .format
+                .get_fields(&schema.format)
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                .r#type;
+
+            map_to_openid4vp_format(&format_type)
+                .map(|s| s.to_string())
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+        } else {
+            schema.format.to_owned()
+        };
+
+        let issuer_response = self
+            .issuance_protocol_provider
+            .get_protocol(&credential.exchange)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                credential.exchange.clone(),
+            ))?
+            .holder_accept_credential(
+                credential,
+                holder_did,
+                selected_key,
+                Some(holder_jwk_key_id.to_string()),
+                &format,
+                &storage_access,
+                tx_code.clone(),
+            )
+            .await?;
+
+        let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
+        let claims = self
+            .extract_claims(&credential.id, &issuer_response.credential, schema)
+            .await?;
+
+        self.credential_repository
+            .update_credential(
+                credential.id,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Accepted),
+                    suspend_end_date: Clearable::DontTouch,
+                    credential: Some(issuer_response.credential.bytes().collect()),
+                    holder_did_id: Some(holder_did.id),
+                    key: Some(selected_key.id),
+                    claims: Some(claims),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        log_history_event_credential(&*self.history_repository, credential, HistoryAction::Issued)
+            .await;
 
         Ok(())
     }

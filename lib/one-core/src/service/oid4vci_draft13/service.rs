@@ -357,9 +357,23 @@ impl OID4VCIDraft13Service {
                 "issuance protocol not found".to_string(),
             ))?
             .issuer_issue_credential(&credential.id, holder_did, holder_key_id)
-            .await?;
+            .await;
 
-        Ok(issued_credential.into())
+        match issued_credential {
+            Ok(issued_credential) => Ok(issued_credential.into()),
+            Err(error) => {
+                self.credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Error),
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
+                Err(error.into())
+            }
+        }
     }
 
     pub async fn create_token(
