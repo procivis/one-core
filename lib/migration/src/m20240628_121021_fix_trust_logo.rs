@@ -22,7 +22,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(TrustEntity::Table)
-                    .add_column(ColumnDef::new(TrustEntity::Logo).custom_blob(manager))
+                    .add_column(ColumnDef::new(TrustEntity::Logo).large_blob(manager))
                     .to_owned(),
             )
             .await

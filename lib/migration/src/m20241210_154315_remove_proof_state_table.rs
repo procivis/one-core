@@ -1,7 +1,8 @@
 use sea_orm::{ColumnTrait, DbBackend, EntityTrait, QueryFilter, Set, Unchanged};
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::{CustomDateTime, ProofRequestStateEnum};
+use crate::datatype::ColumnDefExt;
+use crate::m20240110_000001_initial::ProofRequestStateEnum;
 use crate::models_20241210::proof_state::ProofRequestState;
 use crate::models_20241210::{proof, proof_state};
 
@@ -11,8 +12,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .alter_table(
                 Table::alter()
@@ -40,7 +39,10 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Proof::Table)
-                    .add_column(ColumnDef::new(Proof::RequestedDate).custom(datetime))
+                    .add_column(
+                        ColumnDef::new(Proof::RequestedDate)
+                            .datetime_millisecond_precision(manager),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -49,7 +51,10 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Proof::Table)
-                    .add_column(ColumnDef::new(Proof::CompletedDate).custom(datetime))
+                    .add_column(
+                        ColumnDef::new(Proof::CompletedDate)
+                            .datetime_millisecond_precision(manager),
+                    )
                     .to_owned(),
             )
             .await?;

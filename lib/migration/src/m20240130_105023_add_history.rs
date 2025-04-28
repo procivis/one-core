@@ -1,5 +1,6 @@
 use sea_orm_migration::prelude::*;
 
+use crate::datatype::ColumnDefExt;
 use crate::m20240110_000001_initial::Organisation;
 
 #[derive(DeriveMigrationName)]
@@ -8,9 +9,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime =
-            crate::m20240110_000001_initial::CustomDateTime(manager.get_database_backend());
-
         manager
             .create_table(
                 Table::create()
@@ -23,7 +21,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(History::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(

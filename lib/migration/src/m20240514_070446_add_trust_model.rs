@@ -2,7 +2,8 @@ use sea_orm::sea_query::extension::postgres::Type;
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::{CustomDateTime, Organisation};
+use crate::datatype::ColumnDefExt;
+use crate::m20240110_000001_initial::Organisation;
 use crate::m20240130_105023_add_history::{History, HistoryAction, HistoryEntityType};
 
 const UNIQUE_TRUST_ANCHOR_NAME_IN_ORGANISATION_INDEX: &str =
@@ -44,8 +45,6 @@ impl MigrationTrait for Migration {
             sea_orm::DatabaseBackend::Sqlite => {}
         };
 
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .create_table(
                 Table::create()
@@ -58,12 +57,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(TrustAnchor::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(TrustAnchor::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(TrustAnchor::Name).string().not_null())
@@ -127,12 +126,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(TrustEntity::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(TrustEntity::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(TrustEntity::EntityId).string().not_null())

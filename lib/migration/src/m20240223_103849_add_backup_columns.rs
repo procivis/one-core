@@ -1,7 +1,8 @@
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::{CustomDateTime, Did, Key, Organisation};
+use crate::datatype::ColumnDefExt;
+use crate::m20240110_000001_initial::{Did, Key, Organisation};
 use crate::m20240130_105023_add_history::{History, HistoryAction, HistoryEntityType};
 use crate::m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table::UpdatedHistoryAction;
 use crate::m20240209_144950_add_verifier_key_id_to_proof::{
@@ -14,13 +15,13 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .alter_table(
                 Table::alter()
                     .table(Did::Table)
-                    .add_column_if_not_exists(ColumnDef::new(DidNew::DeletedAt).custom(datetime))
+                    .add_column_if_not_exists(
+                        ColumnDef::new(DidNew::DeletedAt).datetime_millisecond_precision(manager),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -29,7 +30,9 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Key::Table)
-                    .add_column_if_not_exists(ColumnDef::new(KeyNew::DeletedAt).custom(datetime))
+                    .add_column_if_not_exists(
+                        ColumnDef::new(KeyNew::DeletedAt).datetime_millisecond_precision(manager),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -47,7 +50,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(HistoryNew::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(

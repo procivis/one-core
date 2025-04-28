@@ -39,12 +39,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(TrustAnchor::CreatedDate)
-                            .custom_datetime(manager)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(TrustAnchor::LastModified)
-                            .custom_datetime(manager)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(TrustAnchor::Name).text().not_null())
@@ -71,16 +71,16 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(TrustEntity::CreatedDate)
-                            .custom_datetime(manager)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(TrustEntity::LastModified)
-                            .custom_datetime(manager)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(TrustEntity::Name).text().not_null())
-                    .col(ColumnDef::new(TrustEntity::Logo).custom_blob(manager))
+                    .col(ColumnDef::new(TrustEntity::Logo).large_blob(manager))
                     .col(ColumnDef::new(TrustEntity::Website).text())
                     .col(ColumnDef::new(TrustEntity::TermsUrl).text())
                     .col(ColumnDef::new(TrustEntity::PrivacyUrl).text())

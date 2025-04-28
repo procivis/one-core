@@ -1,6 +1,7 @@
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::{CredentialSchema, CustomDateTime, ProofSchema};
+use crate::datatype::ColumnDefExt;
+use crate::m20240110_000001_initial::{CredentialSchema, ProofSchema};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -8,8 +9,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .create_table(
                 Table::create()
@@ -24,12 +23,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(ProofInputSchema::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ProofInputSchema::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(

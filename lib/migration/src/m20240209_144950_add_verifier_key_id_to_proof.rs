@@ -1,9 +1,10 @@
 use sea_orm::{DbBackend, EntityTrait, FromQueryResult};
 use sea_orm_migration::prelude::*;
 
+use crate::datatype::ColumnDefExt;
 use crate::m20240110_000001_initial::{
-    Claim, CustomDateTime, Did, Interaction, Key, KeyDid, Proof, ProofClaim, ProofRequestStateEnum,
-    ProofSchema, ProofState,
+    Claim, Did, Interaction, Key, KeyDid, Proof, ProofClaim, ProofRequestStateEnum, ProofSchema,
+    ProofState,
 };
 use crate::m20240123_124653_proof_state_enum_rename_offered_to_requested::ProofRequestState;
 use crate::models_20240209::old_proof;
@@ -49,8 +50,6 @@ async fn sane_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 }
 
 async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    let datetime = CustomDateTime(manager.get_database_backend());
-
     manager
         .create_table(
             Table::create()
@@ -63,17 +62,17 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .col(
                     ColumnDef::new(Proof::CreatedDate)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(
                     ColumnDef::new(Proof::LastModified)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(
                     ColumnDef::new(Proof::IssuanceDate)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(ColumnDef::new(Proof::RedirectUri).string())
@@ -127,7 +126,7 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         )
         .await?;
 
-    recreate_tables_with_new_name(manager, datetime).await?;
+    recreate_tables_with_new_name(manager).await?;
 
     let db = manager.get_connection();
     migrate_to_new_proof_table(db).await?;
@@ -294,10 +293,7 @@ pub async fn copy_data_to_new_tables(
     Ok(())
 }
 
-async fn recreate_tables_with_new_name(
-    manager: &SchemaManager<'_>,
-    datetime: CustomDateTime,
-) -> Result<(), DbErr> {
+async fn recreate_tables_with_new_name(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_table(
             Table::create()
@@ -305,12 +301,12 @@ async fn recreate_tables_with_new_name(
                 .col(ColumnDef::new(ProofState::ProofId).char_len(36).not_null())
                 .col(
                     ColumnDef::new(ProofState::CreatedDate)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(
                     ColumnDef::new(ProofState::LastModified)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(

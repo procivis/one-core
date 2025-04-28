@@ -1,7 +1,7 @@
 use sea_orm::EnumIter;
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::CustomDateTime;
+use crate::datatype::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,7 +9,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
         manager
             .alter_table(
                 Table::alter()
@@ -41,7 +40,7 @@ impl MigrationTrait for Migration {
                     .table(Credential::Table)
                     .add_column_if_not_exists(
                         ColumnDef::new(Credential::SuspendEndDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .null(),
                     )
                     .to_owned(),

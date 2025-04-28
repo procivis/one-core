@@ -1,6 +1,6 @@
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::CustomDateTime;
+use crate::datatype::ColumnDefExt;
 use crate::m20240209_144950_add_verifier_key_id_to_proof::{
     copy_data_to_new_tables, drop_and_rename_tables,
 };
@@ -15,8 +15,6 @@ const UNIQUE_TRUST_ENTITY_ENTITY_ID_IN_ANCHOR: &str =
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .create_table(
                 Table::create()
@@ -29,12 +27,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(TrustEntityNew::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(TrustEntityNew::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(TrustEntityNew::EntityId).string().not_null())

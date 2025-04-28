@@ -22,6 +22,6 @@ enum Lvvc {
 }
 
 #[derive(DeriveIden)]
-enum ValidityCredential {
+pub(crate) enum ValidityCredential {
     Table,
 }

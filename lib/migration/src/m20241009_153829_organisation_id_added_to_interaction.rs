@@ -2,7 +2,6 @@ use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
-use crate::m20240110_000001_initial::CustomDateTime;
 
 #[derive(DeriveMigrationName)]
 pub(crate) struct Migration;
@@ -41,7 +40,6 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .drop_table(Table::drop().table(Interaction::Table).to_owned())
         .await?;
-    let datetime = CustomDateTime(manager.get_database_backend());
 
     manager
         .create_table(
@@ -55,16 +53,16 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .col(
                     ColumnDef::new(Interaction::CreatedDate)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(
                     ColumnDef::new(Interaction::LastModified)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(ColumnDef::new(Interaction::Host).string())
-                .col(ColumnDef::new(Interaction::Data).custom_blob(manager))
+                .col(ColumnDef::new(Interaction::Data).large_blob(manager))
                 .col(
                     ColumnDef::new(Interaction::OrganisationId)
                         .char_len(36)

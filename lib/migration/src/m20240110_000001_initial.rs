@@ -1,5 +1,3 @@
-use std::fmt;
-
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
@@ -15,8 +13,6 @@ pub const UNIQUE_PROOF_SCHEMA_ORGANISATION_ID_NAME_INDEX: &str = "index-ProofSch
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .create_table(
                 Table::create()
@@ -29,16 +25,16 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Interaction::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Interaction::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Interaction::Host).string())
-                    .col(ColumnDef::new(Interaction::Data).custom_blob(manager))
+                    .col(ColumnDef::new(Interaction::Data).large_blob(manager))
                     .to_owned(),
             )
             .await?;
@@ -55,12 +51,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Organisation::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Organisation::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .to_owned(),
@@ -79,17 +75,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(CredentialSchema::DeletedAt)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .null(),
                     )
                     .col(
                         ColumnDef::new(CredentialSchema::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(CredentialSchema::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(CredentialSchema::Name).string().not_null())
@@ -141,12 +137,12 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ClaimSchema::Datatype).string().not_null())
                     .col(
                         ColumnDef::new(ClaimSchema::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ClaimSchema::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .to_owned(),
@@ -165,17 +161,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(ProofSchema::DeletedAt)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .null(),
                     )
                     .col(
                         ColumnDef::new(ProofSchema::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ProofSchema::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(ProofSchema::Name).string().not_null())
@@ -323,10 +319,14 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Did::Did).string_len(4000).not_null())
-                    .col(ColumnDef::new(Did::CreatedDate).custom(datetime).not_null())
+                    .col(
+                        ColumnDef::new(Did::CreatedDate)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(Did::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Did::Name).string().not_null())
@@ -373,17 +373,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(RevocationList::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(RevocationList::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(RevocationList::Credentials)
-                            .custom_blob(manager)
+                            .large_blob(manager)
                             .not_null(),
                     )
                     .col(
@@ -413,21 +413,25 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Key::CreatedDate).custom(datetime).not_null())
+                    .col(
+                        ColumnDef::new(Key::CreatedDate)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(Key::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Key::Name).string().not_null())
                     .col(
                         ColumnDef::new(Key::PublicKey)
-                            .custom_blob(manager)
+                            .large_blob(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Key::KeyReference)
-                            .custom_blob(manager)
+                            .large_blob(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Key::StorageType).string().not_null())
@@ -457,29 +461,29 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Credential::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Credential::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Credential::IssuanceDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Credential::DeletedAt)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .null(),
                     )
                     .col(ColumnDef::new(Credential::Transport).string().not_null())
                     .col(ColumnDef::new(Credential::RedirectUri).string())
                     .col(
                         ColumnDef::new(Credential::Credential)
-                            .custom_blob(manager)
+                            .large_blob(manager)
                             .not_null(),
                     )
                     .col(
@@ -555,7 +559,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(CredentialState::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
@@ -605,17 +609,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Proof::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Proof::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Proof::IssuanceDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Proof::RedirectUri).string())
@@ -678,12 +682,12 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ProofState::ProofId).char_len(36).not_null())
                     .col(
                         ColumnDef::new(ProofState::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ProofState::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
@@ -732,15 +736,15 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Claim::ClaimSchemaId).char_len(36).not_null())
                     .col(ColumnDef::new(Claim::CredentialId).char_len(36).not_null())
-                    .col(ColumnDef::new(Claim::Value).custom_blob(manager).not_null())
+                    .col(ColumnDef::new(Claim::Value).large_blob(manager).not_null())
                     .col(
                         ColumnDef::new(Claim::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Claim::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .foreign_key(
@@ -1099,18 +1103,4 @@ pub enum ProofClaim {
     Table,
     ClaimId,
     ProofId,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) struct CustomDateTime(pub sea_orm::DatabaseBackend);
-
-impl Iden for CustomDateTime {
-    fn unquoted(&self, s: &mut dyn fmt::Write) {
-        let column_name = match self.0 {
-            sea_orm::DatabaseBackend::MySql => "datetime(3)",
-            sea_orm::DatabaseBackend::Postgres => "timestamp",
-            sea_orm::DatabaseBackend::Sqlite => "datetime",
-        };
-        write!(s, "{column_name}").unwrap();
-    }
 }

@@ -1,8 +1,8 @@
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
+use crate::datatype::ColumnDefExt;
 use crate::extension::postgres::Type;
-use crate::m20240110_000001_initial::CustomDateTime;
 use crate::m20240130_105023_add_history::{History, HistoryAction};
 
 #[derive(DeriveMigrationName)]
@@ -11,7 +11,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
         match manager.get_database_backend() {
             sea_orm::DatabaseBackend::Postgres => {
                 manager
@@ -66,7 +65,7 @@ impl MigrationTrait for Migration {
                     .table(CredentialState::Table)
                     .add_column_if_not_exists(
                         ColumnDef::new(CredentialState::SuspendEndDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .null(),
                     )
                     .to_owned(),

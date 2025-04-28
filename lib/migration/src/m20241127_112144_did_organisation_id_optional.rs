@@ -1,7 +1,8 @@
 use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::{CustomDateTime, Did, DidType, Organisation};
+use crate::datatype::ColumnDefExt;
+use crate::m20240110_000001_initial::{Did, DidType, Organisation};
 use crate::m20240115_093859_unique_did_name_and_key_name_in_org::UNIQUE_DID_NAME_IN_ORGANISATION_INDEX;
 use crate::m20240116_110014_unique_did_in_organisation::UNIQUE_DID_DID_IN_ORGANISATION_INDEX;
 use crate::m20240209_144950_add_verifier_key_id_to_proof::copy_data_to_new_tables;
@@ -22,8 +23,6 @@ impl MigrationTrait for Migration {
 }
 
 async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    let datetime = CustomDateTime(manager.get_database_backend());
-
     manager
         .create_table(
             Table::create()
@@ -37,12 +36,12 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .col(ColumnDef::new(DidNew::Did).string_len(4000).not_null())
                 .col(
                     ColumnDef::new(DidNew::CreatedDate)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(
                     ColumnDef::new(DidNew::LastModified)
-                        .custom(datetime)
+                        .datetime_millisecond_precision(manager)
                         .not_null(),
                 )
                 .col(ColumnDef::new(DidNew::Name).string().not_null())
@@ -54,7 +53,7 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .col(ColumnDef::new(DidNew::Method).string().not_null())
                 .col(ColumnDef::new(DidNew::OrganisationId).char_len(36))
                 .col(ColumnDef::new(DidNew::Deactivated).boolean().not_null())
-                .col(ColumnDef::new(DidNew::DeletedAt).custom(datetime))
+                .col(ColumnDef::new(DidNew::DeletedAt).datetime_millisecond_precision(manager))
                 .foreign_key(
                     ForeignKey::create()
                         .name(DID_ORGANISATION_FOREIGN_KEY_NAME)

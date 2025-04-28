@@ -95,6 +95,7 @@ mod m20250401_110914_add_log_column_to_did_table;
 mod m20250401_140204_add_reactivated_history_enum;
 mod m20250403_083609_exchange_rename;
 mod m20250414_111854_add_update_key_enum_to_key_did;
+mod m20250426_093351_large_blob;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -192,6 +193,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250403_083609_exchange_rename::Migration),
             Box::new(m20250401_110914_add_log_column_to_did_table::Migration),
             Box::new(m20250414_111854_add_update_key_enum_to_key_did::Migration),
+            Box::new(m20250426_093351_large_blob::Migration),
         ]
     }
 }

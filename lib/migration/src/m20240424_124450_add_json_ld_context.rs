@@ -1,7 +1,6 @@
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
-use crate::m20240110_000001_initial::CustomDateTime;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,8 +8,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let datetime = CustomDateTime(manager.get_database_backend());
-
         manager
             .create_table(
                 Table::create()
@@ -23,17 +20,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(JsonLdContext::CreatedDate)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(JsonLdContext::LastModified)
-                            .custom(datetime)
+                            .datetime_millisecond_precision(manager)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(JsonLdContext::Context)
-                            .custom_blob(manager)
+                            .large_blob(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(JsonLdContext::Url).string())
