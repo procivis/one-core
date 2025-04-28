@@ -20,7 +20,7 @@ indexmap.workspace       = true
 one-core                 = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json"] }
 one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
-reqwest                  = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
+reqwest.workspace        = true
 secrecy.workspace        = true
 serde.workspace          = true
 serde_json.workspace     = true
@@ -40,7 +40,7 @@ uuid.workspace           = true
 tracing-android = { version = "0.2" }
 
 [target.'cfg(target_os = "ios")'.dependencies]
-tracing-oslog = { version = "0.2.0" }
+tracing-oslog = { version = "0.2.0", git = "https://github.com/Absolucy/tracing-oslog", rev = "af14fcc" }
 
 [lints]
 workspace = true
