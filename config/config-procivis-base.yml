@@ -75,7 +75,7 @@ issuanceProtocol:
       en: "OpenID4VCI (SWIYU)"
       de: "OpenID4VCI (SWIYU)"
     order: 2
-    type: "OPENID4VCI_DRAFT13"
+    type: "OPENID4VCI_DRAFT13_SWIYU"
     params:
       public:
         urlScheme: swiyu

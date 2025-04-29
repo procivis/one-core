@@ -32,7 +32,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
 };
 
 pub(crate) fn create_issuer_metadata_response(
-    base_url: &str,
+    schema_base_url: &str,
     oidc_format: &str,
     schema: &CredentialSchema,
     config: &CoreConfig,
@@ -49,8 +49,8 @@ pub(crate) fn create_issuer_metadata_response(
         credential_signing_alg_values_supported,
     )?;
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
-        credential_issuer: base_url.to_owned(),
-        credential_endpoint: format!("{base_url}/credential"),
+        credential_issuer: schema_base_url.to_owned(),
+        credential_endpoint: format!("{schema_base_url}/credential"),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
             name: schema
@@ -222,13 +222,13 @@ fn sdjwt_configuration(
 }
 
 pub(crate) fn create_service_discovery_response(
-    base_url: &str,
+    schema_base_url: &str,
 ) -> Result<OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError> {
     Ok(OpenID4VCIDiscoveryResponseDTO {
-        issuer: base_url.to_owned(),
-        authorization_endpoint: Some(format!("{base_url}/authorize")),
-        token_endpoint: format!("{base_url}/token"),
-        jwks_uri: Some(format!("{base_url}/jwks")),
+        issuer: schema_base_url.to_owned(),
+        authorization_endpoint: Some(format!("{schema_base_url}/authorize")),
+        token_endpoint: format!("{schema_base_url}/token"),
+        jwks_uri: Some(format!("{schema_base_url}/jwks")),
         response_types_supported: vec!["token".to_string()],
         grant_types_supported: vec![
             "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
@@ -239,17 +239,19 @@ pub(crate) fn create_service_discovery_response(
     })
 }
 
+pub(crate) fn get_protocol_base_url(base_url: &str) -> String {
+    format!("{base_url}/ssi/openid4vci/draft-13")
+}
+
 pub(crate) fn get_credential_schema_base_url(
     credential_schema_id: &CredentialSchemaId,
-    base_url: &str,
-) -> Result<String, OpenID4VCIError> {
-    Ok(format!(
-        "{base_url}/ssi/openid4vci/draft-13/{credential_schema_id}"
-    ))
+    protocol_base_url: &str,
+) -> String {
+    format!("{protocol_base_url}/{credential_schema_id}")
 }
 
 pub(crate) fn create_credential_offer(
-    base_url: &str,
+    protocol_base_url: &str,
     pre_authorized_code: &str,
     issuer_did: DidValue,
     credential_schema_uuid: &CredentialSchemaId,
@@ -257,10 +259,7 @@ pub(crate) fn create_credential_offer(
     credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenIDIssuanceError> {
     Ok(OpenID4VCICredentialOfferDTO {
-        credential_issuer: format!(
-            "{}/ssi/openid4vci/draft-13/{}",
-            base_url, credential_schema_uuid
-        ),
+        credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
         issuer_did: Some(issuer_did),
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants {

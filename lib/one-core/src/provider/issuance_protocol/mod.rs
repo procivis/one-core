@@ -11,7 +11,9 @@ use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::CredentialId;
 use url::Url;
+use IssuanceProtocolType::OpenId4VciDraft13;
 
+use crate::config::core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
@@ -27,6 +29,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, OpenID4VCIParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
+use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCI13Swiyu;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -39,6 +42,7 @@ pub mod dto;
 pub mod error;
 mod mapper;
 pub mod openid4vci_draft13;
+pub mod openid4vci_draft13_swiyu;
 pub(crate) mod provider;
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
@@ -53,7 +57,7 @@ pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn issuance_protocol_providers_from_config(
     config: Arc<CoreConfig>,
-    exchange_config: &mut IssuanceProtocolConfig,
+    issuance_config: &mut IssuanceProtocolConfig,
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -69,41 +73,48 @@ pub(crate) fn issuance_protocol_providers_from_config(
 
     let mut openid_url_schemes = HashSet::new();
 
-    for (name, fields) in exchange_config.iter_mut() {
-        match fields.r#type {
-            IssuanceProtocolType::OpenId4VciDraft13 => {
-                let params = fields.deserialize::<OpenID4VCIParams>().map_err(|source| {
-                    ConfigValidationError::FieldsDeserialization {
-                        key: name.to_owned(),
-                        source,
-                    }
-                })?;
-
-                // URL schemes are used to select provider, hence must not be duplicated
-                validate_url_scheme_unique(
-                    &mut openid_url_schemes,
-                    name,
-                    params.url_scheme.to_string(),
-                )?;
-
-                let protocol = Arc::new(OpenID4VCI13::new(
-                    client.clone(),
-                    credential_repository.clone(),
-                    validity_credential_repository.clone(),
-                    revocation_list_repository.clone(),
-                    formatter_provider.clone(),
-                    revocation_method_provider.clone(),
-                    did_method_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    key_provider.clone(),
-                    core_base_url.clone(),
-                    config.clone(),
-                    params.clone(),
-                ));
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
+    for (name, fields) in issuance_config.iter_mut() {
+        let params = fields.deserialize::<OpenID4VCIParams>().map_err(|source| {
+            ConfigValidationError::FieldsDeserialization {
+                key: name.to_owned(),
+                source,
             }
-        }
+        })?;
+
+        // URL schemes are used to select provider, hence must not be duplicated
+        validate_url_scheme_unique(&mut openid_url_schemes, name, params.url_scheme.to_string())?;
+        let protocol: Arc<dyn IssuanceProtocol> = match fields.r#type {
+            OpenId4VciDraft13 => Arc::new(OpenID4VCI13::new(
+                client.clone(),
+                credential_repository.clone(),
+                validity_credential_repository.clone(),
+                revocation_list_repository.clone(),
+                formatter_provider.clone(),
+                revocation_method_provider.clone(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                key_provider.clone(),
+                core_base_url.clone(),
+                config.clone(),
+                params,
+            )),
+            OpenId4VciDraft13Swiyu => Arc::new(OpenID4VCI13Swiyu::new(
+                client.clone(),
+                credential_repository.clone(),
+                validity_credential_repository.clone(),
+                revocation_list_repository.clone(),
+                formatter_provider.clone(),
+                revocation_method_provider.clone(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                key_provider.clone(),
+                core_base_url.clone(),
+                config.clone(),
+                params,
+            )),
+        };
+        fields.capabilities = Some(json!(protocol.get_capabilities()));
+        providers.insert(name.to_string(), protocol);
     }
 
     Ok(providers)
@@ -207,7 +218,6 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     async fn issuer_share_credential(
         &self,
         credential: &Credential,
-        credential_format: &str,
     ) -> Result<ShareResponse<serde_json::Value>, IssuanceProtocolError>;
 
     /// Creates a newly issued credential

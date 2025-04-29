@@ -12,7 +12,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::ExposeSecret;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -63,7 +63,9 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
+use crate::provider::issuance_protocol::openid4vci_draft13::service::{
+    create_credential_offer, get_protocol_base_url,
+};
 use crate::provider::issuance_protocol::openid4vci_draft13::utils::{
     deserialize_interaction_data, serialize_interaction_data,
 };
@@ -110,6 +112,7 @@ pub(crate) struct OpenID4VCI13 {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
+    protocol_base_url: Option<String>,
     config: Arc<CoreConfig>,
     params: OpenID4VCIParams,
 }
@@ -130,6 +133,7 @@ impl OpenID4VCI13 {
         config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
     ) -> Self {
+        let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
             client,
             credential_repository,
@@ -141,6 +145,43 @@ impl OpenID4VCI13 {
             key_algorithm_provider,
             key_provider,
             base_url,
+            protocol_base_url,
+            config,
+            params,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_custom_version(
+        client: Arc<dyn HttpClient>,
+        credential_repository: Arc<dyn CredentialRepository>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        revocation_provider: Arc<dyn RevocationMethodProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_provider: Arc<dyn KeyProvider>,
+        base_url: Option<String>,
+        config: Arc<CoreConfig>,
+        params: OpenID4VCIParams,
+        protocol_version: &str,
+    ) -> Self {
+        let protocol_base_url = base_url
+            .as_ref()
+            .map(|url| format!("{url}/ssi/openid4vci/{protocol_version}"));
+        Self {
+            client,
+            credential_repository,
+            validity_credential_repository,
+            revocation_list_repository,
+            formatter_provider,
+            revocation_provider,
+            did_method_provider,
+            key_algorithm_provider,
+            key_provider,
+            base_url,
+            protocol_base_url,
             config,
             params,
         }
@@ -606,8 +647,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
     async fn issuer_share_credential(
         &self,
         credential: &Credential,
-        _credential_format: &str,
-    ) -> Result<ShareResponse<serde_json::Value>, IssuanceProtocolError> {
+    ) -> Result<ShareResponse<Value>, IssuanceProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
@@ -621,8 +661,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 "credential schema missing".to_string(),
             ))?;
 
-        let url = self
-            .base_url
+        let protocol_base_url = self
+            .protocol_base_url
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
@@ -649,7 +689,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 .did
                 .clone();
             let offer = create_credential_offer(
-                url,
+                protocol_base_url,
                 &interaction_id.to_string(),
                 issuer_did,
                 &credential_schema.id,
@@ -663,7 +703,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
             query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
         } else {
-            let offer_url = get_credential_offer_url(self.base_url.to_owned(), credential)?;
+            let offer_url = get_credential_offer_url(protocol_base_url.to_owned(), credential)?;
             query.append_pair(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY, &offer_url);
         }
 

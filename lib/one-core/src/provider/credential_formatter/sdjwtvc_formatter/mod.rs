@@ -286,7 +286,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 DidType::X509,
                 DidType::WebVh,
             ],
-            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+            issuance_exchange_protocols: vec![
+                IssuanceProtocolType::OpenId4VciDraft13,
+                IssuanceProtocolType::OpenId4VciDraft13Swiyu,
+            ],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,

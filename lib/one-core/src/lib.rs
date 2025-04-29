@@ -54,6 +54,7 @@ use crate::service::cache::CacheService;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::key::KeyService;
+use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::revocation_list::RevocationListService;
 
 pub mod config;
@@ -114,6 +115,7 @@ pub struct OneCore {
     pub config_service: ConfigService,
     pub revocation_list_service: RevocationListService,
     pub oid4vci_draft13_service: OID4VCIDraft13Service,
+    pub oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService,
     pub oid4vp_draft20_service: OID4VPDraft20Service,
     pub oid4vp_draft25_service: OID4VPDraft25Service,
     pub ssi_issuer_service: SSIIssuerService,
@@ -504,6 +506,18 @@ impl OneCore {
                 config.clone(),
             ),
             oid4vci_draft13_service: OID4VCIDraft13Service::new(
+                providers.core_base_url.clone(),
+                data_provider.get_credential_schema_repository(),
+                data_provider.get_credential_repository(),
+                data_provider.get_interaction_repository(),
+                config.clone(),
+                issuance_provider.clone(),
+                data_provider.get_did_repository(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                formatter_provider.clone(),
+            ),
+            oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),

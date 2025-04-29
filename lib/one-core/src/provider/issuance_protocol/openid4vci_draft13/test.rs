@@ -183,7 +183,7 @@ fn generic_credential() -> Credential {
 
 #[tokio::test]
 async fn test_generate_offer() {
-    let base_url = "BASE_URL".to_string();
+    let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential();
 
@@ -193,7 +193,7 @@ async fn test_generate_offer() {
         credentials_format(Some(WalletStorageTypeEnum::Software), &keys).unwrap();
 
     let offer = create_credential_offer(
-        &base_url,
+        &protocol_base_url,
         &interaction_id.to_string(),
         credential.issuer_did.unwrap().did,
         &credential.schema.as_ref().unwrap().id,
@@ -231,10 +231,7 @@ async fn test_generate_share_credentials() {
     let credential = generic_credential();
     let protocol = setup_protocol(Default::default());
 
-    let result = protocol
-        .issuer_share_credential(&credential, "")
-        .await
-        .unwrap();
+    let result = protocol.issuer_share_credential(&credential).await.unwrap();
     assert_eq!(result.url, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
 }
 
@@ -258,10 +255,7 @@ async fn test_generate_share_credentials_offer_by_value() {
         ..Default::default()
     });
 
-    let result = protocol
-        .issuer_share_credential(&credential, "jwt_vc_json")
-        .await
-        .unwrap();
+    let result = protocol.issuer_share_credential(&credential).await.unwrap();
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
@@ -1214,10 +1208,7 @@ async fn test_generate_share_credentials_custom_scheme() {
         ..Default::default()
     });
 
-    let result = protocol
-        .issuer_share_credential(&credential, "")
-        .await
-        .unwrap();
+    let result = protocol.issuer_share_credential(&credential).await.unwrap();
     assert!(result.url.starts_with(url_scheme));
 }
 

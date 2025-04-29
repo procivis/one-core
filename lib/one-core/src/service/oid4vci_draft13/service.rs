@@ -60,14 +60,13 @@ impl OID4VCIDraft13Service {
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let core_base_url = self
-            .core_base_url
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "Host URL not specified".to_string(),
-            ))?;
-
-        let base_url = get_credential_schema_base_url(credential_schema_id, core_base_url)?;
+        let protocol_base_url =
+            self.protocol_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string(),
+                ))?;
+        let base_url = get_credential_schema_base_url(credential_schema_id, protocol_base_url);
 
         let schema = self
             .credential_schema_repository
@@ -129,12 +128,12 @@ impl OID4VCIDraft13Service {
     ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let core_base_url = self
-            .core_base_url
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "Host URL not specified".to_string(),
-            ))?;
+        let protocol_base_url =
+            self.protocol_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string(),
+                ))?;
 
         let schema = self
             .credential_schema_repository
@@ -151,8 +150,7 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let schema_base_url = get_credential_schema_base_url(&schema.id, core_base_url)?;
-
+        let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
         Ok(create_service_discovery_response(&schema_base_url)?)
     }
 
@@ -216,7 +214,10 @@ impl OID4VCIDraft13Service {
                 "interaction missing".to_string(),
             ))?;
 
-        let url = get_url(self.core_base_url.to_owned())?;
+        let url = self
+            .protocol_base_url
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
 
         let wallet_storage_type = credential
             .schema
@@ -236,7 +237,7 @@ impl OID4VCIDraft13Service {
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         Ok(create_credential_offer(
-            &url,
+            url,
             &interaction.id.to_string(),
             credential
                 .issuer_did
@@ -309,11 +310,7 @@ impl OID4VCIDraft13Service {
             );
         };
 
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciDraft13,
-            &self.config,
-            &credential.exchange,
-        )?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.exchange)?;
 
         let (holder_did, holder_key_id) = if request.proof.proof_type == "jwt" {
             let (holder_did_value, key_id) = OpenID4VCIProofJWTFormatter::verify_proof(
@@ -411,11 +408,7 @@ impl OID4VCIDraft13Service {
             .first()
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciDraft13,
-            &self.config,
-            &credential.exchange,
-        )?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.exchange)?;
 
         let mut interaction = credential
             .interaction
@@ -487,10 +480,6 @@ impl OID4VCIDraft13Service {
 
         Ok(response)
     }
-}
-
-fn get_url(base_url: Option<String>) -> Result<String, ServiceError> {
-    base_url.ok_or(ServiceError::Other("Missing base_url".to_owned()))
 }
 
 pub fn credentials_format(

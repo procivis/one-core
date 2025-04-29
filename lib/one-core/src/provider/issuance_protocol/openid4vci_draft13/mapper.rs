@@ -806,7 +806,7 @@ pub(crate) fn create_credential(
 }
 
 pub(crate) fn get_credential_offer_url(
-    base_url: Option<String>,
+    protocol_base_url: String,
     credential: &Credential,
 ) -> Result<String, IssuanceProtocolError> {
     let credential_schema = credential
@@ -815,15 +815,10 @@ pub(crate) fn get_credential_offer_url(
         .ok_or(IssuanceProtocolError::Failed(
             "Missing credential schema".to_owned(),
         ))?;
-    let base_url = get_url(base_url)?;
     Ok(format!(
-        "{base_url}/ssi/openid4vci/draft-13/{}/offer/{}",
+        "{protocol_base_url}/{}/offer/{}",
         credential_schema.id, credential.id
     ))
-}
-
-fn get_url(base_url: Option<String>) -> Result<String, IssuanceProtocolError> {
-    base_url.ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))
 }
 
 impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO {

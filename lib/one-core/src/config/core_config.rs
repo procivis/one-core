@@ -266,6 +266,9 @@ pub enum IssuanceProtocolType {
     #[serde(rename = "OPENID4VCI_DRAFT13")]
     #[strum(serialize = "OPENID4VCI_DRAFT13")]
     OpenId4VciDraft13,
+    #[serde(rename = "OPENID4VCI_DRAFT13_SWIYU")]
+    #[strum(serialize = "OPENID4VCI_DRAFT13_SWIYU")]
+    OpenId4VciDraft13Swiyu,
 }
 
 pub type VerificationProtocolConfig = ConfigBlock<VerificationProtocolType>;

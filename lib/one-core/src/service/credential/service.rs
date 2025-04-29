@@ -5,7 +5,7 @@ use super::mapper::credential_detail_response_from_model;
 use super::validator::{validate_redirect_uri, verify_suspension_support};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
-use crate::config::core_config::{IssuanceProtocolType, RevocationType};
+use crate::config::core_config::RevocationType;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -42,7 +42,7 @@ use crate::util::history::log_history_event_credential;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
-use crate::util::oidc::{detect_format_with_crypto_suite, map_to_openid4vp_format};
+use crate::util::oidc::detect_format_with_crypto_suite;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
 impl CredentialService {
@@ -432,34 +432,19 @@ impl CredentialService {
         }
 
         let credential_exchange = &credential.exchange;
-        let credential_schema = credential
+        credential
             .schema
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
                 "credential schema missing".to_string(),
             ))?;
 
-        let exchange_type = self
-            .config
+        self.config
             .issuance_protocol
             .get_fields(credential_exchange)
             .map_err(|err| {
                 ServiceError::MissingExchangeProtocol(format!("{credential_exchange}: {err}"))
-            })?
-            .r#type();
-
-        let format = if *exchange_type == IssuanceProtocolType::OpenId4VciDraft13 {
-            let format_type = self
-                .config
-                .format
-                .get_fields(&credential_schema.format)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-                .r#type;
-
-            map_to_openid4vp_format(&format_type)?
-        } else {
-            credential_schema.format.as_str()
-        };
+            })?;
 
         let exchange = self
             .protocol_provider
@@ -472,9 +457,7 @@ impl CredentialService {
             url,
             interaction_id,
             context,
-        } = exchange
-            .issuer_share_credential(&credential, format)
-            .await?;
+        } = exchange.issuer_share_credential(&credential).await?;
 
         let Some(credential_schema) = credential.schema.as_ref() else {
             return Err(ServiceError::MappingError(

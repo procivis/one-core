@@ -112,7 +112,7 @@ pub(super) fn validate_redirect_uri(
 ) -> Result<(), ServiceError> {
     let fields = config.issuance_protocol.get_fields(exchange)?;
     match fields.r#type {
-        IssuanceProtocolType::OpenId4VciDraft13 => {
+        IssuanceProtocolType::OpenId4VciDraft13 | IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
             if let Some(redirect_uri) = redirect_uri {
                 let exchange_params: OpenID4VCIParams = config.issuance_protocol.get(exchange)?;
                 let params = exchange_params.redirect_uri;

@@ -593,7 +593,7 @@ async fn test_share_credential_success() {
     protocol
         .expect_issuer_share_credential()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
