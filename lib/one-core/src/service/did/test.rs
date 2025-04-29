@@ -241,7 +241,6 @@ async fn test_create_did_success() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4().into(),
-        did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id.into()],
@@ -336,7 +335,6 @@ async fn test_create_did_value_already_exists() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4().into(),
-        did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id.into()],
@@ -431,7 +429,6 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4().into(),
-        did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![Uuid::new_v4().into(), Uuid::new_v4().into()],

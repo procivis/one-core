@@ -1,4 +1,3 @@
-use one_core::model::did::DidType;
 use one_core::model::list_filter::{
     ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
@@ -250,7 +249,6 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
             organisation_id: into_id(&request.organisation_id)?,
             name: request.name,
             did_method: request.did_method,
-            did_type: DidType::Local,
             keys: request.keys.try_into()?,
             params: Some(json!(request.params)),
         })

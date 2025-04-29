@@ -13,7 +13,6 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
             name: value.name,
             organisation_id: value.organisation_id,
             did_method: value.method,
-            did_type: one_core::model::did::DidType::Local,
             keys: value.keys.into(),
             params: value.params,
         }

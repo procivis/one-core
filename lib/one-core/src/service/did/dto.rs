@@ -56,7 +56,6 @@ pub struct CreateDidRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
     pub did_method: String,
-    pub did_type: DidType,
     pub keys: CreateDidRequestKeysDTO,
     pub params: Option<serde_json::Value>,
 }

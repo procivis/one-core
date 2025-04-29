@@ -8,7 +8,7 @@ use super::dto::{
     CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
     GetDidListResponseDTO,
 };
-use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::{DidCreateKeys, DidCreated};
@@ -106,7 +106,7 @@ pub(super) fn did_from_did_request(
         name: request.name,
         organisation: Some(organisation),
         did: did_create.did,
-        did_type: request.did_type,
+        did_type: DidType::Local,
         did_method: request.did_method,
         keys: Some(keys),
         deactivated: false,
