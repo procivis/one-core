@@ -13,7 +13,7 @@ RUN apt-get update && \
     useradd -r -u "$UID" -g "$USER" "$USER"
 
 COPY --chmod=555 target/release/core-server /app/
-COPY --chmod=444 config /app/config
+COPY --chmod=+x config /app/config
 
 EXPOSE 3000
 
