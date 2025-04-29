@@ -5,7 +5,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::service::error::ServiceError;
-use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
+use crate::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 
 impl OID4VCIDraft13SwiyuService {
@@ -73,10 +73,17 @@ impl OID4VCIDraft13SwiyuService {
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
-    ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
-        self.inner
+    ) -> Result<OpenID4VCISwiyuCredentialResponseDTO, ServiceError> {
+        let regular_dto = self
+            .inner
             .create_credential(credential_schema_id, access_token, request)
-            .await
+            .await?;
+        Ok(OpenID4VCISwiyuCredentialResponseDTO {
+            credential: regular_dto.credential,
+            // This field is non-standard and SWIYU only supports SD-JWT VC
+            format: "vc+sd-jwt".to_owned(),
+            redirect_uri: regular_dto.redirect_uri,
+        })
     }
 }
 

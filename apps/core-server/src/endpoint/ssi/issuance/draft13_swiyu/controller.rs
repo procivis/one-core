@@ -10,8 +10,8 @@ use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
     OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO,
+    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCISwiyuCredentialResponseRestDTO,
     OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
@@ -251,7 +251,7 @@ pub(crate) async fn oid4vci_draft13_swiyu_create_token(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VCICredentialResponseRestDTO),
+        (status = 200, description = "OK", body = OpenID4VCISwiyuCredentialResponseRestDTO),
         (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
         (status = 404, description = "Credential schema not found"),
         (status = 409, description = "Wrong credential state"),
@@ -292,7 +292,7 @@ pub(crate) async fn oid4vci_draft13_swiyu_create_credential(
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(OpenID4VCICredentialResponseRestDTO::from(value)),
+            Json(OpenID4VCISwiyuCredentialResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::OpenID4VCIError(error)) => {

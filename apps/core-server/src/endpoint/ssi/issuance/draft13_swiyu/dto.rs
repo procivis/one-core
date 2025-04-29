@@ -11,7 +11,7 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIProofRequestDTO,
     OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
-use one_core::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
+use one_core::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
@@ -204,9 +204,10 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(OpenID4VCICredentialResponseDTO)]
-pub(crate) struct OpenID4VCICredentialResponseRestDTO {
+#[from(OpenID4VCISwiyuCredentialResponseDTO)]
+pub(crate) struct OpenID4VCISwiyuCredentialResponseRestDTO {
     pub credential: String,
+    pub format: String,
     pub redirect_uri: Option<String>,
 }
 

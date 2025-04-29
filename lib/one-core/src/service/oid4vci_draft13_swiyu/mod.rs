@@ -1,3 +1,4 @@
+pub mod dto;
 pub mod service;
 
 use std::sync::Arc;
