@@ -72,8 +72,15 @@ impl OID4VCIDraft13SwiyuService {
         &self,
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
-        request: OpenID4VCICredentialRequestDTO,
+        mut request: OpenID4VCICredentialRequestDTO,
     ) -> Result<OpenID4VCISwiyuCredentialResponseDTO, ServiceError> {
+        if request.vct.is_none() {
+            request.vct = request
+                .credential_definition
+                .iter()
+                .flat_map(|def| def.r#type.clone())
+                .next();
+        }
         let regular_dto = self
             .inner
             .create_credential(credential_schema_id, access_token, request)
