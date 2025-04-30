@@ -239,7 +239,7 @@ fn create_did_doc(
     Ok(DidDocument {
         context: vec![
             "https://www.w3.org/ns/did/v1".to_string(),
-            "https://w3id.org/security/multikey/v1".to_string(),
+            "https://w3id.org/security/jwk/v1".to_string(),
         ],
         id: did,
         verification_method: verification_methods,
@@ -507,7 +507,7 @@ mod test {
 
         assert_eq!(
             did.to_string(),
-            "did:tdw:QmebvchWhS7oCUExpmwXepBR1LEEWdGds9dE2aApZfwq8q:test-domain.com"
+            "did:tdw:QmbbXWLTC8nCFRbZq9ZzGQLW9pbzWTvjX128beHDNQRgBA:test-domain.com"
         );
 
         let expected_log = include_str!("test_data/success/create_did_web_ok.jsonl");
@@ -556,7 +556,7 @@ mod test {
 
         assert_eq!(
             did.to_string(),
-            "did:tdw:QmQrLmJJE8TmTpPkyDcT1TFCmPjbuWRmwvfRQg8omjez8X:test-domain.com"
+            "did:tdw:QmRuwExX7ouarvGrEBb6UaajjmWRzVLFDnNYTzQNxsXJfj:test-domain.com"
         );
 
         let expected_log =

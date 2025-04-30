@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
-use tracing::log;
 use url::Url;
 
 use super::dto::HandleInvitationResultDTO;
@@ -116,7 +115,7 @@ impl SSIHolderService {
                 )
                 .await
             {
-                log::error!("Failed to accept credential: {error}");
+                tracing::error!("Failed to accept credential: {error}");
 
                 let _result = self
                     .credential_repository
