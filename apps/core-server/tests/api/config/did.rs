@@ -220,15 +220,15 @@ async fn test_webvh_did_method_config() {
                 "max": 5,
             },
             "capabilityDelegation": {
-                "min": 1,
+                "min": 0,
                 "max": 1,
             },
             "capabilityInvocation": {
-                "min": 1,
+                "min": 0,
                 "max": 1,
             },
             "keyAgreement": {
-                "min": 1,
+                "min": 0,
                 "max": 1,
             },
         })

@@ -515,6 +515,56 @@ mod test {
     }
 
     #[tokio::test]
+    async fn test_create_did_webvh_ok_only_authentication_assertion() {
+        let KeyProviderSetup {
+            mock: key_provider,
+            active_key_setup: (active_key, _),
+            document_key,
+            ..
+        } = setup_key_provider();
+
+        let did_doc_keys = DidDocKeys {
+            authentication: vec![document_key.clone()],
+            assertion_method: vec![document_key.clone()],
+            key_agreement: vec![],
+            capability_invocation: vec![],
+            capability_delegation: vec![],
+        };
+        let update_keys = UpdateKeys {
+            active: &active_key,
+            next: &[],
+        };
+
+        let options = Options {
+            version_time: OffsetDateTime::parse("2024-07-29T17:00:27Z", &Iso8601::DATE_TIME_OFFSET)
+                .ok(),
+            proof_created: OffsetDateTime::parse(
+                "2024-07-29T17:00:28Z",
+                &Iso8601::DATE_TIME_OFFSET,
+            )
+            .ok(),
+        };
+        let (did, log) = create_with_options(
+            "test-domain.com",
+            did_doc_keys,
+            update_keys,
+            &key_provider,
+            options,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            did.to_string(),
+            "did:tdw:QmQ6bD4CoN2o6FAxJyHFM2Xx22LKWK1Ux8Hru1k9Q9yTcW:test-domain.com"
+        );
+
+        let expected_log =
+            include_str!("test_data/success/create_did_web_ok_only_authentication_assertion.jsonl");
+        assert_eq!(log, expected_log);
+    }
+
+    #[tokio::test]
     async fn test_create_did_webvh_with_prerotation_enabled_ok() {
         let KeyProviderSetup {
             mock: key_provider,
