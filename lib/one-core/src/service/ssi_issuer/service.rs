@@ -228,8 +228,6 @@ impl SSIIssuerService {
                     filtering: Some(
                         CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
                             & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct))
-                                .condition()
-                            & CredentialSchemaFilterValue::Format(StringMatch::equals("SD_JWT_VC"))
                                 .condition(),
                     ),
                     include: Some(vec![
