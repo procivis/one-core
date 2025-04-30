@@ -233,9 +233,8 @@ pub(crate) async fn oid4vp_draft20_client_metadata(
     tag = "openid4vp-draft20",
     summary = "OID4VC - Proof request data",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oid4vp_draft20_client_request(

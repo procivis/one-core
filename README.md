@@ -411,7 +411,7 @@ Support for the recently published [FIPS-204][fips] is planned for the near futu
 
 - OpenID for Verifiable Credentials
   - [OID4VCI][vci]; ID-1
-  - [OID4VP][vp]; ID-2 and Draft 20
+  - OID4VP; [ID-2][vp20] (Draft 20) & [Draft 25][vp25]
     - [OID4VP over BLE][ble]; optimized version of Draft 00
     - OID4VP over MQTT; proprietary adaptation of "OID4VP over BLE" via MQTT channel
 - ISO/IEC 18013
@@ -458,7 +458,7 @@ Version 2.0](./LICENSE).
 
 © Procivis AG, [https://www.procivis.ch](https://www.procivis.ch).
 
-[apidocs]: https://docs.procivis.ch/guides/api/overview
+[apidocs]: https://docs.procivis.ch/apis
 [apiref]: https://docs.procivis.ch/docs/core-api
 [archi]: https://github.com/procivis#architecture
 [bbs]: https://www.w3.org/TR/vc-di-bbs/
@@ -496,13 +496,14 @@ Version 2.0](./LICENSE).
 [sdjwtvc]: https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html
 [sdkref]: https://docs.procivis.ch/sdk/overview
 [sl]: https://www.w3.org/TR/vc-bitstring-status-list/
-[supptech]: https://docs.procivis.ch/product/supported_tech
-[trial]: https://docs.procivis.ch/trial/intro
+[supptech]: https://docs.procivis.ch/standards
+[trial]: https://docs.procivis.ch/trial
 [tsl]: https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-03
 [univ]: https://dev.uniresolver.io
 [vcbarcode]: https://w3c-ccg.github.io/vc-barcodes/
 [vcdi]: https://www.w3.org/TR/vc-data-integrity/
 [vcdm]: https://www.w3.org/TR/vc-data-model-2.0/
 [vci]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
-[vp]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html
+[vp20]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html
+[vp25]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-25.html
 [webvh]: https://identity.foundation/didwebvh/v0.3/
