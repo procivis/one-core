@@ -193,3 +193,12 @@ impl<FV> std::ops::BitOr<Option<FV>> for ListFilterCondition<FV> {
         }
     }
 }
+
+impl<FV> ListFilterCondition<FV> {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::And(conditions) | Self::Or(conditions) => conditions.is_empty(),
+            Self::Value { .. } => false,
+        }
+    }
+}

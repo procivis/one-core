@@ -8,14 +8,15 @@ use one_core::service::credential::dto::CredentialFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
+use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use shared_types::{DidId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{self, claim, credential, credential_schema, did};
 use crate::list_query_generic::{
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
-    get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    get_string_match_condition, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn,
+    JoinRelation,
 };
 
 impl IntoSortingColumn for SortableCredentialColumn {
@@ -58,6 +59,21 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::SuspendEndDate(comparison) => {
                 get_comparison_condition(credential::Column::SuspendEndDate, comparison)
             }
+        }
+    }
+}
+
+impl IntoJoinRelations for CredentialFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation> {
+        match self {
+            // add claims if filtering by claim name/value
+            Self::ClaimName(_) | Self::ClaimValue(_) => {
+                vec![JoinRelation {
+                    join_type: JoinType::LeftJoin,
+                    relation_def: credential::Relation::Claim.def(),
+                }]
+            }
+            _ => vec![],
         }
     }
 }

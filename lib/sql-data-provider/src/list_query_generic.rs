@@ -28,16 +28,16 @@ pub struct JoinRelation {
     pub relation_def: RelationDef,
 }
 
-pub trait IntoJoinCondition: Clone + ListFilterValue {
-    fn get_join(self) -> Vec<JoinRelation>;
+pub trait IntoJoinRelations: ListFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation>;
 }
 
 pub trait SelectWithFilterJoin<SortableColumn, JoinValue, Include>
 where
     SortableColumn: IntoSortingColumn,
-    JoinValue: IntoJoinCondition,
+    JoinValue: IntoJoinRelations,
 {
-    /// applies all `query` declared constraits (Joining, sorting and pagination) on the query
+    /// applies all `query.filtering` required relations
     fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue, Include>) -> Self;
 }
 
@@ -46,14 +46,14 @@ impl<T, SortableColumn, JoinValue, Include> SelectWithFilterJoin<SortableColumn,
 where
     T: EntityTrait,
     SortableColumn: IntoSortingColumn,
-    JoinValue: IntoJoinCondition,
+    JoinValue: IntoJoinRelations,
 {
     fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue, Include>) -> Select<T> {
         let mut result = self;
 
         if let Some(filter) = &query.filtering {
             let mut unique_relations: Vec<JoinRelation> = vec![];
-            for relation in get_join_condition(filter) {
+            for relation in get_join_relations(filter) {
                 if !unique_relations.iter().any(|r| {
                     r.join_type == relation.join_type
                         && r.relation_def.to_tbl == relation.relation_def.to_tbl
@@ -77,22 +77,22 @@ where
 }
 
 // helpers
-fn get_join_condition<JoinValue: IntoJoinCondition>(
+fn get_join_relations<JoinValue: IntoJoinRelations>(
     filter: &ListFilterCondition<JoinValue>,
 ) -> Vec<JoinRelation> {
     let mut result = vec![];
     match filter {
         ListFilterCondition::Value(v) => {
-            result.append(&mut v.to_owned().get_join());
+            result.append(&mut v.get_join());
         }
         ListFilterCondition::And(filter_list) => {
             for value in filter_list {
-                result.append(&mut get_join_condition(value));
+                result.append(&mut get_join_relations(value));
             }
         }
         ListFilterCondition::Or(filter_list) => {
             for value in filter_list {
-                result.append(&mut get_join_condition(value));
+                result.append(&mut get_join_relations(value));
             }
         }
     }
@@ -120,7 +120,7 @@ where
         let mut result = self;
 
         if let Some(filter) = &query.filtering {
-            if !is_condition_empty(filter) {
+            if !filter.is_empty() {
                 result = result.filter(get_filter_condition(filter));
             }
         }
@@ -150,7 +150,7 @@ fn get_filter_condition<FilterValue: IntoFilterCondition>(
         ListFilterCondition::And(conditions) => {
             let mut result = Condition::all();
             for condition in conditions {
-                if !is_condition_empty(condition) {
+                if !condition.is_empty() {
                     result = result.add(get_filter_condition(condition));
                 }
             }
@@ -159,23 +159,13 @@ fn get_filter_condition<FilterValue: IntoFilterCondition>(
         ListFilterCondition::Or(conditions) => {
             let mut result = Condition::any();
             for condition in conditions {
-                if !is_condition_empty(condition) {
+                if !condition.is_empty() {
                     result = result.add(get_filter_condition(condition));
                 }
             }
             result
         }
         ListFilterCondition::Value(value) => value.to_owned().get_condition(),
-    }
-}
-
-fn is_condition_empty<FilterValue: IntoFilterCondition>(
-    filter_condition: &ListFilterCondition<FilterValue>,
-) -> bool {
-    match filter_condition {
-        ListFilterCondition::And(conditions) => conditions.is_empty(),
-        ListFilterCondition::Or(conditions) => conditions.is_empty(),
-        ListFilterCondition::Value { .. } => false,
     }
 }
 

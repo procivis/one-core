@@ -15,7 +15,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::{Interaction, InteractionRelations};
-use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::OrganisationRelations;
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
@@ -744,6 +744,88 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
         })
         .await;
     let credentials = credentials.unwrap();
+    assert_eq!(0, credentials.total_items);
+    assert_eq!(0, credentials.values.len());
+}
+
+#[tokio::test]
+async fn test_get_credential_list_success_filter_claim_name_value() {
+    let TestSetupWithCredential {
+        db,
+        credential_id,
+        credential_schema,
+        ..
+    } = setup_with_credential().await;
+
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .to_owned()
+        .schema;
+    let claims = vec![Claim {
+        id: ClaimId::new_v4(),
+        credential_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: "test_value".to_string(),
+        path: claim_schema.key.to_owned(),
+        schema: Some(claim_schema),
+    }];
+
+    claim::Entity::insert_many(
+        claims
+            .iter()
+            .map(|claim| claim::ActiveModel {
+                id: Set(claim.id.into()),
+                credential_id: Set(credential_id),
+                claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
+                value: Set(claim.value.to_owned().into()),
+                created_date: Set(get_dummy_date()),
+                last_modified: Set(get_dummy_date()),
+                path: Set(claim.path.to_string()),
+            })
+            .collect::<Vec<claim::ActiveModel>>(),
+    )
+    .exec(&db)
+    .await
+    .unwrap();
+
+    let provider = credential_repository(db, None);
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::ClaimName(StringMatch::contains("key")).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.values.len());
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::ClaimValue(StringMatch::contains("value")).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.values.len());
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::ClaimValue(StringMatch::contains("wrong")).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
     assert_eq!(0, credentials.total_items);
     assert_eq!(0, credentials.values.len());
 }

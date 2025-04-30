@@ -8,7 +8,7 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use crate::common::calculate_pages_count;
 use crate::entity::{self, did, key, key_did};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinCondition,
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinRelations,
     IntoSortingColumn, JoinRelation,
 };
 
@@ -79,8 +79,8 @@ impl IntoFilterCondition for DidFilterValue {
     }
 }
 
-impl IntoJoinCondition for DidFilterValue {
-    fn get_join(self) -> Vec<JoinRelation> {
+impl IntoJoinRelations for DidFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation> {
         match self {
             Self::KeyAlgorithms(_) | Self::KeyStorages(_) => {
                 vec![

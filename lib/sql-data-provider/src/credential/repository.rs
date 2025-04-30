@@ -36,7 +36,7 @@ use crate::credential::CredentialProvider;
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
 };
-use crate::list_query_generic::SelectWithListQuery;
+use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
 
 async fn get_credential_schema(
@@ -233,8 +233,8 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::Role,
             credential::Column::State,
             credential::Column::SuspendEndDate,
+            credential::Column::Exchange,
         ])
-        .column_as(credential::Column::Exchange, "exchange")
         .column_as(
             credential_schema::Column::CreatedDate,
             "credential_schema_created_date",
@@ -292,12 +292,9 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         )
         // add related issuer did (to enable sorting)
         .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
-        .join(
-            sea_orm::JoinType::LeftJoin,
-            credential::Relation::Claim.def(),
-        )
         .filter(credential::Column::DeletedAt.is_null())
         // list query
+        .with_filter_join(&query_params)
         .with_list_query(&query_params)
         // fallback ordering
         .order_by_desc(credential::Column::CreatedDate)

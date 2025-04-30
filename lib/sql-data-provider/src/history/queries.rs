@@ -12,7 +12,7 @@ use crate::entity::{
     proof_input_claim_schema, proof_input_schema, proof_schema,
 };
 use crate::list_query_generic::{
-    get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
+    get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinRelations,
     IntoSortingColumn, JoinRelation,
 };
 
@@ -365,8 +365,8 @@ fn credential_schema_filter_condition(
         .into_condition()
 }
 
-impl IntoJoinCondition for HistoryFilterValue {
-    fn get_join(self) -> Vec<JoinRelation> {
+impl IntoJoinRelations for HistoryFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation> {
         match self {
             Self::DidId(_) => {
                 vec![
