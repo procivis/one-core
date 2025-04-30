@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use one_core::model::credential_schema::CredentialSchemaType;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -118,6 +119,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt_vc() {
             "NONE",
             TestingCreateSchemaParams {
                 format: Some("SD_JWT_VC".to_string()),
+                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
