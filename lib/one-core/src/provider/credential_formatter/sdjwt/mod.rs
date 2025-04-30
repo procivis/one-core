@@ -65,9 +65,12 @@ pub(crate) async fn format_credential<T: Serialize>(
             )
             .map(|verification_method| verification_method.public_key_jwk.clone())
             .map(PublicKeyJwkDTO::from)
-            .map(|jwk| ProofOfPossessionKey {
-                key_id: None,
-                jwk: ProofOfPossessionJwk::Jwk { jwk },
+            .map(|jwk| {
+                let jwk = match additional_inputs.swiyu_proof_of_possession {
+                    false => ProofOfPossessionJwk::Jwk { jwk },
+                    true => ProofOfPossessionJwk::Swiyu(jwk),
+                };
+                ProofOfPossessionKey { key_id: None, jwk }
             })
     } else {
         None

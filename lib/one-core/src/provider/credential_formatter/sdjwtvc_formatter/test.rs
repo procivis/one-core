@@ -107,6 +107,7 @@ async fn test_format_credential() {
         Params {
             leeway,
             embed_layout_properties: false,
+            swiyu_mode: false,
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -225,6 +226,7 @@ async fn test_extract_credentials() {
         Params {
             leeway,
             embed_layout_properties: false,
+            swiyu_mode: false,
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -316,6 +318,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         Params {
             leeway: 45u64,
             embed_layout_properties: false,
+            swiyu_mode: false,
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -400,6 +403,7 @@ async fn test_extract_presentation() {
         Params {
             leeway,
             embed_layout_properties: false,
+            swiyu_mode: false,
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -472,6 +476,7 @@ fn test_schema_id() {
         Params {
             leeway: 45u64,
             embed_layout_properties: false,
+            swiyu_mode: false,
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
@@ -513,6 +518,7 @@ async fn test_format_extract_round_trip() {
     let params = Params {
         leeway: 60,
         embed_layout_properties: false,
+        swiyu_mode: false,
     };
 
     let caching_loader = DidCachingLoader::new(

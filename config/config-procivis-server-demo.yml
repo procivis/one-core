@@ -4,3 +4,15 @@ keyStorage:
       private:
         vaultUrl: "https://procivis-one-demo.vault.azure.net"
         clientId: "9b645db1-39eb-485c-af62-47b3a498bec2"
+format:
+  SD_JWT_VC_SWIYU:
+    type: "SD_JWT_VC"
+    display:
+      en: "IETF SD-JWT VC (SWIYU)"
+      de: "IETF SD-JWT VC (SWIYU)"
+    order: 201
+    params:
+      public:
+        leeway: 60
+        embedLayoutProperties: true
+        swiyuMode: true

@@ -60,6 +60,9 @@ pub struct SDJWTVCFormatter {
 pub struct Params {
     pub leeway: u64,
     pub embed_layout_properties: bool,
+    // Toggles SWIYU quirks, specifically the malformed `cnf` claim
+    #[serde(default)]
+    pub swiyu_mode: bool,
 }
 
 #[async_trait]
@@ -85,6 +88,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "vc+sd-jwt".to_string(),
+            swiyu_proof_of_possession: self.params.swiyu_mode,
         };
 
         let vct_integrity = self

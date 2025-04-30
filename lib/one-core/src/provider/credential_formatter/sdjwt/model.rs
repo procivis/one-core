@@ -95,6 +95,8 @@ pub struct SdJwtFormattingInputs {
     pub holder_key_id: Option<String>,
     pub leeway: u64,
     pub token_type: String,
+    // Toggles the malformed `cnf` claim required for SWIYU interop
+    pub swiyu_proof_of_possession: bool,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]

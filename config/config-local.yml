@@ -28,6 +28,17 @@ format:
         msoMinimumRefreshTime: 10
         leeway: 10
         embedLayoutProperties: true
+  SD_JWT_VC_SWIYU:
+    type: "SD_JWT_VC"
+    display:
+      en: "IETF SD-JWT VC (SWIYU)"
+      de: "IETF SD-JWT VC (SWIYU)"
+    order: 201
+    params:
+      public:
+        leeway: 60
+        embedLayoutProperties: true
+        swiyuMode: true
 issuanceProtocol:
   OPENID4VCI_DRAFT13:
     params:
