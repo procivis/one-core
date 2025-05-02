@@ -56,6 +56,13 @@ pub async fn resolve(
         ));
     };
 
+    if entry.state.value.document.id != *did {
+        return Err(DidMethodError::ResolutionError(format!(
+            "Did log for did '{}' does not match the resolved did value '{did}'!",
+            entry.state.value.document.id
+        )));
+    }
+
     Ok(entry.state.value.document.into())
 }
 
@@ -124,8 +131,6 @@ mod test {
     use serde_json_path::JsonPath;
     use time::macros::datetime;
     use time::Duration;
-    use wiremock::matchers::{method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
@@ -141,12 +146,13 @@ mod test {
     use crate::provider::did_method::resolver::DidCachingLoader;
     use crate::provider::did_method::webvh::common::{DidLogParameters, DidMethodVersion};
     use crate::provider::did_method::DidMethod;
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
+    use crate::provider::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
     use crate::provider::remote_entity_storage::RemoteEntityType;
+    use crate::util::test_utilities::mock_http_get_request;
 
     #[test]
     fn test_transform_did_webvh_to_https() {
@@ -272,27 +278,28 @@ mod test {
         let did: DidValue = "did:tdw:QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:example.com"
             .parse()
             .unwrap();
-
-        let mock_server = MockServer::start().await;
-        // adjust port for the resolution using the mock server
-        let address = mock_server.address().to_string().replace(":", "%3A");
-        let did_dynamic_port: DidValue =
-            format!("did:tdw:QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:{address}")
-                .parse()
-                .unwrap();
-        Mock::given(method("GET"))
-            .and(path("/.well-known/did.jsonl"))
-            .respond_with(ResponseTemplate::new(200).set_body_raw(did_log, "text/jsonl"))
-            .up_to_n_times(1)
-            .mount(&mock_server)
-            .await;
-        let client = ReqwestClient::default();
-
+        let url = "https://example.com/.well-known/did.jsonl";
+        let mut http_client = MockHttpClient::new();
+        mock_http_get_request(
+            &mut http_client,
+            url.to_string(),
+            Response {
+                body: did_log.as_bytes().to_vec(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url.to_string(),
+                },
+            },
+        );
         let document = resolve(
-            &did_dynamic_port,
-            &client,
+            &did,
+            &http_client,
             &did_method_provider,
-            true,
+            false,
             &Default::default(),
         )
         .await
@@ -335,31 +342,75 @@ mod test {
         let did_method_provider = test_did_method_provider();
 
         let did_log = include_str!("test_data/success/did_long_log.jsonl");
-        let mock_server = MockServer::start().await;
-        // adjust port for the resolution using the mock server
-        let address = mock_server.address().to_string().replace(":", "%3A");
-        let did_dynamic_port: DidValue =
-            format!("did:tdw:QmeLapUpgZeyyCmjG8vRKjXYwEAXaYJyAT4ohzR73jZf1A:{address}")
-                .parse()
-                .unwrap();
-        Mock::given(method("GET"))
-            .and(path("/.well-known/did.jsonl"))
-            .respond_with(ResponseTemplate::new(200).set_body_raw(did_log, "text/jsonl"))
-            .up_to_n_times(1)
-            .mount(&mock_server)
-            .await;
-        let client = ReqwestClient::default();
+        let did: DidValue = "did:tdw:QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:example.com"
+            .parse()
+            .unwrap();
+        let url = "https://example.com/.well-known/did.jsonl";
+        let mut http_client = MockHttpClient::new();
+        mock_http_get_request(
+            &mut http_client,
+            url.to_string(),
+            Response {
+                body: did_log.as_bytes().to_vec(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url.to_string(),
+                },
+            },
+        );
 
         let document = resolve(
-            &did_dynamic_port,
-            &client,
+            &did,
+            &http_client,
             &did_method_provider,
-            true,
+            false,
             &Params {
                 keys: Keys::default(),
                 max_did_log_entry_check: Some(2),
                 resolve_to_insecure_http: false,
             },
+        )
+        .await;
+        assert!(matches!(document, Err(ResolutionError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_didwebvh_resolver_fail_did_document_mismatch() {
+        let did_method_provider = test_did_method_provider();
+        let did_log = include_str!("test_data/success/did.jsonl");
+        let url = "https://evil-example.com/.well-known/did.jsonl";
+        let mut http_client = MockHttpClient::new();
+        mock_http_get_request(
+            &mut http_client,
+            url.to_string(),
+            Response {
+                body: did_log.as_bytes().to_vec(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url.to_string(),
+                },
+            },
+        );
+
+        // did value with different domain (compared to what's listed in the document / log)
+        let mismatched_did =
+            "did:tdw:QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:evil-example.com"
+                .parse()
+                .unwrap();
+        let document = resolve(
+            &mismatched_did,
+            &http_client,
+            &did_method_provider,
+            false,
+            &Default::default(),
         )
         .await;
         assert!(matches!(document, Err(ResolutionError(_))));
@@ -419,11 +470,6 @@ mod test {
         check: T,
     ) {
         let did_matcher = JsonPath::parse("$[3].value.id").unwrap();
-        let mock_server = MockServer::start().await;
-        // adjust port for the resolution using the mock server
-        let address = mock_server.address().to_string().replace(":", "%3A");
-
-        let client = ReqwestClient::default();
         let did_method_provider = test_did_method_provider();
 
         for path in paths {
@@ -438,22 +484,33 @@ mod test {
                 .unwrap()
                 .to_string()
                 .replace("\"", "");
+            let url = format!(
+                "https://{}/.well-known/did.jsonl",
+                did.rsplit_once(":").unwrap().1
+            );
 
-            Mock::given(method("GET"))
-                .and(wiremock::matchers::path("/.well-known/did.jsonl"))
-                .respond_with(ResponseTemplate::new(200).set_body_raw(did_log, "text/jsonl"))
-                .up_to_n_times(1)
-                .mount(&mock_server)
-                .await;
+            let mut http_client = MockHttpClient::new();
+            mock_http_get_request(
+                &mut http_client,
+                url.clone(),
+                Response {
+                    body: did_log.clone().into_bytes(),
+                    headers: Default::default(),
+                    status: StatusCode(200),
+                    request: Request {
+                        body: None,
+                        headers: Default::default(),
+                        method: Method::Get,
+                        url,
+                    },
+                },
+            );
 
-            let did_dynamic_port = format!("{}:{address}", did.rsplit_once(":").unwrap().0)
-                .parse()
-                .unwrap();
             let result = resolve(
-                &did_dynamic_port,
-                &client,
+                &did.parse().unwrap(),
+                &http_client,
                 &did_method_provider,
-                true,
+                false,
                 &Default::default(),
             )
             .await;

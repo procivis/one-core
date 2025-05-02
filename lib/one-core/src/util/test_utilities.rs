@@ -1,11 +1,26 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use mockall::predicate::{always, eq};
 use time::{Duration, OffsetDateTime};
 
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::http_client::{Method, MockHttpClient, RequestBuilder, Response};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityType};
+
+pub fn mock_http_get_request(http_client: &mut MockHttpClient, url: String, response: Response) {
+    let mut new_client = MockHttpClient::new();
+    new_client
+        .expect_send()
+        .with(eq(url.clone()), always(), always(), eq(Method::Get))
+        .return_once(move |_, _, _, _| Ok(response));
+
+    http_client
+        .expect_get()
+        .with(eq(url))
+        .return_once(move |url| RequestBuilder::new(Arc::new(new_client), Method::Get, url));
+}
 
 pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCachingLoader {
     let mut contexts = vec![

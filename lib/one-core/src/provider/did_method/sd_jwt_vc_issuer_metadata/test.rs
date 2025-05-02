@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mockall::predicate::{always, eq};
+use mockall::predicate::eq;
 use serde_json::json;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -10,27 +10,13 @@ use crate::provider::did_method::sd_jwt_vc_issuer_metadata::{
     Params, SdJwtVcIssuerMetadataDidMethod,
 };
 use crate::provider::did_method::DidMethod;
-use crate::provider::http_client::{
-    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
-};
+use crate::provider::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
-
-fn mock_http_get_request(http_client: &mut MockHttpClient, url: &'static str, response: Response) {
-    let mut new_client = MockHttpClient::new();
-    new_client
-        .expect_send()
-        .with(eq(url), always(), always(), eq(Method::Get))
-        .return_once(move |_, _, _, _| Ok(response));
-
-    http_client
-        .expect_get()
-        .with(eq(url))
-        .return_once(move |url| RequestBuilder::new(Arc::new(new_client), Method::Get, url));
-}
+use crate::util::test_utilities::mock_http_get_request;
 
 fn expected_did_document(did: &str) -> DidDocument {
     DidDocument {
@@ -118,7 +104,7 @@ async fn test_resolve_through_jwks_with_path() {
     let mut http_client = MockHttpClient::new();
     mock_http_get_request(
         &mut http_client,
-        DID_URL_AFTER_PREPENDING_WELL_KNOWN_ISSUER,
+        DID_URL_AFTER_PREPENDING_WELL_KNOWN_ISSUER.to_string(),
         Response {
             body: serde_json::to_string(&response_with_jwk_url)
                 .unwrap()
@@ -187,7 +173,7 @@ async fn test_resolve_through_jwk_url_without_path() {
     let mut http_client = MockHttpClient::new();
     mock_http_get_request(
         &mut http_client,
-        DID_URL_AFTER_APPENDING_WELL_KNOWN_ISSUER,
+        DID_URL_AFTER_APPENDING_WELL_KNOWN_ISSUER.to_string(),
         Response {
             body: serde_json::to_string(&response_with_jwk_url)
                 .unwrap()
@@ -204,7 +190,7 @@ async fn test_resolve_through_jwk_url_without_path() {
     );
     mock_http_get_request(
         &mut http_client,
-        JWKS_URL,
+        JWKS_URL.to_string(),
         Response {
             body: serde_json::to_string(&jwks_uri_response)
                 .unwrap()
