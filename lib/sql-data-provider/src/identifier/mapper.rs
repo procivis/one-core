@@ -20,6 +20,7 @@ impl From<Identifier> for ActiveModel {
             organisation_id: Set(organisation_id),
             did_id: Set(did_id),
             key_id: Set(key_id),
+            deleted_at: Set(identifier.deleted_at),
         }
     }
 }

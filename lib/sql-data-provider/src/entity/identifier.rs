@@ -19,6 +19,7 @@ pub struct Model {
     pub organisation_id: Option<OrganisationId>,
     pub did_id: Option<DidId>,
     pub key_id: Option<KeyId>,
+    pub deleted_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

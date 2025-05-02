@@ -14,6 +14,7 @@ pub struct Identifier {
     pub r#type: IdentifierType,
     pub is_remote: bool,
     pub status: IdentifierStatus,
+    pub deleted_at: Option<OffsetDateTime>,
 
     // Relations:
     pub organisation: Option<Organisation>,

@@ -3,6 +3,7 @@ use std::str::FromStr;
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use one_core::model::organisation::Organisation;
+use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use shared_types::DidValue;
 use uuid::Uuid;
@@ -76,9 +77,15 @@ async fn test_create_and_delete_identifier() {
         organisation: Some(setup.organisation),
         did: Some(setup.did),
         key: None,
+        deleted_at: None,
     };
 
-    assert_eq!(id, setup.provider.create(identifier).await.unwrap());
+    assert_eq!(id, setup.provider.create(identifier.clone()).await.unwrap());
 
     setup.provider.delete(&id).await.unwrap();
+
+    assert!(matches!(
+        setup.provider.create(identifier).await,
+        Err(DataLayerError::AlreadyExists)
+    ));
 }
