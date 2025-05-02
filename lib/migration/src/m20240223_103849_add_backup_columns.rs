@@ -95,7 +95,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum DidNew {
+pub enum DidNew {
     DeletedAt,
 }
 

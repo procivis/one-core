@@ -24,7 +24,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum Identifier {
+pub enum Identifier {
     Table,
     DeletedAt,
 }

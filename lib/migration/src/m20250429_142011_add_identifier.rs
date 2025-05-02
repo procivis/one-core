@@ -473,7 +473,7 @@ async fn sane_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 }
 
 #[derive(DeriveIden)]
-enum Identifier {
+pub enum Identifier {
     Table,
     Id,
     CreatedDate,
