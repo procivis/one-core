@@ -163,6 +163,7 @@ pub enum KeyRoleRestEnum {
     KeyAgreement,
     CapabilityInvocation,
     CapabilityDelegation,
+    UpdateKey,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
