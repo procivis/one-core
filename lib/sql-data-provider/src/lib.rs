@@ -7,6 +7,7 @@ use credential::history::CredentialHistoryDecorator;
 use credential_schema::history::CredentialSchemaHistoryDecorator;
 use did::history::DidHistoryDecorator;
 use did::DidProvider;
+use identifier::IdentifierProvider;
 use interaction::InteractionProvider;
 use key::history::KeyHistoryDecorator;
 use migration::runner::run_migrations;
@@ -17,6 +18,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::history_repository::HistoryRepository;
+use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -61,6 +63,7 @@ pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod history;
+pub mod identifier;
 pub mod interaction;
 pub mod key;
 pub mod organisation;
@@ -87,6 +90,7 @@ pub struct DataLayer {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     key_repository: Arc<dyn KeyRepository>,
     json_ld_context_repository: Arc<dyn RemoteEntityCacheRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
@@ -131,6 +135,8 @@ impl DataLayer {
             history_repository: history_repository.clone(),
             inner: credential_schema_repository,
         });
+
+        let identifier_repository = Arc::new(IdentifierProvider { db: db.clone() });
 
         let key_repository = Arc::new(KeyProvider {
             db: db.clone(),
@@ -236,6 +242,7 @@ impl DataLayer {
             backup_repository,
             trust_anchor_repository,
             trust_entity_repository,
+            identifier_repository,
         }
     }
 }
@@ -262,6 +269,9 @@ impl DataRepository for DataLayer {
     }
     fn get_history_repository(&self) -> Arc<dyn HistoryRepository> {
         self.history_repository.clone()
+    }
+    fn get_identifier_repository(&self) -> Arc<dyn IdentifierRepository> {
+        self.identifier_repository.clone()
     }
     fn get_remote_entity_cache_repository(&self) -> Arc<dyn RemoteEntityCacheRepository> {
         self.json_ld_context_repository.clone()

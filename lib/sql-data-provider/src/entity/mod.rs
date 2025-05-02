@@ -7,6 +7,7 @@ pub mod credential_schema;
 pub mod credential_schema_claim_schema;
 pub mod did;
 pub mod history;
+pub mod identifier;
 pub mod interaction;
 pub mod key;
 pub mod key_did;
@@ -21,3 +22,8 @@ pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod validity_credential;
+
+pub use identifier::{
+    ActiveModel as IdentifierActiveModel, Column as IdentifierColumn, Entity as IdentifierEntity,
+    Model as IdentifierModel, Relation as IdentifierRelation,
+};

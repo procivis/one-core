@@ -37,7 +37,7 @@ enum CredentialNew {
 }
 
 #[derive(Iden)]
-enum CredentialRole {
+pub enum CredentialRole {
     Table,
     #[iden = "HOLDER"]
     Holder,

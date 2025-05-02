@@ -8,6 +8,7 @@ pub mod credential_repository;
 pub mod credential_schema_repository;
 pub mod did_repository;
 pub mod history_repository;
+pub mod identifier_repository;
 pub mod interaction_repository;
 pub mod key_repository;
 pub mod organisation_repository;
@@ -18,7 +19,6 @@ pub mod revocation_list_repository;
 pub mod trust_anchor_repository;
 pub mod trust_entity_repository;
 pub mod validity_credential_repository;
-
 use std::sync::Arc;
 
 // New ones
@@ -29,6 +29,7 @@ use credential_repository::CredentialRepository;
 use credential_schema_repository::CredentialSchemaRepository;
 use did_repository::DidRepository;
 use history_repository::HistoryRepository;
+use identifier_repository::IdentifierRepository;
 use interaction_repository::InteractionRepository;
 use key_repository::KeyRepository;
 use organisation_repository::OrganisationRepository;
@@ -49,6 +50,7 @@ pub trait DataRepository: Send + Sync {
     fn get_credential_repository(&self) -> Arc<dyn CredentialRepository>;
     fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository>;
     fn get_history_repository(&self) -> Arc<dyn HistoryRepository>;
+    fn get_identifier_repository(&self) -> Arc<dyn IdentifierRepository>;
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository>;
     fn get_key_repository(&self) -> Arc<dyn KeyRepository>;
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository>;
