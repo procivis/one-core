@@ -15,6 +15,7 @@ use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Feature, Operatio
 use super::{DidCreateKeys, DidCreated, DidMethod};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::did_method::webvh::mapper::url_to_did;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 
@@ -23,8 +24,10 @@ mod create;
 mod resolver;
 mod verification;
 
+mod mapper;
 #[cfg(test)]
 mod test;
+
 #[derive(Debug, Default)]
 pub struct Params {
     pub keys: Keys,
@@ -69,51 +72,23 @@ impl DidWebVh {
         external_hosting_url: Option<Url>,
     ) -> Result<String, DidMethodError> {
         if let Some(external_host) = external_hosting_url {
-            let mut domain = external_host
-                .domain()
-                .or(external_host.host_str())
-                .ok_or_else(|| {
-                    DidMethodError::CouldNotCreate(
-                        "Invalid core base url: missing domain or host".to_string(),
-                    )
-                })?
-                .to_owned();
-
-            let path = external_host.path();
-            if !path.is_empty() && path != "/" {
-                domain.push_str(&path.replace("/", ":"));
-            }
-
-            Ok(format!("{domain}:{did_id}"))
-        } else {
-            let base_url = self.core_base_url.as_ref().ok_or_else(|| {
-                DidMethodError::CouldNotCreate("Missing core base url".to_string())
-            })?;
-
-            let url = Url::parse(base_url).map_err(|err| {
-                DidMethodError::CouldNotCreate(format!("Invalid core base url: {err}"))
-            })?;
-            let mut domain = url
-                .domain()
-                .or(url.host_str())
-                .ok_or_else(|| {
-                    DidMethodError::CouldNotCreate(
-                        "Invalid core base url: missing domain or host".to_string(),
-                    )
-                })?
-                .to_owned();
-
-            if let Some(port) = url.port() {
-                // percent encode `:`
-                domain.push_str("%3A");
-                domain.push_str(&port.to_string());
-            }
-
-            domain.push_str(":ssi:did-webvh:v1:");
-            domain.push_str(&did_id.to_string());
-
-            Ok(domain)
+            return url_to_did(external_host);
         }
+
+        let base_url = self
+            .core_base_url
+            .as_ref()
+            .ok_or_else(|| DidMethodError::CouldNotCreate("Missing core base url".to_string()))?;
+
+        let url = Url::parse(base_url).map_err(|err| {
+            DidMethodError::CouldNotCreate(format!("Invalid core base url: {err}"))
+        })?;
+
+        let mut domain = url_to_did(url)?;
+        domain.push_str(":ssi:did-webvh:v1:");
+        domain.push_str(&did_id.to_string());
+
+        Ok(domain)
     }
 }
 

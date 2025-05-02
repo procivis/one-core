@@ -8,6 +8,8 @@ use crate::provider::http_client::MockHttpClient;
 #[rstest]
 #[case("https://example.com/", "example.com")]
 #[case("https://example.com/a/b/c", "example.com:a:b:c")]
+#[case("https://example.com/a/b/c/", "example.com:a:b:c")]
+#[case("https://example.com:1234/a/b/c/", "example.com%3A1234:a:b:c")]
 fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case] expected: &str) {
     let method = DidWebVh {
         params: Params {
@@ -22,7 +24,6 @@ fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case
     };
 
     let did_id = Uuid::new_v4().into();
-    let expected = format!("{expected}:{did_id}");
     let external_hosting_url = external_hosting_url.parse().unwrap();
 
     assert_eq!(
