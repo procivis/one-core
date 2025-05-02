@@ -180,7 +180,7 @@ async fn append_key_binding_token(
             "Invalid key algorithm".to_string(),
         ))?;
     let sd_hash = hasher
-        .hash_base64(token.as_bytes())
+        .hash_base64_url(token.as_bytes())
         .map_err(|err| FormatterError::CouldNotFormat(format!("failed to hash token: {err}")))?;
     let payload = JWTPayload {
         issued_at: Some(OffsetDateTime::now_utc()),
@@ -395,7 +395,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                     "Invalid credential format".to_string(),
                 ))?;
         let expected_hash = hasher
-            .hash_base64(&token.as_bytes()[..=payload_end])
+            .hash_base64_url(&token.as_bytes()[..=payload_end])
             .map_err(|err| {
                 FormatterError::CouldNotFormat(format!("failed to hash token: {err}"))
             })?;

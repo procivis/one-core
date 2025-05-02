@@ -56,7 +56,7 @@ use crate::util::key_verification::KeyVerification;
 async fn test_format_credential() {
     let mut hasher = MockHasher::default();
     hasher
-        .expect_hash_base64()
+        .expect_hash_base64_url()
         .returning(|_| Ok(String::from("YWJjMTIz")));
     let hasher = Arc::new(hasher);
 

@@ -42,7 +42,7 @@ async fn test_prepare_sd_presentation() {
 
     let mut hasher = MockHasher::default();
     hasher
-        .expect_hash_base64()
+        .expect_hash_base64_url()
         .returning(|_| Ok(hash.to_string()));
 
     let mut signer = MockSignatureProvider::default();
@@ -121,7 +121,7 @@ async fn test_prepare_sd_presentation_with_kb() {
 
     let mut hasher = MockHasher::default();
     hasher
-        .expect_hash_base64()
+        .expect_hash_base64_url()
         .returning(|_| Ok(hash.to_string()));
 
     let mut signer = MockSignatureProvider::default();
@@ -200,7 +200,7 @@ fn test_gather_disclosures_and_objects_without_nesting() {
     let hashed_b64_country_disclosure = "WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM";
 
     let mut hasher = MockHasher::default();
-    hasher.expect_hash_base64().returning(move |input| {
+    hasher.expect_hash_base64_url().returning(move |input| {
         let input = Base64UrlSafeNoPadding::decode_to_vec(input, None).unwrap();
         let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
         if input.key.eq(street_address_disclosure.0) {
@@ -273,7 +273,7 @@ fn test_gather_disclosures_and_objects_with_nesting() {
     let hashed_b64_address_disclosure = "HvrKX6fPV0v9K_yCVFBiLFHsMaxcD_114Em6VT8x1lg";
 
     let mut hasher = MockHasher::default();
-    hasher.expect_hash_base64().returning(move |input| {
+    hasher.expect_hash_base64_url().returning(move |input| {
         let input = Base64UrlSafeNoPadding::decode_to_vec(input, None).unwrap();
         let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
         if input.key.eq(street_address_disclosure.0) {
@@ -434,7 +434,7 @@ fn test_select_disclosures_nested() {
     ]);
 
     let mut hasher = MockHasher::default();
-    hasher.expect_hash_base64().returning({
+    hasher.expect_hash_base64_url().returning({
         let disclosures = disclosures.clone();
         move |input| {
             let input = if let Ok(input) = Base64UrlSafeNoPadding::decode_to_vec(input, None) {
@@ -466,7 +466,7 @@ fn test_select_disclosures_root() {
         HashSet::<String>::from_iter(disclosures.iter().map(|d| d.disclosure.to_string()));
 
     let mut hasher = MockHasher::default();
-    hasher.expect_hash_base64().returning({
+    hasher.expect_hash_base64_url().returning({
         let disclosures = disclosures.clone();
         move |input| {
             let input = if let Ok(input) = Base64UrlSafeNoPadding::decode_to_vec(input, None) {
@@ -537,7 +537,7 @@ fn test_select_disclosures_nested_structure_with_similar_nodes() {
     ]);
 
     let mut hasher = MockHasher::default();
-    hasher.expect_hash_base64().returning({
+    hasher.expect_hash_base64_url().returning({
         let disclosures = disclosures.clone();
         move |input| {
             let input = if let Ok(input) = Base64UrlSafeNoPadding::decode_to_vec(input, None) {
@@ -568,7 +568,7 @@ fn test_select_disclosures_returns_error_when_disclosed_key_not_found_in_disclos
 
     let mut hasher = MockHasher::default();
     hasher
-        .expect_hash_base64()
+        .expect_hash_base64_url()
         .returning(|_| Ok("".to_string()));
 
     assert!(select_disclosures(vec!["abcd".into()], disclosures, &hasher).is_err())

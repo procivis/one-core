@@ -38,7 +38,7 @@ pub(super) fn create_sign_request(
         .get_hasher("sha-256")
         .map_err(SignerError::CryptoError)?;
     let value = hasher
-        .hash_base64(value)
+        .hash_base64_url(value)
         .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
 
     Ok(AzureHsmSignRequest {

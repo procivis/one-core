@@ -103,6 +103,8 @@ pub trait Hasher: Send + Sync {
     /// Hasher.
     fn hash_base64(&self, input: &[u8]) -> Result<String, HasherError>;
 
+    fn hash_base64_url(&self, input: &[u8]) -> Result<String, HasherError>;
+
     /// Hasher.
     fn hash(&self, input: &[u8]) -> Result<Vec<u8>, HasherError>;
 }

@@ -180,7 +180,7 @@ async fn test_azure_vault_sign() {
     sign_mock(&mock_server, 1).await;
     let mut hasher_mock = MockHasher::default();
     hasher_mock
-        .expect_hash_base64()
+        .expect_hash_base64_url()
         .times(1)
         .returning(|_| Ok("123".to_string()));
 

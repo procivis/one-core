@@ -82,13 +82,13 @@ impl Disclosure {
     // We keep this is for backwards compatibility where by mistake we were using the disclosure array string `[salt,key,value]` as disclosure
     pub fn hash_disclosure_array(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
         hasher
-            .hash_base64(self.disclosure_array.as_bytes())
+            .hash_base64_url(self.disclosure_array.as_bytes())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
     }
 
     pub fn hash_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
         hasher
-            .hash_base64(self.disclosure.as_bytes())
+            .hash_base64_url(self.disclosure.as_bytes())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
     }
 }
@@ -118,7 +118,7 @@ pub(crate) fn compute_object_disclosures(
                 let disclosure = compute_disclosure_for(key, &nested_sd)?;
 
                 let hashed_disclosure = hasher
-                    .hash_base64(disclosure.as_bytes())
+                    .hash_base64_url(disclosure.as_bytes())
                     .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
                 disclosures.push(disclosure);
@@ -129,7 +129,7 @@ pub(crate) fn compute_object_disclosures(
                 let disclosure = compute_disclosure_for(key, value)?;
 
                 let hashed_disclosure = hasher
-                    .hash_base64(disclosure.as_bytes())
+                    .hash_base64_url(disclosure.as_bytes())
                     .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
                 disclosures.push(disclosure);
