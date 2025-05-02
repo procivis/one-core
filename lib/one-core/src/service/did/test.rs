@@ -28,6 +28,7 @@ use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::error::DataLayerError;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
@@ -39,6 +40,7 @@ use crate::service::test_utilities::dummy_organisation;
 fn setup_service(
     did_repository: MockDidRepository,
     key_repository: MockKeyRepository,
+    identifier_repository: MockIdentifierRepository,
     organisation_repository: MockOrganisationRepository,
     did_method: MockDidMethod,
     key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -61,6 +63,7 @@ fn setup_service(
     DidService::new(
         did_repository,
         Arc::new(key_repository),
+        Arc::new(identifier_repository),
         Arc::new(organisation_repository),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
@@ -138,6 +141,7 @@ async fn test_get_did_exists() {
     let service = setup_service(
         repository,
         MockKeyRepository::default(),
+        MockIdentifierRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
         MockKeyAlgorithmProvider::default(),
@@ -164,6 +168,7 @@ async fn test_get_did_missing() {
     let service = setup_service(
         repository,
         MockKeyRepository::default(),
+        MockIdentifierRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
         MockKeyAlgorithmProvider::default(),
@@ -209,6 +214,7 @@ async fn test_get_did_list() {
     let service = setup_service(
         repository,
         MockKeyRepository::default(),
+        MockIdentifierRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
         MockKeyAlgorithmProvider::default(),
@@ -316,9 +322,16 @@ async fn test_create_did_success() {
         .once()
         .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_create()
+        .once()
+        .returning(|identifier| Ok(identifier.id));
+
     let service = setup_service(
         did_repository,
         key_repository,
+        identifier_repository,
         organisation_repository,
         did_method,
         key_algorithm_provider,
@@ -409,6 +422,7 @@ async fn test_create_did_value_already_exists() {
     let service = setup_service(
         did_repository,
         key_repository,
+        MockIdentifierRepository::default(),
         organisation_repository,
         did_method,
         key_algorithm_provider,
@@ -449,6 +463,7 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
     let service = setup_service(
         MockDidRepository::default(),
         MockKeyRepository::default(),
+        MockIdentifierRepository::default(),
         MockOrganisationRepository::default(),
         did_method,
         MockKeyAlgorithmProvider::default(),

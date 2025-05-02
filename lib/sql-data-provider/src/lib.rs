@@ -136,8 +136,6 @@ impl DataLayer {
             inner: credential_schema_repository,
         });
 
-        let identifier_repository = Arc::new(IdentifierProvider { db: db.clone() });
-
         let key_repository = Arc::new(KeyProvider {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
@@ -159,6 +157,13 @@ impl DataLayer {
         let did_repository = Arc::new(DidHistoryDecorator {
             inner: did_repository,
             history_repository: history_repository.clone(),
+        });
+
+        let identifier_repository = Arc::new(IdentifierProvider {
+            db: db.clone(),
+            organisation_repository: organisation_repository.clone(),
+            did_repository: did_repository.clone(),
+            key_repository: key_repository.clone(),
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {

@@ -41,3 +41,9 @@ pub struct IdentifierRelations {
     pub did: Option<DidRelations>,
     pub key: Option<KeyRelations>,
 }
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct UpdateIdentifierRequest {
+    pub name: Option<String>,
+    pub status: Option<IdentifierStatus>,
+}

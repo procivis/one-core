@@ -1,3 +1,4 @@
+use identifiers::IdentifiersDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
 
@@ -20,6 +21,7 @@ pub mod credential_schemas;
 pub mod credentials;
 pub mod dids;
 pub mod histories;
+pub mod identifiers;
 pub mod interactions;
 pub mod keys;
 pub mod organisations;
@@ -34,6 +36,7 @@ pub mod validity_credentials;
 pub struct DbClient {
     pub organisations: OrganisationsDB,
     pub dids: DidsDB,
+    pub identifiers: IdentifiersDB,
     pub credential_schemas: CredentialSchemasDB,
     pub credentials: CredentialsDB,
     pub histories: HistoriesDB,
@@ -56,6 +59,7 @@ impl DbClient {
             db_conn: db,
             organisations: OrganisationsDB::new(layer.get_organisation_repository()),
             dids: DidsDB::new(layer.get_did_repository()),
+            identifiers: IdentifiersDB::new(layer.get_identifier_repository()),
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
             credentials: CredentialsDB::new(layer.get_credential_repository()),
             histories: HistoriesDB::new(layer.get_history_repository()),

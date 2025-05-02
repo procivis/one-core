@@ -1,7 +1,7 @@
 use one_core::model::did::DidType;
 use uuid::Uuid;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 
 #[tokio::test]
@@ -38,6 +38,18 @@ async fn test_update_did_deactivates_local_did_web() {
             &organisation,
             TestingDidParams {
                 did_method: Some("WEB".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
                 ..Default::default()
             },
         )

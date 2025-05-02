@@ -6,6 +6,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
@@ -20,6 +21,7 @@ pub(crate) mod validator;
 pub struct DidService {
     did_repository: Arc<dyn DidRepository>,
     key_repository: Arc<dyn KeyRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -28,9 +30,11 @@ pub struct DidService {
 }
 
 impl DidService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         did_repository: Arc<dyn DidRepository>,
         key_repository: Arc<dyn KeyRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -40,6 +44,7 @@ impl DidService {
         Self {
             did_repository,
             key_repository,
+            identifier_repository,
             organisation_repository,
             did_method_provider,
             key_algorithm_provider,

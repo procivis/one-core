@@ -2,6 +2,7 @@ use one_core::model::identifier::Identifier;
 use sea_orm::Set;
 
 use crate::entity::identifier::ActiveModel;
+use crate::entity::{self};
 
 impl From<Identifier> for ActiveModel {
     fn from(identifier: Identifier) -> Self {
@@ -21,6 +22,24 @@ impl From<Identifier> for ActiveModel {
             did_id: Set(did_id),
             key_id: Set(key_id),
             deleted_at: Set(identifier.deleted_at),
+        }
+    }
+}
+
+impl From<entity::identifier::Model> for Identifier {
+    fn from(value: entity::identifier::Model) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            r#type: value.r#type.into(),
+            is_remote: value.is_remote,
+            status: value.status.into(),
+            deleted_at: value.deleted_at,
+            organisation: None,
+            did: None,
+            key: None,
         }
     }
 }

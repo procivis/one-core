@@ -1,10 +1,14 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use one_core::model::organisation::Organisation;
+use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
+use one_core::repository::key_repository::MockKeyRepository;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use shared_types::DidValue;
 use uuid::Uuid;
 
@@ -55,7 +59,12 @@ async fn setup() -> TestSetup {
     };
 
     TestSetup {
-        provider: IdentifierProvider { db: db.clone() },
+        provider: IdentifierProvider {
+            db: db.clone(),
+            organisation_repository: Arc::new(MockOrganisationRepository::default()),
+            did_repository: Arc::new(MockDidRepository::default()),
+            key_repository: Arc::new(MockKeyRepository::default()),
+        },
         organisation,
         did,
     }

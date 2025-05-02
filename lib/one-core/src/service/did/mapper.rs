@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue, IdentifierId, KeyId};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::dto::{
     CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
     GetDidListResponseDTO,
 };
 use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::{DidCreateKeys, DidCreated};
@@ -111,6 +113,23 @@ pub(super) fn did_from_did_request(
         keys: Some(keys),
         deactivated: false,
         log: did_create.log,
+    }
+}
+
+pub(super) fn identifier_from_did(did: Did, now: OffsetDateTime) -> Identifier {
+    let id: Uuid = did.id.into();
+    Identifier {
+        did: Some(did.to_owned()),
+        id: IdentifierId::from(id),
+        created_date: now,
+        last_modified: now,
+        name: did.name,
+        organisation: did.organisation,
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        status: IdentifierStatus::Active,
+        deleted_at: None,
+        key: None,
     }
 }
 

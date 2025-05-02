@@ -487,6 +487,7 @@ impl OneCore {
             did_service: DidService::new(
                 data_provider.get_did_repository(),
                 data_provider.get_key_repository(),
+                data_provider.get_identifier_repository(),
                 data_provider.get_organisation_repository(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),

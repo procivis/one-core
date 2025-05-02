@@ -12,6 +12,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
@@ -30,7 +31,7 @@ use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use sea_orm::ConnectionTrait;
 use secrecy::{SecretSlice, SecretString};
-use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, KeyId, ProofId};
+use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::OffsetDateTime;
@@ -319,6 +320,54 @@ pub async fn create_did(
         .unwrap();
 
     did
+}
+
+#[derive(Debug, Default)]
+pub struct TestingIdentifierParams {
+    pub id: Option<IdentifierId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub name: Option<String>,
+    pub r#type: Option<IdentifierType>,
+    pub status: Option<IdentifierStatus>,
+    pub did: Option<Did>,
+    pub key: Option<Key>,
+    pub is_remote: Option<bool>,
+    pub deleted_at: Option<OffsetDateTime>,
+}
+
+#[allow(dead_code)]
+pub async fn create_identifier(
+    db_conn: &DbConn,
+    organisation: &Organisation,
+    params: Option<TestingIdentifierParams>,
+) -> Identifier {
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
+    let now = OffsetDateTime::now_utc();
+    let params = params.unwrap_or_default();
+
+    let id = params.id.unwrap_or(IdentifierId::from(Uuid::new_v4()));
+    let identifier = Identifier {
+        id: id.to_owned(),
+        created_date: params.created_date.unwrap_or(now),
+        last_modified: params.last_modified.unwrap_or(now),
+        name: unwrap_or_random(params.name),
+        organisation: Some(organisation.to_owned()),
+        did: params.did,
+        key: params.key,
+        status: params.status.unwrap_or(IdentifierStatus::Active),
+        r#type: params.r#type.unwrap_or(IdentifierType::Did),
+        is_remote: params.is_remote.unwrap_or_default(),
+        deleted_at: params.deleted_at,
+    };
+
+    data_layer
+        .get_identifier_repository()
+        .create(identifier.to_owned())
+        .await
+        .unwrap();
+
+    identifier
 }
 
 #[derive(Debug, Default)]

@@ -9,12 +9,13 @@ use super::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO, DidResponseDTO,
     GetDidListResponseDTO,
 };
-use super::mapper::did_from_did_request;
+use super::mapper::{did_from_did_request, identifier_from_did};
 use super::validator::validate_deactivation_request;
 use super::DidService;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
+use crate::model::identifier::{IdentifierStatus, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::did_method::dto::DidDocumentDTO;
@@ -202,7 +203,8 @@ impl DidService {
         let key_ids = key_ids.into_iter().collect::<Vec<_>>();
         let keys = self.key_repository.get_keys(&key_ids).await?;
 
-        let new_did_id = DidId::from(Uuid::new_v4());
+        let new_id = Uuid::new_v4();
+        let new_did_id = DidId::from(new_id);
 
         let capabilities = did_method.get_capabilities();
         for key in &keys {
@@ -257,7 +259,7 @@ impl DidService {
 
         let did_id = self
             .did_repository
-            .create_did(did)
+            .create_did(did.to_owned())
             .await
             .map_err(|err| match err {
                 DataLayerError::AlreadyExists => {
@@ -265,6 +267,11 @@ impl DidService {
                 }
                 err => ServiceError::from(err),
             })?;
+
+        let _ = self
+            .identifier_repository
+            .create(identifier_from_did(did, now))
+            .await?;
 
         Ok(did_id)
     }
@@ -304,10 +311,33 @@ impl DidService {
             deactivated: request.deactivated,
         };
 
-        self.did_repository
-            .update_did(update_did)
-            .await
-            .map_err(Into::into)
+        self.did_repository.update_did(update_did).await?;
+
+        if let Some(deactivated) = request.deactivated {
+            let identifier = self
+                .identifier_repository
+                .get_from_did_id(did.id, &Default::default())
+                .await?
+                .ok_or(ServiceError::MappingError(
+                    "No identifier for this did exists".to_string(),
+                ))?;
+
+            self.identifier_repository
+                .update(
+                    &identifier.id,
+                    UpdateIdentifierRequest {
+                        status: Some(if deactivated {
+                            IdentifierStatus::Deactivated
+                        } else {
+                            IdentifierStatus::Active
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+        }
+
+        Ok(())
     }
 
     pub async fn resolve_did(
