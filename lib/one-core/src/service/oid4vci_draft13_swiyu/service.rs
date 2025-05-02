@@ -1,8 +1,9 @@
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
+    OpenID4VCITokenResponseDTO,
 };
 use crate::service::error::ServiceError;
 use crate::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
@@ -37,6 +38,9 @@ impl OID4VCIDraft13SwiyuService {
                             .filter(only_p256_or_p512)
                             .collect();
                     })
+                }
+                if let Some(ref mut claims) = config.claims {
+                    set_value_type_string(claims);
                 }
             });
 
@@ -91,6 +95,17 @@ impl OID4VCIDraft13SwiyuService {
             format: "vc+sd-jwt".to_owned(),
             redirect_uri: regular_dto.redirect_uri,
         })
+    }
+}
+
+fn set_value_type_string(claims: &mut OpenID4VCICredentialSubjectItem) {
+    if claims.value_type.is_some() {
+        claims.value_type = Some("string".to_owned());
+    }
+    if let Some(ref mut inner_claims) = claims.claims {
+        inner_claims
+            .iter_mut()
+            .for_each(|(_, claims)| set_value_type_string(claims))
     }
 }
 
