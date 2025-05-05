@@ -1,8 +1,8 @@
 use one_crypto::CryptoProviderError;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
-    OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
+    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, IdentifierId,
+    KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
 };
 use strum::Display;
 use thiserror::Error;
@@ -139,6 +139,12 @@ pub enum EntityNotFoundError {
 
     #[error("Did value `{0}` not found")]
     DidValue(DidValue),
+
+    #[error("Identifier `{0}` not found")]
+    Identifier(IdentifierId),
+
+    #[error("Identifier by did id `{0}` not found")]
+    IdentifierByDidId(DidId),
 
     #[error("Revocation list `{0}` not found")]
     RevocationList(RevocationListId),
@@ -1039,6 +1045,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Empty value not allowed")]
     BR_0204,
+
+    #[strum(to_string = "Identifier not found")]
+    BR_0207,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1118,6 +1127,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
             Self::TrustEntity(_) => ErrorCode::BR_0121,
             Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
+            Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
         }
     }
 }

@@ -53,10 +53,10 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::cache::CacheService;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
+use crate::service::identifier::IdentifierService;
 use crate::service::key::KeyService;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::revocation_list::RevocationListService;
-
 pub mod config;
 pub mod provider;
 
@@ -109,6 +109,7 @@ pub struct OneCore {
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
     pub history_service: HistoryService,
+    pub identifier_service: IdentifierService,
     pub key_service: KeyService,
     pub proof_schema_service: ProofSchemaService,
     pub proof_service: ProofService,
@@ -440,6 +441,17 @@ impl OneCore {
             verification_protocols,
         ));
 
+        let did_service = DidService::new(
+            data_provider.get_did_repository(),
+            data_provider.get_key_repository(),
+            data_provider.get_identifier_repository(),
+            data_provider.get_organisation_repository(),
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            key_provider.clone(),
+            config.clone(),
+        );
+
         Ok(OneCore {
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
@@ -486,16 +498,7 @@ impl OneCore {
                 providers.core_base_url.clone(),
                 client.clone(),
             ),
-            did_service: DidService::new(
-                data_provider.get_did_repository(),
-                data_provider.get_key_repository(),
-                data_provider.get_identifier_repository(),
-                data_provider.get_organisation_repository(),
-                did_method_provider.clone(),
-                key_algorithm_provider.clone(),
-                key_provider.clone(),
-                config.clone(),
-            ),
+            did_service: did_service.clone(),
             revocation_list_service: RevocationListService::new(
                 providers.core_base_url.clone(),
                 data_provider.get_credential_repository(),
@@ -631,7 +634,6 @@ impl OneCore {
                 ContextCache::new(jsonld_caching_loader.clone(), client.clone()),
                 providers.core_base_url,
             ),
-
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
@@ -657,6 +659,13 @@ impl OneCore {
             jsonld_service: JsonLdService::new(jsonld_caching_loader, client),
             config,
             cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
+            identifier_service: IdentifierService::new(
+                data_provider.get_identifier_repository(),
+                data_provider.get_did_repository(),
+                data_provider.get_key_repository(),
+                data_provider.get_organisation_repository(),
+                did_service,
+            ),
         })
     }
 

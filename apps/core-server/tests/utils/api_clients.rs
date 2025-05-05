@@ -11,6 +11,7 @@ use self::credentials::CredentialsApi;
 use self::did_resolvers::DidResolversApi;
 use self::dids::DidsApi;
 use self::histories::HistoriesApi;
+use self::identifiers::IdentifiersApi;
 use self::interactions::InteractionsApi;
 use self::keys::KeysApi;
 use self::organisations::OrganisationsApi;
@@ -31,6 +32,7 @@ pub mod credentials;
 pub mod did_resolvers;
 pub mod dids;
 pub mod histories;
+pub mod identifiers;
 pub mod interactions;
 pub mod jsonld;
 pub mod keys;
@@ -188,6 +190,7 @@ pub struct Client {
     pub trust_entities: TrustEntitiesApi,
     pub jsonld: JsonLdApi,
     pub other: OtherApi,
+    pub identifiers: IdentifiersApi,
 }
 
 impl Client {
@@ -212,7 +215,8 @@ impl Client {
             trust_anchors: TrustAnchorsApi::new(client.clone()),
             trust_entities: TrustEntitiesApi::new(client.clone()),
             jsonld: JsonLdApi::new(client.clone()),
-            other: OtherApi::new(client),
+            other: OtherApi::new(client.clone()),
+            identifiers: IdentifiersApi::new(client),
         }
     }
 }

@@ -20,6 +20,7 @@ pub struct KeyRequestDTO {
     pub storage_params: serde_json::Value,
 }
 
+#[derive(Clone, Debug)]
 pub struct KeyResponseDTO {
     pub id: Uuid,
     pub created_date: OffsetDateTime,

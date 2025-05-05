@@ -1,8 +1,13 @@
-use one_core::model::identifier::Identifier;
-use sea_orm::Set;
+use one_core::model::identifier::{Identifier, IdentifierFilterValue, SortableIdentifierColumn};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
 
 use crate::entity::identifier::ActiveModel;
-use crate::entity::{self};
+use crate::entity::{self, identifier, key, key_did};
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinRelations,
+    IntoSortingColumn, JoinRelation,
+};
 
 impl From<Identifier> for ActiveModel {
     fn from(identifier: Identifier) -> Self {
@@ -40,6 +45,75 @@ impl From<entity::identifier::Model> for Identifier {
             organisation: None,
             did: None,
             key: None,
+        }
+    }
+}
+
+impl IntoSortingColumn for SortableIdentifierColumn {
+    fn get_column(&self) -> SimpleExpr {
+        match self {
+            SortableIdentifierColumn::Name => identifier::Column::Name,
+            SortableIdentifierColumn::CreatedDate => identifier::Column::CreatedDate,
+            SortableIdentifierColumn::Type => identifier::Column::Type,
+            SortableIdentifierColumn::Status => identifier::Column::Status,
+        }
+        .into_simple_expr()
+    }
+}
+
+impl IntoFilterCondition for IdentifierFilterValue {
+    fn get_condition(self) -> Condition {
+        match self {
+            IdentifierFilterValue::Name(string_match) => {
+                get_string_match_condition(identifier::Column::Name, string_match)
+            }
+            IdentifierFilterValue::Type(r#type) => get_equals_condition(
+                identifier::Column::Type,
+                identifier::IdentifierType::from(r#type),
+            ),
+            IdentifierFilterValue::Status(status) => get_equals_condition(
+                identifier::Column::Status,
+                identifier::IdentifierStatus::from(status),
+            ),
+            IdentifierFilterValue::OrganisationId(organisation_id) => {
+                get_equals_condition(identifier::Column::OrganisationId, organisation_id)
+            }
+            IdentifierFilterValue::KeyAlgorithms(key_ids) => {
+                identifier::Column::KeyId.is_in(key_ids).into_condition()
+            }
+            IdentifierFilterValue::KeyRoles(key_roles) => key_did::Column::Role
+                .is_in(
+                    key_roles
+                        .into_iter()
+                        .map(key_did::KeyRole::from)
+                        .collect::<Vec<_>>(),
+                )
+                .into_condition(),
+            IdentifierFilterValue::KeyStorages(key_storages) => key::Column::StorageType
+                .is_in(key_storages)
+                .into_condition(),
+        }
+    }
+}
+
+impl IntoJoinRelations for IdentifierFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation> {
+        match self {
+            IdentifierFilterValue::KeyAlgorithms(_)
+            | IdentifierFilterValue::KeyStorages(_)
+            | IdentifierFilterValue::KeyRoles(_) => {
+                vec![
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: identifier::Relation::Key.def(),
+                    },
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: key::Relation::KeyDid.def(),
+                    },
+                ]
+            }
+            _ => vec![],
         }
     }
 }

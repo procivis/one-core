@@ -202,6 +202,17 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
+                       .name("identifier_management")
+                       .description(Some(indoc::formatdoc! {"
+                Create and manage identifiers
+            "}))
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Identifiers")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
                        .name("credential_schema_management")
                        .description(Some(indoc::formatdoc! {"
                 A credential schema defines the structure and format of a credential, including

@@ -19,8 +19,9 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
-    cache, config, credential, credential_schema, did, did_resolver, history, interaction, jsonld,
-    key, misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity, vc_api,
+    cache, config, credential, credential_schema, did, did_resolver, history, identifier,
+    interaction, jsonld, key, misc, organisation, proof, proof_schema, ssi, task, trust_anchor,
+    trust_entity, vc_api,
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
@@ -199,6 +200,16 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             .route("/api/did/v1/{id}", patch(did::controller::update_did))
             .route("/api/did/v1", get(did::controller::get_did_list))
             .route("/api/did/v1", post(did::controller::post_did))
+            .route(
+                "/api/identifier/v1",
+                get(identifier::controller::get_identifier_list)
+                    .post(identifier::controller::post_identifier),
+            )
+            .route(
+                "/api/identifier/v1/{id}",
+                get(identifier::controller::get_identifier)
+                    .delete(identifier::controller::delete_identifier),
+            )
             .route(
                 "/api/did-resolver/v1/{didvalue}",
                 get(did_resolver::controller::resolve_did),

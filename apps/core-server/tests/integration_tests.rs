@@ -42,6 +42,9 @@ mod api_did_tests;
 #[path = "api/did_resolver/mod.rs"]
 mod api_did_resolver_tests;
 
+#[path = "api/identifier/mod.rs"]
+mod api_identifier_tests;
+
 #[path = "api/key/mod.rs"]
 mod api_key_tests;
 

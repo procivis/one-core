@@ -7,6 +7,7 @@ pub mod credential_schema;
 pub mod did;
 pub mod error;
 pub mod history;
+pub mod identifier;
 pub mod jsonld;
 pub mod key;
 pub mod oid4vci_draft13;

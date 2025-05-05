@@ -1,13 +1,22 @@
 use async_trait::async_trait;
-use one_core::model::identifier::{Identifier, IdentifierRelations, UpdateIdentifierRequest};
+use one_core::model::identifier::{
+    GetIdentifierList, Identifier, IdentifierListQuery, IdentifierRelations,
+    UpdateIdentifierRequest,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
+use one_dto_mapper::convert_inner;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set, Unchanged,
+};
 use shared_types::{DidId, IdentifierId};
 use time::OffsetDateTime;
 
 use super::IdentifierProvider;
+use crate::common::calculate_pages_count;
 use crate::entity::identifier;
+use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 impl IdentifierProvider {
@@ -75,6 +84,22 @@ impl IdentifierRepository for IdentifierProvider {
         Ok(identifier.id)
     }
 
+    async fn get(
+        &self,
+        id: IdentifierId,
+        relations: &IdentifierRelations,
+    ) -> Result<Option<Identifier>, DataLayerError> {
+        let identifier = identifier::Entity::find_by_id(id)
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        match identifier {
+            None => Ok(None),
+            Some(identifier) => Ok(Some(self.resolve_relations(identifier, relations).await?)),
+        }
+    }
+
     async fn get_from_did_id(
         &self,
         did_id: DidId,
@@ -130,8 +155,42 @@ impl IdentifierRepository for IdentifierProvider {
             .filter(identifier::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
+    }
+
+    async fn get_identifier_list(
+        &self,
+        query_params: IdentifierListQuery,
+    ) -> Result<GetIdentifierList, DataLayerError> {
+        let query = identifier::Entity::find()
+            .distinct()
+            .filter(identifier::Column::DeletedAt.is_null())
+            .with_filter_join(&query_params)
+            .with_list_query(&query_params)
+            .order_by_desc(identifier::Column::CreatedDate)
+            .order_by_desc(identifier::Column::Id);
+
+        let limit = query_params
+            .pagination
+            .map(|pagination| pagination.page_size as u64);
+
+        let items_count = query
+            .to_owned()
+            .count(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let identifiers: Vec<identifier::Model> = query
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        Ok(GetIdentifierList {
+            values: convert_inner(identifiers),
+            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+            total_items: items_count,
+        })
     }
 }

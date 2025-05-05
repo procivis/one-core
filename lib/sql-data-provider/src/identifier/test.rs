@@ -1,14 +1,21 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use one_core::model::common::SortDirection;
 use one_core::model::did::Did;
-use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use one_core::model::identifier::{
+    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierStatus, IdentifierType,
+    SortableIdentifierColumn,
+};
+use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
+use sea_orm::DatabaseConnection;
 use shared_types::DidValue;
 use uuid::Uuid;
 
@@ -22,6 +29,7 @@ struct TestSetup {
     pub provider: IdentifierProvider,
     pub organisation: Organisation,
     pub did: Did,
+    pub db: DatabaseConnection,
 }
 
 async fn setup() -> TestSetup {
@@ -67,6 +75,7 @@ async fn setup() -> TestSetup {
         },
         organisation,
         did,
+        db,
     }
 }
 
@@ -97,4 +106,153 @@ async fn test_create_and_delete_identifier() {
         setup.provider.create(identifier).await,
         Err(DataLayerError::AlreadyExists)
     ));
+}
+
+#[tokio::test]
+async fn test_get_identifier() {
+    let setup = setup().await;
+    let id = Uuid::new_v4().into();
+
+    let identifier = Identifier {
+        id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test_identifier".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        status: IdentifierStatus::Active,
+        organisation: Some(setup.organisation.clone()),
+        did: Some(setup.did.clone()),
+        key: None,
+        deleted_at: None,
+    };
+
+    setup.provider.create(identifier.clone()).await.unwrap();
+
+    let non_existent_id = Uuid::new_v4().into();
+    assert!(setup
+        .provider
+        .get(non_existent_id, &Default::default())
+        .await
+        .unwrap()
+        .is_none());
+
+    let retrieved = setup
+        .provider
+        .get(id, &Default::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(retrieved.id, identifier.id);
+    assert_eq!(retrieved.name, identifier.name);
+    assert_eq!(retrieved.r#type, identifier.r#type);
+    assert_eq!(retrieved.status, identifier.status);
+    assert_eq!(retrieved.is_remote, identifier.is_remote);
+    assert!(retrieved.organisation.is_none());
+    assert!(retrieved.did.is_none());
+    assert!(retrieved.key.is_none());
+}
+
+#[tokio::test]
+async fn test_get_identifier_list() {
+    let setup = setup().await;
+    let id1 = Uuid::new_v4().into();
+    let id2 = Uuid::new_v4().into();
+
+    let identifier1 = Identifier {
+        id: id1,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test_identifier1".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        status: IdentifierStatus::Active,
+        organisation: Some(setup.organisation.clone()),
+        did: Some(setup.did.clone()),
+        key: None,
+        deleted_at: None,
+    };
+
+    let did2_id = insert_did_key(
+        &setup.db,
+        "test_did2",
+        Uuid::new_v4(),
+        DidValue::from_str("did:test:124").unwrap(),
+        "KEY",
+        setup.organisation.id,
+    )
+    .await
+    .unwrap();
+
+    let did2 = Did {
+        id: did2_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test_did2".to_string(),
+        did: DidValue::from_str("did:test:124").unwrap(),
+        did_type: one_core::model::did::DidType::Local,
+        did_method: "KEY".to_string(),
+        deactivated: false,
+        log: None,
+        keys: None,
+        organisation: Some(setup.organisation.clone()),
+    };
+
+    let identifier2 = Identifier {
+        id: id2,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test_identifier2".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: true,
+        status: IdentifierStatus::Active,
+        organisation: Some(setup.organisation.clone()),
+        did: Some(did2),
+        key: None,
+        deleted_at: None,
+    };
+
+    setup.provider.create(identifier1.clone()).await.unwrap();
+    setup.provider.create(identifier2.clone()).await.unwrap();
+
+    let query = IdentifierListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 10,
+        }),
+        sorting: Some(ListSorting {
+            column: SortableIdentifierColumn::CreatedDate,
+            direction: Some(SortDirection::Descending),
+        }),
+        filtering: Some(ListFilterCondition::Value(
+            IdentifierFilterValue::OrganisationId(setup.organisation.id),
+        )),
+        include: None,
+    };
+
+    let result = setup.provider.get_identifier_list(query).await.unwrap();
+    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.values.len(), 2);
+
+    let query = IdentifierListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 1,
+        }),
+        sorting: Some(ListSorting {
+            column: SortableIdentifierColumn::Name,
+            direction: Some(SortDirection::Ascending),
+        }),
+        filtering: Some(ListFilterCondition::Value(IdentifierFilterValue::Type(
+            IdentifierType::Did,
+        ))),
+        include: None,
+    };
+
+    let result = setup.provider.get_identifier_list(query).await.unwrap();
+    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.values.len(), 1);
+    assert_eq!(result.values[0].id, id1);
 }
