@@ -8,7 +8,6 @@ use super::dto::HandleInvitationResultDTO;
 use super::SSIHolderService;
 use crate::common_mapper::value_to_model_claims;
 use crate::common_validator::throw_if_credential_state_not_eq;
-use crate::config::core_config::IssuanceProtocolType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -180,26 +179,16 @@ impl SSIHolderService {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
-        let issuance_protocol_type = self
+        let format_type = self
             .config
-            .issuance_protocol
-            .get_fields(&credential.exchange)?
+            .format
+            .get_fields(&schema.format)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
             .r#type;
 
-        let format = if issuance_protocol_type == IssuanceProtocolType::OpenId4VciDraft13 {
-            let format_type = self
-                .config
-                .format
-                .get_fields(&schema.format)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-                .r#type;
-
-            map_to_openid4vp_format(&format_type)
-                .map(|s| s.to_string())
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-        } else {
-            schema.format.to_owned()
-        };
+        let format = map_to_openid4vp_format(&format_type)
+            .map(|s| s.to_string())
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let issuer_response = self
             .issuance_protocol_provider
