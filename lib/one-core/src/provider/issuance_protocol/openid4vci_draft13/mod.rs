@@ -529,7 +529,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
             key_role: KeyRole::AssertionMethod,
         });
         let response_credential = formatter
-            .extract_credentials(&response_value.credential, verification_fn, None)
+            .extract_credentials(
+                &response_value.credential,
+                credential.schema.as_ref(),
+                verification_fn,
+                None,
+            )
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 

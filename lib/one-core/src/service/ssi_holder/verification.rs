@@ -318,7 +318,10 @@ impl SSIHolderService {
                 .get(&credential_schema.revocation_method)?;
             if revocation_method.r#type == RevocationType::Lvvc {
                 let extracted = formatter
-                    .extract_credentials_unverified(&formatted_credential_presentation)
+                    .extract_credentials_unverified(
+                        &formatted_credential_presentation,
+                        Some(credential_schema),
+                    )
                     .await?;
                 let credential_status = extracted
                     .status

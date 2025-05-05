@@ -162,7 +162,7 @@ impl CredentialService {
             key_role: KeyRole::AssertionMethod,
         });
         formatter
-            .extract_credentials(&result.credential, verification_fn, None)
+            .extract_credentials(&result.credential, Some(schema), verification_fn, None)
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 

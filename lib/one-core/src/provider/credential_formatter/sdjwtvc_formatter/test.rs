@@ -252,7 +252,7 @@ async fn test_extract_credentials() {
         .return_once(|_, _, _, _, _| Ok(()));
 
     let credentials = sd_formatter
-        .extract_credentials_unverified(&token) //Box::new(verify_mock))
+        .extract_credentials_unverified(&token, None) //Box::new(verify_mock))
         .await
         .unwrap();
 
@@ -367,6 +367,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
     let credentials = sd_formatter
         .extract_credentials(
             &format!("{jwt_token}.{token_signature}.{disclosures}"),
+            None,
             Box::new(verify_mock),
             None,
         )
@@ -692,7 +693,7 @@ async fn test_format_extract_round_trip() {
         .await
         .unwrap();
     let result = formatter
-        .extract_credentials(token.as_str(), key_verification, None)
+        .extract_credentials(token.as_str(), None, key_verification, None)
         .await
         .unwrap();
 

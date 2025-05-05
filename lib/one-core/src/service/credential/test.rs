@@ -1327,8 +1327,8 @@ async fn test_check_revocation_invalid_state() {
         credential_formatter
             .expect_extract_credentials_unverified()
             .once()
-            .with(eq(""))
-            .returning(move |_| {
+            .withf(|cred, _| cred.is_empty())
+            .returning(move |_, _| {
                 Ok(DetailCredential {
                     id: Some(credential_clone.id.to_string()),
                     valid_from: Some(credential_clone.issuance_date),
@@ -1393,7 +1393,7 @@ async fn test_check_revocation_non_revocable() {
 
     formatter
         .expect_extract_credentials_unverified()
-        .returning(|_| {
+        .returning(|_, _| {
             Ok(DetailCredential {
                 id: None,
                 valid_from: None,
@@ -1483,8 +1483,8 @@ async fn test_check_revocation_already_revoked() {
         credential_formatter
             .expect_extract_credentials_unverified()
             .times(2)
-            .with(eq(""))
-            .returning(move |_| {
+            .withf(|cred, _| cred.is_empty())
+            .returning(move |_, _| {
                 Ok(DetailCredential {
                     id: Some(credential_clone.id.to_string()),
                     valid_from: Some(credential_clone.issuance_date),
@@ -1572,7 +1572,7 @@ async fn test_check_revocation_being_revoked() {
 
     formatter
         .expect_extract_credentials_unverified()
-        .returning(|_| {
+        .returning(|_, _| {
             Ok(DetailCredential {
                 id: None,
                 valid_from: None,

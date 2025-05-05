@@ -179,7 +179,7 @@ async fn test_mrz_proof_process() {
     );
 
     formatter
-        .extract_credentials(&token, Box::new(token_verifier), None)
+        .extract_credentials(&token, None, Box::new(token_verifier), None)
         .await
         .unwrap();
 }
@@ -203,7 +203,7 @@ async fn test_employment_document_mrz_claim_extraction() {
     .unwrap();
 
     let credential = formatter
-        .extract_credentials_unverified(&token)
+        .extract_credentials_unverified(&token, None)
         .await
         .unwrap();
 

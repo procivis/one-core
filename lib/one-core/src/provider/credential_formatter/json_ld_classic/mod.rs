@@ -25,6 +25,7 @@ use crate::config::core_config::{
     DidType, FormatType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
 };
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -149,9 +150,10 @@ impl CredentialFormatter for JsonLdClassic {
         })
     }
 
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         credential: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
@@ -159,9 +161,10 @@ impl CredentialFormatter for JsonLdClassic {
             .await
     }
 
-    async fn extract_credentials_unverified(
+    async fn extract_credentials_unverified<'a>(
         &self,
         credential: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, None).await
     }

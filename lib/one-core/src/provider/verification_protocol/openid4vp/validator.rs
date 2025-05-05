@@ -169,7 +169,12 @@ pub(super) async fn validate_credential(
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
     let credential = formatter
-        .extract_credentials(credential_token, key_verification, Some(holder_binding_ctx))
+        .extract_credentials(
+            credential_token,
+            proof_schema_input.credential_schema.as_ref(),
+            key_verification,
+            Some(holder_binding_ctx),
+        )
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {

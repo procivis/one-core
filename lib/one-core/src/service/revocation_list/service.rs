@@ -98,7 +98,7 @@ impl RevocationListService {
                 ))?;
 
         let extracted_credential = formatter
-            .extract_credentials_unverified(credential_content)
+            .extract_credentials_unverified(credential_content, Some(schema))
             .await
             .map_err(ServiceError::from)?;
 

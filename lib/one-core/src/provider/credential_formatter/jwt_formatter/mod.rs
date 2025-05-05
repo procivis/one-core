@@ -21,6 +21,7 @@ use crate::config::core_config::{
     DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
 };
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -198,9 +199,10 @@ impl CredentialFormatter for JWTFormatter {
         }
     }
 
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
@@ -210,9 +212,10 @@ impl CredentialFormatter for JWTFormatter {
         DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
 
-    async fn extract_credentials_unverified(
+    async fn extract_credentials_unverified<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None, None).await?;
 

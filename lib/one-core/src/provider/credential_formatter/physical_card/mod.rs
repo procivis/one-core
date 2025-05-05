@@ -11,6 +11,7 @@ use super::model::{CredentialData, HolderBindingCtx};
 use crate::config::core_config::{
     KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
@@ -61,9 +62,10 @@ impl CredentialFormatter for PhysicalCardFormatter {
         ))
     }
 
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
@@ -82,9 +84,10 @@ impl CredentialFormatter for PhysicalCardFormatter {
         credential_with_optical_data.try_into()
     }
 
-    async fn extract_credentials_unverified(
+    async fn extract_credentials_unverified<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         OptiocalBarcodeCredential::from_token(token)?.try_into()
     }

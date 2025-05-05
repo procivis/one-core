@@ -729,7 +729,7 @@ impl CredentialService {
         };
 
         let detail_credential = formatter
-            .extract_credentials_unverified(&credential_str)
+            .extract_credentials_unverified(&credential_str, Some(&credential_schema))
             .await?;
 
         if format == "MDOC" {

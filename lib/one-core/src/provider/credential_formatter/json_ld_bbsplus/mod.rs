@@ -21,6 +21,7 @@ use crate::config::core_config::{
     DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
 };
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -197,18 +198,20 @@ impl CredentialFormatter for JsonLdBbsplus {
         serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
     }
 
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         credential: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         self.verify(credential, verification_fn).await
     }
 
-    async fn extract_credentials_unverified(
+    async fn extract_credentials_unverified<'a>(
         &self,
         credential: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         let vc: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))

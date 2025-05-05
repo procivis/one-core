@@ -16,6 +16,7 @@ pub mod error;
 mod common;
 pub use common::nest_claims;
 
+use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::model::HolderBindingCtx;
 
 // Implementation
@@ -63,11 +64,19 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<String, FormatterError>;
 
     /// Parses a received credential and verifies the signature.
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         credentials: &str,
+        credential_schema: Option<&'a CredentialSchema>,
         verification: Box<dyn TokenVerifier>,
         holder_binding_ctx: Option<HolderBindingCtx>,
+    ) -> Result<DetailCredential, FormatterError>;
+
+    /// Parses a received credential without verifying the signature.
+    async fn extract_credentials_unverified<'a>(
+        &self,
+        credential: &str,
+        credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError>;
 
     /// Formats presentation with selective disclosure.
@@ -81,12 +90,6 @@ pub trait CredentialFormatter: Send + Sync {
         holder_binding_ctx: Option<HolderBindingCtx>,
         holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError>;
-
-    /// Parses a received credential without verifying the signature.
-    async fn extract_credentials_unverified(
-        &self,
-        credential: &str,
-    ) -> Result<DetailCredential, FormatterError>;
 
     /// Formats a presentation of credentials and signs it.
     async fn format_presentation(

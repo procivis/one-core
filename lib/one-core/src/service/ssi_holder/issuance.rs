@@ -249,7 +249,7 @@ impl SSIHolderService {
             ))?;
 
         let credential = formatter
-            .extract_credentials_unverified(credential)
+            .extract_credentials_unverified(credential, Some(schema))
             .await
             .map_err(ServiceError::FormatterError)?;
 

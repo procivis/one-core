@@ -153,7 +153,12 @@ pub(crate) async fn validate_proof(
 
     for credential in presentation.credentials {
         let received_credential = formatter
-            .extract_credentials(&credential, key_verification_credentials.clone(), None)
+            .extract_credentials(
+                &credential,
+                None,
+                key_verification_credentials.clone(),
+                None,
+            )
             .await?;
 
         // Check if "nbf" attribute of VCs and VP are valid. || Check if VCs are expired.

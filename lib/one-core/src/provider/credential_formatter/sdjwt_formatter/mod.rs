@@ -17,6 +17,7 @@ use crate::config::core_config::{
     DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
 };
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -107,9 +108,10 @@ impl CredentialFormatter for SDJWTFormatter {
         ))
     }
 
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
         holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
@@ -140,9 +142,10 @@ impl CredentialFormatter for SDJWTFormatter {
         prepare_sd_presentation(credential, &*hasher, holder_binding_ctx, holder_binding_fn).await
     }
 
-    async fn extract_credentials_unverified(
+    async fn extract_credentials_unverified<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         let (credential, _) = extract_credentials_internal(
             token,

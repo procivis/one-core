@@ -356,7 +356,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_credentials_unverified()
         .once()
-        .returning(move |_| {
+        .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
                 valid_from: Some(OffsetDateTime::now_utc()),
@@ -413,7 +413,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _, _, _| {
             Ok(DetailCredential {
                 id: None,
                 valid_from: Some(OffsetDateTime::now_utc()),

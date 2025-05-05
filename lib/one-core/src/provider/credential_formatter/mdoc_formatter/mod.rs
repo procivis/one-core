@@ -293,9 +293,10 @@ impl CredentialFormatter for MdocFormatter {
         ))
     }
 
-    async fn extract_credentials(
+    async fn extract_credentials<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
         _verification: VerificationFn,
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
@@ -307,9 +308,10 @@ impl CredentialFormatter for MdocFormatter {
         )
     }
 
-    async fn extract_credentials_unverified(
+    async fn extract_credentials_unverified<'a>(
         &self,
         token: &str,
+        _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(
             &*self.key_algorithm_provider,

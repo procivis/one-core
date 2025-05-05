@@ -490,7 +490,7 @@ async fn test_unverified_credential_extraction() {
 
     // act
     let credential = formatter
-        .extract_credentials_unverified(&formatted_credential)
+        .extract_credentials_unverified(&formatted_credential, None)
         .await
         .unwrap();
 
@@ -689,7 +689,7 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
         .returning(move |_, _, _, _, _| Ok(()));
 
     formatter
-        .extract_credentials(&formatted_credential, Box::new(token_verifier), None)
+        .extract_credentials(&formatted_credential, None, Box::new(token_verifier), None)
         .await
         .unwrap()
 }

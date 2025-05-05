@@ -215,7 +215,7 @@ async fn test_check_revocation_status_as_holder_cached() {
         let mut formatter = MockCredentialFormatter::new();
         formatter
             .expect_extract_credentials_unverified()
-            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+            .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
 
         Some(Arc::new(formatter))
     });
@@ -280,7 +280,7 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
         let mut formatter = MockCredentialFormatter::new();
         formatter
             .expect_extract_credentials_unverified()
-            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+            .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
 
         Some(Arc::new(formatter))
     });
@@ -356,7 +356,7 @@ fn common_mock_providers() -> (
         let mut formatter = MockCredentialFormatter::new();
         formatter
             .expect_extract_credentials_unverified()
-            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+            .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
 
         Some(Arc::new(formatter))
     });

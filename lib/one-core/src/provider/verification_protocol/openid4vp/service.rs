@@ -422,7 +422,7 @@ async fn extract_lvvcs(
                 )))?;
 
         let credential = formatter
-            .extract_credentials_unverified(credential)
+            .extract_credentials_unverified(credential, None)
             .await
             .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
 

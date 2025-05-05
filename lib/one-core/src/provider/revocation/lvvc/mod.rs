@@ -173,7 +173,7 @@ impl LvvcProvider {
         let formatter = self.formatter(credential)?;
 
         let lvvc = formatter
-            .extract_credentials_unverified(lvvc_credential_content)
+            .extract_credentials_unverified(lvvc_credential_content, None)
             .await?;
 
         let status = status_from_lvvc_claims(&lvvc.claims.claims)?;

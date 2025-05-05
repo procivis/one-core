@@ -728,7 +728,7 @@ async fn test_accept_credential() {
     formatter
         .expect_extract_credentials_unverified()
         .once()
-        .returning(move |_| {
+        .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
                 valid_from: Some(OffsetDateTime::now_utc()),
