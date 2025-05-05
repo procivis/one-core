@@ -99,8 +99,12 @@ impl OID4VCIDraft13SwiyuService {
 }
 
 fn set_value_type_string(claims: &mut OpenID4VCICredentialSubjectItem) {
-    if claims.value_type.is_some() {
-        claims.value_type = Some("string".to_owned());
+    match claims.value_type.as_mut() {
+        None => {}
+        Some(value_type) if *value_type == "swiyu_picture" => {
+            *value_type = "image/jpeg".to_string()
+        }
+        Some(value_type) => *value_type = "string".to_owned(),
     }
     if let Some(ref mut inner_claims) = claims.claims {
         inner_claims

@@ -16,3 +16,16 @@ format:
         leeway: 60
         embedLayoutProperties: true
         swiyuMode: true
+datatype:
+  SWIYU_PICTURE:
+    display:
+      en: "Picture (SWIYU)"
+      de: "Bild (SWIYU)"
+    type: "FILE"
+    order: 403
+    params:
+      public:
+        accept:
+          - image/jpeg
+        fileSize: 4194304
+        showAs: IMAGE

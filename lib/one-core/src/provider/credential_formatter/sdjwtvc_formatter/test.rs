@@ -15,7 +15,8 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::credential_schema::LayoutType;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType, LayoutType};
 use crate::model::did::KeyRole;
 use crate::model::key::Key;
 use crate::provider::caching_loader::vct::{
@@ -193,6 +194,165 @@ async fn test_format_credential() {
 }
 
 #[tokio::test]
+async fn test_format_credential_swiyu() {
+    const IMG_DATA: &str = "iVBORw0KGgoAAAAN";
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64_url()
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    let leeway = 45u64;
+
+    let mut credential_data = get_credential_data(
+        CredentialStatus {
+            id: Some("did:status:id".parse().unwrap()),
+            r#type: "TYPE".to_string(),
+            status_purpose: Some("PURPOSE".to_string()),
+            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
+        },
+        "http://base_url",
+    );
+    let picture_value = format!("data:image/jpeg;base64,{IMG_DATA}");
+    credential_data
+        .vcdm
+        .credential_subject
+        .get_mut(0)
+        .unwrap()
+        .claims
+        .insert(
+            "portrait".to_string(),
+            serde_json::Value::String(picture_value.clone()),
+        );
+    credential_data.claims.push(PublishedClaim {
+        key: "portrait".to_string(),
+        value: PublishedClaimValue::String(picture_value),
+        datatype: Some("SWIYU_PICTURE".to_string()),
+        array_item: false,
+    });
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = dummy_did_document(&credential_data.holder_did.as_ref().unwrap().clone());
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(holder_did));
+
+    let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
+    vct_metadata_cache
+        .expect_get()
+        .with(eq("http://schema.test/id"))
+        .return_once(|_| {
+            Ok(Some(SdJwtVcTypeMetadataCacheItem {
+                metadata: SdJwtVcTypeMetadataResponseDTO {
+                    vct: "http://schema.test/id".to_string(),
+                    name: None,
+                    display: vec![],
+                    claims: vec![],
+                    schema: None,
+                    schema_uri: None,
+                    layout_properties: None,
+                },
+                integrity: Some("integrity".to_string()),
+            }))
+        });
+
+    let sd_formatter = SDJWTVCFormatter::new(
+        Params {
+            leeway,
+            embed_layout_properties: false,
+            swiyu_mode: true,
+        },
+        Arc::new(crypto),
+        Arc::new(did_method_provider),
+        Arc::new(vct_metadata_cache),
+    );
+
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = sd_formatter
+        .format_credential(credential_data, Box::new(auth_fn))
+        .await;
+
+    assert!(result.is_ok());
+
+    let token = result.unwrap();
+    let parts: Vec<&str> = token.splitn(5, '~').collect();
+    assert_eq!(parts.len(), 5);
+
+    let disclosures = [
+        DisclosureArray::from_b64(parts[1]),
+        DisclosureArray::from_b64(parts[2]),
+        DisclosureArray::from_b64(parts[3]),
+    ];
+    assert!(disclosures
+        .iter()
+        .any(|disc| disc.key == "name" && disc.value == "John"));
+    assert!(disclosures
+        .iter()
+        .any(|disc| disc.key == "age" && disc.value == "42"));
+    assert!(disclosures
+        .iter()
+        .any(|disc| disc.key == "portrait" && disc.value == IMG_DATA));
+
+    let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
+
+    assert_eq!(
+        jwt_parts[0],
+        &Base64UrlSafeNoPadding::encode_to_string(
+            r##"{"alg":"ES256","kid":"#key0","typ":"vc+sd-jwt"}"##
+        )
+        .unwrap()
+    );
+    assert_eq!(
+        jwt_parts[2],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
+    );
+
+    let payload: JWTPayload<SdJwtVc> = serde_json::from_str(
+        &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        payload.expires_at,
+        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+    );
+    assert_eq!(
+        payload.invalid_before,
+        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
+    );
+    assert_eq!(
+        payload.proof_of_possession_key,
+        Some(ProofOfPossessionKey {
+            key_id: None,
+            jwk: ProofOfPossessionJwk::Swiyu(dummy_jwk().into()),
+        })
+    );
+
+    assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
+    assert_eq!(payload.subject, Some(String::from("did:example:123")));
+
+    let vc = payload.custom;
+
+    assert_eq!(vc.vc_type, "http://schema.test/id".to_string());
+    assert_eq!(vc.vct_integrity, Some("integrity".to_string()));
+
+    assert!(vc
+        .digests
+        .iter()
+        .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
+
+    assert!(vc.public_claims.is_empty()); // Empty until we support issuing public_claims
+}
+
+#[tokio::test]
 async fn test_extract_credentials() {
     // Token from: https://paradym.id/tools/sd-jwt-vc
     let jwt_token = "eyJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFZERTQSIsImtpZCI6IiN6Nk1rdHF0WE5HOENEVVk5UHJydG9TdEZ6ZUNuaHBNbWd4WUwxZ2lrY1czQnp2TlcifQ.eyJ2Y3QiOiJJZGVudGl0eUNyZWRlbnRpYWwiLCJmYW1pbHlfbmFtZSI6IkRvZSIsInBob25lX251bWJlciI6IisxLTIwMi01NTUtMDEwMSIsImFkZHJlc3MiOnsic3RyZWV0X2FkZHJlc3MiOiIxMjMgTWFpbiBTdCIsImxvY2FsaXR5IjoiQW55dG93biIsIl9zZCI6WyJOSm5tY3QwQnFCTUUxSmZCbEM2alJRVlJ1ZXZwRU9OaVl3N0E3TUh1SnlRIiwib201Wnp0WkhCLUdkMDBMRzIxQ1ZfeE00RmFFTlNvaWFPWG5UQUpOY3pCNCJdfSwiY25mIjp7Imp3ayI6eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifX0sImlzcyI6ImRpZDprZXk6ejZNa3RxdFhORzhDRFVZOVBycnRvU3RGemVDbmhwTW1neFlMMWdpa2NXM0J6dk5XIiwiaWF0IjoxNjk4MTUxNTMyLCJfc2QiOlsiMUN1cjJrMkEyb0lCNUNzaFNJZl9BX0tnLWwyNnVfcUt1V1E3OVAwVmRhcyIsIlIxelRVdk9ZSGdjZXBqMGpIeXBHSHo5RUh0dFZLZnQweXN3YmM5RVRQYlUiLCJlRHFRcGRUWEpYYldoZi1Fc0k3enc1WDZPdlltRk4tVVpRUU1lc1h3S1B3IiwicGREazJfWEFLSG83Z09BZndGMWI3T2RDVVZUaXQya0pIYXhTRUNROXhmYyIsInBzYXVLVU5XRWkwOW51M0NsODl4S1hnbXBXRU5abDV1eTFOMW55bl9qTWsiLCJzTl9nZTBwSFhGNnFtc1luWDFBOVNkd0o4Y2g4YUVOa3hiT0RzVDc0WXdJIl0sIl9zZF9hbGciOiJzaGEtMjU2In0";
@@ -234,13 +394,24 @@ async fn test_extract_credentials() {
     );
 
     let mut verify_mock = MockTokenVerifier::new();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .returning(|_| {
+            let mut alg = MockKeyAlgorithm::new();
+            alg.expect_algorithm_id().return_const("algorithm");
+            Some((KeyAlgorithmType::Eddsa, Arc::new(alg)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     verify_mock
         .expect_verify()
         .withf(
             move |issuer_did_value, _key_id, algorithm, token, signature| {
                 assert_eq!(
-                    "did:issuer:test",
+                    "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW",
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
                 assert_eq!("algorithm", algorithm);
@@ -252,7 +423,7 @@ async fn test_extract_credentials() {
         .return_once(|_, _, _, _, _| Ok(()));
 
     let credentials = sd_formatter
-        .extract_credentials_unverified(&token, None) //Box::new(verify_mock))
+        .extract_credentials(&token, None, Box::new(verify_mock), None)
         .await
         .unwrap();
 
@@ -287,6 +458,177 @@ async fn test_extract_credentials() {
         }
     );
 
+    let claim_values_as_json = credentials
+        .claims
+        .claims
+        .into_iter()
+        .collect::<serde_json::Map<String, serde_json::Value>>();
+
+    assert_eq!(claim_values_as_json, *expected_result.as_object().unwrap());
+}
+
+#[tokio::test]
+async fn test_extract_credentials_swiyu() {
+    let jwt_token = "eyJ2ZXIiOiIxLjAiLCJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDp0ZHc6UW1QRVpQaERGUjRuRVlTRks1Yk1udkVDcWRwZjF0UFRQSnVXczlRck1qQ3VtdzppZGVudGlmaWVyLXJlZy50cnVzdC1pbmZyYS5zd2l5dS1pbnQuYWRtaW4uY2g6YXBpOnYxOmRpZDo5YTU1NTlmMC1iODFjLTQzNjgtYTE3MC1lN2I0YWU0MjQ1MjcjYXNzZXJ0LWtleS1mNGJjMDMyZi1iZmUwLTRiYWItYWNiMy1iYzNlZjdmYjM0MDAifQ.eyJfc2QiOlsiMF9ONVlvRlB3Uk9Gb0ZLNVdhVEV4eDlMOVRIWmZqTUZkOHd2dWFKR2FKRSIsIjEzT3ZoTjNHNjZsS1g3TTRTZmJ2bDVRWU5xVU83akFTVmdJcEFmRDYzdEkiLCI0WlFaOEN1eUlUQ2J4WHM4S1dzTXZwMHVxQllSSlRjOHQzTV9aQlJDRmV3IiwiNTJFamM4VXJSRXAwV0JDaC1YQm9sUURESmJYOUdHNmVBWXhJSURtaExfWSIsIjVsLTRlLTlQUkdiWUFxdW1qb0lyUmFNcGVBWm9jeHpyMF82ZXRyZWQtOWsiLCI5U3RwV00zTFJZNE9wM3JLSElNdDRlWVY1VzAwYWktdFFIbHBHckw3QTRnIiwiOXJDMEF1OXBCbGpMZGJmX0Z6RUxxRTU3d25UbFJVMkVrdVJsQTRwV3MzdyIsIkNJUTFvaktOQ293Mlp5ckNHRW1BR00wa2lrRFpDczg5X3RZOHlqMF8zME0iLCJDTnBMVFhaeEZaXzdxOE85WEdNSVpWNUQwemVWV2Jwc0RDSG1HdUh0b2hJIiwiRHFYZ1lldG1uQkZ3X3F6dUlpb0lGaVQ0aUpuaWRLT0lRdHpsakVUZnhKNCIsIkdYSk5Gb196cWxzMzdRT3lnRnNvMVhYa2NxRl9xYU1MZXNyaElDNmxGWHMiLCJIX3ctQkQwTkZWSkg2bGx6dzh1Vm9WdHNEVXRGSUlKNlRlZkpWQ2hNaEVJIiwiSWE0bUFqYmxsNmZwTXduakJncnBhc1JEQzRUSXUzRl9LbjBVNkRMbUYwcyIsIktOVk9hVEFyQ0cyMjlHZGZldFQya3JzTHhpaWdEUGRTdVpPU1J3VHFOcVUiLCJLdGlZcDh2VFJad3ZpaXpCaW9uRGpQcnBfZ25tSUxkOGZzalhXTy0wME5JIiwiT2RuUGNBeVNNcEhVQVM3SGMzU21heWhuSVphU0g2LTRIYmxTNkh0QWZFcyIsIl9CRHQwUFI3dnA0V082amN6T2dIc19uSjJMMG9mYTdFTk00MlR3QkFtcDQiLCJiVXVNeFl5YlZvYldPam5BREpWU21rUkFZV3V2LVRKWFRXdG9leFFhQWR3IiwiZDBUTWdQa0l4UVJxR2VpRWRfTXpDa0JnSEM0M0xLenFGeGExSU16Ny1MQSIsImlkVlRSWHY5MVpUOXk3clRUOUx5X20wal8wQnZzemlEMVd6MFFxOGlyNE0iLCJraF9zSlM5WG9mZ0tXc0JXbnM1ZFE1XzdQcWlPZ0FVQ09KbnRrYnU0MHNrIiwibU55TDBUTEhYQmhUay1ld0JWYlJGeFVDUnRrbmE4dEFzVjBiV0wyNmJDVSIsInl4MXdzNDF1TkxfTU9hbTEwMmktVE1sd3BpSk1PVUJQNzRRbl9TQ1pNRzQiXSwidmN0IjoiYmV0YWlkLXNkand0IiwiX3NkX2FsZyI6InNoYS0yNTYiLCJpc3MiOiJkaWQ6dGR3OlFtUEVaUGhERlI0bkVZU0ZLNWJNbnZFQ3FkcGYxdFBUUEp1V3M5UXJNakN1bXc6aWRlbnRpZmllci1yZWcudHJ1c3QtaW5mcmEuc3dpeXUtaW50LmFkbWluLmNoOmFwaTp2MTpkaWQ6OWE1NTU5ZjAtYjgxYy00MzY4LWExNzAtZTdiNGFlNDI0NTI3IiwiY25mIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiWnA5cUxhVEpNaHVQLWRwTWE5cExscHFaY1E0Y2hWREp5U1dyaXNBQWkyZyIsInkiOiJ4dVZ1NVhnUE5RSy1QMFRzRGxoYThwNU1mQURlWmhTZ1M3N0tVVjNoY3ZFIn0sImlhdCI6MTc0NjQ1NDM1NSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InR5cGUiOiJTd2lzc1Rva2VuU3RhdHVzTGlzdC0xLjAiLCJpZHgiOjc5NjQsInVyaSI6Imh0dHBzOi8vc3RhdHVzLXJlZy50cnVzdC1pbmZyYS5zd2l5dS1pbnQuYWRtaW4uY2gvYXBpL3YxL3N0YXR1c2xpc3QvMTkzZmRjOTgtMGIxMC00YjY1LTg3NmItZWY0NGY3YjEwMTkwLmp3dCJ9fX0";
+    let token = format!(
+        "{jwt_token}.QUJD~\
+        WyJreGN6aFhIUW1SSXh5SVlHNk43dk9nIiwiaXNzdWFuY2VfZGF0ZSIsIjIwMjUtMDUtMDUiXQ~\
+        WyJwcGtNNjQ3eXRyRmRENXhuSmk1aVRBIiwiZG9jdW1lbnRfbnVtYmVyIiwiQkVUQS1JRC1TS1dDNlBMRSJd~\
+        WyI4dXREMUtpVTgwcmxjeVBrWFMxUmpBIiwiYWdlX292ZXJfMTgiLCJ0cnVlIl0~\
+        WyJEU0loT3Z6bGRSbFhvYmRCUTkybHJnIiwicmVmZXJlbmNlX2lkX3R5cGUiLCJTZWxmLURlY2xhcmVkIl0~\
+        WyI4eFRhOWFvN1BNOGJoR0F1d2F4YlNnIiwiYmlydGhfZGF0ZSIsIjE4NDgtMDktMTIiXQ~\
+        WyJ1WXJBeUE0aGlFUzVyODQwZ19yZGRnIiwic2V4IiwiMiJd~\
+        WyJNWXpuV2pOTHcxNFQzTDNuS3dsY3lRIiwiYWdlX292ZXJfMTYiLCJ0cnVlIl0~\
+        WyJSNXd2TTFKVzFpal9tMjVFakhuemx3IiwiZXhwaXJ5X2RhdGUiLCIyMDI1LTA4LTA1Il0~\
+        WyJ1N1laVGFpNzhKSlJsamh6aHdWOGdnIiwicGVyc29uYWxfYWRtaW5pc3RyYXRpdmVfbnVtYmVyIiwiNzU2LjM2NTguMTg4MS45MSJd~\
+        WyJPMDBaaHc1bEx3aG90MTRJdFI4VkJnIiwiYmlydGhfcGxhY2UiLCJMdXplcm4iXQ~\
+        WyJnNVdqTFo0dFUzR2R3RmFrTlp0VnBBIiwidmVyaWZpY2F0aW9uX3R5cGUiLCJTZWxmLVNlcnZpY2UiXQ~\
+        WyI5NG9HdGkyWFMtQnpJTjZsaXBtZ2pRIiwiZ2l2ZW5fbmFtZSIsIkhlbHZldGlhIl0~\
+        WyJycXV6SElES004eVV6dnhfUDYxbmFRIiwicG9ydHJhaXQiLCJpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBVllBQUFIT0NBWUFBQUREbWlHdEFBQU9pa2xFUVZSNFh1M1VzUTBBQUFqRE1Qci8wenlSMFJ6UXdVTFpPUUlFQ0JCSUJaYXVHU05BZ0FDQkUxWlBRSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JBUVZqOUFnQUNCV0VCWVkxQnpCQWdRRUZZL1FJQUFnVmhBV0dOUWN3UUlFQkJXUDBDQUFJRllRRmhqVUhNRUNCQVFWajlBZ0FDQldFQllZMUJ6QkFnUUVGWS9RSUFBZ1ZoQVdHTlFjd1FJRUJCV1AwQ0FBSUZZUUZoalVITUVDQkFRVmo5QWdBQ0JXRUJZWTFCekJBZ1FFRlkvUUlBQWdWaEFXR05RY3dRSUVCQldQMENBQUlGWVFGaGpVSE1FQ0JCNFZmc0J6Nnk5aWNFQUFBQUFTVVZPUks1Q1lJSVx1MDAzZCJd~\
+        WyJod2tyYlEwQUVUWFRRRU0tMTVuamtnIiwiYWRkaXRpb25hbF9wZXJzb25faW5mbyIsIk4vQSJd~\
+        WyJJTUhCUkFuaVc3UnFEc1VGdTU5Ukh3IiwicGxhY2Vfb2Zfb3JpZ2luIiwiTi9BIl0~\
+        WyJ1VWQ3ZDVTZEFIUTdBRFFuVjNRR013IiwibmF0aW9uYWxpdHkiLCJDSCJd~\
+        WyJBQnk2SVp0dDJQcmRmajlKUjdjOUd3IiwiYWdlX2JpcnRoX3llYXIiLCIxODQ4Il0~\
+        WyJlTmJJUjdra2RIMGUtSzg0QjFJalhRIiwiaXNzdWluZ19jb3VudHJ5IiwiQ0giXQ~\
+        WyJobHJKZlloNk9xUXVxY0o2QWtGelR3IiwiaXNzdWluZ19hdXRob3JpdHkiLCJCZXRhIENyZWRlbnRpYWwgU2VydmljZSBCQ1MiXQ~\
+        WyJBRWo2TWlvRGpsUldralpHUHJpU3R3IiwidmVyaWZpY2F0aW9uX29yZ2FuaXphdGlvbiIsIkJldGEgQ3JlZGVudGlhbCBTZXJ2aWNlIEJDUyJd~\
+        WyJhYXJ0MHkxdjM3Wkh4VlViaXlweGd3IiwiZmFtaWx5X25hbWUiLCJOYXRpb25hbCJd~\
+        WyJoTy1BYXBrVDRTRWFIT2MwMTJsS1BRIiwiYWdlX292ZXJfNjUiLCJ0cnVlIl0~\
+        WyJJdldtNmU1RmNQckNiRFpYa0kzOEt3IiwicmVmZXJlbmNlX2lkX2V4cGlyeV9kYXRlIiwiMjAzMC0wNS0wNSJd~"
+    );
+
+    let hasher = Arc::new(SHA256 {});
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .once()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    let leeway = 45u64;
+
+    let sd_formatter = SDJWTVCFormatter::new(
+        Params {
+            leeway,
+            embed_layout_properties: false,
+            swiyu_mode: true,
+        },
+        Arc::new(crypto),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+    );
+
+    let mut verify_mock = MockTokenVerifier::new();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .returning(|_| {
+            let mut alg = MockKeyAlgorithm::new();
+            alg.expect_algorithm_id().return_const("algorithm");
+            Some((KeyAlgorithmType::Eddsa, Arc::new(alg)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+
+    verify_mock
+        .expect_verify()
+        .withf(
+            move |issuer_did_value, _key_id, algorithm, token, signature| {
+                assert_eq!(
+                    "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527",
+                    issuer_did_value.as_ref().unwrap().as_str()
+                );
+                assert_eq!("algorithm", algorithm);
+                assert_eq!(jwt_token.as_bytes(), token);
+                assert_eq!(vec![65u8, 66, 67], signature);
+                true
+            },
+        )
+        .return_once(|_, _, _, _, _| Ok(()));
+
+    let now = OffsetDateTime::now_utc();
+    let credential_schema = crate::model::credential_schema::CredentialSchema {
+        id: Uuid::new_v4().into(),
+        deleted_at: None,
+        created_date: now,
+        last_modified: now,
+        name: "".to_string(),
+        format: "".to_string(),
+        revocation_method: "".to_string(),
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: "".to_string(),
+        schema_type: CredentialSchemaType::SdJwtVc,
+        imported_source_url: "".to_string(),
+        allow_suspension: false,
+        external_schema: false,
+        claim_schemas: Some(vec![CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "portrait".to_string(),
+                data_type: "SWIYU_PICTURE".to_string(),
+                created_date: now,
+                last_modified: now,
+                array: false,
+            },
+            required: false,
+        }]),
+        organisation: None,
+    };
+
+    let credentials = sd_formatter
+        .extract_credentials(
+            &token,
+            Some(&credential_schema),
+            Box::new(verify_mock),
+            None,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        credentials.issuer_did,
+        Some(
+            "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527"
+                .parse()
+                .unwrap()
+        )
+    );
+
+    let expected_subject = "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlpwOXFMYVRKTWh1UC1kcE1hOXBMbHBxWmNRNGNoVkRKeVNXcmlzQUFpMmciLCJ5IjoieHVWdTVYZ1BOUUstUDBUc0RsaGE4cDVNZkFEZVpoU2dTNzdLVVYzaGN2RSJ9";
+    assert_eq!(credentials.subject, Some(expected_subject.parse().unwrap()));
+
+    let expected_result = json!(
+        {
+            "place_of_origin": "N/A",
+            "birth_place": "Luzern",
+            "reference_id_type": "Self-Declared",
+            "age_birth_year": "1848",
+            "verification_type": "Self-Service",
+            "issuing_authority": "Beta Credential Service BCS",
+            "verification_organization": "Beta Credential Service BCS",
+            "issuing_country": "CH",
+            "reference_id_expiry_date": "2030-05-05",
+            "age_over_16": "true",
+            "age_over_18": "true",
+            "age_over_65": "true",
+            "family_name": "National",
+            "additional_person_info": "N/A",
+            "issuance_date": "2025-05-05",
+            "document_number": "BETA-ID-SKWC6PLE",
+            "given_name": "Helvetia",
+            "sex": "2",
+            "personal_administrative_number": "756.3658.1881.91",
+            "portrait": "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAVYAAAHOCAYAAADDmiGtAAAOiklEQVR4Xu3UsQ0AAAjDMPr/0zyR0RzQwULZOQIECBBIBZauGSNAgACBE1ZPQIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBB4VfsBz6y9icEAAAAASUVORK5CYII=",
+            "nationality": "CH",
+            "birth_date": "1848-09-12",
+            "expiry_date": "2025-08-05"
+        }
+    );
     let claim_values_as_json = credentials
         .claims
         .claims

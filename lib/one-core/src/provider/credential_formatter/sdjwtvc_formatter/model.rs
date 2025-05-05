@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use serde_with::{serde_as, skip_serializing_none};
 use url::Url;
 
@@ -27,7 +27,7 @@ pub struct SdJwtVc {
     pub status: Option<SdJwtVcStatus>,
 
     #[serde(flatten)]
-    pub public_claims: HashMap<String, Value>,
+    pub public_claims: Map<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

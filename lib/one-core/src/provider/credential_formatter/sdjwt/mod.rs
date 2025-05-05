@@ -39,19 +39,18 @@ pub(crate) enum SdJwtType {
 
 pub(crate) async fn format_credential<T: Serialize>(
     credential: VcdmCredential,
+    claims: Value,
     additional_inputs: SdJwtFormattingInputs,
     auth_fn: AuthenticationFn,
     hasher: &dyn Hasher,
     did_method_provider: &dyn DidMethodProvider,
-    credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<String, FormatterError> {
     let issuer = credential.issuer.to_did_value()?.to_string();
     let id = credential.id.clone();
     let issued_at = credential.valid_from.or(credential.issuance_date);
     let expires_at = credential.valid_until.or(credential.expiration_date);
-    let (payload, disclosures) =
-        format_hashed_credential(credential, hasher, credential_to_claims, digests_to_payload)?;
+    let (payload, disclosures) = format_hashed_credential(&claims, hasher, digests_to_payload)?;
 
     let proof_of_possession_key = if let Some(ref holder_did) = additional_inputs.holder_did {
         let did_document = did_method_provider
@@ -106,13 +105,11 @@ pub(crate) async fn format_credential<T: Serialize>(
 }
 
 fn format_hashed_credential<T>(
-    credential: VcdmCredential,
+    claims: &Value,
     hasher: &dyn Hasher,
-    credential_to_claims: fn(credential: &VcdmCredential) -> Result<Value, FormatterError>,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<(T, Vec<String>), FormatterError> {
-    let claims = credential_to_claims(&credential)?;
-    let (disclosures, digests) = compute_object_disclosures(&claims, hasher)?;
+    let (disclosures, digests) = compute_object_disclosures(claims, hasher)?;
     let payload = digests_to_payload(digests)?;
     Ok((payload, disclosures))
 }

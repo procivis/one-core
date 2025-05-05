@@ -66,3 +66,16 @@ verificationProtocol:
     order: 4
     type: "OPENID4VP_PROXIMITY_DRAFT00"
     params: {}
+datatype:
+  SWIYU_PICTURE:
+    display:
+      en: "Picture (SWIYU)"
+      de: "Bild (SWIYU)"
+    type: "FILE"
+    order: 403
+    params:
+      public:
+        accept:
+          - image/jpeg
+        fileSize: 4194304
+        showAs: IMAGE

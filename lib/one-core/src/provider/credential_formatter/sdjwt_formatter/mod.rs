@@ -81,13 +81,14 @@ impl CredentialFormatter for SDJWTFormatter {
         let cred = vcdm.clone();
         let payload_from_digests =
             |digests: Vec<String>| vc_from_credential(cred, digests, HASH_ALG);
+        let claims = credential_to_claims(&vcdm)?;
         format_credential(
             vcdm,
+            claims,
             inputs,
             auth_fn,
             &*self.crypto.get_hasher(HASH_ALG)?,
             &*self.did_method_provider,
-            credential_to_claims,
             payload_from_digests,
         )
         .await
