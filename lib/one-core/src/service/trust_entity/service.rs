@@ -11,7 +11,7 @@ use super::mapper::{
     trust_entity_from_request, update_request_from_dto,
 };
 use super::TrustEntityService;
-use crate::common_mapper::{get_or_create_did, DidRole};
+use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
@@ -107,9 +107,10 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorIsDisabled.into());
         }
 
-        let did = get_or_create_did(
+        let (did, _) = get_or_create_did_and_identifier(
             &*self.did_method_provider,
             &*self.did_repository,
+            &*self.identifier_repository,
             &None,
             &did_value,
             DidRole::Verifier,

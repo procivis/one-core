@@ -51,6 +51,7 @@ use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -84,6 +85,7 @@ impl OpenID4VPProximityDraft00 {
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -94,6 +96,7 @@ impl OpenID4VPProximityDraft00 {
             proof_repository.clone(),
             interaction_repository.clone(),
             did_repository.clone(),
+            identifier_repository.clone(),
             did_method_provider.clone(),
             formatter_provider.clone(),
             key_algorithm_provider.clone(),
@@ -112,6 +115,7 @@ impl OpenID4VPProximityDraft00 {
                     interaction_repository,
                     proof_repository,
                     did_repository,
+                    identifier_repository,
                     key_algorithm_provider,
                     formatter_provider,
                     did_method_provider,

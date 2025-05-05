@@ -12,7 +12,7 @@ use super::dto::OpenID4VCICredentialResponseDTO;
 use super::OID4VCIDraft13Service;
 use crate::common_mapper::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
-    get_exchange_param_token_expires_in, get_or_create_did, DidRole,
+    get_exchange_param_token_expires_in, get_or_create_did_and_identifier, DidRole,
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::IssuanceProtocolType;
@@ -325,9 +325,10 @@ impl OID4VCIDraft13Service {
             .await
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
 
-            let did = get_or_create_did(
+            let (did, _) = get_or_create_did_and_identifier(
                 &*self.did_method_provider,
                 &*self.did_repository,
+                &*self.identifier_repository,
                 &schema.organisation,
                 &holder_did_value,
                 DidRole::Holder,

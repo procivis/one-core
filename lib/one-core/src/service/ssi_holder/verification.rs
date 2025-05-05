@@ -6,7 +6,7 @@ use url::Url;
 
 use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
 use super::SSIHolderService;
-use crate::common_mapper::{get_or_create_did, DidRole, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{get_or_create_did_and_identifier, DidRole, NESTED_CLAIM_MARKER};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
@@ -166,6 +166,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.identifier_repository.clone(),
             self.did_method_provider.clone(),
         );
 
@@ -427,6 +428,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.identifier_repository.clone(),
             self.did_method_provider.clone(),
         );
 
@@ -475,9 +477,10 @@ impl SSIHolderService {
                     let did_value = DidValue::from_str(&did_value).map_err(|_| {
                         ServiceError::MappingError("failed to parse did value".to_string())
                     })?;
-                    let did = get_or_create_did(
+                    let (did, _) = get_or_create_did_and_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
+                        &*self.identifier_repository,
                         &interaction.organisation,
                         &did_value,
                         DidRole::Verifier,

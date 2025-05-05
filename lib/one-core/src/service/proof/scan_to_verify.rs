@@ -3,7 +3,9 @@ use shared_types::ProofId;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use super::ProofService;
-use crate::common_mapper::{extracted_credential_to_model, get_or_create_did, DidRole};
+use crate::common_mapper::{
+    extracted_credential_to_model, get_or_create_did_and_identifier, DidRole,
+};
 use crate::config::validator::transport::get_first_available_transport;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -206,9 +208,10 @@ impl ProofService {
             claim_schemas.push(claim_schema.to_owned());
         }
 
-        let issuer_did = get_or_create_did(
+        let (issuer_did, _) = get_or_create_did_and_identifier(
             &*self.did_method_provider,
             &*self.did_repository,
+            &*self.identifier_repository,
             &proof_schema.organisation,
             issuer_did,
             DidRole::Issuer,

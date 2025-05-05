@@ -21,6 +21,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::history::HistoryAction;
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -33,6 +34,7 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
@@ -99,44 +101,69 @@ pub enum DidRole {
     Verifier,
 }
 
-pub(crate) async fn get_or_create_did(
+pub(crate) async fn get_or_create_did_and_identifier(
     did_method_provider: &dyn DidMethodProvider,
     did_repository: &dyn DidRepository,
+    identifier_repository: &dyn IdentifierRepository,
     organisation: &Option<Organisation>,
     did_value: &DidValue,
     did_role: DidRole,
-) -> Result<Did, ServiceError> {
-    Ok(
-        match did_repository
-            .get_did_by_value(did_value, &DidRelations::default())
-            .await?
-        {
-            Some(did) => did,
-            None => {
-                let id = Uuid::new_v4();
-                let did_method = did_method_provider.get_did_method_id(did_value).ok_or(
-                    ServiceError::MissingProvider(MissingProviderError::DidMethod(
-                        did_value.method().to_string(),
-                    )),
-                )?;
-                let did = Did {
-                    id: DidId::from(id),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    name: format!("{did_role} {id}"),
-                    organisation: organisation.to_owned(),
-                    did: did_value.to_owned(),
-                    did_method,
-                    did_type: DidType::Remote,
-                    keys: None,
-                    deactivated: false,
-                    log: None,
-                };
-                did_repository.create_did(did.clone()).await?;
-                did
-            }
-        },
-    )
+) -> Result<(Did, Identifier), ServiceError> {
+    let did = match did_repository
+        .get_did_by_value(did_value, &DidRelations::default())
+        .await?
+    {
+        Some(did) => did,
+        None => {
+            let id = Uuid::new_v4();
+            let did_method = did_method_provider.get_did_method_id(did_value).ok_or(
+                ServiceError::MissingProvider(MissingProviderError::DidMethod(
+                    did_value.method().to_string(),
+                )),
+            )?;
+            let did = Did {
+                id: DidId::from(id),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: format!("{did_role} {id}"),
+                organisation: organisation.to_owned(),
+                did: did_value.to_owned(),
+                did_method,
+                did_type: DidType::Remote,
+                keys: None,
+                deactivated: false,
+                log: None,
+            };
+            did_repository.create_did(did.clone()).await?;
+            did
+        }
+    };
+
+    let identifier = match identifier_repository
+        .get_from_did_id(did.id, &Default::default())
+        .await?
+    {
+        Some(identifier) => identifier,
+        None => {
+            let identifier = Identifier {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: did.name.to_owned(),
+                r#type: IdentifierType::Did,
+                is_remote: did.did_type == DidType::Remote,
+                status: IdentifierStatus::Active,
+                deleted_at: None,
+                organisation: organisation.to_owned(),
+                did: Some(did.to_owned()),
+                key: None,
+            };
+            identifier_repository.create(identifier.clone()).await?;
+            identifier
+        }
+    };
+
+    Ok((did, identifier))
 }
 
 pub fn value_to_model_claims(

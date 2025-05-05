@@ -3,19 +3,21 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{DidValue, OrganisationId};
 
-use crate::common_mapper::{get_or_create_did, DidRole};
+use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
 };
 use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
 /// Interface to be implemented in order to use an exchange protocol.
@@ -50,12 +52,12 @@ pub(crate) trait StorageProxy: Send + Sync {
     /// Obtain a DID by its address, from a chosen storage layer.
     async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>>;
 
-    async fn get_or_create_did(
+    async fn get_or_create_did_and_identifier(
         &self,
         organisation: &Option<Organisation>,
         did_value: &DidValue,
         did_role: DidRole,
-    ) -> anyhow::Result<Did>;
+    ) -> anyhow::Result<(Did, Identifier)>;
 }
 pub(crate) type StorageAccess = dyn StorageProxy;
 
@@ -64,6 +66,7 @@ pub(crate) struct StorageProxyImpl {
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub credentials: Arc<dyn CredentialRepository>,
     pub dids: Arc<dyn DidRepository>,
+    pub identifiers: Arc<dyn IdentifierRepository>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
 }
 
@@ -73,6 +76,7 @@ impl StorageProxyImpl {
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
         dids: Arc<dyn DidRepository>,
+        identifiers: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
     ) -> Self {
         Self {
@@ -80,6 +84,7 @@ impl StorageProxyImpl {
             credential_schemas,
             credentials,
             dids,
+            identifiers,
             did_method_provider,
         }
     }
@@ -164,20 +169,21 @@ impl StorageProxy for StorageProxyImpl {
             .context("Could not fetch did by value")
     }
 
-    async fn get_or_create_did(
+    async fn get_or_create_did_and_identifier(
         &self,
         organisation: &Option<Organisation>,
         did_value: &DidValue,
         did_role: DidRole,
-    ) -> anyhow::Result<Did> {
-        get_or_create_did(
+    ) -> anyhow::Result<(Did, Identifier)> {
+        get_or_create_did_and_identifier(
             &*self.did_method_provider,
             &*self.dids,
+            &*self.identifiers,
             organisation,
             did_value,
             did_role,
         )
         .await
-        .context("get or create did")
+        .context("get or create did and identifier")
     }
 }

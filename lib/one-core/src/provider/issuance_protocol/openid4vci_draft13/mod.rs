@@ -1095,9 +1095,14 @@ async fn handle_credential_invitation(
     let issuer_did = match credential_offer.issuer_did {
         Some(issuer_did) => Some(
             storage_access
-                .get_or_create_did(&Some(organisation.clone()), &issuer_did, DidRole::Issuer)
+                .get_or_create_did_and_identifier(
+                    &Some(organisation.clone()),
+                    &issuer_did,
+                    DidRole::Issuer,
+                )
                 .await
-                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?,
+                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
+                .0,
         ),
         None => None,
     };

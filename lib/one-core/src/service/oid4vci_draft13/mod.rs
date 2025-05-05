@@ -10,6 +10,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
 pub mod dto;
@@ -27,6 +28,7 @@ pub struct OID4VCIDraft13Service {
     config: Arc<core_config::CoreConfig>,
     protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -42,6 +44,7 @@ impl OID4VCIDraft13Service {
         config: Arc<core_config::CoreConfig>,
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -56,6 +59,7 @@ impl OID4VCIDraft13Service {
             config,
             protocol_provider,
             did_repository,
+            identifier_repository,
             did_method_provider,
             key_algorithm_provider,
             formatter_provider,
@@ -71,6 +75,7 @@ impl OID4VCIDraft13Service {
         config: Arc<core_config::CoreConfig>,
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -84,6 +89,7 @@ impl OID4VCIDraft13Service {
             config,
             protocol_provider,
             did_repository,
+            identifier_repository,
             did_method_provider,
             key_algorithm_provider,
             formatter_provider,

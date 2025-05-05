@@ -11,7 +11,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::common_mapper::{encode_cbor_base64, get_or_create_did, DidRole};
+use crate::common_mapper::{encode_cbor_base64, get_or_create_did_and_identifier, DidRole};
 use crate::config::core_config::TransportType;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -204,14 +204,16 @@ impl ProofService {
                     .ok();
                 let holder_did_id = if let Some(holder_did_value) = holder_did_value {
                     Some(
-                        get_or_create_did(
+                        get_or_create_did_and_identifier(
                             &*self.did_method_provider,
                             &*self.did_repository,
+                            &*self.identifier_repository,
                             &Some(organisation.to_owned()),
                             holder_did_value,
                             DidRole::Holder,
                         )
                         .await?
+                        .0
                         .id,
                     )
                 } else {
@@ -226,6 +228,7 @@ impl ProofService {
                         proved_credential,
                         organisation,
                         &*self.did_repository,
+                        &*self.identifier_repository,
                         &*self.did_method_provider,
                     )
                     .await?;

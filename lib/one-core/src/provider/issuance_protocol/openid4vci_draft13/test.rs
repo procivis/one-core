@@ -22,6 +22,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -273,9 +274,29 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
     let mut storage_proxy = MockStorageProxy::default();
     let credential_clone = credential.clone();
     storage_proxy
-        .expect_get_or_create_did()
+        .expect_get_or_create_did_and_identifier()
         .times(1)
-        .returning(move |_, _, _| Ok(credential_clone.issuer_did.as_ref().unwrap().clone()));
+        .returning(move |_, _, _| {
+            let did = credential_clone.issuer_did.as_ref().unwrap().clone();
+            Ok((
+                did.clone(),
+                Identifier {
+                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                        .unwrap()
+                        .into(),
+                    did: Some(did.clone()),
+                    created_date: did.created_date,
+                    last_modified: did.last_modified,
+                    name: did.name,
+                    r#type: IdentifierType::Did,
+                    is_remote: true,
+                    status: IdentifierStatus::Active,
+                    deleted_at: None,
+                    organisation: did.organisation,
+                    key: None,
+                },
+            ))
+        });
 
     inner_test_handle_invitation_credential_by_ref_success(
         storage_proxy,

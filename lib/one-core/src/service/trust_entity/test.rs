@@ -15,6 +15,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::trust_management::provider::MockTrustManagementProvider;
 use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -27,6 +28,7 @@ struct TestData {
     pub trust_anchor_repository: MockTrustAnchorRepository,
     pub trust_entity_repository: MockTrustEntityRepository,
     pub did_repository: MockDidRepository,
+    pub identifier_repository: MockIdentifierRepository,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub trust_provider: MockTrustManagementProvider,
@@ -39,6 +41,7 @@ fn setup_service(test_data: TestData) -> TrustEntityService {
         Arc::new(test_data.trust_anchor_repository),
         Arc::new(test_data.trust_entity_repository),
         Arc::new(test_data.did_repository),
+        Arc::new(test_data.identifier_repository),
         Arc::new(test_data.did_method_provider),
         Arc::new(test_data.key_algorithm_provider),
         Arc::new(test_data.trust_provider),

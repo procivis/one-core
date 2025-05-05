@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::{Fields, FormatType, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -44,6 +45,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
 };
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::storage_proxy::MockStorageProxy;
@@ -56,6 +58,7 @@ struct TestInputs<'a> {
     pub interaction_repository: MockInteractionRepository,
     pub proof_repository: MockProofRepository,
     pub did_repository: MockDidRepository,
+    pub identifier_repository: MockIdentifierRepository,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -97,6 +100,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
         Arc::new(inputs.did_repository),
+        Arc::new(inputs.identifier_repository),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.did_method_provider),
@@ -193,6 +197,26 @@ async fn test_handle_invitation_success() {
                 keys: None,
                 organisation: None,
                 log: None,
+            }))
+        });
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .once()
+        .returning(move |did_id, _| {
+            Ok(Some(Identifier {
+                id: Uuid::from(did_id).into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "verifier".to_string(),
+                organisation: None,
+                did: None,
+                key: None,
+                r#type: IdentifierType::Did,
+                is_remote: true,
+                status: IdentifierStatus::Active,
+                deleted_at: None,
             }))
         });
 
@@ -332,6 +356,7 @@ async fn test_handle_invitation_success() {
         interaction_repository,
         did_method_provider,
         did_repository,
+        identifier_repository,
         key_algorithm_provider: mock_key_algorithm_provider,
         ..Default::default()
     });

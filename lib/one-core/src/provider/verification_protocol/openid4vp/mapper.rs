@@ -17,7 +17,7 @@ use super::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use crate::common_mapper::{
-    get_or_create_did, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
+    get_or_create_did_and_identifier, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
 };
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
@@ -53,6 +53,7 @@ use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::oidc::map_to_openid4vp_format;
 
@@ -597,19 +598,22 @@ pub(crate) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,
     did_repository: &dyn DidRepository,
+    identifier_repository: &dyn IdentifierRepository,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<Credential, ServiceError> {
-    let issuer_did = get_or_create_did(
+    let (issuer_did, _) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
+        identifier_repository,
         &Some(organisation.to_owned()),
         &proved_credential.issuer_did_value,
         DidRole::Issuer,
     )
     .await?;
-    let holder_did = get_or_create_did(
+    let (holder_did, _) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
+        identifier_repository,
         &Some(organisation.to_owned()),
         &proved_credential.holder_did_value,
         DidRole::Holder,

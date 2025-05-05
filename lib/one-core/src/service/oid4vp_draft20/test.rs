@@ -37,6 +37,7 @@ use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -52,6 +53,7 @@ struct Mocks {
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub did_repository: MockDidRepository,
+    pub identifier_repository: MockIdentifierRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -68,6 +70,7 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
         Arc::new(mocks.did_repository),
+        Arc::new(mocks.identifier_repository),
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),

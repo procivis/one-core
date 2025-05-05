@@ -5,7 +5,7 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
 
 use super::common::to_cbor;
 use crate::common_mapper::{
-    extracted_credential_to_model, get_or_create_did, DidRole, NESTED_CLAIM_MARKER,
+    extracted_credential_to_model, get_or_create_did_and_identifier, DidRole, NESTED_CLAIM_MARKER,
 };
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
@@ -21,6 +21,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
@@ -286,11 +287,13 @@ fn extract_matching_requested_claim(
     }))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn accept_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
     holder_did: DidValue,
     did_repository: &dyn DidRepository,
+    identifier_repository: &dyn IdentifierRepository,
     did_method_provider: &dyn DidMethodProvider,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
@@ -370,9 +373,10 @@ pub(crate) async fn accept_proof(
             .push(proved_claim);
     }
 
-    let holder_did = get_or_create_did(
+    let (holder_did, _) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
+        identifier_repository,
         &proof_schema.organisation,
         &holder_did,
         DidRole::Holder,
@@ -397,9 +401,10 @@ pub(crate) async fn accept_proof(
                 .ok_or(ServiceError::MappingError(
                     "issuer_did is missing".to_string(),
                 ))?;
-        let issuer_did = get_or_create_did(
+        let (issuer_did, _) = get_or_create_did_and_identifier(
             did_method_provider,
             did_repository,
+            identifier_repository,
             &proof_schema.organisation,
             issuer_did,
             DidRole::Issuer,

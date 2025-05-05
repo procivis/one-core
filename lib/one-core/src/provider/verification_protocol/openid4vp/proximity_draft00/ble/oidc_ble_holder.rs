@@ -15,7 +15,7 @@ use super::{
     IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
     TRANSFER_SUMMARY_REPORT_UUID,
 };
-use crate::common_mapper::{get_or_create_did, DidRole};
+use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
@@ -44,6 +44,7 @@ use crate::provider::verification_protocol::{
     deserialize_interaction_data, VerificationProtocolError,
 };
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCodeMixin;
@@ -52,6 +53,7 @@ use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 pub(crate) struct OpenID4VCBLEHolder {
     pub proof_repository: Arc<dyn ProofRepository>,
     pub did_repository: Arc<dyn DidRepository>,
+    pub identifier_repository: Arc<dyn IdentifierRepository>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub ble: BleWaiter,
@@ -62,6 +64,7 @@ impl OpenID4VCBLEHolder {
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         ble: BleWaiter,
     ) -> Self {
@@ -69,6 +72,7 @@ impl OpenID4VCBLEHolder {
             proof_repository,
             interaction_repository,
             did_repository,
+            identifier_repository,
             did_method_provider,
             ble,
         }
@@ -95,6 +99,7 @@ impl OpenID4VCBLEHolder {
     ) -> Result<Did, VerificationProtocolError> {
         let interaction_repository = self.interaction_repository.clone();
         let did_repository = self.did_repository.clone();
+        let identifier_repository = self.identifier_repository.clone();
         let did_method_provider = self.did_method_provider.clone();
 
         let result = self
@@ -149,7 +154,7 @@ impl OpenID4VCBLEHolder {
 
                             let now = OffsetDateTime::now_utc();
                             let organisation = Some(organisation);
-                            let verifier_did = {
+                            let (verifier_did, _) = {
                                 let did_value = DidValue::from_did_url(request.client_id.as_str())
                                     .map_err(|_| {
                                         VerificationProtocolError::InvalidRequest(format!(
@@ -158,7 +163,7 @@ impl OpenID4VCBLEHolder {
                                         ))
                                     })?;
 
-                                get_or_create_did(&*did_method_provider, &*did_repository, &organisation, &did_value, DidRole::Verifier)
+                                    get_or_create_did_and_identifier(&*did_method_provider, &*did_repository, &*identifier_repository, &organisation, &did_value, DidRole::Verifier)
                                     .await
                                     .map_err(|_| {
                                         VerificationProtocolError::Failed(format!(

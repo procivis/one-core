@@ -44,6 +44,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
@@ -832,6 +833,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         validity_credential_repository: Arc::new(MockValidityCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),

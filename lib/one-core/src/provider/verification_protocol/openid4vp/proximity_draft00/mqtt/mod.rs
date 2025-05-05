@@ -20,7 +20,7 @@ use super::{
     create_interaction_and_proof, create_presentation, prepare_proof_share,
     CreatePresentationParams, OpenID4VPProximityDraft00Params, ProofShareParams,
 };
-use crate::common_mapper::{get_or_create_did, DidRole};
+use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
 use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::InteractionId;
@@ -49,6 +49,7 @@ use crate::provider::verification_protocol::{
     deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
 };
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::storage_proxy::StorageAccess;
@@ -71,6 +72,7 @@ pub(crate) struct OpenId4VcMqtt {
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
 
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -98,6 +100,7 @@ impl OpenId4VcMqtt {
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -111,6 +114,7 @@ impl OpenId4VcMqtt {
             handle: Mutex::new(HashMap::new()),
             interaction_repository,
             did_repository,
+            identifier_repository,
             key_algorithm_provider,
             proof_repository,
             formatter_provider,
@@ -355,7 +359,7 @@ impl OpenId4VcMqtt {
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         let organisation_as_option = Some(organisation.clone());
-        let verifier_did = {
+        let (verifier_did, _) = {
             let did_value =
                 DidValue::from_did_url(presentation_request.payload.custom.client_id.as_str())
                     .map_err(|_| {
@@ -365,9 +369,10 @@ impl OpenId4VcMqtt {
                         ))
                     })?;
 
-            get_or_create_did(
+            get_or_create_did_and_identifier(
                 &*self.did_method_provider,
                 &*self.did_repository,
+                &*self.identifier_repository,
                 &organisation_as_option,
                 &did_value,
                 DidRole::Verifier,

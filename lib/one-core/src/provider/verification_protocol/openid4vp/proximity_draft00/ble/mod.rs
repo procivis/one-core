@@ -47,6 +47,7 @@ use crate::provider::verification_protocol::{
     deserialize_interaction_data, VerificationProtocolError,
 };
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::storage_proxy::StorageAccess;
@@ -180,6 +181,7 @@ pub(crate) struct OpenID4VCBLE {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -195,6 +197,7 @@ impl OpenID4VCBLE {
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -207,6 +210,7 @@ impl OpenID4VCBLE {
             proof_repository,
             interaction_repository,
             did_repository,
+            identifier_repository,
             formatter_provider,
             did_method_provider,
             key_algorithm_provider,
@@ -305,6 +309,7 @@ impl OpenID4VCBLE {
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
             self.did_repository.clone(),
+            self.identifier_repository.clone(),
             self.did_method_provider.clone(),
             ble,
         );
@@ -357,6 +362,7 @@ impl OpenID4VCBLE {
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
             self.did_repository.clone(),
+            self.identifier_repository.clone(),
             self.did_method_provider.clone(),
             self.ble.clone().ok_or_else(|| {
                 VerificationProtocolError::Failed(
@@ -399,6 +405,7 @@ impl OpenID4VCBLE {
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
             self.did_repository.clone(),
+            self.identifier_repository.clone(),
             self.did_method_provider.clone(),
             ble,
         );

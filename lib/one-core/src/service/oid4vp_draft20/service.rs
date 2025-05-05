@@ -16,7 +16,8 @@ use super::proof_request::{
 };
 use super::OID4VPDraft20Service;
 use crate::common_mapper::{
-    encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_did, DidRole,
+    encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_did_and_identifier,
+    DidRole,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType;
@@ -299,14 +300,16 @@ impl OID4VPDraft20Service {
                     .ok();
                 let holder_did_id = if let Some(holder_did_value) = holder_did_value {
                     Some(
-                        get_or_create_did(
+                        get_or_create_did_and_identifier(
                             &*self.did_method_provider,
                             &*self.did_repository,
+                            &*self.identifier_repository,
                             &Some(organisation.to_owned()),
                             holder_did_value,
                             DidRole::Holder,
                         )
                         .await?
+                        .0
                         .id,
                     )
                 } else {
@@ -321,6 +324,7 @@ impl OID4VPDraft20Service {
                         proved_credential,
                         organisation,
                         &*self.did_repository,
+                        &*self.identifier_repository,
                         &*self.did_method_provider,
                     )
                     .await?;

@@ -31,6 +31,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
@@ -108,6 +109,7 @@ pub(crate) async fn start_client(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), ServiceError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
@@ -128,6 +130,7 @@ pub(crate) async fn start_client(
                 key_algorithm_provider.clone(),
                 credential_repository.clone(),
                 did_repository.clone(),
+                identifier_repository.clone(),
                 proof_repository.clone(),
             )
             .await
@@ -183,6 +186,7 @@ async fn verifier_flow(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
@@ -206,6 +210,7 @@ async fn verifier_flow(
         key_algorithm_provider,
         credential_repository,
         did_repository,
+        identifier_repository,
         proof_repository,
     )
     .await;
@@ -229,6 +234,7 @@ async fn process_proof(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), anyhow::Error> {
     send_session_establishment(
@@ -326,6 +332,7 @@ async fn process_proof(
             key_algorithm_provider.clone(),
             credential_repository,
             did_repository,
+            identifier_repository,
             proof_repository.clone(),
         )
         .await
@@ -417,6 +424,7 @@ async fn fill_proof_claims_and_credentials(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), anyhow::Error> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
@@ -440,6 +448,7 @@ async fn fill_proof_claims_and_credentials(
         proved_claims,
         holder_did,
         &*did_repository,
+        &*identifier_repository,
         &*did_method_provider,
         &*credential_repository,
         &*proof_repository,

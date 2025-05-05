@@ -20,6 +20,7 @@ use crate::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -41,6 +42,7 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::error::ServiceError;
 use crate::service::test_utilities::*;
@@ -53,6 +55,7 @@ struct Mocks {
     pub config: CoreConfig,
     pub exchange_provider: MockIssuanceProtocolProvider,
     pub did_repository: MockDidRepository,
+    pub identifier_repository: MockIdentifierRepository,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -68,6 +71,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.config),
         Arc::new(mocks.exchange_provider),
         Arc::new(mocks.did_repository),
+        Arc::new(mocks.identifier_repository),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.formatter_provider),
@@ -767,6 +771,7 @@ async fn test_create_credential_success() {
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
     let now = OffsetDateTime::now_utc();
 
     let schema = generic_credential_schema();
@@ -838,6 +843,25 @@ async fn test_create_credential_success() {
                 }))
             });
 
+        identifier_repository
+            .expect_get_from_did_id()
+            .once()
+            .returning(move |did_id, _| {
+                Ok(Some(Identifier {
+                    id: Uuid::from(did_id).into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "verifier".to_string(),
+                    organisation: None,
+                    did: None,
+                    key: None,
+                    r#type: IdentifierType::Did,
+                    is_remote: true,
+                    status: IdentifierStatus::Active,
+                    deleted_at: None,
+                }))
+            });
+
         credential_repository
             .expect_update_credential()
             .once()
@@ -903,6 +927,7 @@ async fn test_create_credential_success() {
         config: generic_config().core,
         exchange_provider,
         did_repository,
+        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
         ..Default::default()
@@ -939,6 +964,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
     let now = OffsetDateTime::now_utc();
 
     let mut schema = generic_credential_schema();
@@ -1011,6 +1037,25 @@ async fn test_create_credential_success_sd_jwt_vc() {
                 }))
             });
 
+        identifier_repository
+            .expect_get_from_did_id()
+            .once()
+            .returning(move |did_id, _| {
+                Ok(Some(Identifier {
+                    id: Uuid::from(did_id).into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "verifier".to_string(),
+                    organisation: None,
+                    did: None,
+                    key: None,
+                    r#type: IdentifierType::Did,
+                    is_remote: true,
+                    status: IdentifierStatus::Active,
+                    deleted_at: None,
+                }))
+            });
+
         credential_repository
             .expect_update_credential()
             .once()
@@ -1076,6 +1121,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         config: generic_config().core,
         exchange_provider,
         did_repository,
+        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
         ..Default::default()
@@ -1110,6 +1156,7 @@ async fn test_create_credential_success_mdoc() {
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
     let now = OffsetDateTime::now_utc();
 
     let schema = CredentialSchema {
@@ -1185,6 +1232,25 @@ async fn test_create_credential_success_mdoc() {
                 }))
             });
 
+        identifier_repository
+            .expect_get_from_did_id()
+            .once()
+            .returning(move |did_id, _| {
+                Ok(Some(Identifier {
+                    id: Uuid::from(did_id).into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "verifier".to_string(),
+                    organisation: None,
+                    did: None,
+                    key: None,
+                    r#type: IdentifierType::Did,
+                    is_remote: true,
+                    status: IdentifierStatus::Active,
+                    deleted_at: None,
+                }))
+            });
+
         credential_repository
             .expect_update_credential()
             .once()
@@ -1250,6 +1316,7 @@ async fn test_create_credential_success_mdoc() {
         config: generic_config().core,
         exchange_provider,
         did_repository,
+        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
         ..Default::default()
@@ -1698,6 +1765,7 @@ async fn test_create_credential_issuer_failed() {
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
     let now = OffsetDateTime::now_utc();
 
     let schema = generic_credential_schema();
@@ -1763,6 +1831,25 @@ async fn test_create_credential_issuer_failed() {
                     keys: None,
                     deactivated: false,
                     log: None,
+                }))
+            });
+
+        identifier_repository
+            .expect_get_from_did_id()
+            .once()
+            .returning(move |did_id, _| {
+                Ok(Some(Identifier {
+                    id: Uuid::from(did_id).into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "verifier".to_string(),
+                    organisation: None,
+                    did: None,
+                    key: None,
+                    r#type: IdentifierType::Did,
+                    is_remote: true,
+                    status: IdentifierStatus::Active,
+                    deleted_at: None,
                 }))
             });
 
@@ -1839,6 +1926,7 @@ async fn test_create_credential_issuer_failed() {
         config: generic_config().core,
         exchange_provider,
         did_repository,
+        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
         ..Default::default()
