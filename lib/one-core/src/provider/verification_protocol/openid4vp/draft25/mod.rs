@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::BoxFuture;
-use mappers::create_openid4vp25_authorization_request;
+use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_scheme};
 use model::OpenID4Vp25Params;
 use one_crypto::utilities;
 use shared_types::KeyId;
@@ -177,7 +177,10 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 .ok_or(VerificationProtocolError::Failed(
                     "missing nonce".to_string(),
                 ))?,
-            audience: interaction_data.client_id,
+            audience: encode_client_id_with_scheme(
+                interaction_data.client_id,
+                interaction_data.client_id_scheme,
+            ),
         }))
     }
 

@@ -6,8 +6,7 @@ use shared_types::KeyId;
 use url::Url;
 
 use super::model::{
-    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams,
-    OpenID4VP20HolderInteractionData, OpenID4Vp20Params,
+    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
@@ -16,7 +15,8 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
+    ClientIdScheme, OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -222,7 +222,7 @@ impl TryFrom<OpenID4VP20AuthorizationRequestQueryParams> for OpenID4VP20Authoriz
     }
 }
 
-impl From<OpenID4VP20AuthorizationRequest> for OpenID4VP20HolderInteractionData {
+impl From<OpenID4VP20AuthorizationRequest> for OpenID4VPHolderInteractionData {
     fn from(value: OpenID4VP20AuthorizationRequest) -> Self {
         Self {
             client_id: value.client_id,

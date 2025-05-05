@@ -83,29 +83,3 @@ pub struct OpenID4VP20AuthorizationRequest {
     #[serde(default)]
     pub redirect_uri: Option<String>,
 }
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub(crate) struct OpenID4VP20HolderInteractionData {
-    pub response_type: Option<String>,
-    pub state: Option<String>,
-    pub nonce: Option<String>,
-    pub client_id_scheme: ClientIdScheme,
-    pub client_id: String,
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub client_metadata: Option<OpenID4VPClientMetadata>,
-    pub client_metadata_uri: Option<Url>,
-    pub response_mode: Option<String>,
-    pub response_uri: Option<Url>,
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    pub presentation_definition_uri: Option<Url>,
-
-    #[serde(default, skip_serializing)]
-    pub redirect_uri: Option<String>,
-
-    #[serde(default)]
-    pub verifier_did: Option<String>,
-}

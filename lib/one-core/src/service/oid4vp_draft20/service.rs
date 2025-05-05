@@ -285,6 +285,7 @@ impl OID4VPDraft20Service {
             &self.formatter_provider,
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
+            &self.config,
         )
         .await
         {

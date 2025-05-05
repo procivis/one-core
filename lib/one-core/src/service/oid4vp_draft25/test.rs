@@ -268,7 +268,7 @@ async fn test_submit_proof_failed_credential_suspended() {
             }],
         },
         client_id: "client_id".to_string(),
-        client_id_scheme: None,
+        client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();

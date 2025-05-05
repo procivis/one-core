@@ -568,7 +568,6 @@ pub(crate) fn validate_interaction_data(
         ));
     }
 
-    // TODO Update to 25
     // If the Client Identifier scheme redirect_uri is used in conjunction with the Response Mode direct_post, and the response_uri parameter is present, the client_id value MUST be equal to the response_uri value.
     // <https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-6.2-9>
     if interaction_data.client_id_scheme == ClientIdScheme::RedirectUri

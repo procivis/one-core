@@ -4,6 +4,7 @@ use std::sync::Arc;
 use shared_types::{CredentialSchemaId, KeyId};
 use time::{Duration, OffsetDateTime};
 
+use super::draft25::mappers::encode_client_id_with_scheme;
 use super::error::OpenID4VCError;
 use super::model::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -12,6 +13,7 @@ use super::model::{
     OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -103,6 +105,7 @@ pub(crate) fn oidc_verifier_presentation_definition(
     Ok(presentation_definition)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn oid4vp_verifier_process_submission(
     request: SubmissionRequestData,
     proof: Proof,
@@ -111,6 +114,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    config: &CoreConfig,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
     throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
         .or(throw_if_latest_proof_state_not_eq(
@@ -127,6 +131,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
         formatter_provider,
         key_algorithm_provider,
         revocation_method_provider,
+        config,
     )
     .await?;
     let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
@@ -149,6 +154,7 @@ async fn process_proof_submission(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    config: &CoreConfig,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let interaction_data = parse_interaction_content(interaction_data)?;
 
@@ -311,9 +317,33 @@ async fn process_proof_submission(
                 "Missing proof input schema for credential schema".to_owned(),
             ))?;
 
+        let holder_binding_token_audience = {
+            let proof_verification_protocol = config
+                .verification_protocol
+                .get_fields(&proof.exchange)
+                .map_err(|_| {
+                    OpenID4VCError::ValidationError(format!(
+                        "Verification Protocol {} not found in config",
+                        proof.exchange
+                    ))
+                })?;
+
+            match proof_verification_protocol.r#type {
+                VerificationProtocolType::OpenId4VpDraft25 => encode_client_id_with_scheme(
+                    interaction_data.client_id.clone(),
+                    interaction_data
+                        .client_id_scheme
+                        .ok_or(OpenID4VCError::ValidationError(
+                            "Client ID scheme is missing".to_string(),
+                        ))?,
+                ),
+                _ => interaction_data.client_id.clone(),
+            }
+        };
+
         let holder_binding_ctx = HolderBindingCtx {
             nonce: interaction_data.nonce.clone(),
-            audience: interaction_data.client_id.clone(),
+            audience: holder_binding_token_audience,
         };
 
         let (credential, mso) = validate_credential(

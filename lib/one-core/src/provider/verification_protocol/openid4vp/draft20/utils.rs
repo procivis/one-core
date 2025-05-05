@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::model::{
-    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams,
-    OpenID4VP20HolderInteractionData, OpenID4Vp20Params,
+    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
@@ -17,7 +16,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VpPresentationFormat,
+    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
 use crate::provider::verification_protocol::openid4vp::x509::extract_x5c_san_dns;
@@ -267,7 +267,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     params: &OpenID4Vp20Params,
-) -> Result<OpenID4VP20HolderInteractionData, VerificationProtocolError> {
+) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
     let query_params: OpenID4VP20AuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
@@ -311,7 +311,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
     }
 
     let interaction_data: OpenID4VP20AuthorizationRequest = query_params.try_into()?;
-    let mut interaction_data: OpenID4VP20HolderInteractionData = interaction_data.into();
+    let mut interaction_data: OpenID4VPHolderInteractionData = interaction_data.into();
 
     if let Some(token) = request {
         let request_token: DecomposedToken<OpenID4VP20AuthorizationRequest> =
@@ -455,7 +455,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
 }
 
 pub(crate) fn validate_interaction_data(
-    interaction_data: &OpenID4VP20HolderInteractionData,
+    interaction_data: &OpenID4VPHolderInteractionData,
 ) -> Result<(), VerificationProtocolError> {
     if interaction_data.redirect_uri.is_some() {
         return Err(VerificationProtocolError::InvalidRequest(

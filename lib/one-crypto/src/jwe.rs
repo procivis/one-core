@@ -382,7 +382,7 @@ fn derive_encryption_key(
 ) -> Result<SecretSlice<u8>, EncryptionError> {
     let key_len: u32 = match alg {
         EncryptionAlgorithm::A256GCM => 256,
-        EncryptionAlgorithm::A128CBCHS256 => 128,
+        EncryptionAlgorithm::A128CBCHS256 => 256,
     };
 
     let alg = alg.to_string();
