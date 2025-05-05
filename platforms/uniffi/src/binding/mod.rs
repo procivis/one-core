@@ -17,6 +17,7 @@ pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod history;
+pub mod identifier;
 pub mod interaction;
 pub mod jsonld;
 pub mod key;

@@ -17,6 +17,7 @@ use one_core::service::did::dto::{
 };
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
+use one_core::service::identifier::dto::CreateIdentifierDidRequestDTO;
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
@@ -50,6 +51,7 @@ use crate::binding::did::{DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use crate::binding::history::{
     HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
+use crate::binding::identifier::CreateIdentifierDidRequestBindingDTO;
 use crate::binding::interaction::HandleInvitationResponseBindingEnum;
 use crate::binding::key::KeyRequestBindingDTO;
 use crate::binding::organisation::{
@@ -684,6 +686,19 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
         Ok(Self {
             id: into_id(&value.id)?,
             name: value.name,
+        })
+    }
+}
+
+impl TryFrom<CreateIdentifierDidRequestBindingDTO> for CreateIdentifierDidRequestDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: CreateIdentifierDidRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            method: value.method,
+            keys: value.keys.try_into()?,
+            params: Some(json!(value.params)),
         })
     }
 }
