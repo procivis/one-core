@@ -13,6 +13,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -42,6 +43,7 @@ pub(crate) fn proof_from_handle_invitation(
     protocol: &str,
     redirect_uri: Option<String>,
     verifier_did: Option<Did>,
+    verifier_identifier: Option<Identifier>,
     interaction: Interaction,
     now: OffsetDateTime,
     verifier_key: Option<Key>,
@@ -63,7 +65,9 @@ pub(crate) fn proof_from_handle_invitation(
         schema: None,
         claims: None,
         verifier_did,
+        verifier_identifier,
         holder_did: None,
+        holder_identifier: None,
         interaction: Some(interaction),
         verifier_key,
     }

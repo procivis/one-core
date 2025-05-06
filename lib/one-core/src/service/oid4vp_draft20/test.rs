@@ -192,7 +192,9 @@ async fn test_presentation_definition_success() {
                     }),
                     claims: None,
                     verifier_did: None,
+                    verifier_identifier: None,
                     holder_did: None,
+                    holder_identifier: None,
                     verifier_key: None,
                     interaction: Some(Interaction {
                         id: Uuid::new_v4(),
@@ -557,7 +559,9 @@ async fn test_get_client_metadata_success() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     };

@@ -90,7 +90,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     .await;
 
     let (server_remote_holder_did, server_remote_holder_identifier) = holder.unwrap();
-    let (server_local_verifier_did, _) = verifier.unwrap();
+    let (server_local_verifier_did, server_local_verifier_identifier) = verifier.unwrap();
     let server_local_verifier_key = local_verifier_key.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -189,7 +189,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(server_remote_holder_did.clone()),
-                holder_identifier: Some(server_remote_holder_identifier),
+                holder_identifier: Some(server_remote_holder_identifier.clone()),
                 key: Some(server_issuer_key.unwrap()),
                 random_claims: true,
                 interaction: Some(credential_interaction.to_owned()),
@@ -266,7 +266,9 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         .create(
             None,
             &server_local_verifier_did,
+            &server_local_verifier_identifier,
             Some(&server_remote_holder_did),
+            Some(&server_remote_holder_identifier),
             Some(&proof_schema),
             ProofStateEnum::Pending,
             verification_protocol.as_ref(),
@@ -317,7 +319,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     .await;
 
     let (holder_local_holder_did, holder_local_holder_identifier) = holder_local.unwrap();
-    let (holder_remote_verifier_did, _) = verifier_remote.unwrap();
+    let (holder_remote_verifier_did, holder_remote_verifier_identifier) = verifier_remote.unwrap();
     let holder_local_holer_key = local_holer_key.unwrap();
 
     let (_, remote_issuer, _) = prepare_dids(
@@ -356,7 +358,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_local_holder_did.clone()),
-                holder_identifier: Some(holder_local_holder_identifier),
+                holder_identifier: Some(holder_local_holder_identifier.clone()),
                 credential: Some(credentials.unwrap()),
                 random_claims: true,
                 role: Some(CredentialRole::Holder),
@@ -466,7 +468,9 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         .create(
             Some(proof.id),
             &holder_remote_verifier_did,
+            &holder_remote_verifier_identifier,
             Some(&holder_local_holder_did),
+            Some(&holder_local_holder_identifier),
             None,
             ProofStateEnum::Requested,
             verification_protocol.as_ref(),

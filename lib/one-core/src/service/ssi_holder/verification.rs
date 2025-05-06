@@ -134,6 +134,14 @@ impl SSIHolderService {
             return Err(ValidationError::DidNotFound.into());
         };
 
+        let Some(holder_identifier) = self
+            .identifier_repository
+            .get_from_did_id(holder_did.id, &Default::default())
+            .await?
+        else {
+            return Err(ValidationError::DidNotFound.into());
+        };
+
         let selected_key = match submission.key_id {
             Some(key_id) => holder_did.find_key(&key_id, KeyRole::Authentication)?,
             None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
@@ -399,6 +407,7 @@ impl SSIHolderService {
                 &proof.id,
                 UpdateProofRequest {
                     holder_did_id: Some(holder_did.id),
+                    holder_identifier_id: Some(holder_identifier.id),
                     state: Some(state),
                     ..Default::default()
                 },

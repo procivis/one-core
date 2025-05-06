@@ -22,7 +22,7 @@ use uuid::Uuid;
 use super::mapper::{create_list_response, get_proof_claim_active_model};
 use super::model::ProofListItemModel;
 use super::ProofProvider;
-use crate::entity::{did, proof, proof_claim, proof_schema};
+use crate::entity::{did, identifier, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_update_data_layer_error;
 
@@ -156,9 +156,19 @@ impl ProofRepository for ProofProvider {
             Some(holder_did) => Set(Some(holder_did)),
         };
 
+        let holder_identifier_id = match proof.holder_identifier_id {
+            None => Unchanged(Default::default()),
+            Some(identifier_id) => Set(Some(identifier_id)),
+        };
+
         let verifier_did_id = match proof.verifier_did_id {
             None => Unchanged(Default::default()),
             Some(verifier_did_id) => Set(Some(verifier_did_id)),
+        };
+
+        let verifier_identifier_id = match proof.verifier_identifier_id {
+            None => Unchanged(Default::default()),
+            Some(identifier_id) => Set(Some(identifier_id)),
         };
 
         let interaction_id = match proof.interaction {
@@ -186,7 +196,9 @@ impl ProofRepository for ProofProvider {
             id: Unchanged(*proof_id),
             last_modified: Set(now),
             holder_did_id,
+            holder_identifier_id,
             verifier_did_id,
+            verifier_identifier_id,
             interaction_id,
             redirect_uri,
             transport,
@@ -240,6 +252,27 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         ])
         .column_as(proof::Column::Exchange, "exchange")
         .column_as(proof::Column::Transport, "transport")
+        // add related verifierIdentifier
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            proof::Relation::VerifierIdentifier.def(),
+        )
+        .column_as(identifier::Column::Id, "verifier_identifier_id")
+        .column_as(
+            identifier::Column::CreatedDate,
+            "verifier_identifier_created_date",
+        )
+        .column_as(
+            identifier::Column::LastModified,
+            "verifier_identifier_last_modified",
+        )
+        .column_as(identifier::Column::Name, "verifier_identifier_name")
+        .column_as(identifier::Column::Type, "verifier_identifier_type")
+        .column_as(
+            identifier::Column::IsRemote,
+            "verifier_identifier_is_remote",
+        )
+        .column_as(identifier::Column::Status, "verifier_identifier_status")
         // add related verifierDid
         .join(
             sea_orm::JoinType::LeftJoin,
@@ -360,6 +393,17 @@ impl ProofProvider {
             }
         }
 
+        if let Some(identifier_relations) = &relations.verifier_identifier {
+            if let Some(verifier_identifier_id) = &proof_model.verifier_identifier_id {
+                let verifier_identifier = self
+                    .identifier_repository
+                    .get(*verifier_identifier_id, identifier_relations)
+                    .await?
+                    .ok_or(DataLayerError::Db(anyhow!("Verifier identifier not found")))?;
+                proof.verifier_identifier = Some(verifier_identifier);
+            }
+        }
+
         if let Some(did_relations) = &relations.holder_did {
             if let Some(holder_did_id) = &proof_model.holder_did_id {
                 let holder_did_id = self
@@ -370,6 +414,17 @@ impl ProofProvider {
                         "Holder DID not found".to_string()
                     )))?;
                 proof.holder_did = Some(holder_did_id);
+            }
+        }
+
+        if let Some(identifier_relations) = &relations.holder_identifier {
+            if let Some(holder_identifier_id) = &proof_model.holder_identifier_id {
+                let holder_identifier = self
+                    .identifier_repository
+                    .get(*holder_identifier_id, identifier_relations)
+                    .await?
+                    .ok_or(DataLayerError::Db(anyhow!("Holder identifier not found")))?;
+                proof.holder_identifier = Some(holder_identifier);
             }
         }
 

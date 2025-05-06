@@ -272,6 +272,11 @@ async fn test_submit_proof_succeeds() {
         }))
     });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut proof_repository = MockProofRepository::new();
     proof_repository
         .expect_get_proof_by_interaction_id()
@@ -409,6 +414,7 @@ async fn test_submit_proof_succeeds() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
+        identifier_repository: Arc::new(identifier_repository),
         did_method_provider: Arc::new(did_method_provider),
         ..mock_ssi_holder_service()
     };
@@ -450,6 +456,11 @@ async fn test_submit_proof_repeating_claims() {
             ..dummy_did()
         }))
     });
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -627,6 +638,7 @@ async fn test_submit_proof_repeating_claims() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
+        identifier_repository: Arc::new(identifier_repository),
         did_method_provider: Arc::new(did_method_provider),
         ..mock_ssi_holder_service()
     };

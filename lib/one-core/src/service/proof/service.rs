@@ -113,10 +113,12 @@ impl ProofService {
                         }),
                     }),
                     verifier_did: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
+                    holder_identifier: Some(Default::default()),
                     verifier_key: None,
                     interaction: Some(Default::default()),
                 },
@@ -328,6 +330,14 @@ impl ProofService {
                 .await;
         }
 
+        let Some(verifier_identifier) = self
+            .identifier_repository
+            .get_from_did_id(request.verifier_did_id, &Default::default())
+            .await?
+        else {
+            return Err(EntityNotFoundError::Did(request.verifier_did_id).into());
+        };
+
         let Some(verifier_did) = self
             .did_repository
             .get_did(
@@ -419,6 +429,7 @@ impl ProofService {
                 proof_schema,
                 transport,
                 verifier_did,
+                verifier_identifier,
                 Some(verifier_key),
             ))
             .await?;
@@ -662,7 +673,9 @@ impl ProofService {
                 transport: transport.to_owned(),
                 claims: None,
                 verifier_did: None,
+                verifier_identifier: None,
                 holder_did: None,
+                holder_identifier: None,
                 verifier_key: None,
                 interaction: Some(interaction.clone()),
             })

@@ -82,7 +82,7 @@ use crate::service::proof::dto::{
 };
 use crate::service::proof::validator::validate_mdl_exchange;
 use crate::service::test_utilities::{
-    dummy_did, dummy_organisation, generic_config, get_dummy_date,
+    dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
 use crate::util::ble_resource::BleWaiter;
 
@@ -201,7 +201,9 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     }
@@ -308,6 +310,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: Some(Did {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
@@ -321,6 +324,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             deactivated: false,
             log: None,
         }),
+        holder_identifier: Some(dummy_identifier()),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Verifier,
@@ -434,7 +438,9 @@ async fn test_get_proof_exists() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
         role: ProofRole::Verifier,
@@ -474,12 +480,14 @@ async fn test_get_proof_exists() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -624,7 +632,9 @@ async fn test_get_proof_with_array_holder() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: Some(dummy_did()),
+        holder_identifier: Some(dummy_identifier()),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Holder,
@@ -664,12 +674,14 @@ async fn test_get_proof_with_array_holder() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -841,7 +853,9 @@ async fn test_get_proof_with_array_in_object_holder() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: Some(dummy_did()),
+        holder_identifier: Some(dummy_identifier()),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Holder,
@@ -881,12 +895,14 @@ async fn test_get_proof_with_array_in_object_holder() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -1063,7 +1079,9 @@ async fn test_get_proof_with_object_array_holder() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: Some(dummy_did()),
+        holder_identifier: Some(dummy_identifier()),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Holder,
@@ -1103,12 +1121,14 @@ async fn test_get_proof_with_object_array_holder() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -1286,7 +1306,9 @@ async fn test_get_proof_with_array() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
         role: ProofRole::Verifier,
@@ -1326,12 +1348,14 @@ async fn test_get_proof_with_array() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -1521,7 +1545,9 @@ async fn test_get_proof_with_array_in_object() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
         role: ProofRole::Verifier,
@@ -1561,12 +1587,14 @@ async fn test_get_proof_with_array_in_object() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -1762,7 +1790,9 @@ async fn test_get_proof_with_object_array() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
         role: ProofRole::Verifier,
@@ -1802,12 +1832,14 @@ async fn test_get_proof_with_object_array() {
                         }),
                     }),
                     verifier_did: Some(DidRelations::default()),
+                    verifier_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
+                    holder_identifier: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(Some(res_clone.clone())));
@@ -1926,7 +1958,9 @@ async fn test_get_proof_list_success() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     };
@@ -2052,6 +2086,11 @@ async fn test_create_proof_using_invalid_did_method() {
             }))
         });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
@@ -2085,6 +2124,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
     let service = setup_service(Repositories {
         did_repository,
+        identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         protocol_provider,
@@ -2171,6 +2211,11 @@ async fn test_create_proof_without_related_key() {
             }))
         });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
@@ -2213,6 +2258,7 @@ async fn test_create_proof_without_related_key() {
     let service = setup_service(Repositories {
         proof_repository,
         did_repository,
+        identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         protocol_provider,
@@ -2293,6 +2339,11 @@ async fn test_create_proof_with_related_key() {
             }))
         });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
@@ -2335,6 +2386,7 @@ async fn test_create_proof_with_related_key() {
     let service = setup_service(Repositories {
         proof_repository,
         did_repository,
+        identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         protocol_provider,
@@ -2401,6 +2453,11 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
             }))
         });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
@@ -2417,6 +2474,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
 
     let service = setup_service(Repositories {
         did_repository,
+        identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         config: generic_config().core,
@@ -2543,6 +2601,11 @@ async fn test_create_proof_did_deactivated_error() {
             }))
         });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
@@ -2559,6 +2622,7 @@ async fn test_create_proof_did_deactivated_error() {
 
     let service = setup_service(Repositories {
         did_repository,
+        identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         config: generic_config().core,
@@ -2750,6 +2814,11 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
             }))
         });
 
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
@@ -2769,6 +2838,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
 
     let service = setup_service(Repositories {
         did_repository,
+        identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         config: generic_config().core,

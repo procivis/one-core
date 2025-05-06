@@ -17,6 +17,7 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::History;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -624,6 +625,7 @@ pub fn proof_from_create_request(
     schema: ProofSchema,
     transport: String,
     verifier_did: Did,
+    verifier_identifier: Identifier,
     verifier_key: Option<Key>,
 ) -> Proof {
     Proof {
@@ -641,7 +643,9 @@ pub fn proof_from_create_request(
         transport,
         claims: None,
         verifier_did: Some(verifier_did),
+        verifier_identifier: Some(verifier_identifier),
         holder_did: None,
+        holder_identifier: None,
         verifier_key,
         interaction: None,
     }
@@ -669,7 +673,9 @@ pub fn proof_for_scan_to_verify(
         transport: transport.to_owned(),
         claims: None,
         verifier_did: None,
+        verifier_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

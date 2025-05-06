@@ -1,7 +1,7 @@
 use one_core::model::proof::{ProofRole as ModelProofRole, ProofStateEnum};
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{DidId, KeyId, ProofId, ProofSchemaId};
+use shared_types::{DidId, IdentifierId, KeyId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -22,7 +22,9 @@ pub struct Model {
     pub completed_date: Option<OffsetDateTime>,
 
     pub verifier_did_id: Option<DidId>,
+    pub verifier_identifier_id: Option<IdentifierId>,
     pub holder_did_id: Option<DidId>,
+    pub holder_identifier_id: Option<IdentifierId>,
     pub proof_schema_id: Option<ProofSchemaId>,
     pub verifier_key_id: Option<KeyId>,
     pub interaction_id: Option<String>,
@@ -66,6 +68,14 @@ pub enum Relation {
     )]
     VerifierDid,
     #[sea_orm(
+        belongs_to = "super::identifier::Entity",
+        from = "Column::VerifierIdentifierId",
+        to = "super::identifier::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    VerifierIdentifier,
+    #[sea_orm(
         belongs_to = "super::did::Entity",
         from = "Column::HolderDidId",
         to = "super::did::Column::Id",
@@ -73,6 +83,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     HolderDid,
+    #[sea_orm(
+        belongs_to = "super::identifier::Entity",
+        from = "Column::HolderIdentifierId",
+        to = "super::identifier::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    HolderIdentifier,
     #[sea_orm(
         belongs_to = "super::interaction::Entity",
         from = "Column::InteractionId",

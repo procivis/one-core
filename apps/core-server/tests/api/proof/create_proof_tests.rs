@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 
 use crate::fixtures::{
     self, assert_history_count, TestingConfigParams, TestingCredentialSchemaParams,
-    TestingDidParams,
+    TestingDidParams, TestingIdentifierParams,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -150,6 +150,15 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
         &organisation,
         Some(TestingDidParams {
             deactivated: Some(true),
+            ..Default::default()
+        }),
+    )
+    .await;
+    let _identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(did.clone()),
             ..Default::default()
         }),
     )

@@ -1,6 +1,6 @@
 use one_core::model::credential::{Credential, CredentialStateEnum};
-use one_core::model::did::{Did, KeyRole, RelatedKey};
-use one_core::model::identifier::Identifier;
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::Interaction;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
@@ -266,6 +266,20 @@ async fn setup_submittable_presentation(
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let holder_key = fixtures::create_key(
         &context.db.db_conn,
         organisation,
@@ -304,6 +318,19 @@ async fn setup_submittable_presentation(
         }),
     )
     .await;
+    let _holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = fixtures::create_credential_schema(
         &context.db.db_conn,
@@ -390,6 +417,8 @@ async fn setup_submittable_presentation(
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             None,
             ProofStateEnum::Requested,
@@ -418,6 +447,15 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     )
     .await;
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(verifier_did.clone()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let holder_key = fixtures::create_key(
         &db_conn,
@@ -457,6 +495,15 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         }),
     )
     .await;
+    let holder_identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(holder_did.clone()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (Uuid::new_v4(), "cat", true, "STRING", false), // Presentation 2 token 1
@@ -481,6 +528,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_did: Some(holder_did.clone()),
+            holder_identifier: Some(holder_identifier),
             credential: Some("TOKEN"),
             ..Default::default()
         },
@@ -587,6 +635,8 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     let proof = fixtures::create_proof(
         &db_conn,
         &verifier_did,
+        &verifier_identifier,
+        None,
         None,
         None,
         ProofStateEnum::Requested,

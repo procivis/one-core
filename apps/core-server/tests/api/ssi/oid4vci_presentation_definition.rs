@@ -1,4 +1,5 @@
-use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
 use one_core::model::proof::ProofStateEnum;
@@ -6,7 +7,7 @@ use one_core::model::proof_schema::ProofSchema;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
@@ -15,6 +16,7 @@ pub struct TestContextWithOID4VCIData {
     pub new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)>,
     pub proof_schema: ProofSchema,
     pub verifier_did: Did,
+    pub verifier_identifier: Identifier,
     pub interaction: Interaction,
     pub verifier_key: Key,
 }
@@ -100,6 +102,19 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let interaction = context
         .db
         .interactions
@@ -116,6 +131,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         new_claim_schemas,
         proof_schema,
         verifier_did,
+        verifier_identifier,
         interaction,
         verifier_key,
     }
@@ -129,6 +145,7 @@ async fn test_get_presentation_definition_success() {
         new_claim_schemas,
         proof_schema,
         verifier_did,
+        verifier_identifier,
         interaction,
         verifier_key,
         ..
@@ -140,6 +157,8 @@ async fn test_get_presentation_definition_success() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
@@ -210,6 +229,7 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
         context,
         proof_schema,
         verifier_did,
+        verifier_identifier,
         interaction,
         verifier_key,
         ..
@@ -221,6 +241,8 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
@@ -248,6 +270,7 @@ async fn test_get_presentation_definition_failed_wrong_state() {
         context,
         proof_schema,
         verifier_did,
+        verifier_identifier,
         interaction,
         verifier_key,
         ..
@@ -259,6 +282,8 @@ async fn test_get_presentation_definition_failed_wrong_state() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,

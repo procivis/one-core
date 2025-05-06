@@ -655,6 +655,7 @@ async fn handle_proof_invitation(
         VerificationProtocolType::OpenId4VpDraft25.as_ref(),
         holder_interaction_data.redirect_uri,
         None,
+        None,
         interaction,
         now,
         None,

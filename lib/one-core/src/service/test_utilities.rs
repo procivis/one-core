@@ -338,7 +338,9 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         }),
         claims: None,
         verifier_did: None,
+        verifier_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     }

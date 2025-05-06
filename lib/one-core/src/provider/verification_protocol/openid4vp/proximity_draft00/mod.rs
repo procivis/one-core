@@ -21,6 +21,7 @@ use super::model::{
 };
 use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
+use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -538,6 +539,7 @@ pub(super) async fn create_interaction_and_proof(
     interaction_data: Option<Vec<u8>>,
     organisation: Organisation,
     verifier_did: Option<Did>,
+    verifier_identifier: Option<Identifier>,
     verification_protocol_type: VerificationProtocolType,
     transport_type: TransportType,
     interaction_repository: &dyn InteractionRepository,
@@ -565,6 +567,7 @@ pub(super) async fn create_interaction_and_proof(
             verification_protocol_type.as_ref(),
             None,
             verifier_did,
+            verifier_identifier,
             interaction,
             now,
             None,

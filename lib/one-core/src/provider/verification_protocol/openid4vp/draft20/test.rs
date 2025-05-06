@@ -45,7 +45,7 @@ use crate::provider::verification_protocol::{
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::MockStorageProxy;
-use crate::service::test_utilities::dummy_organisation;
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
 
 #[derive(Default)]
 struct TestInputs {
@@ -386,7 +386,9 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         }),
         claims: None,
         verifier_did: None,
+        verifier_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     }
@@ -459,7 +461,9 @@ async fn test_share_proof_with_use_request_uri() {
         }),
         claims: None,
         verifier_did: Some(did.clone()),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     };

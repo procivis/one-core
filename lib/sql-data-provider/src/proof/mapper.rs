@@ -1,5 +1,6 @@
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
+use one_core::model::identifier::Identifier;
 use one_core::model::proof::{GetProofList, Proof, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
@@ -55,6 +56,37 @@ impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
 
     fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
+        let verifier_identifier = match value.verifier_identifier_id {
+            None => None,
+            Some(verifier_identifier_id) => Some(Identifier {
+                id: verifier_identifier_id,
+                created_date: value
+                    .verifier_identifier_created_date
+                    .ok_or(DataLayerError::MappingError)?,
+                last_modified: value
+                    .verifier_identifier_last_modified
+                    .ok_or(DataLayerError::MappingError)?,
+                name: value
+                    .verifier_identifier_name
+                    .ok_or(DataLayerError::MappingError)?,
+                did: None,
+                key: None,
+                organisation: None,
+                r#type: value
+                    .verifier_identifier_type
+                    .ok_or(DataLayerError::MappingError)?
+                    .into(),
+                is_remote: value
+                    .verifier_identifier_is_remote
+                    .ok_or(DataLayerError::MappingError)?,
+                status: value
+                    .verifier_identifier_status
+                    .ok_or(DataLayerError::MappingError)?
+                    .into(),
+                deleted_at: None,
+            }),
+        };
+
         let verifier_did = match value.verifier_did_id {
             None => None,
             Some(verifier_did_id) => Some(Did {
@@ -119,7 +151,9 @@ impl TryFrom<ProofListItemModel> for Proof {
             schema,
             claims: None,
             verifier_did,
+            verifier_identifier,
             holder_did: None,
+            holder_identifier: None,
             verifier_key: None,
             interaction: None,
         })
@@ -143,7 +177,9 @@ impl From<proof::Model> for Proof {
             schema: None,
             claims: None,
             verifier_did: None,
+            verifier_identifier: None,
             holder_did: None,
+            holder_identifier: None,
             verifier_key: None,
             interaction: None,
         }
@@ -152,7 +188,6 @@ impl From<proof::Model> for Proof {
 
 impl TryFrom<Proof> for proof::ActiveModel {
     type Error = DataLayerError;
-
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
         Ok(Self {
             id: Set(value.id),
@@ -168,6 +203,8 @@ impl TryFrom<Proof> for proof::ActiveModel {
             completed_date: Set(value.completed_date),
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),
+            verifier_identifier_id: Set(value.verifier_identifier.map(|identifier| identifier.id)),
+            holder_identifier_id: Set(value.holder_identifier.map(|identifier| identifier.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id)),
             verifier_key_id: Set(value.verifier_key.map(|key| key.id)),
             interaction_id: Set(value

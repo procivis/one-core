@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use shared_types::ProofId;
 
-use crate::fixtures::{create_organisation, TestingDidParams};
+use crate::fixtures::{create_organisation, TestingDidParams, TestingIdentifierParams};
 use crate::utils::api_clients::proofs::ProofFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -31,6 +32,19 @@ async fn test_list_proof_success() {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
                 }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -73,6 +87,8 @@ async fn test_list_proof_success() {
             .create(
                 None,
                 &verifier_did,
+                &verifier_identifier,
+                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -126,6 +142,19 @@ async fn test_list_proofs_by_ids() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -164,6 +193,8 @@ async fn test_list_proofs_by_ids() {
             .create(
                 None,
                 &verifier_did,
+                &verifier_identifier,
+                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -233,6 +264,19 @@ async fn test_list_proofs_by_name() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -291,6 +335,8 @@ async fn test_list_proofs_by_name() {
             .create(
                 None,
                 &verifier_did,
+                &verifier_identifier,
+                None,
                 None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
@@ -309,6 +355,8 @@ async fn test_list_proofs_by_name() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
@@ -375,6 +423,19 @@ async fn test_list_proofs_by_schema_ids() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -433,6 +494,8 @@ async fn test_list_proofs_by_schema_ids() {
             .create(
                 None,
                 &verifier_did,
+                &verifier_identifier,
+                None,
                 None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
@@ -451,6 +514,8 @@ async fn test_list_proofs_by_schema_ids() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
@@ -517,6 +582,19 @@ async fn test_list_proofs_by_state() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -555,6 +633,8 @@ async fn test_list_proofs_by_state() {
             .create(
                 None,
                 &verifier_did,
+                &verifier_identifier,
+                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -573,6 +653,8 @@ async fn test_list_proofs_by_state() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Error,
@@ -639,6 +721,19 @@ async fn test_list_proof_with_retain_date() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -674,6 +769,8 @@ async fn test_list_proof_with_retain_date() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
@@ -707,7 +804,7 @@ async fn test_list_proof_with_retain_date() {
 #[tokio::test]
 async fn test_list_proofs_with_org_by_interaction() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let interaction = context
         .db
@@ -723,6 +820,8 @@ async fn test_list_proofs_with_org_by_interaction() {
             .create(
                 None,
                 &did,
+                &identifier,
+                None,
                 None,
                 None,
                 ProofStateEnum::Requested,
@@ -770,6 +869,8 @@ async fn test_list_proofs_with_org_by_interaction() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Error,
@@ -828,6 +929,20 @@ async fn test_list_proofs_by_role() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -863,6 +978,8 @@ async fn test_list_proofs_by_role() {
             .create(
                 None,
                 &verifier_did,
+                &verifier_identifier,
+                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -885,6 +1002,8 @@ async fn test_list_proofs_by_role() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             None,
             ProofStateEnum::Error,

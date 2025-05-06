@@ -10,7 +10,7 @@ use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInput
 #[tokio::test]
 async fn test_delete_proof_created_holder_success() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let interaction = context
         .db
@@ -23,6 +23,8 @@ async fn test_delete_proof_created_holder_success() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             None,
             ProofStateEnum::Created,
@@ -61,7 +63,7 @@ async fn test_delete_proof_created_holder_success() {
 #[tokio::test]
 async fn test_delete_proof_accepted_holder_fail() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let interaction = context
         .db
@@ -74,6 +76,8 @@ async fn test_delete_proof_accepted_holder_fail() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             None,
             ProofStateEnum::Accepted,
@@ -93,7 +97,7 @@ async fn test_delete_proof_accepted_holder_fail() {
 #[tokio::test]
 async fn test_delete_proof_created_issuer_success() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let proof_schema = setup_proof_schema(&context, &organisation).await;
     let proof = context
@@ -102,6 +106,8 @@ async fn test_delete_proof_created_issuer_success() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -138,7 +144,7 @@ async fn test_delete_proof_created_issuer_success() {
 #[tokio::test]
 async fn test_delete_proof_accepted_issuer_fail() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let proof_schema = setup_proof_schema(&context, &organisation).await;
     let proof = context
@@ -147,6 +153,8 @@ async fn test_delete_proof_accepted_issuer_fail() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
@@ -166,7 +174,7 @@ async fn test_delete_proof_accepted_issuer_fail() {
 #[tokio::test]
 async fn test_delete_proof_issuer_requested_to_retracted() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let proof_schema = setup_proof_schema(&context, &organisation).await;
     let proof = context
@@ -175,6 +183,8 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
@@ -260,7 +270,7 @@ async fn setup_proof_schema(context: &TestContext, organisation: &Organisation) 
 #[tokio::test]
 async fn test_delete_proof_old_exchange() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let proof_schema = setup_proof_schema(&context, &organisation).await;
     let proof = context
@@ -269,6 +279,8 @@ async fn test_delete_proof_old_exchange() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,

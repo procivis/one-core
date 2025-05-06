@@ -49,7 +49,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::storage_proxy::MockStorageProxy;
-use crate::service::test_utilities::{dummy_organisation, generic_config};
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct TestInputs<'a> {
@@ -440,7 +440,9 @@ async fn test_presentation_reject_success() {
         schema: None,
         claims: None,
         verifier_did: None,
+        verifier_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: Some(Interaction {
             id: Default::default(),
@@ -560,7 +562,9 @@ async fn test_share_proof_for_mqtt_returns_url() {
             deactivated: false,
             log: None,
         }),
+        verifier_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     };

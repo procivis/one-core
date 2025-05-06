@@ -298,22 +298,19 @@ impl OID4VPDraft20Service {
                     .map(|cred| &cred.holder_did_value)
                     .all_equal_value()
                     .ok();
-                let holder_did_id = if let Some(holder_did_value) = holder_did_value {
-                    Some(
-                        get_or_create_did_and_identifier(
-                            &*self.did_method_provider,
-                            &*self.did_repository,
-                            &*self.identifier_repository,
-                            &Some(organisation.to_owned()),
-                            holder_did_value,
-                            DidRole::Holder,
-                        )
-                        .await?
-                        .0
-                        .id,
+                let holder_id = if let Some(holder_did_value) = holder_did_value {
+                    let (did, identifer) = get_or_create_did_and_identifier(
+                        &*self.did_method_provider,
+                        &*self.did_repository,
+                        &*self.identifier_repository,
+                        &Some(organisation.to_owned()),
+                        holder_did_value,
+                        DidRole::Holder,
                     )
+                    .await?;
+                    (Some(did.id), Some(identifer.id))
                 } else {
-                    None
+                    (None, None)
                 };
 
                 for proved_credential in accept_proof_result.proved_credentials {
@@ -360,7 +357,8 @@ impl OID4VPDraft20Service {
                         &proof.id,
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
-                            holder_did_id,
+                            holder_did_id: holder_id.0,
+                            holder_identifier_id: holder_id.1,
                             ..Default::default()
                         },
                         None,

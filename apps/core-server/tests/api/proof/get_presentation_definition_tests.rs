@@ -74,7 +74,9 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
     let proof = fixtures::create_proof(
         &db_conn,
         &did,
+        &identifier,
         Some(&did),
+        Some(&identifier),
         None,
         ProofStateEnum::Requested,
         "OPENID4VP_DRAFT20",
@@ -245,7 +247,9 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .create(
             None,
             &did,
+            &identifier,
             Some(&did),
+            Some(&identifier),
             None,
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -319,7 +323,9 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
         .create(
             None,
             &did,
+            &identifier,
             Some(&did),
+            Some(&identifier),
             None,
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -348,6 +354,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let interaction = fixtures::create_interaction(
         &db_conn,
@@ -359,7 +366,9 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let proof = fixtures::create_proof(
         &db_conn,
         &did,
+        &identifier,
         Some(&did),
+        Some(&identifier),
         None,
         ProofStateEnum::Requested,
         "OPENID4VP_DRAFT20",
@@ -521,7 +530,9 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
         .create(
             None,
             &did,
+            &identifier,
             Some(&did),
+            Some(&identifier),
             None,
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -726,7 +737,9 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     let proof = fixtures::create_proof(
         &db_conn,
         &did,
+        &identifier,
         Some(&did),
+        Some(&identifier),
         None,
         ProofStateEnum::Requested,
         "OPENID4VP_DRAFT20",
@@ -972,7 +985,9 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .create(
             None,
             &did,
+            &identifier,
             Some(&did),
+            Some(&identifier),
             None,
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",

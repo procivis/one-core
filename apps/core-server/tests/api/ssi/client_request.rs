@@ -11,7 +11,7 @@ use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 #[tokio::test]
 async fn test_get_client_request() {
     // GIVEN
-    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let nonce = "nonce123";
     let new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)> = vec![
@@ -94,6 +94,8 @@ async fn test_get_client_request() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,

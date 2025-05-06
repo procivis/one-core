@@ -49,7 +49,8 @@ vOFJHUHJrN3A0Y0diNFdOQlEiXX19.uD-PTubYXem7PtYT0R7KsSNvMDLQgHMRHGPUqZdZExg2c3-yge
 #[tokio::test]
 async fn test_direct_post_one_credential_correct() {
     // GIVEN
-    let (context, organisation, verifier_did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, verifier_did, verifier_identifier, ..) =
+        TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -128,6 +129,8 @@ async fn test_direct_post_one_credential_correct() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_did,
+        &verifier_identifier,
+        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
@@ -239,6 +242,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     .await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -285,6 +289,8 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     let proof = create_proof(
         &db_conn,
         &verifier_did,
+        &verifier_identifier,
+        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
@@ -420,6 +426,7 @@ async fn test_direct_post_multiple_presentations() {
         create_proof_schema(&db_conn, "Schema1", &organisation, &proof_input_schemas).await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
 
     let interaction_data = json!({
         "nonce": nonce,
@@ -520,6 +527,8 @@ async fn test_direct_post_multiple_presentations() {
     let proof = create_proof(
         &db_conn,
         &verifier_did,
+        &verifier_identifier,
+        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
@@ -643,6 +652,7 @@ async fn test_direct_post_wrong_claim_format() {
     .await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
 
     let interaction_data = json!({
         "nonce": nonce,
@@ -695,6 +705,8 @@ async fn test_direct_post_wrong_claim_format() {
     let proof = create_proof(
         &db_conn,
         &verifier_did,
+        &verifier_identifier,
+        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
@@ -753,7 +765,8 @@ async fn test_direct_post_wrong_claim_format() {
 #[tokio::test]
 async fn test_direct_post_draft25() {
     // GIVEN
-    let (context, organisation, verifier_did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, verifier_did, verifier_identifier, ..) =
+        TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -832,6 +845,8 @@ async fn test_direct_post_draft25() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_did,
+        &verifier_identifier,
+        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,

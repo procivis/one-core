@@ -702,7 +702,9 @@ pub async fn create_credential(
 pub async fn create_proof(
     db_conn: &DbConn,
     verifier_did: &Did,
+    verifier_identifier: &Identifier,
     holder_did: Option<&Did>,
+    holder_identifier: Option<&Identifier>,
     proof_schema: Option<&ProofSchema>,
     state: ProofStateEnum,
     exchange: &str,
@@ -739,7 +741,9 @@ pub async fn create_proof(
         claims: None,
         schema: proof_schema.cloned(),
         verifier_did: Some(verifier_did.to_owned()),
+        verifier_identifier: Some(verifier_identifier.to_owned()),
         holder_did: holder_did.cloned(),
+        holder_identifier: holder_identifier.cloned(),
         verifier_key: None,
         interaction: interaction.cloned(),
     };
@@ -777,6 +781,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 holder_did: Some(DidRelations::default()),
                 verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations { organisation: None }),
+                ..Default::default()
             },
         )
         .await

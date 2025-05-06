@@ -69,6 +69,19 @@ async fn test_get_proof_success() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let proof = context
         .db
@@ -76,6 +89,8 @@ async fn test_get_proof_success() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -162,6 +177,19 @@ async fn test_get_proof_detached_success() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let proof = context
         .db
@@ -169,6 +197,8 @@ async fn test_get_proof_detached_success() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -263,6 +293,19 @@ async fn test_get_proof_with_nested_claims() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let proof = context
         .db
@@ -270,6 +313,8 @@ async fn test_get_proof_with_nested_claims() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -359,6 +404,19 @@ async fn test_get_proof_with_empty_array() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let proof = context
         .db
@@ -366,6 +424,8 @@ async fn test_get_proof_with_empty_array() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -498,6 +558,19 @@ async fn test_get_proof_with_array() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let proof = context
         .db
@@ -505,6 +578,8 @@ async fn test_get_proof_with_array() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -610,6 +685,19 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let proof = context
         .db
@@ -617,6 +705,8 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -738,6 +828,8 @@ async fn test_get_proof_with_credentials() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -791,10 +883,36 @@ async fn test_get_proof_as_holder_success() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let holder_did = context
         .db
         .dids
         .create(Some(organisation.clone()), Default::default())
+        .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
         .await;
     let interaction = context
         .db
@@ -808,7 +926,9 @@ async fn test_get_proof_as_holder_success() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
             Some(&holder_did),
+            Some(&holder_identifier),
             None, // Proof schema is empty on holder side
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -854,6 +974,19 @@ async fn test_get_proof_with_retain_date() {
             },
         )
         .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -889,6 +1022,8 @@ async fn test_get_proof_with_retain_date() {
         .create(
             None,
             &verifier_did,
+            &verifier_identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
@@ -1008,6 +1143,8 @@ async fn test_get_proof_with_deleted_claims() {
         .create(
             None,
             &did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,

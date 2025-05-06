@@ -4,6 +4,7 @@ use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential_schema::CredentialSchemaRelations;
 use one_core::model::did::{Did, DidRelations};
+use one_core::model::identifier::Identifier;
 use one_core::model::interaction::Interaction;
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::OrganisationRelations;
@@ -32,7 +33,9 @@ impl ProofsDB {
         &self,
         id: Option<ProofId>,
         verifier_did: &Did,
+        verifier_identifier: &Identifier,
         holder_did: Option<&Did>,
+        holder_identifier: Option<&Identifier>,
         proof_schema: Option<&ProofSchema>,
         state: ProofStateEnum,
         exchange: &str,
@@ -85,7 +88,9 @@ impl ProofsDB {
             }]),
             schema: proof_schema.cloned(),
             verifier_did: Some(verifier_did.to_owned()),
+            verifier_identifier: Some(verifier_identifier.to_owned()),
             holder_did: holder_did.cloned(),
+            holder_identifier: holder_identifier.cloned(),
             verifier_key: Some(verifier_key),
             interaction: interaction.cloned(),
         };
@@ -121,6 +126,7 @@ impl ProofsDB {
                     verifier_did: Some(DidRelations::default()),
                     interaction: Some(Default::default()),
                     verifier_key: Some(KeyRelations::default()),
+                    ..Default::default()
                 },
             )
             .await

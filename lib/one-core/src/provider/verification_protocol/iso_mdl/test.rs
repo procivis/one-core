@@ -153,7 +153,9 @@ async fn test_presentation_reject_ok() {
         }),
         claims: None,
         verifier_did: None,
+        verifier_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
@@ -232,7 +234,9 @@ async fn test_get_presentation_definition_ok() {
         schema: None,
         claims: None,
         verifier_did: None,
+        verifier_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         verifier_key: None,
         interaction: None,
     };

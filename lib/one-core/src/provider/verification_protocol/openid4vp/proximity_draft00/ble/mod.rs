@@ -324,6 +324,7 @@ impl OpenID4VCBLE {
             None,
             organisation.clone(),
             None,
+            None,
             VerificationProtocolType::OpenId4VpProximityDraft00,
             TransportType::Ble,
             &*self.interaction_repository,

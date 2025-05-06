@@ -740,7 +740,7 @@ async fn get_related_identifier(
                 repo.get(*id, relations)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "credential-did",
+                        relation: "credential-identifier",
                         id: id.to_string(),
                     })?;
 

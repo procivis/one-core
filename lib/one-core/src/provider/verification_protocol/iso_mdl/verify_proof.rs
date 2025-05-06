@@ -452,6 +452,7 @@ pub(crate) async fn accept_proof(
             &proof.id,
             UpdateProofRequest {
                 holder_did_id: Some(holder_did.id),
+                holder_identifier_id: Some(holder_identifier.id),
                 state: Some(ProofStateEnum::Accepted),
                 ..Default::default()
             },

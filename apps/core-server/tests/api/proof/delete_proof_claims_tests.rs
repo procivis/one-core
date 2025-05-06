@@ -66,6 +66,8 @@ async fn test_delete_proof_claims_success() {
         .create(
             None,
             &verifier_did,
+            &identifier,
+            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
