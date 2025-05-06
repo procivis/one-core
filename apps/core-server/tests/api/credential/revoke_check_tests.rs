@@ -1,6 +1,7 @@
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::IdentifierType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::jwt::mapper::{
     bin_to_b64url_string, string_to_b64url_string,
@@ -16,7 +17,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::{encrypted_token, TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{
+    encrypted_token, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
@@ -58,6 +61,20 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         )
         .await;
 
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let issuer_credential = context
         .db
         .credentials
@@ -65,6 +82,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Issuer),
@@ -80,6 +98,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Verifier),
@@ -133,6 +152,20 @@ async fn test_revoke_check_success_statuslist2021() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -145,6 +178,7 @@ async fn test_revoke_check_success_statuslist2021() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(credential_jwt),
@@ -376,6 +410,20 @@ async fn setup_bitstring_status_list_success(
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -393,6 +441,7 @@ async fn setup_bitstring_status_list_success(
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(&credential_jwt),
@@ -634,6 +683,20 @@ async fn setup_lvvc_revoke_check_valid(
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -646,6 +709,7 @@ async fn setup_lvvc_revoke_check_valid(
             &credential_schema,
             initial_state,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(&credential_jwt),
@@ -718,6 +782,20 @@ async fn test_revoke_check_mdoc_update() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -776,6 +854,7 @@ async fn test_revoke_check_mdoc_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
@@ -853,6 +932,20 @@ async fn test_revoke_check_mdoc_update_invalid() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -911,6 +1004,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
@@ -999,6 +1093,20 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -1057,6 +1165,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
@@ -1134,6 +1243,20 @@ async fn test_revoke_check_token_update() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -1196,6 +1319,7 @@ async fn test_revoke_check_token_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
@@ -1263,6 +1387,20 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -1321,6 +1459,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
@@ -1384,6 +1523,19 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -1443,6 +1595,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
@@ -1513,6 +1666,19 @@ async fn test_suspended_to_valid_mdoc() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -1575,6 +1741,7 @@ async fn test_suspended_to_valid_mdoc() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
@@ -1677,6 +1844,19 @@ async fn test_suspended_to_suspended_update_failed() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -1739,6 +1919,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
@@ -1804,6 +1985,20 @@ async fn test_revoke_check_failed_deleted_credential() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -1821,6 +2016,7 @@ async fn test_revoke_check_failed_deleted_credential() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(credential_jwt),

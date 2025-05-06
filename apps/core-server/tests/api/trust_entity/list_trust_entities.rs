@@ -12,7 +12,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_list_trust_entities() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let ta = context
         .db
         .trust_anchors
@@ -100,7 +100,7 @@ async fn test_list_trust_entities() {
 #[tokio::test]
 async fn test_list_trust_entities_filter_trust_anchor() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let ta = context
         .db
@@ -198,7 +198,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
 #[tokio::test]
 async fn test_list_trust_entities_find_by_name() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let ta = context
         .db
         .trust_anchors

@@ -12,6 +12,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{
@@ -30,7 +31,7 @@ use crate::provider::revocation::model::{CredentialDataByRole, CredentialRevocat
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 
-fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
+fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential) {
     let now = OffsetDateTime::now_utc();
 
     let did = Did {
@@ -60,6 +61,20 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         log: None,
     };
 
+    let identifier = Identifier {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "identifier".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        status: IdentifierStatus::Active,
+        deleted_at: None,
+        organisation: None,
+        did: Some(did.to_owned()),
+        key: None,
+    };
+
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: now,
@@ -74,7 +89,9 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         suspend_end_date: None,
         claims: None,
         issuer_did: Some(did.to_owned()),
+        issuer_identifier: Some(identifier.to_owned()),
         holder_did: Some(did.to_owned()),
+        holder_identifier: Some(identifier.to_owned()),
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -99,7 +116,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         revocation_list: None,
     };
 
-    (did, credential)
+    (did, identifier, credential)
 }
 
 fn extracted_credential(status: &str) -> DetailCredential {
@@ -160,7 +177,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
     let (key_provider, formatter_provider, did_method_provider, key_algorithm_provider) =
         common_mock_providers();
 
-    let (did, credential) = generic_did_credential(CredentialRole::Holder);
+    let (did, _, credential) = generic_did_credential(CredentialRole::Holder);
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     validity_credential_repository
@@ -220,7 +237,7 @@ async fn test_check_revocation_status_as_holder_cached() {
         Some(Arc::new(formatter))
     });
 
-    let (did, credential) = generic_did_credential(CredentialRole::Holder);
+    let (did, _, credential) = generic_did_credential(CredentialRole::Holder);
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     let credential_id = credential.id;
@@ -285,7 +302,7 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
         Some(Arc::new(formatter))
     });
 
-    let (did, credential) = generic_did_credential(CredentialRole::Holder);
+    let (did, _, credential) = generic_did_credential(CredentialRole::Holder);
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     let credential_id = credential.id;

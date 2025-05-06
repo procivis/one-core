@@ -20,6 +20,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
 
     let credential_schema_1 = fixtures::create_credential_schema(
         &db_conn,
@@ -46,6 +47,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         &credential_schema_1,
         CredentialStateEnum::Accepted,
         &did,
+        &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
@@ -56,6 +58,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         &credential_schema_2,
         CredentialStateEnum::Accepted,
         &did,
+        &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
@@ -204,7 +207,7 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_match() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -219,6 +222,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -274,7 +278,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -289,6 +293,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),
@@ -478,7 +483,7 @@ fn get_open_id_interaction_data_without_vp_formats(
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -493,6 +498,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -547,6 +553,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
 
     let claim_schemas_1: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (Uuid::new_v4(), "first.f0", true, "STRING", false),
@@ -565,6 +572,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &credential_schema_1,
         CredentialStateEnum::Accepted,
         &did,
+        &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
@@ -587,6 +595,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &credential_schema_2,
         CredentialStateEnum::Accepted,
         &did,
+        &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
     )
@@ -807,7 +816,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_matched_only_complete_credential() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -825,6 +834,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(
@@ -843,6 +853,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             &credential_schema,
             CredentialStateEnum::Accepted,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![

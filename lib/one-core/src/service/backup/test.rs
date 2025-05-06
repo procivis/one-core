@@ -69,7 +69,9 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 }),
             }]),
             issuer_did: None,
+            issuer_identifier: None,
             holder_did: None,
+            holder_identifier: None,
             schema: Some(CredentialSchema {
                 id: Uuid::new_v4().into(),
                 deleted_at: None,

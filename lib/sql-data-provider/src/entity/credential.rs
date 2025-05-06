@@ -4,7 +4,7 @@ use one_core::model::credential::{
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, CredentialSchemaId, DidId, KeyId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -30,10 +30,14 @@ pub struct Model {
     pub role: CredentialRole,
 
     pub issuer_did_id: Option<DidId>,
+    pub issuer_identifier_id: Option<IdentifierId>,
+    pub key_id: Option<KeyId>,
+
     pub holder_did_id: Option<DidId>,
+    pub holder_identifier_id: Option<IdentifierId>,
+
     pub interaction_id: Option<String>,
     pub revocation_list_id: Option<String>,
-    pub key_id: Option<KeyId>,
 
     pub suspend_end_date: Option<OffsetDateTime>,
 
@@ -63,6 +67,14 @@ pub enum Relation {
     )]
     IssuerDid,
     #[sea_orm(
+        belongs_to = "super::identifier::Entity",
+        from = "Column::IssuerIdentifierId",
+        to = "super::identifier::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    IssuerIdentifier,
+    #[sea_orm(
         belongs_to = "super::did::Entity",
         from = "Column::HolderDidId",
         to = "super::did::Column::Id",
@@ -70,6 +82,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     HolderDidId,
+    #[sea_orm(
+        belongs_to = "super::identifier::Entity",
+        from = "Column::HolderIdentifierId",
+        to = "super::identifier::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    HolderIdentifier,
     #[sea_orm(
         belongs_to = "super::interaction::Entity",
         from = "Column::InteractionId",

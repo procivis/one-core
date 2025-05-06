@@ -108,6 +108,36 @@ fn generic_credential() -> Credential {
     let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
         .unwrap()
         .into();
+    let issuer_did = Did {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        name: "did1".to_string(),
+        did: "did:example:123".parse().unwrap(),
+        did_type: DidType::Remote,
+        did_method: "KEY".to_string(),
+        keys: None,
+        deactivated: false,
+        organisation: Some(dummy_organisation(None)),
+        log: None,
+    };
+    let issuer_identifier = Identifier {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        name: "did1".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: true,
+        status: IdentifierStatus::Active,
+        deleted_at: None,
+        organisation: None,
+        did: None,
+        key: None,
+    };
     Credential {
         id: credential_id,
         created_date: now,
@@ -129,22 +159,10 @@ fn generic_credential() -> Credential {
             path: claim_schema.key.to_owned(),
             schema: Some(claim_schema.clone()),
         }]),
-        issuer_did: Some(Did {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                .unwrap()
-                .into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Remote,
-            did_method: "KEY".to_string(),
-            keys: None,
-            deactivated: false,
-            organisation: Some(dummy_organisation(None)),
-            log: None,
-        }),
+        issuer_did: Some(issuer_did),
+        issuer_identifier: Some(issuer_identifier),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                 .unwrap()

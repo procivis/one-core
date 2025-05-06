@@ -141,12 +141,24 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .await
         .unwrap();
 
+    let identifier_id = insert_identifier(
+        &db,
+        "issuer",
+        Uuid::new_v4(),
+        Some(did_id),
+        organisation.id,
+        false,
+    )
+    .await
+    .unwrap();
+
     let credential = insert_credential(
         &db,
         &credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did_id.to_owned(),
+        did_id,
+        identifier_id,
         None,
         None,
     )
@@ -393,6 +405,17 @@ async fn test_get_history_list_schema_joins_credentials() {
     )
     .await
     .unwrap();
+
+    let identifier_id = insert_identifier(
+        &db,
+        "issuer",
+        Uuid::new_v4(),
+        Some(did_id),
+        organisation.id,
+        false,
+    )
+    .await
+    .unwrap();
     insert_history(
         &db,
         HistoryAction::Created.into(),
@@ -411,7 +434,8 @@ async fn test_get_history_list_schema_joins_credentials() {
             &credential_schema_id,
             CredentialStateEnum::Created,
             "OPENID4VCI_DRAFT13",
-            did_id.to_owned(),
+            did_id,
+            identifier_id,
             None,
             None,
         )

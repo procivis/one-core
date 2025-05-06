@@ -10,7 +10,7 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId, HistoryId,
-    KeyId, OrganisationId, ProofId, ProofSchemaId,
+    IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
@@ -23,8 +23,8 @@ use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
-    interaction, key, key_did, organisation, proof, proof_claim, proof_input_claim_schema,
-    proof_input_schema, proof_schema,
+    identifier, interaction, key, key_did, organisation, proof, proof_claim,
+    proof_input_claim_schema, proof_input_schema, proof_schema,
 };
 use crate::{db_conn, DataLayer};
 
@@ -32,12 +32,14 @@ pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &CredentialSchemaId,
     state: CredentialStateEnum,
     protocol: &str,
-    did_id: DidId,
+    issuer_did_id: DidId,
+    issuer_identifier_id: IdentifierId,
     deleted_at: Option<OffsetDateTime>,
     suspend_end_date: Option<OffsetDateTime>,
 ) -> Result<Credential, DbErr> {
@@ -54,8 +56,10 @@ pub async fn insert_credential(
         exchange: Set(protocol.to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
-        issuer_did_id: Set(Some(did_id)),
+        issuer_did_id: Set(Some(issuer_did_id)),
+        issuer_identifier_id: Set(Some(issuer_identifier_id)),
         holder_did_id: Set(None),
+        holder_identifier_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),
         key_id: Set(None),
@@ -438,6 +442,35 @@ pub async fn insert_key_did(
     .await?;
 
     Ok(())
+}
+
+pub async fn insert_identifier(
+    database: &DatabaseConnection,
+    name: &str,
+    identifier_id: impl Into<IdentifierId>,
+    did_id: Option<DidId>,
+    organisation_id: OrganisationId,
+    remote: impl Into<bool>,
+) -> Result<IdentifierId, DbErr> {
+    let now = OffsetDateTime::now_utc();
+
+    let identifier = identifier::ActiveModel {
+        id: Set(identifier_id.into()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        name: Set(name.to_owned()),
+        organisation_id: Set(Some(organisation_id)),
+        deleted_at: NotSet,
+        r#type: Set(identifier::IdentifierType::Did),
+        is_remote: Set(remote.into()),
+        status: Set(identifier::IdentifierStatus::Active),
+        did_id: Set(did_id),
+        key_id: NotSet,
+    }
+    .insert(database)
+    .await?;
+
+    Ok(identifier.id)
 }
 
 pub async fn insert_interaction(

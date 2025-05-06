@@ -20,6 +20,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
@@ -47,6 +48,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -60,8 +62,8 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{
-    dummy_did_document, dummy_organisation, generic_config, generic_formatter_capabilities,
-    get_dummy_date,
+    dummy_did_document, dummy_identifier, dummy_organisation, generic_config,
+    generic_formatter_capabilities, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -69,6 +71,7 @@ struct Repositories {
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub did_repository: MockDidRepository,
+    pub identifier_repository: MockIdentifierRepository,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub revocation_list_repository: MockRevocationListRepository,
@@ -87,6 +90,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.identifier_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.revocation_list_repository),
@@ -164,7 +168,21 @@ fn generic_credential() -> Credential {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -222,7 +240,21 @@ fn generic_credential_list_entity() -> Credential {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -698,6 +730,7 @@ async fn test_create_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     {
@@ -709,6 +742,10 @@ async fn test_create_credential_success() {
             .expect_get_did()
             .times(1)
             .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+        identifier_repository
+            .expect_get_from_did_id()
+            .return_once(|_, _| Ok(Some(dummy_identifier())));
 
         credential_schema_repository
             .expect_get_credential_schema()
@@ -761,7 +798,7 @@ async fn test_create_credential_success() {
         credential_repository,
         credential_schema_repository,
         did_repository,
-        history_repository: MockHistoryRepository::default(),
+        identifier_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -796,6 +833,7 @@ async fn test_create_credential_success() {
 async fn test_create_credential_failed_issuance_did_method_incompatible() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     {
@@ -812,6 +850,10 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             .times(1)
             .returning(move |_, _| Ok(Some(credential_schema.clone())));
     }
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     let mut formatter_capabilities = generic_formatter_capabilities();
     formatter_capabilities.issuance_did_methods.clear();
@@ -841,10 +883,9 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
-        credential_repository: Default::default(),
         credential_schema_repository,
         did_repository,
-        history_repository: Default::default(),
+        identifier_repository,
         formatter_provider,
         protocol_provider,
         config: generic_config().core,
@@ -882,6 +923,8 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
 #[tokio::test]
 async fn test_create_credential_fails_if_did_is_deactivated() {
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
+
     let did_id = Uuid::new_v4();
 
     did_repository
@@ -903,8 +946,13 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             }))
         });
 
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let service = setup_service(Repositories {
         did_repository,
+        identifier_repository,
         ..Default::default()
     });
 
@@ -929,6 +977,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
@@ -977,6 +1026,10 @@ async fn test_create_credential_one_required_claim_missing_success() {
             .returning(move |_| Ok(clone.id));
     }
 
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut formatter = MockCredentialFormatter::default();
     formatter
         .expect_get_capabilities()
@@ -1015,6 +1068,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         credential_repository,
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         history_repository: MockHistoryRepository::default(),
         formatter_provider,
         key_algorithm_provider,
@@ -1057,6 +1111,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 async fn test_create_credential_one_required_claim_missing_fail_required_claim_not_provided() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
@@ -1094,6 +1149,10 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             .expect_get_did()
             .returning(move |_, _| Ok(Some(issuer_did.clone())));
 
+        identifier_repository
+            .expect_get_from_did_id()
+            .return_once(|_, _| Ok(Some(dummy_identifier())));
+
         credential_schema_repository
             .expect_get_credential_schema()
             .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
@@ -1124,6 +1183,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         protocol_provider,
         config: generic_config().core,
@@ -1169,6 +1229,8 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 async fn test_create_credential_schema_deleted() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
+
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let credential = generic_credential();
@@ -1188,6 +1250,10 @@ async fn test_create_credential_schema_deleted() {
             .expect_get_credential_schema()
             .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
     }
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -1214,6 +1280,7 @@ async fn test_create_credential_schema_deleted() {
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         revocation_method_provider,
         protocol_provider,
@@ -1668,6 +1735,7 @@ async fn test_create_credential_key_with_issuer_key() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -1682,6 +1750,10 @@ async fn test_create_credential_key_with_issuer_key() {
         let issuer_did = issuer_did.clone();
         move |_, _| Ok(Some(issuer_did.clone()))
     });
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -1736,6 +1808,7 @@ async fn test_create_credential_key_with_issuer_key() {
         credential_repository,
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         history_repository,
         formatter_provider,
         key_algorithm_provider,
@@ -1772,6 +1845,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -1819,6 +1893,10 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         let issuer_did = issuer_did.clone();
         move |_, _| Ok(Some(issuer_did.clone()))
     });
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -1873,6 +1951,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         credential_repository,
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         history_repository,
         formatter_provider,
         key_algorithm_provider,
@@ -1908,6 +1987,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
 async fn test_fail_to_create_credential_no_assertion_key() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     let issuer_did = Did {
@@ -1934,6 +2014,10 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .expect_get_did()
         .times(1)
         .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -1979,6 +2063,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -2016,6 +2101,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 async fn test_fail_to_create_credential_unknown_key_id() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     let issuer_did = credential.issuer_did.clone().unwrap();
@@ -2025,6 +2111,10 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .expect_get_did()
         .times(1)
         .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -2070,6 +2160,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -2107,6 +2198,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
@@ -2133,6 +2225,10 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .expect_get_did()
         .times(1)
         .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -2178,6 +2274,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -2215,6 +2312,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
 async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorithm() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
@@ -2241,6 +2339,10 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .expect_get_did()
         .times(1)
         .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -2286,6 +2388,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -2323,6 +2426,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
     {
@@ -2339,6 +2443,10 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             .times(1)
             .returning(move |_, _| Ok(Some(credential_schema.clone())));
     }
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     let mut formatter_capabilities = generic_formatter_capabilities();
     formatter_capabilities.issuance_exchange_protocols = vec![];
@@ -2370,6 +2478,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         protocol_provider,
         config: generic_config().core,
@@ -2408,6 +2517,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 async fn test_create_credential_fail_invalid_redirect_uri() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -2422,6 +2532,10 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
         let issuer_did = issuer_did.clone();
         move |_, _| Ok(Some(issuer_did.clone()))
     });
+
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -2455,6 +2569,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         history_repository,
         formatter_provider,
         protocol_provider,
@@ -3518,7 +3633,21 @@ async fn test_get_credential_success_array_complex_nested_all() {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -4076,7 +4205,21 @@ async fn test_get_credential_success_array_index_sorting() {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -4383,7 +4526,21 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -4593,7 +4750,21 @@ async fn test_get_credential_success_array_single_element() {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -4717,6 +4888,7 @@ async fn test_create_credential_array(
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
     let mut history_repository = MockHistoryRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
@@ -4780,6 +4952,10 @@ async fn test_create_credential_array(
             .return_once(move |_| Ok(Uuid::new_v4().into()));
     }
 
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
         .expect_get_capabilities()
@@ -4807,6 +4983,7 @@ async fn test_create_credential_array(
         credential_repository,
         credential_schema_repository,
         did_repository,
+        identifier_repository,
         formatter_provider,
         history_repository,
         key_algorithm_provider,

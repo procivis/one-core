@@ -14,6 +14,7 @@ use one_core::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations};
+use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
@@ -49,6 +50,7 @@ struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
     pub credential_schema: CredentialSchema,
     pub did: Did,
+    pub identifier: Identifier,
 }
 
 async fn setup_empty() -> TestSetup {
@@ -125,7 +127,7 @@ async fn setup_empty() -> TestSetup {
         allow_suspension: true,
     };
 
-    let did_id = &insert_did_key(
+    let did_id = insert_did_key(
         &db,
         "issuer",
         Uuid::new_v4(),
@@ -137,7 +139,7 @@ async fn setup_empty() -> TestSetup {
     .unwrap();
 
     let did = Did {
-        id: *did_id,
+        id: did_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "name".to_string(),
@@ -150,16 +152,43 @@ async fn setup_empty() -> TestSetup {
         log: None,
     };
 
+    let identifier_id = insert_identifier(
+        &db,
+        "issuer",
+        Uuid::new_v4(),
+        Some(did_id),
+        organisation_id,
+        false,
+    )
+    .await
+    .unwrap();
+
+    let identifier = Identifier {
+        id: identifier_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "name".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        status: IdentifierStatus::Active,
+        deleted_at: None,
+        organisation: Some(dummy_organisation(Some(organisation_id))),
+        did: Some(did.clone()),
+        key: None,
+    };
+
     TestSetup {
         credential_schema,
         did,
         db,
+        identifier,
     }
 }
 
 struct TestSetupWithCredential {
     pub credential_schema: CredentialSchema,
     pub did: Did,
+    pub identifier: Identifier,
     pub credential_id: CredentialId,
     pub db: DatabaseConnection,
 }
@@ -169,6 +198,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -178,6 +208,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -189,6 +220,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         credential_id: credential.id,
         credential_schema,
         db,
+        identifier,
     }
 }
 
@@ -247,6 +279,7 @@ async fn test_create_credential_success() {
         did,
         credential_schema,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -311,7 +344,9 @@ async fn test_create_credential_success() {
             suspend_end_date: None,
             claims: Some(claims),
             issuer_did: Some(did),
+            issuer_identifier: Some(identifier),
             holder_did: None,
+            holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
             revocation_list: None,
@@ -348,6 +383,7 @@ async fn test_create_credential_empty_claims() {
         did,
         credential_schema,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -387,7 +423,9 @@ async fn test_create_credential_empty_claims() {
             suspend_end_date: None,
             claims: Some(vec![]),
             issuer_did: Some(did),
+            issuer_identifier: Some(identifier),
             holder_did: None,
+            holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
             revocation_list: None,
@@ -415,6 +453,7 @@ async fn test_create_credential_already_exists() {
         credential_schema,
         credential_id,
         db,
+        identifier,
     } = setup_with_credential().await;
 
     let provider = credential_repository(db.clone(), None);
@@ -447,7 +486,9 @@ async fn test_create_credential_already_exists() {
             suspend_end_date: None,
             claims: Some(claims),
             issuer_did: Some(did),
+            issuer_identifier: Some(identifier),
             holder_did: None,
+            holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
             revocation_list: None,
@@ -469,6 +510,7 @@ async fn test_delete_credential_success() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -478,6 +520,7 @@ async fn test_delete_credential_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -517,7 +560,9 @@ async fn test_delete_credential_failed_not_found() {
             suspend_end_date: None,
             claims: None,
             issuer_did: None,
+            issuer_identifier: None,
             holder_did: None,
+            holder_identifier: None,
             schema: None,
             interaction: None,
             revocation_list: None,
@@ -533,6 +578,7 @@ async fn test_get_credential_list_success() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -542,6 +588,7 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -553,6 +600,7 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -565,6 +613,7 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         Some(OffsetDateTime::now_utc()),
         None,
     )
@@ -609,6 +658,7 @@ async fn test_get_credential_list_success_filter_state() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -618,6 +668,7 @@ async fn test_get_credential_list_success_filter_state() {
         CredentialStateEnum::Offered,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -630,6 +681,7 @@ async fn test_get_credential_list_success_filter_state() {
         CredentialStateEnum::Revoked,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -840,6 +892,7 @@ async fn test_get_credential_success() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -849,6 +902,7 @@ async fn test_get_credential_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -959,7 +1013,7 @@ async fn test_get_credential_success() {
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations::default()),
                 revocation_list: None, // TODO: Add check for this
-                key: None,
+                ..Default::default()
             },
         )
         .await;
@@ -1021,6 +1075,7 @@ async fn test_update_credential_success() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -1035,6 +1090,7 @@ async fn test_update_credential_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -1137,6 +1193,7 @@ async fn test_get_credential_by_claim_id_success() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -1147,6 +1204,7 @@ async fn test_get_credential_by_claim_id_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -1159,6 +1217,7 @@ async fn test_get_credential_by_claim_id_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -1208,6 +1267,7 @@ async fn test_delete_credential_blobs_success() {
         credential_schema,
         did,
         db,
+        identifier,
         ..
     } = setup_empty().await;
 
@@ -1217,6 +1277,7 @@ async fn test_delete_credential_blobs_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )
@@ -1229,6 +1290,7 @@ async fn test_delete_credential_blobs_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did.id,
+        identifier.id,
         None,
         None,
     )

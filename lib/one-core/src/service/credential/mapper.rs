@@ -10,6 +10,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::validity_credential::ValidityCredential;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -309,6 +310,7 @@ pub(super) fn from_create_request(
     credential_id: CredentialId,
     claims: Vec<Claim>,
     issuer_did: Did,
+    issuer_identifier: Identifier,
     schema: CredentialSchema,
     key: Key,
 ) -> Credential {
@@ -326,7 +328,9 @@ pub(super) fn from_create_request(
         exchange: request.exchange,
         claims: Some(claims),
         issuer_did: Some(issuer_did),
+        issuer_identifier: Some(issuer_identifier),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(schema),
         interaction: None,
         revocation_list: None,

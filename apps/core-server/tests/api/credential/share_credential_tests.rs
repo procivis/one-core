@@ -8,7 +8,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_share_credential_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -21,6 +21,7 @@ async fn test_share_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
@@ -46,7 +47,7 @@ async fn test_share_credential_success() {
 #[tokio::test]
 async fn test_share_credential_failed_deleted_credential() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -59,6 +60,7 @@ async fn test_share_credential_failed_deleted_credential() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),

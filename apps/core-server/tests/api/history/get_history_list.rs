@@ -1,8 +1,10 @@
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::DidType;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::identifier::IdentifierType;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 
@@ -62,6 +64,20 @@ async fn test_get_history_list_schema_joins_credentials() {
         .dids
         .create(&organisation, TestingDidParams::default())
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     context
         .db
         .histories
@@ -104,6 +120,7 @@ async fn test_get_history_list_schema_joins_credentials() {
                 &schema,
                 CredentialStateEnum::Created,
                 &issuer_did,
+                &identifier,
                 "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )

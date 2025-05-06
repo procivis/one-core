@@ -16,6 +16,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
+use crate::model::identifier::IdentifierStatus;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -69,14 +70,22 @@ impl CredentialService {
             return Err(EntityNotFoundError::Did(request.issuer_did).into());
         };
 
-        if issuer_did.is_remote() {
+        let Some(issuer_identifier) = self
+            .identifier_repository
+            .get_from_did_id(issuer_did.id, &Default::default())
+            .await?
+        else {
+            return Err(EntityNotFoundError::Did(request.issuer_did).into());
+        };
+
+        if issuer_did.is_remote() || issuer_identifier.is_remote {
             return Err(BusinessLogicError::IncompatibleDidType {
                 reason: "Issuer did is remote".to_string(),
             }
             .into());
         }
 
-        if issuer_did.deactivated {
+        if issuer_did.deactivated || issuer_identifier.status != IdentifierStatus::Active {
             return Err(BusinessLogicError::DidIsDeactivated(issuer_did.id).into());
         }
 
@@ -174,8 +183,15 @@ impl CredentialService {
         .key
         .clone();
 
-        let credential =
-            from_create_request(request, credential_id, claims, issuer_did, schema, key);
+        let credential = from_create_request(
+            request,
+            credential_id,
+            claims,
+            issuer_did,
+            issuer_identifier,
+            schema,
+            key,
+        );
 
         let result = self
             .credential_repository

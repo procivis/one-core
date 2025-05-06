@@ -24,6 +24,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
@@ -35,6 +36,7 @@ impl VCAPIService {
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
@@ -45,6 +47,7 @@ impl VCAPIService {
             credential_formatter,
             key_provider,
             did_repository,
+            identifier_repository,
             did_method_provider,
             key_algorithm_provider,
             revocation_list_repository,
@@ -65,14 +68,14 @@ impl VCAPIService {
         let mut vcdm = create_request.credential;
         validate_verifiable_credential(&vcdm, &self.jsonld_ctx_cache).await?;
 
-        let issuer_did = vcdm
+        let issuer_did_value = vcdm
             .issuer
             .to_did_value()
             .map_err(ServiceError::FormatterError)?;
-        let issuer = self
+        let issuer_did = self
             .did_repository
             .get_did_by_value(
-                &issuer_did,
+                &issuer_did_value,
                 &DidRelations {
                     keys: Some(KeyRelations::default()),
                     organisation: None,
@@ -80,8 +83,15 @@ impl VCAPIService {
             )
             .await?
             .ok_or(ServiceError::Other("Issuer DID not found".to_string()))?;
+        let issuer_identifier = self
+            .identifier_repository
+            .get_from_did_id(issuer_did.id, &Default::default())
+            .await?
+            .ok_or(ServiceError::Other(
+                "Issuer DID identifier not found".to_string(),
+            ))?;
 
-        let key = issuer
+        let key = issuer_did
             .keys
             .as_ref()
             .ok_or(ServiceError::Other(
@@ -92,7 +102,7 @@ impl VCAPIService {
 
         let assertion_methods = self
             .did_method_provider
-            .resolve(&issuer_did)
+            .resolve(&issuer_did_value)
             .await?
             .assertion_method
             .ok_or(ServiceError::MappingError(
@@ -134,14 +144,16 @@ impl VCAPIService {
                     state: CredentialStateEnum::Offered,
                     suspend_end_date: None,
                     claims: None,
-                    issuer_did: Some(issuer.clone()),
+                    issuer_did: Some(issuer_did.clone()),
+                    issuer_identifier: Some(issuer_identifier),
                     holder_did: None,
+                    holder_identifier: None,
                     schema: None,
                     key: None,
                     interaction: None,
                     revocation_list: None,
                 }],
-                &issuer,
+                &issuer_did,
                 RevocationListPurpose::Revocation,
                 &*self.revocation_list_repository,
                 &self.key_provider,

@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::InteractionId;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
@@ -18,7 +19,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::full_flow_common::proof_jwt;
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
@@ -212,6 +213,7 @@ struct TestIssuerSetup {
     organisation: Organisation,
     key: Key,
     issuer_did: Did,
+    issuer_identifier: Identifier,
 }
 
 async fn issuer_setup() -> TestIssuerSetup {
@@ -246,6 +248,19 @@ async fn issuer_setup() -> TestIssuerSetup {
             },
         )
         .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     TestIssuerSetup {
         interaction_id,
         access_token,
@@ -253,6 +268,7 @@ async fn issuer_setup() -> TestIssuerSetup {
         organisation,
         key,
         issuer_did,
+        issuer_identifier,
     }
 }
 
@@ -279,6 +295,7 @@ async fn test_post_issuer_credential_with(
         context,
         key,
         issuer_did,
+        issuer_identifier,
     } = match context {
         None => issuer_setup().await,
         Some(context) => context,
@@ -341,6 +358,7 @@ async fn test_post_issuer_credential_with(
             &credential_schema,
             CredentialStateEnum::Offered,
             &issuer_did,
+            &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
@@ -419,6 +437,19 @@ async fn test_post_issuer_credential_mdoc() {
             },
         )
         .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let str_claim_id = Uuid::new_v4();
     let num_claim_id = Uuid::new_v4();
@@ -466,6 +497,7 @@ async fn test_post_issuer_credential_mdoc() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &issuer_did,
+            &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),

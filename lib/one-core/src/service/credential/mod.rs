@@ -12,6 +12,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -28,6 +29,7 @@ pub struct CredentialService {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
@@ -49,6 +51,7 @@ impl CredentialService {
         repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
@@ -67,6 +70,7 @@ impl CredentialService {
             credential_repository: repository,
             credential_schema_repository,
             did_repository,
+            identifier_repository,
             history_repository,
             interaction_repository,
             revocation_list_repository,

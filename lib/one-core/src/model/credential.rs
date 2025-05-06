@@ -1,4 +1,4 @@
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -6,6 +6,7 @@ use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use super::did::{Did, DidRelations};
+use super::identifier::{Identifier, IdentifierRelations};
 use super::interaction::{Interaction, InteractionId, InteractionRelations};
 use super::key::Key;
 use super::list_query::ListQuery;
@@ -30,7 +31,9 @@ pub struct Credential {
     // Relations:
     pub claims: Option<Vec<Claim>>,
     pub issuer_did: Option<Did>,
+    pub issuer_identifier: Option<Identifier>,
     pub holder_did: Option<Did>,
+    pub holder_identifier: Option<Identifier>,
     pub schema: Option<CredentialSchema>,
     pub interaction: Option<Interaction>,
     pub revocation_list: Option<RevocationList>,
@@ -41,7 +44,9 @@ pub struct Credential {
 pub struct CredentialRelations {
     pub claims: Option<ClaimRelations>,
     pub issuer_did: Option<DidRelations>,
+    pub issuer_identifier: Option<IdentifierRelations>,
     pub holder_did: Option<DidRelations>,
+    pub holder_identifier: Option<IdentifierRelations>,
     pub schema: Option<CredentialSchemaRelations>,
     pub interaction: Option<InteractionRelations>,
     pub revocation_list: Option<RevocationListRelations>,
@@ -74,8 +79,10 @@ pub type GetCredentialQuery =
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateCredentialRequest {
     pub credential: Option<Vec<u8>>,
-    pub holder_did_id: Option<DidId>,
     pub issuer_did_id: Option<DidId>,
+    pub issuer_identifier_id: Option<IdentifierId>,
+    pub holder_did_id: Option<DidId>,
+    pub holder_identifier_id: Option<IdentifierId>,
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,
     pub redirect_uri: Option<Option<String>>,

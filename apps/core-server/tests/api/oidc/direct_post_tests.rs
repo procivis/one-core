@@ -49,7 +49,7 @@ vOFJHUHJrN3A0Y0diNFdOQlEiXX19.uD-PTubYXem7PtYT0R7KsSNvMDLQgHMRHGPUqZdZExg2c3-yge
 #[tokio::test]
 async fn test_direct_post_one_credential_correct() {
     // GIVEN
-    let (context, organisation, verifier_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, verifier_did, ..) = TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -753,7 +753,7 @@ async fn test_direct_post_wrong_claim_format() {
 #[tokio::test]
 async fn test_direct_post_draft25() {
     // GIVEN
-    let (context, organisation, verifier_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, verifier_did, ..) = TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![

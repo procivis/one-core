@@ -71,7 +71,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
 
-    let (server_issuer_did, _, server_issuer_key) = prepare_dids(
+    let (server_issuer, _, server_issuer_key) = prepare_dids(
         &server_context,
         &server_organisation,
         Some(issuer_bbs_key.to_owned()),
@@ -79,7 +79,9 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     )
     .await;
 
-    let (verifier_did, holder_did, local_verifier_key) = prepare_dids(
+    let (server_issuer_did, server_issuer_identifier) = server_issuer.unwrap();
+
+    let (verifier, holder, local_verifier_key) = prepare_dids(
         &server_context,
         &server_organisation,
         Some(verifier_key.to_owned()),
@@ -87,8 +89,8 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     )
     .await;
 
-    let server_remote_holder_did = holder_did.unwrap();
-    let server_local_verifier_did = verifier_did.unwrap();
+    let (server_remote_holder_did, server_remote_holder_identifier) = holder.unwrap();
+    let (server_local_verifier_did, _) = verifier.unwrap();
     let server_local_verifier_key = local_verifier_key.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -182,10 +184,12 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         .create(
             &credential_schema,
             CredentialStateEnum::Offered,
-            &server_issuer_did.unwrap(),
+            &server_issuer_did,
+            &server_issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(server_remote_holder_did.clone()),
+                holder_identifier: Some(server_remote_holder_identifier),
                 key: Some(server_issuer_key.unwrap()),
                 random_claims: true,
                 interaction: Some(credential_interaction.to_owned()),
@@ -304,7 +308,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         )])
         .await;
 
-    let (holder_local_did, verifier_remote_did, local_holer_key) = prepare_dids(
+    let (holder_local, verifier_remote, local_holer_key) = prepare_dids(
         &holder_context,
         &holder_organisation,
         Some(holder_key.to_owned()),
@@ -312,11 +316,11 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     )
     .await;
 
-    let holder_local_holder_did = holder_local_did.unwrap();
-    let holder_remote_verifier_did = verifier_remote_did.unwrap();
+    let (holder_local_holder_did, holder_local_holder_identifier) = holder_local.unwrap();
+    let (holder_remote_verifier_did, _) = verifier_remote.unwrap();
     let holder_local_holer_key = local_holer_key.unwrap();
 
-    let (_, remote_issuer_did, _) = prepare_dids(
+    let (_, remote_issuer, _) = prepare_dids(
         &holder_context,
         &holder_organisation,
         None,
@@ -324,7 +328,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     )
     .await;
 
-    let holder_remote_issuer_did = remote_issuer_did.unwrap();
+    let (holder_remote_issuer_did, holder_remote_issuer_identifier) = remote_issuer.unwrap();
 
     let holder_schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
@@ -348,9 +352,11 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
             &holder_credential_schema,
             CredentialStateEnum::Accepted,
             &holder_remote_issuer_did,
+            &holder_remote_issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_local_holder_did.clone()),
+                holder_identifier: Some(holder_local_holder_identifier),
                 credential: Some(credentials.unwrap()),
                 random_claims: true,
                 role: Some(CredentialRole::Holder),

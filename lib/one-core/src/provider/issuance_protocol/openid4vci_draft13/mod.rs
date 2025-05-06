@@ -1097,19 +1097,19 @@ async fn handle_credential_invitation(
 ) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
-    let issuer_did = match credential_offer.issuer_did {
-        Some(issuer_did) => Some(
-            storage_access
+    let issuer = match credential_offer.issuer_did {
+        Some(issuer_did) => {
+            let (did, identifier) = storage_access
                 .get_or_create_did_and_identifier(
                     &Some(organisation.clone()),
                     &issuer_did,
                     DidRole::Issuer,
                 )
                 .await
-                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
-                .0,
-        ),
-        None => None,
+                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+            (Some(did), Some(identifier))
+        }
+        None => (None, None),
     };
 
     let tx_code = credential_offer.grants.code.tx_code.clone();
@@ -1267,7 +1267,8 @@ async fn handle_credential_invitation(
         claims,
         interaction,
         None,
-        issuer_did,
+        issuer.0,
+        issuer.1,
     );
 
     Ok(InvitationResponseDTO {

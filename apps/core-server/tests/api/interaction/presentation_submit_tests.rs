@@ -1,5 +1,6 @@
 use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::identifier::Identifier;
 use one_core::model::interaction::Interaction;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
@@ -11,7 +12,7 @@ use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
 
 use crate::fixtures::{
     self, create_credential_schema_with_claims, TestingCredentialParams,
-    TestingCredentialSchemaParams, TestingDidParams, TestingKeyParams,
+    TestingCredentialSchemaParams, TestingDidParams, TestingIdentifierParams, TestingKeyParams,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -19,7 +20,7 @@ use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc() {
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let client_metadata = json!(
     {
@@ -60,6 +61,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
             &context,
             &organisation,
             &issuer_did,
+            &identifier,
             &client_metadata.to_string(),
         )
         .await;
@@ -137,7 +139,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let client_metadata = json!({
         "authorization_encrypted_response_alg": "ECDH-ES",
@@ -179,6 +181,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
             &context,
             &organisation,
             &issuer_did,
+            &identifier,
             &client_metadata.to_string(),
         )
         .await;
@@ -235,6 +238,7 @@ async fn setup_submittable_presentation(
     context: &TestContext,
     organisation: &Organisation,
     issuer_did: &Did,
+    issuer_identifier: &Identifier,
     client_metadata: &str,
 ) -> (Did, Did, Credential, Interaction, Proof) {
     let verifier_key = context
@@ -316,6 +320,7 @@ async fn setup_submittable_presentation(
         &credential_schema,
         CredentialStateEnum::Accepted,
         issuer_did,
+        issuer_identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_did: Some(holder_did.clone()),
@@ -403,6 +408,15 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let issuer_identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(issuer_did.clone()),
+            ..Default::default()
+        }),
+    )
+    .await;
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let holder_key = fixtures::create_key(
@@ -463,6 +477,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &issuer_did,
+        &issuer_identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_did: Some(holder_did.clone()),

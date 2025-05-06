@@ -8,7 +8,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_trust_anchor() {
     // GIVEN
-    let (context, org, did, _) = TestContext::new_with_did(None).await;
+    let (context, org, did, ..) = TestContext::new_with_did(None).await;
     let anchor = context
         .db
         .trust_anchors

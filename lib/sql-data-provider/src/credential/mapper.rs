@@ -1,6 +1,7 @@
 use one_core::model::credential::{Credential, CredentialRole, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
+use one_core::model::identifier::Identifier;
 use one_core::model::interaction::InteractionId;
 use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
@@ -9,7 +10,7 @@ use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
-use shared_types::{DidId, KeyId};
+use shared_types::{DidId, IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{self, claim, credential, credential_schema, did};
@@ -94,7 +95,9 @@ impl From<entity::credential::Model> for Credential {
             suspend_end_date: credential.suspend_end_date,
             claims: None,
             issuer_did: None,
+            issuer_identifier: None,
             holder_did: None,
+            holder_identifier: None,
             schema: None,
             interaction: None,
             revocation_list: None,
@@ -103,11 +106,14 @@ impl From<entity::credential::Model> for Credential {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn request_to_active_model(
     request: &Credential,
     schema: CredentialSchema,
-    issuer_did: Option<Did>,
+    issuer_did_id: Option<DidId>,
+    issuer_identifier_id: Option<IdentifierId>,
     holder_did_id: Option<DidId>,
+    holder_identifier_id: Option<IdentifierId>,
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
     key_id: Option<KeyId>,
@@ -122,8 +128,10 @@ pub(super) fn request_to_active_model(
         exchange: Set(request.exchange.to_owned()),
         credential: Set(request.credential.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
-        issuer_did_id: Set(issuer_did.map(|did| did.id)),
+        issuer_did_id: Set(issuer_did_id),
+        issuer_identifier_id: Set(issuer_identifier_id),
         holder_did_id: Set(holder_did_id),
+        holder_identifier_id: Set(holder_identifier_id),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
         key_id: Set(key_id),
@@ -193,6 +201,37 @@ pub(super) fn credential_list_model_to_repository_model(
         }),
     };
 
+    let issuer_identifier = match credential.issuer_identifier_id {
+        None => None,
+        Some(issuer_identifier_id) => Some(Identifier {
+            id: issuer_identifier_id,
+            created_date: credential
+                .issuer_identifier_created_date
+                .ok_or(DataLayerError::MappingError)?,
+            last_modified: credential
+                .issuer_identifier_last_modified
+                .ok_or(DataLayerError::MappingError)?,
+            name: credential
+                .issuer_identifier_name
+                .ok_or(DataLayerError::MappingError)?,
+            did: None,
+            key: None,
+            organisation: None,
+            r#type: credential
+                .issuer_identifier_type
+                .ok_or(DataLayerError::MappingError)?
+                .into(),
+            is_remote: credential
+                .issuer_identifier_is_remote
+                .ok_or(DataLayerError::MappingError)?,
+            status: credential
+                .issuer_identifier_status
+                .ok_or(DataLayerError::MappingError)?
+                .into(),
+            deleted_at: None,
+        }),
+    };
+
     Ok(Credential {
         id: credential.id,
         created_date: credential.created_date,
@@ -207,7 +246,9 @@ pub(super) fn credential_list_model_to_repository_model(
         suspend_end_date: credential.suspend_end_date,
         claims: None,
         issuer_did,
+        issuer_identifier,
         holder_did: None,
+        holder_identifier: None,
         schema: Some(schema),
         interaction: None,
         revocation_list: None,

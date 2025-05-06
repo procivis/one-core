@@ -75,7 +75,7 @@ pub struct CredentialSchemaClaim {
 }
 
 #[derive(Debug)]
-pub struct CredentialSchemaClaimsNestedView {
+pub(crate) struct CredentialSchemaClaimsNestedView {
     pub fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
 }
 
@@ -86,13 +86,13 @@ pub enum Arrayed<T> {
 }
 
 #[derive(Debug)]
-pub enum CredentialSchemaClaimsNestedTypeView {
+pub(crate) enum CredentialSchemaClaimsNestedTypeView {
     Field(CredentialSchemaClaim),
     Object(CredentialSchemaClaimsNestedObjectView),
 }
 
 #[derive(Debug)]
-pub struct CredentialSchemaClaimsNestedObjectView {
+pub(crate) struct CredentialSchemaClaimsNestedObjectView {
     pub claim: CredentialSchemaClaim,
     pub fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
 }

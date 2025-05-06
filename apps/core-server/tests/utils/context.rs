@@ -2,7 +2,8 @@ use std::str::FromStr;
 
 use core_server::ServerConfig;
 use one_core::config::core_config::AppConfig;
-use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use shared_types::DidValue;
@@ -15,7 +16,7 @@ use super::db_clients::keys::ecdsa_testing_params;
 use super::db_clients::DbClient;
 use super::mock_server::MockServer;
 use super::server::run_server;
-use crate::fixtures::{self, TestingConfigParams, TestingDidParams};
+use crate::fixtures::{self, TestingConfigParams, TestingDidParams, TestingIdentifierParams};
 
 pub struct TestContext {
     pub db: DbClient,
@@ -86,7 +87,9 @@ impl TestContext {
         (context, organisation)
     }
 
-    pub async fn new_with_did(additional_config: Option<String>) -> (Self, Organisation, Did, Key) {
+    pub async fn new_with_did(
+        additional_config: Option<String>,
+    ) -> (Self, Organisation, Did, Identifier, Key) {
         let (context, organisation) = Self::new_with_organisation(additional_config).await;
         let key = context
             .db
@@ -123,6 +126,21 @@ impl TestContext {
                 },
             )
             .await;
-        (context, organisation, did, key)
+
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                &organisation,
+                TestingIdentifierParams {
+                    did: Some(did.clone()),
+                    r#type: Some(IdentifierType::Did),
+                    is_remote: Some(did.did_type == DidType::Remote),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        (context, organisation, did, identifier, key)
     }
 }

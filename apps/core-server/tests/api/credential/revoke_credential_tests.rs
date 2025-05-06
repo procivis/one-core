@@ -1,14 +1,17 @@
 use std::str::FromStr;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::IdentifierType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{assert_history_count, TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{
+    assert_history_count, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 
@@ -39,6 +42,20 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -56,6 +73,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
@@ -116,6 +134,20 @@ async fn test_revoke_credential_deleted() {
             },
         )
         .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let holder_did = context
         .db
         .dids
@@ -130,6 +162,20 @@ async fn test_revoke_credential_deleted() {
             },
         )
         .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -143,9 +189,11 @@ async fn test_revoke_credential_deleted() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
+                holder_identifier: Some(holder_identifier),
                 key: Some(key),
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 ..Default::default()
@@ -187,6 +235,20 @@ async fn test_revoke_credential_with_lvvc_success() {
             },
         )
         .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let holder_did = context
         .db
         .dids
@@ -201,6 +263,20 @@ async fn test_revoke_credential_with_lvvc_success() {
             },
         )
         .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -214,9 +290,11 @@ async fn test_revoke_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
+                holder_identifier: Some(holder_identifier),
                 key: Some(key),
                 ..Default::default()
             },

@@ -1,13 +1,14 @@
 use std::ops::Sub;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::ProofStateEnum;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::{Duration, OffsetDateTime};
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -31,7 +32,7 @@ async fn test_run_task_suspend_check_no_update() {
 #[tokio::test]
 async fn test_run_task_suspend_check_with_update() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -52,6 +53,7 @@ async fn test_run_task_suspend_check_with_update() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 suspend_end_date: Some(a_while_ago),
@@ -145,6 +147,19 @@ async fn test_run_retain_proof_check_with_update() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential = context
         .db
@@ -153,6 +168,7 @@ async fn test_run_retain_proof_check_with_update() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )

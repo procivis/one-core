@@ -378,7 +378,7 @@ pub(crate) async fn accept_proof(
             .push(proved_claim);
     }
 
-    let (holder_did, _) = get_or_create_did_and_identifier(
+    let (holder_did, holder_identifier) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
         identifier_repository,
@@ -406,7 +406,7 @@ pub(crate) async fn accept_proof(
                 .ok_or(ServiceError::MappingError(
                     "issuer_did is missing".to_string(),
                 ))?;
-        let (issuer_did, _) = get_or_create_did_and_identifier(
+        let (issuer_did, isssuer_identifier) = get_or_create_did_and_identifier(
             did_method_provider,
             did_repository,
             identifier_repository,
@@ -430,7 +430,9 @@ pub(crate) async fn accept_proof(
             credential_schema.to_owned(),
             claims,
             issuer_did,
+            isssuer_identifier,
             Some(holder_did.clone()),
+            Some(holder_identifier.clone()),
             proof.exchange.to_owned(),
         )?;
 

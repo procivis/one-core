@@ -28,6 +28,7 @@ use crate::model::credential_schema::{
     LogoProperties,
 };
 use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::provider::http_client;
@@ -780,6 +781,7 @@ pub(crate) fn create_credential(
     interaction: Interaction,
     redirect_uri: Option<String>,
     issuer_did: Option<Did>,
+    issuer_identifier: Option<Identifier>,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -797,7 +799,9 @@ pub(crate) fn create_credential(
         suspend_end_date: None,
         claims: Some(claims),
         issuer_did,
+        issuer_identifier,
         holder_did: None,
+        holder_identifier: None,
         schema: Some(credential_schema),
         key: None,
         interaction: Some(interaction),

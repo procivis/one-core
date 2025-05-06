@@ -17,7 +17,7 @@ pub async fn new_with_trust_list() -> (
     TrustEntity,
     TrustEntity,
 ) {
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let trust_anchor = context
         .db

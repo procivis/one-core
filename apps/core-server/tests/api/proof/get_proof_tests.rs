@@ -1,14 +1,15 @@
 use std::collections::HashSet;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json_path::JsonPath;
 use sql_data_provider::test_utilities::get_dummy_date;
 use validator::ValidateLength;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -396,7 +397,7 @@ async fn test_get_proof_with_empty_array() {
 #[tokio::test]
 async fn test_get_proof_with_array() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -421,6 +422,7 @@ async fn test_get_proof_with_array() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
@@ -703,6 +705,19 @@ async fn test_get_proof_with_credentials() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential = context
         .db
@@ -711,6 +726,7 @@ async fn test_get_proof_with_credentials() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -959,6 +975,19 @@ async fn test_get_proof_with_deleted_claims() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential = context
         .db
@@ -967,6 +996,7 @@ async fn test_get_proof_with_deleted_claims() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )

@@ -13,7 +13,7 @@ use crate::utils::field_match::FieldHelpers;
 async fn test_create_remote_trust_entity() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let trust_entity_id = Uuid::new_v4();
     Mock::given(method(Method::POST))
@@ -59,7 +59,7 @@ async fn test_create_remote_trust_entity() {
 #[tokio::test]
 async fn test_fail_create_remote_trust_entity_invalid_logo() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     // WHEN
     let resp = context

@@ -707,7 +707,7 @@ async fn test_list_proof_with_retain_date() {
 #[tokio::test]
 async fn test_list_proofs_with_org_by_interaction() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
 
     let interaction = context
         .db

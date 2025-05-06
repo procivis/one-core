@@ -12,7 +12,7 @@ use crate::utils::field_match::FieldHelpers;
 async fn test_get_remote_trust_entity_success() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let trust_entity_id = Uuid::new_v4();
     let org_id = Uuid::new_v4();

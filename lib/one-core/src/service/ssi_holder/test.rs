@@ -14,6 +14,7 @@ use crate::model::credential_schema::{
     CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
@@ -880,7 +881,21 @@ fn dummy_credential() -> Credential {
             deactivated: false,
             log: None,
         }),
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: true,
+            status: IdentifierStatus::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+        }),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(crate::model::credential_schema::CredentialSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),

@@ -5,13 +5,15 @@ use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::IdentifierType;
 use serde_json::json;
 use shared_types::DidValue;
 use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    encrypted_token, TestingCredentialParams, TestingDidParams, TestingKeyParams,
+    encrypted_token, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+    TestingKeyParams,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -36,6 +38,19 @@ async fn test_issuance_accept_openid4vc() {
                         .parse()
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -122,6 +137,7 @@ async fn test_issuance_accept_openid4vc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -192,6 +208,19 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let key = context
         .db
         .keys
@@ -274,6 +303,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -324,6 +354,19 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let key = context
         .db
         .keys
@@ -406,6 +449,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -452,6 +496,19 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
                         .parse()
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -537,6 +594,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -586,6 +644,19 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -624,6 +695,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -659,6 +731,20 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let key = context
         .db
         .keys
@@ -716,6 +802,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -752,6 +839,19 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &organisation,
             TestingDidParams {
                 did_type: Some(DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -807,6 +907,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -847,6 +948,20 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let key = context
         .db
         .keys
@@ -915,6 +1030,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -950,6 +1066,20 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let key = context
         .db
         .keys
@@ -1001,6 +1131,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -1036,6 +1167,20 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let key = context
         .db
         .keys
@@ -1099,6 +1244,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -1135,6 +1281,19 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
                         .parse()
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -1222,6 +1381,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -1278,6 +1438,20 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             },
         )
         .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let key = context
         .db
         .keys
@@ -1360,6 +1534,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -1414,6 +1589,19 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                         .parse()
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -1546,6 +1734,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),

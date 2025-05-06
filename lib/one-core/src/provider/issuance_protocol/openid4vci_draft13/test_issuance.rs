@@ -744,7 +744,9 @@ fn dummy_credential() -> Credential {
             }),
         }]),
         issuer_did: None,
+        issuer_identifier: None,
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: "CORE_URL".to_string(),

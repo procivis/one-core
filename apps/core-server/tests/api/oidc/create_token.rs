@@ -11,7 +11,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 async fn test_oidc_issuer_create_token() {
     // GIVEN
 
-    let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
+    let (context, org, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
     let data = json!({
@@ -47,6 +47,7 @@ async fn test_oidc_issuer_create_token() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
@@ -77,7 +78,7 @@ async fn test_oidc_issuer_create_token() {
 async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
     // GIVEN
 
-    let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
+    let (context, org, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
     let data = json!({
@@ -116,6 +117,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),
@@ -146,7 +148,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
 async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens(
 ) {
     // GIVEN
-    let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
+    let (context, org, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
 
@@ -190,6 +192,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             &credential_schema,
             CredentialStateEnum::Pending,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction),

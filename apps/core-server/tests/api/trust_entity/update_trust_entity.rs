@@ -13,7 +13,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 async fn test_update_trust_entity_action_withdraw_success() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db

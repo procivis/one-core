@@ -11,7 +11,7 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 #[tokio::test]
 async fn test_reactivate_credential_with_bitstring_status_list_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -29,6 +29,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
@@ -47,7 +48,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
 #[tokio::test]
 async fn test_reactivate_credential_with_lvvc_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let issuer_key = issuer_did
         .keys
         .as_ref()
@@ -91,6 +92,7 @@ async fn test_reactivate_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did),

@@ -9,7 +9,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_credential_offer_success_jwt() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -30,6 +30,7 @@ async fn test_get_credential_offer_success_jwt() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -71,7 +72,7 @@ async fn test_get_credential_offer_success_jwt() {
 #[tokio::test]
 async fn test_get_credential_offer_success_mdoc() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -100,6 +101,7 @@ async fn test_get_credential_offer_success_mdoc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
@@ -142,7 +144,7 @@ async fn test_get_credential_offer_success_mdoc() {
 #[tokio::test]
 async fn test_get_credential_offer_with_array_success_mdoc() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -181,6 +183,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),

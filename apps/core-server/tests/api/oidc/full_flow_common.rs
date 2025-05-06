@@ -7,6 +7,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use hex_literal::hex;
 use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::key::{Key, PublicKeyJwk};
 use one_core::model::organisation::Organisation;
 use one_core::provider::key_algorithm::bbs::BBS;
@@ -22,7 +23,7 @@ use shared_types::{CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingDidParams, TestingKeyParams};
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams, TestingKeyParams};
 use crate::utils::context::TestContext;
 
 pub(super) async fn prepare_dids(
@@ -30,47 +31,75 @@ pub(super) async fn prepare_dids(
     organisation: &Organisation,
     local_key_params: Option<TestKey>,
     remote_key_params: Option<TestKey>,
-) -> (Option<Did>, Option<Did>, Option<Key>) {
+) -> (
+    Option<(Did, Identifier)>,
+    Option<(Did, Identifier)>,
+    Option<Key>,
+) {
     let (local_did, local_key) = if let Some(local_key_params) = local_key_params {
         let local_key = context
             .db
             .keys
             .create(organisation, local_key_params.params)
             .await;
-        (
-            Some(
-                context
-                    .db
-                    .dids
-                    .create(
-                        organisation,
-                        TestingDidParams {
-                            did_type: Some(DidType::Local),
-                            ..key_to_did_params(Some(&local_key), &local_key_params.multibase)
-                        },
-                    )
-                    .await,
-            ),
-            Some(local_key),
-        )
+
+        let local_did = context
+            .db
+            .dids
+            .create(
+                organisation,
+                TestingDidParams {
+                    did_type: Some(DidType::Local),
+                    ..key_to_did_params(Some(&local_key), &local_key_params.multibase)
+                },
+            )
+            .await;
+
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                organisation,
+                TestingIdentifierParams {
+                    did: Some(local_did.clone()),
+                    r#type: Some(IdentifierType::Did),
+                    is_remote: Some(false),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        (Some((local_did, identifier)), Some(local_key))
     } else {
         (None, None)
     };
 
     let remote_did = if let Some(remote_key_params) = remote_key_params {
-        Some(
-            context
-                .db
-                .dids
-                .create(
-                    organisation,
-                    TestingDidParams {
-                        did_type: Some(DidType::Remote),
-                        ..key_to_did_params(None, &remote_key_params.multibase)
-                    },
-                )
-                .await,
-        )
+        let did = context
+            .db
+            .dids
+            .create(
+                organisation,
+                TestingDidParams {
+                    did_type: Some(DidType::Remote),
+                    ..key_to_did_params(None, &remote_key_params.multibase)
+                },
+            )
+            .await;
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                organisation,
+                TestingIdentifierParams {
+                    did: Some(did.clone()),
+                    r#type: Some(IdentifierType::Did),
+                    is_remote: Some(true),
+                    ..Default::default()
+                },
+            )
+            .await;
+        Some((did, identifier))
     } else {
         None
     };

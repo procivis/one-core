@@ -35,6 +35,7 @@ use crate::credential::mapper::{credentials_to_repository, request_to_active_mod
 use crate::credential::CredentialProvider;
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
+    identifier,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
@@ -235,6 +236,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::SuspendEndDate,
             credential::Column::Exchange,
         ])
+        .join(
+            sea_orm::JoinType::InnerJoin,
+            credential::Relation::CredentialSchema.def(),
+        )
         .column_as(
             credential_schema::Column::CreatedDate,
             "credential_schema_created_date",
@@ -277,6 +282,24 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential_schema::Column::ExternalSchema,
             "credential_schema_external_schema",
         )
+        .join(
+            JoinType::LeftJoin,
+            credential::Relation::IssuerIdentifier.def(),
+        )
+        .column_as(identifier::Column::Id, "issuer_identifier_id")
+        .column_as(
+            identifier::Column::CreatedDate,
+            "issuer_identifier_created_date",
+        )
+        .column_as(
+            identifier::Column::LastModified,
+            "issuer_identifier_last_modified",
+        )
+        .column_as(identifier::Column::Name, "issuer_identifier_name")
+        .column_as(identifier::Column::Type, "issuer_identifier_type")
+        .column_as(identifier::Column::IsRemote, "issuer_identifier_is_remote")
+        .column_as(identifier::Column::Status, "issuer_identifier_status")
+        .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
         .column_as(did::Column::CreatedDate, "issuer_did_created_date")
         .column_as(did::Column::Deactivated, "issuer_did_deactivated")
         .column_as(did::Column::Did, "issuer_did_did")
@@ -285,13 +308,6 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .column_as(did::Column::Method, "issuer_did_method")
         .column_as(did::Column::Name, "issuer_did_name")
         .column_as(did::Column::TypeField, "issuer_did_type_field")
-        // add related schema (to enable sorting by schema name)
-        .join(
-            sea_orm::JoinType::InnerJoin,
-            credential::Relation::CredentialSchema.def(),
-        )
-        // add related issuer did (to enable sorting)
-        .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
         .filter(credential::Column::DeletedAt.is_null())
         // list query
         .with_filter_join(&query_params)
@@ -320,8 +336,16 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let issuer_did = request.issuer_did.clone();
+        let issuer_did_id = request.issuer_did.as_ref().map(|did| did.id);
+        let issuer_identifier_id = request
+            .issuer_identifier
+            .as_ref()
+            .map(|identifier| identifier.id);
         let holder_did_id = request.holder_did.as_ref().map(|did| did.id);
+        let holder_identifier_id = request
+            .holder_identifier
+            .as_ref()
+            .map(|identifier| identifier.id);
         let schema = request
             .schema
             .to_owned()
@@ -351,8 +375,10 @@ impl CredentialRepository for CredentialProvider {
         request_to_active_model(
             &request,
             schema,
-            issuer_did,
+            issuer_did_id,
+            issuer_identifier_id,
             holder_did_id,
+            holder_identifier_id,
             interaction_id,
             revocation_list_id,
             convert_inner(key_id),
@@ -477,9 +503,19 @@ impl CredentialRepository for CredentialProvider {
             Some(holder_did) => Set(Some(holder_did)),
         };
 
+        let holder_identifier_id = match request.holder_identifier_id {
+            None => Unchanged(Default::default()),
+            Some(identifier_id) => Set(Some(identifier_id)),
+        };
+
         let issuer_did_id = match request.issuer_did_id {
             None => Unchanged(Default::default()),
             Some(issuer_did) => Set(Some(issuer_did)),
+        };
+
+        let issuer_identifier_id = match request.issuer_identifier_id {
+            None => Unchanged(Default::default()),
+            Some(identifier_id) => Set(Some(identifier_id)),
         };
 
         let credential = match request.credential {
@@ -519,7 +555,9 @@ impl CredentialRepository for CredentialProvider {
             id: Unchanged(credential_id),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
+            holder_identifier_id,
             issuer_did_id,
+            issuer_identifier_id,
             credential,
             interaction_id,
             key_id,

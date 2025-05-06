@@ -146,6 +146,17 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
     .await
     .unwrap();
 
+    let identifier_id = test_utilities::insert_identifier(
+        db_conn,
+        "identifier",
+        Uuid::new_v4(),
+        Some(did_id),
+        organisation_id,
+        true,
+    )
+    .await
+    .unwrap();
+
     // credential
     test_utilities::insert_credential(
         db_conn,
@@ -153,6 +164,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did_id,
+        identifier_id,
         None,
         None,
     )

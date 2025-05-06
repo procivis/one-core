@@ -7,7 +7,7 @@ use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInput
 #[tokio::test]
 async fn test_get_client_metadata() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -114,7 +114,7 @@ async fn test_fail_to_get_client_metadata_unknown_proof_id() {
 #[tokio::test]
 async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -169,7 +169,7 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
 #[tokio::test]
 async fn test_fail_to_get_client_metadata_wrong_proof_state() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db

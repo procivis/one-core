@@ -16,7 +16,7 @@ use crate::utils::server::run_server;
 #[tokio::test]
 async fn test_create_proof_success_without_related_key() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -79,7 +79,7 @@ async fn test_create_proof_success_without_related_key() {
 #[tokio::test]
 async fn test_create_proof_success_with_related_key() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas

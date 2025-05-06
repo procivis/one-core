@@ -12,7 +12,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 #[tokio::test]
 async fn test_create_trust_entity() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -34,7 +34,7 @@ async fn test_create_trust_entity() {
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_unknown_trust_id() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let ta = TrustAnchor {
         id: Uuid::new_v4().into(),
@@ -61,7 +61,7 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -87,7 +87,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
 #[tokio::test]
 async fn test_patch_trust_entity() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -149,7 +149,7 @@ async fn test_delete_trust_entity_fails_if_entity_not_found() {
 #[tokio::test]
 async fn test_create_trust_entity_fails_did_already_used() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -178,7 +178,7 @@ async fn test_create_trust_entity_fails_did_already_used() {
 #[tokio::test]
 async fn test_fail_create_remote_trust_entity_logo_too_big() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
 
     // WHEN
     let resp = context

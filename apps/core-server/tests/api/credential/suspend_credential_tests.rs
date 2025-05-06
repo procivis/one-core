@@ -15,7 +15,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 #[tokio::test]
 async fn test_suspend_credential_with_bitstring_status_list_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -33,6 +33,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
@@ -65,7 +66,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 #[tokio::test]
 async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -83,6 +84,7 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
@@ -110,7 +112,7 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
 #[tokio::test]
 async fn test_suspend_credential_with_lvvc_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let issuer_key = issuer_did
         .keys
         .as_ref()
@@ -146,6 +148,7 @@ async fn test_suspend_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
@@ -181,7 +184,7 @@ async fn test_suspend_credential_with_lvvc_success() {
 #[tokio::test]
 async fn test_suspend_credential_with_none_fails() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -202,6 +205,7 @@ async fn test_suspend_credential_with_none_fails() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
         )
@@ -222,7 +226,7 @@ async fn test_suspend_credential_with_none_fails() {
 #[tokio::test]
 async fn test_suspend_credential_fails_credential_deleted() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -240,6 +244,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),

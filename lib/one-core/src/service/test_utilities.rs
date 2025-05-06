@@ -18,6 +18,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
@@ -230,7 +231,9 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             }),
         }]),
         issuer_did: Some(dummy_did()),
+        issuer_identifier: Some(dummy_identifier()),
         holder_did: None,
+        holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -286,6 +289,22 @@ pub fn dummy_did() -> Did {
         organisation: Some(dummy_organisation(None)),
         deactivated: false,
         log: None,
+    }
+}
+
+pub fn dummy_identifier() -> Identifier {
+    Identifier {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "identifier".to_string(),
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        status: IdentifierStatus::Active,
+        deleted_at: None,
+        organisation: None,
+        did: None,
+        key: None,
     }
 }
 

@@ -1,10 +1,11 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::IdentifierType;
 use shared_types::KeyId;
 use uuid::Uuid;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
@@ -12,7 +13,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_create_credential_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -60,7 +61,7 @@ async fn test_create_credential_success() {
 #[tokio::test]
 async fn test_create_credential_with_array_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -174,7 +175,7 @@ async fn test_create_credential_with_array_success() {
 #[tokio::test]
 async fn test_create_credential_success_with_nested_claims() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -279,6 +280,19 @@ async fn test_create_credential_with_issuer_key() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
 
@@ -340,6 +354,19 @@ async fn test_fail_to_create_credential_invalid_key_role() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
 
@@ -370,7 +397,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
 #[tokio::test]
 async fn test_fail_to_create_credential_unknown_key_id() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -405,7 +432,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 #[tokio::test]
 async fn test_create_credential_with_big_picture_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -448,7 +475,7 @@ async fn test_create_credential_with_big_picture_success() {
 #[tokio::test]
 async fn test_create_credential_failed_specified_object_claim() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -486,7 +513,7 @@ async fn test_create_credential_failed_specified_object_claim() {
 #[tokio::test]
 async fn test_create_credential_boolean_value_wrong() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -529,7 +556,7 @@ async fn test_create_credential_boolean_value_wrong() {
 #[tokio::test]
 async fn test_fail_create_credential_with_empty_value() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let claim_id = Uuid::new_v4();
 
@@ -592,7 +619,7 @@ async fn test_fail_create_credential_with_empty_value() {
 #[tokio::test]
 async fn test_fail_create_credential_with_empty_array_value() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let str_array_claim_id = Uuid::new_v4();
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -670,7 +697,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
 #[tokio::test]
 async fn test_fail_create_credential_with_empty_object_value() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let name_claim_id = Uuid::new_v4();
     let nested_object_claim_id = Uuid::new_v4();

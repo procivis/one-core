@@ -336,7 +336,6 @@ pub struct TestingIdentifierParams {
     pub deleted_at: Option<OffsetDateTime>,
 }
 
-#[allow(dead_code)]
 pub async fn create_identifier(
     db_conn: &DbConn,
     organisation: &Organisation,
@@ -627,6 +626,7 @@ type TestClaimSchema = Uuid;
 #[derive(Debug, Default)]
 pub struct TestingCredentialParams<'a> {
     pub holder_did: Option<Did>,
+    pub holder_identifier: Option<Identifier>,
     pub credential: Option<&'a str>,
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
@@ -643,6 +643,7 @@ pub async fn create_credential(
     credential_schema: &CredentialSchema,
     state: CredentialStateEnum,
     issuer_did: &Did,
+    issuer_identifier: &Identifier,
     exchange: &str,
     params: TestingCredentialParams<'_>,
 ) -> Credential {
@@ -679,7 +680,9 @@ pub async fn create_credential(
         suspend_end_date: params.suspend_end_date,
         claims: Some(claims),
         issuer_did: Some(issuer_did.to_owned()),
+        issuer_identifier: Some(issuer_identifier.to_owned()),
         holder_did: params.holder_did,
+        holder_identifier: params.holder_identifier,
         schema: Some(credential_schema.to_owned()),
         interaction: params.interaction,
         revocation_list: None,

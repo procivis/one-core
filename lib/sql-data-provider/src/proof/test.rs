@@ -27,7 +27,9 @@ use one_core::repository::proof_schema_repository::{
 };
 use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
+use shared_types::{
+    ClaimSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+};
 use uuid::Uuid;
 
 use super::ProofProvider;
@@ -41,6 +43,7 @@ struct TestSetup {
     pub organisation_id: OrganisationId,
     pub proof_schema_id: ProofSchemaId,
     pub did_id: DidId,
+    pub identifier_id: IdentifierId,
     pub claim_schema_ids: Vec<ClaimSchemaId>,
     pub interaction_id: InteractionId,
     pub key_id: KeyId,
@@ -129,6 +132,17 @@ async fn setup(
         .await
         .unwrap();
 
+    let identifier_id = insert_identifier(
+        &db,
+        "verifier",
+        Uuid::new_v4(),
+        Some(did_id),
+        organisation_id,
+        false,
+    )
+    .await
+    .unwrap();
+
     let interaction_id = Uuid::parse_str(
         &insert_interaction(&db, "host", &[1, 2, 3], organisation_id)
             .await
@@ -150,6 +164,7 @@ async fn setup(
         organisation_id,
         proof_schema_id,
         did_id,
+        identifier_id,
         claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.id).collect(),
         interaction_id,
         key_id,
@@ -161,6 +176,7 @@ struct TestSetupWithProof {
     pub organisation_id: OrganisationId,
     pub proof_schema_id: ProofSchemaId,
     pub did_id: DidId,
+    pub identifier_id: IdentifierId,
     pub proof_id: ProofId,
     pub db: DatabaseConnection,
     pub claim_schema_ids: Vec<ClaimSchemaId>,
@@ -181,6 +197,7 @@ async fn setup_with_proof(
         db,
         proof_schema_id,
         did_id,
+        identifier_id,
         organisation_id,
         claim_schema_ids,
         interaction_id,
@@ -212,6 +229,7 @@ async fn setup_with_proof(
         organisation_id,
         proof_schema_id,
         did_id,
+        identifier_id,
         proof_id,
         db,
         claim_schema_ids,
@@ -503,7 +521,9 @@ async fn test_get_proof_with_relations() {
                 suspend_end_date: None,
                 claims: None,
                 issuer_did: None,
+                issuer_identifier: None,
                 holder_did: None,
+                holder_identifier: None,
                 schema: None,
                 interaction: None,
                 revocation_list: None,
@@ -768,6 +788,7 @@ async fn test_set_proof_claims_success() {
         claim_schema_ids,
         organisation_id,
         did_id,
+        identifier_id,
         ..
     } = setup_with_proof(
         get_credential_repository_mock(),
@@ -796,6 +817,7 @@ async fn test_set_proof_claims_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         did_id,
+        identifier_id,
         None,
         None,
     )

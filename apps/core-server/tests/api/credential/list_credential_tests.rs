@@ -17,7 +17,7 @@ const CREDENTIAL_SCHEMA_NAME: &str = "CREDENTIAL_SCHEMA_NAME";
 #[tokio::test]
 async fn test_get_list_credential_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -32,6 +32,7 @@ async fn test_get_list_credential_success() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
+                &identifier,
                 "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
@@ -59,7 +60,7 @@ async fn test_get_list_credential_success() {
 #[tokio::test]
 async fn test_get_list_credential_deleted_credentials_are_not_returned() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -74,6 +75,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
                 &credential_schema,
                 CredentialStateEnum::Created,
                 &did,
+                &identifier,
                 "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
@@ -99,7 +101,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_role() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -119,6 +121,7 @@ async fn test_get_list_credential_filter_by_role() {
                     &credential_schema,
                     CredentialStateEnum::Created,
                     &did,
+                    &identifier,
                     "OPENID4VCI_DRAFT13",
                     TestingCredentialParams {
                         role: Some(role_enum.clone()),
@@ -169,7 +172,7 @@ async fn test_fail_to_get_list_credential_filter_by_invalid_role() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_name() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema1 = context
         .db
         .credential_schemas
@@ -189,6 +192,7 @@ async fn test_get_list_credential_filter_by_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -201,6 +205,7 @@ async fn test_get_list_credential_filter_by_name() {
             &credential_schema2,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -237,7 +242,7 @@ async fn test_get_list_credential_filter_by_name() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_ids() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -254,6 +259,7 @@ async fn test_get_list_credential_filter_by_ids() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
+                &identifier,
                 "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
@@ -295,7 +301,7 @@ async fn test_get_list_credential_filter_by_ids() {
 #[tokio::test]
 async fn test_get_list_credential_include_layout_properties_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -310,6 +316,7 @@ async fn test_get_list_credential_include_layout_properties_success() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
+                &identifier,
                 "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
             )
@@ -359,7 +366,7 @@ async fn test_get_list_credential_include_layout_properties_success() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_schema_name() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema1 = context
         .db
         .credential_schemas
@@ -379,6 +386,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -391,6 +399,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
             &credential_schema2,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -428,7 +437,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_claim_name() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let claim_1 = Uuid::new_v4();
     let claim_2 = Uuid::new_v4();
@@ -463,6 +472,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
@@ -481,6 +491,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(claim_2, "super-name-200", "extra-value-22")]),
@@ -496,6 +507,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -533,7 +545,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_claim_value() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let claim_1 = Uuid::new_v4();
     let claim_2 = Uuid::new_v4();
@@ -568,6 +580,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
@@ -586,6 +599,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(claim_2, "super-name-200", "extra-value-33")]),
@@ -601,6 +615,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )
@@ -638,7 +653,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_everything() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
 
     let claim_1 = Uuid::new_v4();
     let claim_2 = Uuid::new_v4();
@@ -673,6 +688,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
@@ -691,6 +707,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema,
             CredentialStateEnum::Offered,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![(claim_2, "super-name-200", "test 3")]),
@@ -706,6 +723,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
+            &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
         )

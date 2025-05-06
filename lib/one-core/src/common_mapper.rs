@@ -47,7 +47,7 @@ pub(crate) fn remove_first_nesting_layer(name: &str) -> String {
     }
 }
 
-pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
+pub(crate) fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
     GetListResponse::<T> {
         values: convert_inner(input.values),
         total_pages: input.total_pages,
@@ -55,7 +55,7 @@ pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListRe
     }
 }
 
-pub fn list_response_try_into<T, F: TryInto<T>>(
+pub(crate) fn list_response_try_into<T, F: TryInto<T>>(
     input: GetListResponse<F>,
 ) -> Result<GetListResponse<T>, F::Error> {
     Ok(GetListResponse::<T> {
@@ -92,7 +92,7 @@ pub(crate) fn get_exchange_param_refresh_token_expires_in(
 }
 
 #[derive(Debug, Display)]
-pub enum DidRole {
+pub(crate) enum DidRole {
     #[strum(to_string = "holder")]
     Holder,
     #[strum(to_string = "issuer")]
@@ -166,7 +166,7 @@ pub(crate) async fn get_or_create_did_and_identifier(
     Ok((did, identifier))
 }
 
-pub fn value_to_model_claims(
+pub(crate) fn value_to_model_claims(
     credential_id: CredentialId,
     claim_schemas: &[CredentialSchemaClaim],
     json_value: &serde_json::Value,
@@ -248,12 +248,15 @@ pub fn value_to_model_claims(
     Ok(model_claims)
 }
 
-pub fn extracted_credential_to_model(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
     claims: Vec<(serde_json::Value, ClaimSchema)>,
     issuer_did: Did,
+    issuer_identifier: Identifier,
     holder_did: Option<Did>,
+    holder_identifier: Option<Identifier>,
     exchange: String,
 ) -> Result<Credential, ServiceError> {
     let now = OffsetDateTime::now_utc();
@@ -283,7 +286,9 @@ pub fn extracted_credential_to_model(
         suspend_end_date: None,
         claims: Some(model_claims),
         issuer_did: Some(issuer_did),
+        issuer_identifier: Some(issuer_identifier),
         holder_did,
+        holder_identifier,
         schema: Some(credential_schema),
         redirect_uri: None,
         interaction: None,
@@ -293,12 +298,12 @@ pub fn extracted_credential_to_model(
     })
 }
 
-pub struct PublicKeyWithJwk {
+pub(crate) struct PublicKeyWithJwk {
     pub key_id: KeyId,
     pub jwk: PublicKeyJwk,
 }
 
-pub fn get_encryption_key_jwk_from_proof(
+pub(crate) fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
@@ -443,7 +448,7 @@ impl Arrayed<CredentialSchemaClaimsNestedTypeView> {
 }
 
 impl CredentialSchemaClaimsNestedTypeView {
-    pub fn from_claims_and_prefix(
+    pub(crate) fn from_claims_and_prefix(
         claims: &[CredentialSchemaClaim],
         claim: CredentialSchemaClaim,
     ) -> Result<Self, ServiceError> {
@@ -478,14 +483,14 @@ impl CredentialSchemaClaimsNestedTypeView {
         }
     }
 
-    pub fn required(&self) -> bool {
+    pub(crate) fn required(&self) -> bool {
         match self {
             Self::Field(claim) => claim.required,
             Self::Object(object) => object.claim.required,
         }
     }
 
-    pub fn key(&self) -> &str {
+    pub(crate) fn key(&self) -> &str {
         match self {
             Self::Field(claim) => &claim.schema.key,
             Self::Object(object) => &object.claim.schema.key,
@@ -651,6 +656,20 @@ mod tests {
                 organisation: None,
                 log: None,
             },
+            Identifier {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "IssuerIdentifier".to_string(),
+                r#type: IdentifierType::Did,
+                is_remote: true,
+                status: IdentifierStatus::Active,
+                deleted_at: None,
+                organisation: None,
+                did: None,
+                key: None,
+            },
+            None,
             None,
             "ISO_MDL".to_string(),
         )
