@@ -719,6 +719,7 @@ async fn test_accept_credential() {
                     redirect_uri: None,
                 },
                 create_did: None,
+                create_identifier: None,
                 update_credential: None,
                 update_credential_schema: None,
             })

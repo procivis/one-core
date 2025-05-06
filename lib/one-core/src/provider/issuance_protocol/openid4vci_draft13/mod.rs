@@ -33,7 +33,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -584,25 +584,30 @@ impl IssuanceProtocol for OpenID4VCI13 {
         }
 
         let now = OffsetDateTime::now_utc();
-        let (issuer_did_id, create_did) = match storage_access
-            .get_did_by_value(&issuer_did_value)
-            .await
-            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
-        {
-            Some(did) => (did.id, None),
-            None => {
-                let id = Uuid::new_v4().into();
-                let did_method = self
-                    .did_method_provider
-                    .get_did_method_id(&issuer_did_value)
-                    .ok_or(IssuanceProtocolError::Failed(format!(
-                        "unsupported issuer did method: {issuer_did_value}"
-                    )))?;
+        let (issuer_did_id, issuer_identifier_id, create_did, create_identifier) =
+            match storage_access
+                .get_did_by_value(&issuer_did_value)
+                .await
+                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
+            {
+                Some(did) => {
+                    let identifier = storage_access
+                        .get_identifier_for_did(&did.id)
+                        .await
+                        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
-                (
-                    id,
-                    Some(Did {
-                        id,
+                    (did.id, identifier.id, None, None)
+                }
+                None => {
+                    let id = Uuid::new_v4();
+                    let did_method = self
+                        .did_method_provider
+                        .get_did_method_id(&issuer_did_value)
+                        .ok_or(IssuanceProtocolError::Failed(format!(
+                            "unsupported issuer did method: {issuer_did_value}"
+                        )))?;
+                    let did = Did {
+                        id: id.into(),
                         name: format!("issuer {id}"),
                         created_date: now,
                         last_modified: now,
@@ -613,21 +618,35 @@ impl IssuanceProtocol for OpenID4VCI13 {
                         deactivated: false,
                         organisation: schema.organisation.clone(),
                         log: None,
-                    }),
-                )
-            }
-        };
+                    };
 
-        let issuer_identifier = storage_access
-            .get_identifier_for_did(&issuer_did_id)
-            .await
-            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+                    (
+                        id.into(),
+                        id.into(),
+                        Some(did.to_owned()),
+                        Some(Identifier {
+                            id: id.into(),
+                            name: format!("issuer {id}"),
+                            created_date: now,
+                            last_modified: now,
+                            did: Some(did),
+                            key: None,
+                            is_remote: true,
+                            deleted_at: None,
+                            r#type: IdentifierType::Did,
+                            status: IdentifierStatus::Active,
+                            organisation: schema.organisation.clone(),
+                        }),
+                    )
+                }
+            };
 
         let redirect_uri = response_value.redirect_uri.clone();
 
         Ok(UpdateResponse {
             result: response_value,
             create_did,
+            create_identifier,
             update_credential_schema: Some(UpdateCredentialSchemaRequest {
                 id: schema.id,
                 revocation_method,
@@ -640,7 +659,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 credential.id,
                 UpdateCredentialRequest {
                     issuer_did_id: Some(issuer_did_id),
-                    issuer_identifier_id: Some(issuer_identifier.id),
+                    issuer_identifier_id: Some(issuer_identifier_id),
                     redirect_uri: Some(redirect_uri),
                     suspend_end_date: Clearable::DontTouch,
                     ..Default::default()

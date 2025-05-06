@@ -19,6 +19,7 @@ use crate::model::credential_schema::{
     UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
+use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
@@ -315,6 +316,7 @@ pub(crate) struct SubmitIssuerResponse {
 pub(crate) struct UpdateResponse<T> {
     pub result: T,
     pub create_did: Option<Did>,
+    pub create_identifier: Option<Identifier>,
     pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,
     pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }
