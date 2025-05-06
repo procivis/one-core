@@ -199,7 +199,7 @@ async fn test_create_did_invalid_organisation() {
 }
 
 #[tokio::test]
-async fn test_get_did_by_value_existing() {
+async fn test_get_did_by_value_existing_inside_organisation() {
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -222,6 +222,7 @@ async fn test_get_did_by_value_existing() {
     let result = provider
         .get_did_by_value(
             &did_value,
+            Some(Some(organisation.id)),
             &DidRelations {
                 organisation: Some(OrganisationRelations::default()),
                 ..Default::default()
@@ -241,12 +242,76 @@ async fn test_get_did_by_value_existing() {
 }
 
 #[tokio::test]
+async fn test_get_did_by_value_existing_ignoring_organisation() {
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+
+    let TestSetupWithDid {
+        provider,
+        did_id,
+        did_name,
+        did_value,
+        organisation,
+        ..
+    } = setup_with_did(Repositories {
+        organisation_repository,
+        ..Default::default()
+    })
+    .await;
+
+    let result = provider
+        .get_did_by_value(
+            &did_value,
+            None,
+            &DidRelations {
+                organisation: Some(OrganisationRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert!(result.is_ok());
+
+    let content = result.unwrap().unwrap();
+    assert_eq!(content.id, did_id);
+    assert_eq!(content.did, did_value);
+    assert_eq!(content.name, did_name);
+    assert_eq!(content.organisation.unwrap().id, organisation.id);
+}
+
+#[tokio::test]
+async fn test_get_did_by_value_lookup_null_organisation() {
+    let TestSetupWithDid {
+        provider,
+        did_value,
+        ..
+    } = setup_with_did(Repositories::default()).await;
+
+    let result = provider
+        .get_did_by_value(
+            &did_value,
+            Some(None),
+            &DidRelations {
+                organisation: Some(OrganisationRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert!(matches!(result, Ok(None)));
+}
+
+#[tokio::test]
 async fn test_get_did_by_value_missing() {
     let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
         .get_did_by_value(
             &"did:missing:123".parse().unwrap(),
+            None,
             &DidRelations::default(),
         )
         .await;

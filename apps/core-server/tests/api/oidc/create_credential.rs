@@ -234,7 +234,7 @@ async fn issuer_setup() -> TestIssuerSetup {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -426,7 +426,7 @@ async fn test_post_issuer_credential_mdoc() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

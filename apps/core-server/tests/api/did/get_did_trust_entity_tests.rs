@@ -88,7 +88,11 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
         })
         .await;
 
-    let did2 = context.db.dids.create(&org, Default::default()).await;
+    let did2 = context
+        .db
+        .dids
+        .create(Some(org.clone()), Default::default())
+        .await;
     let entity = context
         .db
         .trust_entities

@@ -50,7 +50,11 @@ pub(crate) trait StorageProxy: Send + Sync {
     ) -> anyhow::Result<Vec<Credential>>;
 
     /// Obtain a DID by its address, from a chosen storage layer.
-    async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>>;
+    async fn get_did_by_value(
+        &self,
+        value: &DidValue,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Did>>;
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
 
@@ -164,9 +168,13 @@ impl StorageProxy for StorageProxyImpl {
             .collect::<Vec<_>>())
     }
 
-    async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>> {
+    async fn get_did_by_value(
+        &self,
+        value: &DidValue,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Did>> {
         self.dids
-            .get_did_by_value(value, &Default::default())
+            .get_did_by_value(value, Some(Some(organisation_id)), &Default::default())
             .await
             .context("Could not fetch did by value")
     }

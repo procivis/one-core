@@ -125,7 +125,7 @@ async fn test_suspend_credential_with_lvvc_success() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(

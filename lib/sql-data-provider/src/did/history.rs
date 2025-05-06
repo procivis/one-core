@@ -73,9 +73,12 @@ impl DidRepository for DidHistoryDecorator {
     async fn get_did_by_value(
         &self,
         value: &DidValue,
+        organisation: Option<Option<OrganisationId>>,
         relations: &DidRelations,
     ) -> Result<Option<Did>, DataLayerError> {
-        self.inner.get_did_by_value(value, relations).await
+        self.inner
+            .get_did_by_value(value, organisation, relations)
+            .await
     }
 
     async fn get_did_list(&self, query: DidListQuery) -> Result<GetDidList, DataLayerError> {

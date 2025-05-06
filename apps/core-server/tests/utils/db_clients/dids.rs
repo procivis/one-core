@@ -20,7 +20,11 @@ impl DidsDB {
         Self { repository }
     }
 
-    pub async fn create(&self, organisation: &Organisation, params: TestingDidParams) -> Did {
+    pub async fn create(
+        &self,
+        organisation: Option<Organisation>,
+        params: TestingDidParams,
+    ) -> Did {
         let now = OffsetDateTime::now_utc();
 
         let did_id = params.id.unwrap_or(DidId::from(Uuid::new_v4()));
@@ -29,7 +33,7 @@ impl DidsDB {
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             name: unwrap_or_random(params.name),
-            organisation: Some(organisation.clone()),
+            organisation,
             did: params
                 .did
                 .unwrap_or(DidValue::from_str(&format!("did:test:{did_id}")).unwrap()),
@@ -63,6 +67,7 @@ impl DidsDB {
         self.repository
             .get_did_by_value(
                 did,
+                None,
                 &DidRelations {
                     keys: Some(KeyRelations::default()),
                     ..Default::default()

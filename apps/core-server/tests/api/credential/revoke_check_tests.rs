@@ -48,7 +48,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -140,7 +140,7 @@ async fn test_revoke_check_success_statuslist2021() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -401,7 +401,7 @@ async fn setup_bitstring_status_list_success(
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(issuer_did.parse().unwrap()),
@@ -649,7 +649,7 @@ async fn setup_lvvc_revoke_check_valid(
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -670,7 +670,7 @@ async fn setup_lvvc_revoke_check_valid(
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -766,7 +766,7 @@ async fn test_revoke_check_mdoc_update() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -916,7 +916,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1077,7 +1077,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1231,7 +1231,7 @@ async fn test_revoke_check_token_update() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1375,7 +1375,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1511,7 +1511,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1650,7 +1650,7 @@ async fn test_suspended_to_valid_mdoc() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1832,7 +1832,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(
@@ -1972,7 +1972,7 @@ async fn test_revoke_check_failed_deleted_credential() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
                 did: Some(

@@ -47,7 +47,7 @@ pub(super) async fn prepare_dids(
             .db
             .dids
             .create(
-                organisation,
+                Some(organisation.clone()),
                 TestingDidParams {
                     did_type: Some(DidType::Local),
                     ..key_to_did_params(Some(&local_key), &local_key_params.multibase)
@@ -79,7 +79,7 @@ pub(super) async fn prepare_dids(
             .db
             .dids
             .create(
-                organisation,
+                Some(organisation.clone()),
                 TestingDidParams {
                     did_type: Some(DidType::Remote),
                     ..key_to_did_params(None, &remote_key_params.multibase)

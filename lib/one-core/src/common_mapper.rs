@@ -110,7 +110,11 @@ pub(crate) async fn get_or_create_did_and_identifier(
     did_role: DidRole,
 ) -> Result<(Did, Identifier), ServiceError> {
     let did = match did_repository
-        .get_did_by_value(did_value, &DidRelations::default())
+        .get_did_by_value(
+            did_value,
+            organisation.as_ref().map(|org| Some(org.id)),
+            &DidRelations::default(),
+        )
         .await?
     {
         Some(did) => did,

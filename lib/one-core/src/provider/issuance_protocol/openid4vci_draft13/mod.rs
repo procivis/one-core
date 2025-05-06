@@ -583,10 +583,18 @@ impl IssuanceProtocol for OpenID4VCI13 {
             }
         }
 
+        let organisation_id = schema
+            .organisation
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing credential schema organisation".to_string(),
+            ))?
+            .id;
+
         let now = OffsetDateTime::now_utc();
         let (issuer_did_id, issuer_identifier_id, create_did, create_identifier) =
             match storage_access
-                .get_did_by_value(&issuer_did_value)
+                .get_did_by_value(&issuer_did_value, organisation_id)
                 .await
                 .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
             {

@@ -76,6 +76,7 @@ impl VCAPIService {
             .did_repository
             .get_did_by_value(
                 &issuer_did_value,
+                None,
                 &DidRelations {
                     keys: Some(KeyRelations::default()),
                     organisation: None,

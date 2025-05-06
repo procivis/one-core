@@ -18,7 +18,7 @@ async fn test_get_did_webvh_ok() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 log: Some(log.clone()),
                 did_type: Some(DidType::Local),

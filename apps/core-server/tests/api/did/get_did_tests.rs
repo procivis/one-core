@@ -10,7 +10,7 @@ async fn test_get_did_ok() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(true),
                 ..Default::default()

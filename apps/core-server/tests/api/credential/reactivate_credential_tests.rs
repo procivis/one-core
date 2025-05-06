@@ -66,7 +66,7 @@ async fn test_reactivate_credential_with_lvvc_success() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

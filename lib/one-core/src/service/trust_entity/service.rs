@@ -174,6 +174,7 @@ impl TrustEntityService {
             .did_repository
             .get_did_by_value(
                 &did_value,
+                Some(None),
                 &DidRelations {
                     organisation: Some(OrganisationRelations {}),
                     keys: None,
@@ -263,7 +264,7 @@ impl TrustEntityService {
 
         let did = self
             .did_repository
-            .get_did_by_value(&did_value, &DidRelations::default())
+            .get_did_by_value(&did_value, Some(None), &DidRelations::default())
             .await?
             .ok_or(EntityNotFoundError::DidValue(did_value))?;
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use one_core::config::core_config::KeyAlgorithmType;
-use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use one_core::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
@@ -33,10 +33,26 @@ async fn test_get_trust_entity_by_did_success() {
 
     let (did, token) = prepare_bearer_token(&context, &org).await;
     let jwt_token_client = Client::new(context.config.app.core_base_url.clone(), token);
+
     let trust_anchor = context
         .db
         .trust_anchors
         .create(TestingTrustAnchorParams::default())
+        .await;
+
+    // recreate did on server with no organsation linked
+    let did = context
+        .db
+        .dids
+        .create(
+            None,
+            TestingDidParams {
+                did: Some(did.did),
+                did_method: Some(did.did_method),
+                did_type: Some(DidType::Remote),
+                ..Default::default()
+            },
+        )
         .await;
 
     let entity_one = context
@@ -44,7 +60,7 @@ async fn test_get_trust_entity_by_did_success() {
         .trust_entities
         .create(
             "entity",
-            TrustEntityRole::Issuer,
+            TrustEntityRole::Verifier,
             TrustEntityState::Active,
             trust_anchor.clone(),
             did.clone(),
@@ -61,6 +77,7 @@ async fn test_get_trust_entity_by_did_success() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["id"].assert_eq(&entity_one.id);
+    assert_eq!(body["role"], "VERIFIER");
     body["trustAnchor"]["id"].assert_eq(&trust_anchor.id);
     body["did"]["id"].assert_eq(&did.id);
 }
@@ -137,7 +154,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         .db
         .dids
         .create(
-            org,
+            Some(org.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,

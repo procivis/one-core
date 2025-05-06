@@ -46,7 +46,7 @@ async fn test_list_trust_entities() {
     let did2 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     let entity2 = context
         .db
@@ -135,7 +135,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
     let did2 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     let entity2 = context
         .db
@@ -152,7 +152,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
     let did3 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     context
         .db
@@ -220,7 +220,7 @@ async fn test_list_trust_entities_find_by_name() {
     let did2 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     let entity2 = context
         .db
@@ -237,7 +237,7 @@ async fn test_list_trust_entities_find_by_name() {
     let did3 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     context
         .db

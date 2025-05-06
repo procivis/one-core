@@ -66,12 +66,12 @@ async fn test_list_trust_anchors_with_entities() {
         let did1 = context
             .db
             .dids
-            .create(&organisation, TestingDidParams::default())
+            .create(Some(organisation.clone()), TestingDidParams::default())
             .await;
         let did2 = context
             .db
             .dids
-            .create(&organisation, TestingDidParams::default())
+            .create(Some(organisation.clone()), TestingDidParams::default())
             .await;
 
         context

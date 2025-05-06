@@ -181,10 +181,10 @@ async fn test_handle_invitation_success() {
         .expect_get_did_by_value()
         .withf({
             let client_id = client_id.clone();
-            move |did, _| did == &client_id
+            move |did, _, _| did == &client_id
         })
         .once()
-        .returning(|did, _| {
+        .returning(|did, _, _| {
             Ok(Some(Did {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),

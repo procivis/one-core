@@ -250,7 +250,7 @@ async fn setup_submittable_presentation(
         .db
         .dids
         .create(
-            organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {

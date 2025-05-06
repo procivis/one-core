@@ -1,4 +1,4 @@
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, OrganisationId};
 
 use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRequest};
 use crate::repository::error::DataLayerError;
@@ -17,6 +17,11 @@ pub trait DidRepository: Send + Sync {
     async fn get_did_by_value(
         &self,
         value: &DidValue,
+
+        // None => try to find in all organisations
+        // Some(None) => only give results with organisationId == NULL (remote trust entities)
+        // Some(Some(id)) => only give results with organisationId == id
+        organisation: Option<Option<OrganisationId>>,
         relations: &DidRelations,
     ) -> Result<Option<Did>, DataLayerError>;
 

@@ -59,7 +59,7 @@ async fn test_get_proof_success() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -152,7 +152,7 @@ async fn test_get_proof_detached_success() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -253,7 +253,7 @@ async fn test_get_proof_with_nested_claims() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -349,7 +349,7 @@ async fn test_get_proof_with_empty_array() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -488,7 +488,7 @@ async fn test_get_proof_with_array() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -600,7 +600,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -695,7 +695,7 @@ async fn test_get_proof_with_credentials() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -781,7 +781,7 @@ async fn test_get_proof_as_holder_success() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -794,7 +794,7 @@ async fn test_get_proof_as_holder_success() {
     let holder_did = context
         .db
         .dids
-        .create(&organisation, Default::default())
+        .create(Some(organisation.clone()), Default::default())
         .await;
     let interaction = context
         .db
@@ -844,7 +844,7 @@ async fn test_get_proof_with_retain_date() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -965,7 +965,7 @@ async fn test_get_proof_with_deleted_claims() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

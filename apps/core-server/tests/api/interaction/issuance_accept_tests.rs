@@ -30,7 +30,7 @@ async fn test_issuance_accept_openid4vc() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -64,7 +64,7 @@ async fn test_issuance_accept_openid4vc() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -214,7 +214,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 ..Default::default()
@@ -243,7 +243,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -368,7 +368,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -402,7 +402,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -527,7 +527,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -561,7 +561,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -689,7 +689,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 ..Default::default()
@@ -776,7 +776,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 ..Default::default()
@@ -806,7 +806,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -901,7 +901,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 ..Default::default()
@@ -930,7 +930,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -1014,7 +1014,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -1054,7 +1054,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -1150,7 +1150,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 ..Default::default()
@@ -1180,7 +1180,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -1264,7 +1264,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 ..Default::default()
@@ -1294,7 +1294,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -1390,7 +1390,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -1424,7 +1424,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -1556,7 +1556,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -1591,7 +1591,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
@@ -1724,7 +1724,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(
@@ -1759,7 +1759,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,

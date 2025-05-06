@@ -40,7 +40,7 @@ pub async fn new_with_trust_list() -> (
     let did2 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     let entity_two = context
         .db
@@ -130,7 +130,7 @@ async fn test_get_trust_list_filters_not_active() {
     let did3 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     context
         .db
@@ -146,7 +146,7 @@ async fn test_get_trust_list_filters_not_active() {
     let did4 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     context
         .db
@@ -162,7 +162,7 @@ async fn test_get_trust_list_filters_not_active() {
     let did5 = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     context
         .db

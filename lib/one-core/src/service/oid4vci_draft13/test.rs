@@ -829,7 +829,7 @@ async fn test_create_credential_success() {
         did_repository
             .expect_get_did_by_value()
             .times(1)
-            .returning(move |did_value, _| {
+            .returning(move |did_value, _, _| {
                 Ok(Some(Did {
                     id: holder_did_id,
                     created_date: now,
@@ -1023,7 +1023,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         did_repository
             .expect_get_did_by_value()
             .times(1)
-            .returning(move |did_value, _| {
+            .returning(move |did_value, _, _| {
                 Ok(Some(Did {
                     id: holder_did_id,
                     created_date: now,
@@ -1218,7 +1218,7 @@ async fn test_create_credential_success_mdoc() {
         did_repository
             .expect_get_did_by_value()
             .times(1)
-            .returning(move |did_value, _| {
+            .returning(move |did_value, _, _| {
                 Ok(Some(Did {
                     id: holder_did_id,
                     created_date: now,
@@ -1820,7 +1820,7 @@ async fn test_create_credential_issuer_failed() {
         did_repository
             .expect_get_did_by_value()
             .times(1)
-            .returning(move |did_value, _| {
+            .returning(move |did_value, _, _| {
                 Ok(Some(Did {
                     id: holder_did_id,
                     created_date: now,

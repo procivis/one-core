@@ -11,7 +11,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
 };
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 
 use super::mapper::create_list_response;
 use super::DidProvider;
@@ -103,11 +103,23 @@ impl DidRepository for DidProvider {
     async fn get_did_by_value(
         &self,
         value: &DidValue,
+        organisation: Option<Option<OrganisationId>>,
         relations: &DidRelations,
     ) -> Result<Option<Did>, DataLayerError> {
-        let did = did::Entity::find()
+        let mut query = did::Entity::find()
             .filter(did::Column::Did.eq(value))
-            .filter(did::Column::DeletedAt.is_null())
+            .filter(did::Column::DeletedAt.is_null());
+
+        if let Some(organisation_filter) = organisation {
+            query = match organisation_filter {
+                Some(organisation_id) => {
+                    query.filter(did::Column::OrganisationId.eq(organisation_id))
+                }
+                None => query.filter(did::Column::OrganisationId.is_null()),
+            }
+        }
+
+        let did = query
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

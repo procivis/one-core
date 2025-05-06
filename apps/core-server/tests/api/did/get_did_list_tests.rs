@@ -13,7 +13,7 @@ async fn test_get_did_list_filters_deactivated_dids() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 ..Default::default()
@@ -24,7 +24,7 @@ async fn test_get_did_list_filters_deactivated_dids() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(true),
                 ..Default::default()
@@ -102,7 +102,7 @@ async fn test_get_did_list_filters_with_key_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 keys: Some(vec![
@@ -124,7 +124,7 @@ async fn test_get_did_list_filters_with_key_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 keys: Some(vec![RelatedKey {
@@ -139,7 +139,7 @@ async fn test_get_did_list_filters_with_key_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 keys: Some(vec![
@@ -191,7 +191,7 @@ async fn test_get_did_list_filters_with_did_method_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("FOO".into()),
                 ..Default::default()
@@ -203,7 +203,7 @@ async fn test_get_did_list_filters_with_did_method_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 did_method: Some("BAR".into()),
                 ..Default::default()
@@ -281,7 +281,7 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 keys: Some(vec![
@@ -303,7 +303,7 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 keys: Some(vec![RelatedKey {
@@ -318,7 +318,7 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
         .db
         .dids
         .create(
-            &organisation,
+            Some(organisation.clone()),
             TestingDidParams {
                 deactivated: Some(false),
                 keys: Some(vec![

@@ -62,7 +62,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     let issuer_did = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(Some(organisation.clone()), TestingDidParams::default())
         .await;
     let identifier = context
         .db
