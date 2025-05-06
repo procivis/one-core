@@ -44,7 +44,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{
-    dummy_did_document, dummy_organisation, generic_config, get_dummy_date,
+    dummy_did_document, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
 
 #[tokio::test]
@@ -231,6 +231,7 @@ async fn test_issuer_submit_succeeds() {
         .issuer_issue_credential(
             &credential_id,
             dummy_did(),
+            dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
         .await;
@@ -409,6 +410,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .issuer_issue_credential(
             &credential_id,
             dummy_did(),
+            dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
         .await
@@ -594,6 +596,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .issuer_issue_credential(
             &credential_id,
             dummy_did(),
+            dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
         .await
@@ -687,7 +690,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     assert2::assert!(
         let IssuanceProtocolError::InvalidRequest(_) =
         service
-        .issuer_issue_credential(&credential_id, dummy_did(), format!("{}#0", dummy_did().did))
+        .issuer_issue_credential(&credential_id, dummy_did(), dummy_identifier(), format!("{}#0", dummy_did().did))
         .await
         .err()
         .unwrap()

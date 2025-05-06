@@ -33,6 +33,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -617,6 +618,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
             }
         };
 
+        let issuer_identifier = storage_access
+            .get_identifier_for_did(&issuer_did_id)
+            .await
+            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+
         let redirect_uri = response_value.redirect_uri.clone();
 
         Ok(UpdateResponse {
@@ -634,6 +640,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 credential.id,
                 UpdateCredentialRequest {
                     issuer_did_id: Some(issuer_did_id),
+                    issuer_identifier_id: Some(issuer_identifier.id),
                     redirect_uri: Some(redirect_uri),
                     suspend_end_date: Clearable::DontTouch,
                     ..Default::default()
@@ -730,6 +737,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         &self,
         credential_id: &CredentialId,
         holder_did: Did,
+        holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
         let Some(mut credential) = self
@@ -1040,7 +1048,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_did.id),
+                        get_issued_credential_update(&token, holder_did.id, holder_identifier.id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -1062,7 +1070,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_did.id),
+                        get_issued_credential_update(&token, holder_did.id, holder_identifier.id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;

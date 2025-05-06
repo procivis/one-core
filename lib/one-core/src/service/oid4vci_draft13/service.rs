@@ -312,7 +312,7 @@ impl OID4VCIDraft13Service {
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.exchange)?;
 
-        let (holder_did, holder_key_id) = if request.proof.proof_type == "jwt" {
+        let (holder_did, holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
             let (holder_did_value, key_id) = OpenID4VCIProofJWTFormatter::verify_proof(
                 &request.proof.jwt,
                 Box::new(KeyVerification {
@@ -325,7 +325,7 @@ impl OID4VCIDraft13Service {
             .await
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
 
-            let (did, _) = get_or_create_did_and_identifier(
+            let (did, identifier) = get_or_create_did_and_identifier(
                 &*self.did_method_provider,
                 &*self.did_repository,
                 &*self.identifier_repository,
@@ -334,7 +334,7 @@ impl OID4VCIDraft13Service {
                 DidRole::Holder,
             )
             .await?;
-            Ok((did, key_id))
+            Ok((did, identifier, key_id))
         } else {
             Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidOrMissingProof,
@@ -346,6 +346,7 @@ impl OID4VCIDraft13Service {
                 credential.id,
                 UpdateCredentialRequest {
                     holder_did_id: Some(holder_did.id),
+                    holder_identifier_id: Some(holder_identifier.id),
                     ..Default::default()
                 },
             )
@@ -357,7 +358,7 @@ impl OID4VCIDraft13Service {
             .ok_or(ServiceError::MappingError(
                 "issuance protocol not found".to_string(),
             ))?
-            .issuer_issue_credential(&credential.id, holder_did, holder_key_id)
+            .issuer_issue_credential(&credential.id, holder_did, holder_identifier, holder_key_id)
             .await;
 
         match issued_credential {

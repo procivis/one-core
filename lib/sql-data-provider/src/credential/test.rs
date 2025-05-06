@@ -26,6 +26,7 @@ use one_core::repository::credential_schema_repository::{
 };
 use one_core::repository::did_repository::{DidRepository, MockDidRepository};
 use one_core::repository::error::DataLayerError;
+use one_core::repository::identifier_repository::{IdentifierRepository, MockIdentifierRepository};
 use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
@@ -228,6 +229,7 @@ struct Repositories {
     pub credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     pub claim_repository: Arc<dyn ClaimRepository>,
     pub did_repository: Arc<dyn DidRepository>,
+    pub identifier_repository: Arc<dyn IdentifierRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub revocation_list_repository: Arc<dyn RevocationListRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
@@ -239,6 +241,7 @@ impl Default for Repositories {
             credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
             claim_repository: Arc::from(MockClaimRepository::default()),
             did_repository: Arc::from(MockDidRepository::default()),
+            identifier_repository: Arc::from(MockIdentifierRepository::default()),
             interaction_repository: Arc::from(MockInteractionRepository::default()),
             revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
@@ -256,6 +259,7 @@ fn credential_repository(
         credential_schema_repository: repositories.credential_schema_repository,
         claim_repository: repositories.claim_repository,
         did_repository: repositories.did_repository,
+        identifier_repository: repositories.identifier_repository,
         interaction_repository: repositories.interaction_repository,
         revocation_list_repository: repositories.revocation_list_repository,
         key_repository: repositories.key_repository,

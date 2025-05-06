@@ -200,6 +200,7 @@ impl DataLayer {
             credential_schema_repository: credential_schema_repository.clone(),
             claim_repository: claim_repository.clone(),
             did_repository: did_repository.clone(),
+            identifier_repository: identifier_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             revocation_list_repository: revocation_list_repository.clone(),
             key_repository: key_repository.clone(),

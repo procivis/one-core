@@ -20,6 +20,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -225,6 +226,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         &self,
         credential_id: &CredentialId,
         holder_did: Did,
+        holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError>;
 

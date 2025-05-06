@@ -18,6 +18,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::history::HistoryAction;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -82,6 +83,14 @@ impl SSIHolderService {
             return Err(ValidationError::DidNotFound.into());
         };
 
+        let Some(identifier) = self
+            .identifier_repository
+            .get_from_did_id(did.id, &Default::default())
+            .await?
+        else {
+            return Err(ValidationError::DidNotFound.into());
+        };
+
         let selected_key = match key_id {
             Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
             None => did.find_first_key_by_role(KeyRole::Authentication)?,
@@ -107,6 +116,7 @@ impl SSIHolderService {
                 .accept_and_save_credential(
                     &credential,
                     &did,
+                    &identifier,
                     &key_security,
                     selected_key,
                     &holder_jwk_key_id,
@@ -138,10 +148,12 @@ impl SSIHolderService {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn accept_and_save_credential(
         &self,
         credential: &Credential,
         holder_did: &Did,
+        holder_identifer: &Identifier,
         key_security: &[KeySecurity],
         selected_key: &Key,
         holder_jwk_key_id: &str,
@@ -221,6 +233,7 @@ impl SSIHolderService {
                     suspend_end_date: Clearable::DontTouch,
                     credential: Some(issuer_response.credential.bytes().collect()),
                     holder_did_id: Some(holder_did.id),
+                    holder_identifier_id: Some(holder_identifer.id),
                     key: Some(selected_key.id),
                     claims: Some(claims),
                     ..Default::default()

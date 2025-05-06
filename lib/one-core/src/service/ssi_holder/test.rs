@@ -56,7 +56,7 @@ use crate::service::ssi_holder::dto::{
 };
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::test_utilities::{
-    dummy_did, dummy_key, dummy_organisation, dummy_proof, generic_config,
+    dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof, generic_config,
 };
 
 #[tokio::test]
@@ -670,6 +670,12 @@ async fn test_accept_credential() {
             ..dummy_did()
         }))
     });
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
     let mut key_provider = MockKeyProvider::new();
     key_provider
         .expect_get_key_storage()
@@ -765,6 +771,7 @@ async fn test_accept_credential() {
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
+        identifier_repository: Arc::new(identifier_repository),
         key_provider: Arc::new(key_provider),
         formatter_provider: Arc::new(formatter_provider),
         ..mock_ssi_holder_service()

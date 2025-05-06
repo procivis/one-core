@@ -815,7 +815,7 @@ async fn test_create_credential_success() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
+            .return_once(|_, _, _, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
@@ -1009,7 +1009,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
+            .return_once(|_, _, _, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
@@ -1204,7 +1204,7 @@ async fn test_create_credential_success_mdoc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
+            .return_once(|_, _, _, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
@@ -1809,7 +1809,7 @@ async fn test_create_credential_issuer_failed() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
+            .return_once(|_, _, _, _| {
                 Err(IssuanceProtocolError::Failed("issuing failed".to_string()))
             });
         exchange_provider

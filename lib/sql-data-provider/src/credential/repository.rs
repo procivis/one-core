@@ -10,12 +10,14 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::did::{Did, DidRelations};
+use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::model::interaction::InteractionId;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{Expr, IntoCondition};
@@ -25,7 +27,7 @@ use sea_orm::{
     PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
     Unchanged,
 };
-use shared_types::{CredentialId, CredentialSchemaId, DidId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -104,10 +106,23 @@ impl CredentialProvider {
             relations.issuer_did.as_ref(),
         )
         .await?;
+        let issuer_identifier = get_related_identifier(
+            self.identifier_repository.as_ref(),
+            credential.issuer_identifier_id.as_ref(),
+            relations.issuer_identifier.as_ref(),
+        )
+        .await?;
+
         let holder_did = get_related_did(
             self.did_repository.as_ref(),
             credential.holder_did_id.as_ref(),
             relations.holder_did.as_ref(),
+        )
+        .await?;
+        let holder_identifier = get_related_identifier(
+            self.identifier_repository.as_ref(),
+            credential.holder_identifier_id.as_ref(),
+            relations.holder_identifier.as_ref(),
         )
         .await?;
 
@@ -194,7 +209,9 @@ impl CredentialProvider {
 
         Ok(Credential {
             issuer_did,
+            issuer_identifier,
             holder_did,
+            holder_identifier,
             claims,
             schema,
             revocation_list,
@@ -709,4 +726,27 @@ async fn get_related_did(
     };
 
     Ok(did)
+}
+
+async fn get_related_identifier(
+    repo: &dyn IdentifierRepository,
+    id: Option<&IdentifierId>,
+    relations: Option<&IdentifierRelations>,
+) -> Result<Option<Identifier>, DataLayerError> {
+    let identifier = match id.zip(relations) {
+        None => None,
+        Some((id, relations)) => {
+            let identifier =
+                repo.get(*id, relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "credential-did",
+                        id: id.to_string(),
+                    })?;
+
+            Some(identifier)
+        }
+    };
+
+    Ok(identifier)
 }

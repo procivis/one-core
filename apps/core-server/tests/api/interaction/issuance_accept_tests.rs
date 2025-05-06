@@ -78,6 +78,19 @@ async fn test_issuance_accept_openid4vc() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let schema_id = Uuid::new_v4();
 
@@ -244,6 +257,19 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let schema_id = Uuid::new_v4();
 
@@ -390,6 +416,19 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let schema_id = Uuid::new_v4();
 
@@ -532,6 +571,19 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -764,6 +816,19 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -871,6 +936,19 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
                 }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -990,6 +1068,19 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -1099,6 +1190,19 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let credential_schema = context
         .db
@@ -1200,6 +1304,19 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -1317,6 +1434,19 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -1475,6 +1605,19 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             },
         )
         .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let schema_id = Uuid::new_v4();
 
@@ -1626,6 +1769,19 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                     DidValue::from_str("did:key:z6MkviStFZjsFT9KP8R8vaXZJj5i4ouvmHxh7CpGrptzfMHD")
                         .unwrap(),
                 ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )

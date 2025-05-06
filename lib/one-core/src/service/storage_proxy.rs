@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{DidValue, OrganisationId};
+use shared_types::{DidId, DidValue, OrganisationId};
 
 use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
 use crate::model::claim::ClaimRelations;
@@ -51,6 +51,8 @@ pub(crate) trait StorageProxy: Send + Sync {
 
     /// Obtain a DID by its address, from a chosen storage layer.
     async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>>;
+
+    async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
 
     async fn get_or_create_did_and_identifier(
         &self,
@@ -167,6 +169,16 @@ impl StorageProxy for StorageProxyImpl {
             .get_did_by_value(value, &Default::default())
             .await
             .context("Could not fetch did by value")
+    }
+
+    async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier> {
+        self.identifiers
+            .get_from_did_id(*did_id, &Default::default())
+            .await
+            .context("Could not fetch identifier by didId")
+            .and_then(|identifier| {
+                identifier.ok_or(anyhow::anyhow!("Could not find identifier by didId"))
+            })
     }
 
     async fn get_or_create_did_and_identifier(
