@@ -128,7 +128,16 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         &self,
         credential: &Credential,
     ) -> Result<ShareResponse<Value>, IssuanceProtocolError> {
-        self.inner.issuer_share_credential(credential).await
+        let mut credential = credential.clone();
+
+        // SWIYU only supports credential offer by value and does not create a preview from the offer.
+        // So we drop all the claims from the offer to not run into problems with large claim values
+        // e.g. for images.
+        if let Some(claims) = credential.claims.as_mut() {
+            *claims = vec![]
+        }
+
+        self.inner.issuer_share_credential(&credential).await
     }
 
     async fn issuer_issue_credential(
