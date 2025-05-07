@@ -337,7 +337,7 @@ impl OpenID4VCBLE {
             key_role: KeyRole::AssertionMethod,
         });
 
-        let verifier_did = ble_holder
+        let (verifier_did, verifier_identifier) = ble_holder
             .handle_invitation(
                 name,
                 key,
@@ -349,6 +349,7 @@ impl OpenID4VCBLE {
             .await?;
 
         proof.verifier_did = Some(verifier_did);
+        proof.verifier_identifier = Some(verifier_identifier);
         Ok(InvitationResponseDTO {
             interaction_id,
             proof,

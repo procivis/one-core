@@ -18,6 +18,7 @@ use super::{
 use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
@@ -96,7 +97,7 @@ impl OpenID4VCBLEHolder {
         verification_fn: VerificationFn,
         interaction_id: Uuid,
         organisation: Organisation,
-    ) -> Result<Did, VerificationProtocolError> {
+    ) -> Result<(Did, Identifier), VerificationProtocolError> {
         let interaction_repository = self.interaction_repository.clone();
         let did_repository = self.did_repository.clone();
         let identifier_repository = self.identifier_repository.clone();
@@ -154,7 +155,7 @@ impl OpenID4VCBLEHolder {
 
                             let now = OffsetDateTime::now_utc();
                             let organisation = Some(organisation);
-                            let (verifier_did, _) = {
+                            let (verifier_did, verifier_identifier) = {
                                 let did_value = DidValue::from_did_url(request.client_id.as_str())
                                     .map_err(|_| {
                                         VerificationProtocolError::InvalidRequest(format!(
@@ -173,7 +174,7 @@ impl OpenID4VCBLEHolder {
                                     })?
                             };
 
-                            Ok((verifier_did, Interaction {
+                            Ok((verifier_did, verifier_identifier, Interaction {
                                 id: interaction_id,
                                 created_date: now,
                                 last_modified: now,
@@ -243,12 +244,12 @@ impl OpenID4VCBLEHolder {
             .and_then(std::convert::identity);
 
         match result {
-            Ok((verifier_did, interaction)) => {
+            Ok((verifier_did, verifier_identifier, interaction)) => {
                 self.interaction_repository
                     .update_interaction(interaction.into())
                     .await
                     .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
-                Ok(verifier_did)
+                Ok((verifier_did, verifier_identifier))
             }
             Err(err) => {
                 if let Err(err) = self

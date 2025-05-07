@@ -489,7 +489,7 @@ impl SSIHolderService {
                     let did_value = DidValue::from_str(&did_value).map_err(|_| {
                         ServiceError::MappingError("failed to parse did value".to_string())
                     })?;
-                    let (did, _) = get_or_create_did_and_identifier(
+                    let (did, identifier) = get_or_create_did_and_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
                         &*self.identifier_repository,
@@ -500,6 +500,7 @@ impl SSIHolderService {
                     .await?;
 
                     proof.verifier_did = Some(did);
+                    proof.verifier_identifier = Some(identifier);
                 }
             }
         }
