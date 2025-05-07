@@ -49,9 +49,20 @@ issuanceProtocol:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
   OPENID4VCI_DRAFT13_SWIYU:
+    display:
+      en: "OpenID4VCI (SWIYU)"
+      de: "OpenID4VCI (SWIYU)"
+    order: 2
+    type: "OPENID4VCI_DRAFT13_SWIYU"
     params:
       public:
+        urlScheme: swiyu
+        credentialOfferByValue: true
+        preAuthorizedCodeExpiresIn: 300
+        tokenExpiresIn: 86400
+        refreshExpiresIn: 7776000 # 90 days in seconds
         redirectUri:
+          enabled: true
           allowedSchemes: ["http", "https"]
       private:
         # this is the SHA-256 of "my encryption key"

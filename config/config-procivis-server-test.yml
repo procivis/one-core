@@ -1,5 +1,22 @@
 app:
   insecureVcApiEndpointsEnabled: true
+issuanceProtocol:
+  OPENID4VCI_DRAFT13_SWIYU:
+    display:
+      en: "OpenID4VCI (SWIYU)"
+      de: "OpenID4VCI (SWIYU)"
+    order: 2
+    type: "OPENID4VCI_DRAFT13_SWIYU"
+    params:
+      public:
+        urlScheme: swiyu
+        credentialOfferByValue: true
+        preAuthorizedCodeExpiresIn: 300
+        tokenExpiresIn: 86400
+        refreshExpiresIn: 7776000 # 90 days in seconds
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
 format:
   SD_JWT_VC_SWIYU:
     type: "SD_JWT_VC"
