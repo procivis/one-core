@@ -23,7 +23,8 @@ use super::common::SortDirection;
 use super::credential::CredentialDetailBindingDTO;
 use super::credential_schema::CredentialSchemaBindingDTO;
 use super::did::DidListItemBindingDTO;
-use super::mapper::{optional_did_string, optional_time};
+use super::identifier::GetIdentifierListItemBindingDTO;
+use super::mapper::{optional_did_id_string, optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofRequestClaimBindingDTO};
 use crate::error::BindingError;
 use crate::utils::{format_timestamp_opt, into_id, into_id_opt, TimestampFormat};
@@ -231,8 +232,10 @@ pub struct ProofListItemBindingDTO {
     pub requested_date: Option<String>,
     #[from(with_fn = optional_time)]
     pub completed_date: Option<String>,
-    #[from(with_fn = optional_did_string)]
+    #[from(with_fn = optional_did_id_string)]
     pub verifier_did: Option<String>,
+    #[from(with_fn = optional_identifier_id_string)]
+    pub verifier: Option<String>,
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateBindingEnum,
@@ -249,7 +252,9 @@ pub struct ProofResponseBindingDTO {
     pub created_date: String,
     pub last_modified: String,
     pub verifier_did: Option<DidListItemBindingDTO>,
+    pub verifier: Option<GetIdentifierListItemBindingDTO>,
     pub holder_did: Option<DidListItemBindingDTO>,
+    pub holder: Option<GetIdentifierListItemBindingDTO>,
     pub state: ProofStateBindingEnum,
     pub role: ProofRoleBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
@@ -357,6 +362,8 @@ pub struct ShareProofResponseBindingDTO {
 pub struct PresentationDefinitionBindingDTO {
     #[from(with_fn = convert_inner)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub credentials: Vec<CredentialDetailBindingDTO>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

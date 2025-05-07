@@ -14,6 +14,7 @@ use one_dto_mapper::{convert_inner, From, Into};
 use super::common::SortDirection;
 use super::credential_schema::CredentialSchemaBindingDTO;
 use super::did::DidListItemBindingDTO;
+use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
@@ -164,7 +165,9 @@ pub struct CredentialDetailBindingDTO {
     pub last_modified: String,
     pub revocation_date: Option<String>,
     pub issuer_did: Option<DidListItemBindingDTO>,
+    pub issuer: Option<GetIdentifierListItemBindingDTO>,
     pub holder_did: Option<DidListItemBindingDTO>,
+    pub holder: Option<GetIdentifierListItemBindingDTO>,
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
     pub claims: Vec<ClaimBindingDTO>,
@@ -289,6 +292,7 @@ pub struct CredentialListItemBindingDTO {
     pub last_modified: String,
     pub revocation_date: Option<String>,
     pub issuer_did: Option<String>,
+    pub issuer: Option<String>,
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
     pub role: CredentialRoleBindingDTO,

@@ -17,7 +17,9 @@ use one_core::service::did::dto::{
 };
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
-use one_core::service::identifier::dto::CreateIdentifierDidRequestDTO;
+use one_core::service::identifier::dto::{
+    CreateIdentifierDidRequestDTO, GetIdentifierListItemResponseDTO,
+};
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
@@ -83,7 +85,9 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
             issuer_did: value.issuer_did.map(Into::into),
+            issuer: value.issuer.map(Into::into),
             holder_did: value.holder_did.map(Into::into),
+            holder: value.holder.map(Into::into),
             state: value.state.into(),
             schema: value.schema.into(),
             claims: convert_inner(value.claims),
@@ -119,7 +123,8 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             issuance_date: value.issuance_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
-            issuer_did: optional_did_string(value.issuer_did),
+            issuer_did: optional_did_id_string(value.issuer_did),
+            issuer: optional_identifier_id_string(value.issuer),
             state: value.state.into(),
             schema: value.schema.into(),
             role: value.role.into(),
@@ -140,7 +145,9 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             proof_schema: convert_inner(value.schema),
             verifier_did: value.verifier_did.map(Into::into),
+            verifier: value.verifier.map(Into::into),
             holder_did: value.holder_did.map(Into::into),
+            holder: value.holder.map(Into::into),
             exchange: value.exchange,
             transport: value.transport,
             redirect_uri: value.redirect_uri,
@@ -664,7 +671,13 @@ pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
     value.as_ref().map(TimestampFormat::format_timestamp)
 }
 
-pub fn optional_did_string(value: Option<DidListItemResponseDTO>) -> Option<String> {
+pub fn optional_did_id_string(value: Option<DidListItemResponseDTO>) -> Option<String> {
+    value.map(|inner| inner.id.to_string())
+}
+
+pub fn optional_identifier_id_string(
+    value: Option<GetIdentifierListItemResponseDTO>,
+) -> Option<String> {
     value.map(|inner| inner.id.to_string())
 }
 
