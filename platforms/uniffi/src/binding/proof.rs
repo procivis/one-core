@@ -152,8 +152,10 @@ impl OneCoreBinding {
 pub struct CreateProofRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub proof_schema_id: String,
-    #[try_into(with_fn_ref = into_id)]
-    pub verifier_did_id: String,
+    #[try_into(with_fn = into_id_opt)]
+    pub verifier_did_id: Option<String>,
+    #[try_into(with_fn = into_id_opt)]
+    pub verifier_identifier_id: Option<String>,
     #[try_into(infallible)]
     pub exchange: String,
     #[try_into(with_fn = convert_inner, infallible)]

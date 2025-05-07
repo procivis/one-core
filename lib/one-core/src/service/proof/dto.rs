@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
+use shared_types::{DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -11,12 +11,14 @@ use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
+use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::proof_schema::dto::{GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO};
 
 #[derive(Clone, Debug)]
 pub struct CreateProofRequestDTO {
     pub proof_schema_id: ProofSchemaId,
-    pub verifier_did_id: DidId,
+    pub verifier_did_id: Option<DidId>,
+    pub verifier_identifier_id: Option<IdentifierId>,
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
@@ -54,7 +56,9 @@ pub struct ProofDetailResponseDTO {
     pub retain_until_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
+    pub verifier: Option<GetIdentifierListItemResponseDTO>,
     pub holder_did: Option<DidListItemResponseDTO>,
+    pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateEnum,
@@ -76,6 +80,7 @@ pub struct ProofListItemResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub retain_until_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
+    pub verifier: Option<GetIdentifierListItemResponseDTO>,
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateEnum,

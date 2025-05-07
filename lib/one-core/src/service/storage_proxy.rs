@@ -143,6 +143,7 @@ impl StorageProxy for StorageProxyImpl {
                 schema_id.to_owned(),
                 &CredentialRelations {
                     issuer_did: Some(Default::default()),
+                    issuer_identifier: Some(Default::default()),
                     claims: Some(ClaimRelations {
                         schema: Some(Default::default()),
                     }),

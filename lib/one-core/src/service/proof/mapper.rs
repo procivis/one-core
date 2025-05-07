@@ -126,6 +126,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             transport: value.transport,
             completed_date: value.completed_date,
             verifier_did: convert_inner(value.verifier_did),
+            verifier: convert_inner(value.verifier_identifier),
             exchange: value.exchange,
             state: value.state,
             role: value.role,
@@ -134,7 +135,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
     }
 }
 
-pub async fn get_verifier_proof_detail(
+pub(super) async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
@@ -394,7 +395,11 @@ pub async fn get_verifier_proof_detail(
     }
 
     let redirect_uri = proof.redirect_uri.to_owned();
-    let list_item_response: ProofListItemResponseDTO = proof.clone().try_into()?;
+
+    let holder_did = convert_inner(proof.holder_did.to_owned());
+    let holder = convert_inner(proof.holder_identifier.to_owned());
+
+    let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 
     Ok(ProofDetailResponseDTO {
         id: list_item_response.id,
@@ -405,7 +410,9 @@ pub async fn get_verifier_proof_detail(
         retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
-        holder_did: convert_inner(proof.holder_did),
+        verifier: list_item_response.verifier,
+        holder_did,
+        holder,
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,
@@ -492,7 +499,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
     result
 }
 
-pub async fn get_holder_proof_detail(
+pub(super) async fn get_holder_proof_detail(
     value: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
@@ -595,7 +602,10 @@ pub async fn get_holder_proof_detail(
         })
         .collect();
 
-    let list_item_response: ProofListItemResponseDTO = value.clone().try_into()?;
+    let holder_did = convert_inner(value.holder_did.to_owned());
+    let holder = convert_inner(value.holder_identifier.to_owned());
+
+    let list_item_response: ProofListItemResponseDTO = value.try_into()?;
 
     Ok(ProofDetailResponseDTO {
         id: list_item_response.id,
@@ -606,7 +616,9 @@ pub async fn get_holder_proof_detail(
         retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
-        holder_did: convert_inner(value.holder_did),
+        verifier: list_item_response.verifier,
+        holder_did,
+        holder,
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,

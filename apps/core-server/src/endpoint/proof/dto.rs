@@ -14,7 +14,7 @@ use one_core::service::proof::dto::{
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
+use shared_types::{DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -23,6 +23,7 @@ use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::{
     GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
 };
@@ -61,8 +62,11 @@ pub struct CreateProofRequestRestDTO {
     /// ID of the proof schema used to request the proof.
     pub proof_schema_id: ProofSchemaId,
     #[into(rename = "verifier_did_id")]
-    #[schema(example = "<uuid; did identifier>")]
-    pub verifier_did: DidId,
+    #[schema(example = "<uuid; did identifier>", nullable = false)]
+    pub verifier_did: Option<DidId>,
+    #[into(rename = "verifier_identifier_id")]
+    #[schema(example = "<uuid; identifier id>", nullable = false)]
+    pub verifier: Option<IdentifierId>,
     /// Specify the exchange protocol to use for credential exchange. Check
     /// the `exchange` object of the configuration for supported options and
     /// reference the configuration instance.
@@ -160,11 +164,11 @@ pub type GetProofQuery =
 use serde_with::skip_serializing_none;
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofListItemResponseRestDTO {
-    pub id: Uuid,
+    pub id: ProofId,
 
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -198,6 +202,9 @@ pub struct ProofListItemResponseRestDTO {
 
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
+
     pub exchange: String,
     /// Exchange protocol being used.
     pub transport: String,
@@ -290,7 +297,7 @@ pub struct PresentationDefinitionRuleRestDTO {
 #[from(ProofDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofDetailResponseRestDTO {
-    pub id: Uuid,
+    pub id: ProofId,
 
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -319,7 +326,11 @@ pub struct ProofDetailResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     #[from(with_fn = convert_inner)]
+    pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
     pub holder_did: Option<DidListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub holder: Option<GetIdentifierListItemResponseRestDTO>,
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateRestEnum,

@@ -34,6 +34,7 @@ use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
+use crate::model::identifier::{IdentifierRelations, IdentifierStatus};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -330,35 +331,75 @@ impl ProofService {
                 .await;
         }
 
-        let Some(verifier_identifier) = self
-            .identifier_repository
-            .get_from_did_id(request.verifier_did_id, &Default::default())
-            .await?
-        else {
-            return Err(EntityNotFoundError::Did(request.verifier_did_id).into());
+        let verifier_identifier = match request.verifier_identifier_id {
+            Some(verifier_identifier_id) => {
+                let identifier = self
+                    .identifier_repository
+                    .get(
+                        verifier_identifier_id,
+                        &IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                        verifier_identifier_id,
+                    )))?;
+
+                if let Some(verifier_did_id) = request.verifier_did_id {
+                    if Some(verifier_did_id) != identifier.did.as_ref().map(|did| did.id) {
+                        return Err(ServiceError::ValidationError(
+                            "Mismatching verifier and verifierDid specified".to_string(),
+                        ));
+                    }
+                }
+
+                identifier
+            }
+            None => {
+                let verifier_did_id =
+                    request
+                        .verifier_did_id
+                        .ok_or(ServiceError::ValidationError(
+                            "No verifier or verifierDid specified".to_string(),
+                        ))?;
+
+                self.identifier_repository
+                    .get_from_did_id(
+                        verifier_did_id,
+                        &IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::from(EntityNotFoundError::Did(
+                        verifier_did_id,
+                    )))?
+            }
         };
 
-        let Some(verifier_did) = self
-            .did_repository
-            .get_did(
-                &request.verifier_did_id,
-                &DidRelations {
-                    keys: Some(KeyRelations::default()),
-                    organisation: None,
-                },
-            )
-            .await?
-        else {
-            return Err(EntityNotFoundError::Did(request.verifier_did_id).into());
-        };
+        let verifier_did = verifier_identifier
+            .did
+            .to_owned()
+            .ok_or(ServiceError::MappingError(
+                "missing identifier did".to_string(),
+            ))?;
 
-        if verifier_did.deactivated {
+        if verifier_did.deactivated || verifier_identifier.status != IdentifierStatus::Active {
             return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
         }
 
-        if verifier_did.did_type.is_remote() {
+        if verifier_did.did_type.is_remote() || verifier_identifier.is_remote {
             return Err(BusinessLogicError::IncompatibleDidType {
-                reason: "verifier_did is remote".to_string(),
+                reason: "verifier is remote".to_string(),
             }
             .into());
         }
