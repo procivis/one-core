@@ -5,7 +5,7 @@ use regex::Regex;
 use url::Url;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{CoreConfig, DatatypeType, IssuanceProtocolType};
+use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
 use crate::config::validator::exchange::{
     validate_exchange_type, validate_protocol_did_compatibility,
@@ -473,6 +473,13 @@ fn validate_format_and_did_method_compatibility(
         .contains(&did_method_type)
     {
         return Err(BusinessLogicError::IncompatibleIssuanceDidMethod.into());
+    }
+
+    if !formatter_capabilities
+        .issuance_identifier_types
+        .contains(&IdentifierType::Did)
+    {
+        return Err(BusinessLogicError::IncompatibleIssuanceIdentifier.into());
     }
 
     Ok(())

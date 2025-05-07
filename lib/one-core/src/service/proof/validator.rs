@@ -2,7 +2,7 @@ use url::Url;
 
 use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{
-    CoreConfig, VerificationProtocolConfig, VerificationProtocolType,
+    CoreConfig, IdentifierType, VerificationProtocolConfig, VerificationProtocolType,
 };
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
@@ -50,6 +50,15 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
         {
             return Err(ServiceError::BusinessLogic(
                 BusinessLogicError::IncompatibleProofExchangeProtocol,
+            ));
+        }
+
+        if !capabilities
+            .verification_identifier_types
+            .contains(&IdentifierType::Did)
+        {
+            return Err(ServiceError::BusinessLogic(
+                BusinessLogicError::IncompatibleProofVerificationIdentifier,
             ));
         }
 

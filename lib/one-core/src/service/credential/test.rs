@@ -870,6 +870,96 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
+
+    let credential = generic_credential();
+    {
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema = credential.schema.clone().unwrap();
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+
+        identifier_repository
+            .expect_get_from_did_id()
+            .return_once(|_, _| {
+                Ok(Some(Identifier {
+                    did: Some(issuer_did),
+                    ..dummy_identifier()
+                }))
+            });
+    }
+
+    let mut formatter_capabilities = generic_formatter_capabilities();
+    formatter_capabilities.issuance_identifier_types.clear();
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let mut dummy_protocol = MockIssuanceProtocol::default();
+    dummy_protocol
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        identifier_repository,
+        formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer: None,
+            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id),
+            issuer_key: None,
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
+            }],
+            redirect_uri: None,
+        })
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleIssuanceIdentifier
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_create_credential_failed_issuance_did_method_incompatible() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();

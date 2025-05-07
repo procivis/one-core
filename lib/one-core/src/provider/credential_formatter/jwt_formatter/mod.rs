@@ -18,8 +18,8 @@ use super::jwt::Jwt;
 use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::{
-    DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
-    VerificationProtocolType,
+    DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
+    RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
@@ -339,6 +339,8 @@ impl CredentialFormatter for JWTFormatter {
                 "ARRAY".to_string(),
             ],
             forbidden_claim_names: vec!["0".to_string()],
+            issuance_identifier_types: vec![IdentifierType::Did],
+            verification_identifier_types: vec![IdentifierType::Did],
         }
     }
 

@@ -41,8 +41,8 @@ use super::model::{CredentialData, HolderBindingCtx};
 use super::nest_claims;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{
-    DatatypeConfig, DatatypeType, DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
-    RevocationType, VerificationProtocolType,
+    DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
+    KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
@@ -555,6 +555,8 @@ impl CredentialFormatter for MdocFormatter {
                 "MDL_PICTURE".to_string(),
             ],
             forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
+            issuance_identifier_types: vec![IdentifierType::Did],
+            verification_identifier_types: vec![IdentifierType::Did],
         }
     }
 

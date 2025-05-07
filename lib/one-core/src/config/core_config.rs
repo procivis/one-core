@@ -477,6 +477,27 @@ pub enum KeyStorageType {
     RemoteSecureElement,
 }
 
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+)]
+pub enum IdentifierType {
+    #[serde(rename = "DID")]
+    #[strum(serialize = "DID")]
+    Did,
+}
+
 pub type TaskConfig = ConfigBlock<TaskType>;
 
 #[derive(

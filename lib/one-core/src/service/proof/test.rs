@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::{
-    CoreConfig, Fields, KeyStorageType, TransportType, VerificationProtocolType,
+    CoreConfig, Fields, IdentifierType, KeyStorageType, TransportType, VerificationProtocolType,
 };
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -2018,6 +2018,95 @@ async fn test_get_proof_list_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4().into(),
+        verifier_did_id: Some(Uuid::new_v4().into()),
+        verifier_identifier_id: None,
+        exchange: exchange_type.to_string(),
+        redirect_uri: None,
+        verifier_key: None,
+        scan_to_verify: None,
+        iso_mdl_engagement: None,
+        transport: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
+            }))
+        });
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .times(1)
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_type],
+            verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![],
+            ..Default::default()
+        });
+
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
+    credential_formatter_provider
+        .expect_get_formatter()
+        .times(1)
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![crate::config::core_config::DidType::Key],
+            }
+        });
+
+        Some(Arc::new(protocol))
+    });
+
+    let service = setup_service(Repositories {
+        identifier_repository,
+        proof_schema_repository,
+        credential_formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleProofVerificationIdentifier
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_create_proof_using_invalid_did_method() {
     let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
@@ -2099,6 +2188,7 @@ async fn test_create_proof_using_invalid_did_method() {
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
 
@@ -2217,6 +2307,7 @@ async fn test_create_proof_using_identifier() {
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
 
@@ -2345,6 +2436,7 @@ async fn test_create_proof_without_related_key() {
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
 
@@ -2471,6 +2563,7 @@ async fn test_create_proof_with_related_key() {
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
 
@@ -2582,6 +2675,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         .once()
         .return_once(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2728,6 +2822,7 @@ async fn test_create_proof_did_deactivated_error() {
         .once()
         .return_once(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2824,6 +2919,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .once()
         .return_once(move || FormatterCapabilities {
             proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2942,6 +3038,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![],
+            verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
 

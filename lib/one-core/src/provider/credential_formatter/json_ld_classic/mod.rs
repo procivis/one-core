@@ -22,8 +22,8 @@ use super::json_ld::{
 use super::model::{CredentialData, HolderBindingCtx};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
-    DidType, FormatType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
-    VerificationProtocolType,
+    DidType, FormatType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
+    RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
@@ -340,6 +340,8 @@ impl CredentialFormatter for JsonLdClassic {
                 KeyStorageType::SecureElement,
             ],
             forbidden_claim_names: [jsonld_forbidden_claim_names(), vec!["0".to_string()]].concat(),
+            issuance_identifier_types: vec![IdentifierType::Did],
+            verification_identifier_types: vec![IdentifierType::Did],
         }
     }
 

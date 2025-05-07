@@ -309,11 +309,17 @@ pub enum BusinessLogicError {
     #[error("Incompatible issuance exchange protocol")]
     IncompatibleIssuanceExchangeProtocol,
 
+    #[error("Incompatible issuance identifier")]
+    IncompatibleIssuanceIdentifier,
+
     #[error("Incompatible proof exchange protocol")]
     IncompatibleProofExchangeProtocol,
 
     #[error("Incompatible proof verfication key storage")]
     IncompatibleProofVerificationKeyStorage,
+
+    #[error("Incompatible proof verification identifier")]
+    IncompatibleProofVerificationIdentifier,
 
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
@@ -1048,6 +1054,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Identifier not found")]
     BR_0207,
+
+    #[strum(to_string = "Identifier not compatible with format")]
+    BR_0218,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1195,6 +1204,8 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
             Self::InvalidProofRoleForRetraction { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
+            Self::IncompatibleIssuanceIdentifier => ErrorCode::BR_0218,
+            Self::IncompatibleProofVerificationIdentifier => ErrorCode::BR_0218,
         }
     }
 }

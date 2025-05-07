@@ -28,8 +28,8 @@ use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{
-    DidType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
-    VerificationProtocolType,
+    DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
+    RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
@@ -332,6 +332,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 KeyStorageType::SecureElement,
             ],
             forbidden_claim_names: vec!["0".to_string()],
+            issuance_identifier_types: vec![IdentifierType::Did],
+            verification_identifier_types: vec![IdentifierType::Did],
         }
     }
 

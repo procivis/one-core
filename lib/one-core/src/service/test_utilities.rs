@@ -7,8 +7,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{
-    AppConfig, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType, RevocationType,
-    VerificationProtocolType,
+    AppConfig, IdentifierType as ConfigIdentifierType, IssuanceProtocolType, KeyAlgorithmType,
+    KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -444,6 +444,8 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         verification_key_storages: vec![KeyStorageType::Internal],
         datatypes: vec![],
         forbidden_claim_names: vec![],
+        issuance_identifier_types: vec![ConfigIdentifierType::Did],
+        verification_identifier_types: vec![ConfigIdentifierType::Did],
     }
 }
 
