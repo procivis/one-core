@@ -6,7 +6,7 @@ use shared_types::IdentifierId;
 
 use super::dto::{
     CreateIdentifierRequestRestDTO, GetIdentifierListResponseRestDTO, GetIdentifierQuery,
-    GetIdentifierResponseRestDTO, IdentifierFilterQueryParamsRestDTO,
+    GetIdentifierResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -107,9 +107,7 @@ pub(crate) async fn delete_identifier(
     get,
     path = "/api/identifier/v1",
     responses(OkOrErrorResponse<GetIdentifierListResponseRestDTO>),
-    params(
-        IdentifierFilterQueryParamsRestDTO
-    ),
+    params(GetIdentifierQuery),
     tag = "identifier_management",
     security(
         ("bearer" = [])
