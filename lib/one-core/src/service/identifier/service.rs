@@ -33,7 +33,7 @@ impl IdentifierService {
                 &IdentifierRelations {
                     did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
+                        keys: Some(KeyRelations::default()),
                     }),
                     key: Some(KeyRelations {
                         organisation: Some(OrganisationRelations::default()),

@@ -15,6 +15,7 @@ use crate::dto::common::ListQueryParamsRest;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO};
 use crate::endpoint::key::dto::KeyResponseRestDTO;
 use crate::mapper::MapperError;
+use crate::serialize::front_time;
 
 #[skip_serializing_none]
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
@@ -61,9 +62,11 @@ pub struct GetIdentifierResponseRestDTO {
     pub name: String,
     #[try_from(infallible)]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     #[try_from(with_fn = "try_convert_inner")]
     pub did: Option<DidResponseRestDTO>,
