@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
@@ -33,14 +34,16 @@ pub enum SortableIdentifierColumn {
     Status,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IdentifierType {
     Key,
     Did,
     Certificate,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IdentifierStatus {
     Active,
     Deactivated,

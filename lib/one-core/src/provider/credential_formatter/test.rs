@@ -57,6 +57,7 @@ fn generate_credential_detail_response(
             did_method: "".to_string(),
             deactivated: false,
         }),
+        issuer: None,
         claims,
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -73,6 +74,7 @@ fn generate_credential_detail_response(
             did_method: "".to_string(),
             deactivated: false,
         }),
+        holder: None,
         exchange: "OPENID4VCI_DRAFT13".to_string(),
     }
 }

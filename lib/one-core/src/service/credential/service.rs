@@ -16,7 +16,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::IdentifierStatus;
+use crate::model::identifier::{IdentifierRelations, IdentifierStatus};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -56,31 +56,66 @@ impl CredentialService {
         &self,
         request: CreateCredentialRequestDTO,
     ) -> Result<CredentialId, ServiceError> {
-        let Some(issuer_did) = self
-            .did_repository
-            .get_did(
-                &request.issuer_did,
-                &DidRelations {
-                    keys: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await?
-        else {
-            return Err(EntityNotFoundError::Did(request.issuer_did).into());
+        let issuer_identifier = match request.issuer {
+            Some(issuer_identifier_id) => {
+                let identifier = self
+                    .identifier_repository
+                    .get(
+                        issuer_identifier_id,
+                        &IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                        issuer_identifier_id,
+                    )))?;
+
+                if let Some(issuer_did_id) = request.issuer_did {
+                    if Some(issuer_did_id) != identifier.did.as_ref().map(|did| did.id) {
+                        return Err(ServiceError::ValidationError(
+                            "Mismatching issuer and issuerDid specified".to_string(),
+                        ));
+                    }
+                }
+
+                identifier
+            }
+            None => {
+                let issuer_did_id = request.issuer_did.ok_or(ServiceError::ValidationError(
+                    "No issuer or issuerDid specified".to_string(),
+                ))?;
+
+                self.identifier_repository
+                    .get_from_did_id(
+                        issuer_did_id,
+                        &IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::from(EntityNotFoundError::Did(issuer_did_id)))?
+            }
         };
 
-        let Some(issuer_identifier) = self
-            .identifier_repository
-            .get_from_did_id(issuer_did.id, &Default::default())
-            .await?
-        else {
-            return Err(EntityNotFoundError::Did(request.issuer_did).into());
-        };
+        let issuer_did = issuer_identifier
+            .did
+            .to_owned()
+            .ok_or(ServiceError::MappingError(
+                "missing identifier did".to_string(),
+            ))?;
 
         if issuer_did.is_remote() || issuer_identifier.is_remote {
             return Err(BusinessLogicError::IncompatibleDidType {
-                reason: "Issuer did is remote".to_string(),
+                reason: "Issuer is remote".to_string(),
             }
             .into());
         }
@@ -292,7 +327,9 @@ impl CredentialService {
                         organisation: Some(OrganisationRelations::default()),
                     }),
                     issuer_did: Some(DidRelations::default()),
+                    issuer_identifier: Some(Default::default()),
                     holder_did: Some(DidRelations::default()),
+                    holder_identifier: Some(Default::default()),
                     ..Default::default()
                 },
             )

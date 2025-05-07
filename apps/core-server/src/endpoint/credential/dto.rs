@@ -8,7 +8,7 @@ use one_core::service::credential::dto::{
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, CredentialSchemaId, KeyId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -21,10 +21,11 @@ use crate::endpoint::credential_schema::dto::{
     WalletStorageTypeRestEnum,
 };
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialListItemResponseDTO)]
 pub struct CredentialListItemResponseRestDTO {
@@ -45,6 +46,8 @@ pub struct CredentialListItemResponseRestDTO {
     pub schema: CredentialSchemaListItemResponseRestDTO,
     #[from(with_fn = convert_inner)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
     pub role: CredentialRoleRestEnum,
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -68,7 +71,7 @@ pub struct MdocMsoValidityResponseRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[from(CredentialDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetCredentialResponseRestDTO {
@@ -90,6 +93,8 @@ pub struct GetCredentialResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
     #[from(with_fn = convert_inner)]
+    pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
     pub redirect_uri: Option<String>,
     /// The role the system has in relation to the credential.
@@ -105,6 +110,8 @@ pub struct GetCredentialResponseRestDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub holder_did: Option<DidListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub holder: Option<GetIdentifierListItemResponseRestDTO>,
     pub exchange: String,
 }
 
@@ -258,8 +265,10 @@ pub enum SortableCredentialColumnRestEnum {
 pub struct CreateCredentialRequestRestDTO {
     /// ID of the credential schema used to issue the credential.
     pub credential_schema_id: CredentialSchemaId,
+    /// ID of the issuer identifier used to issue the credential.
+    pub issuer: Option<IdentifierId>,
     /// ID of the issuer DID used to issue the credential.
-    pub issuer_did: Uuid,
+    pub issuer_did: Option<DidId>,
     /// If multiple keys are specified for the assertion method of the DID,
     /// use this value to specify which key should be used as the assertion
     /// method for this credential. If a key isn't specified here, the first

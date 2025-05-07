@@ -207,7 +207,7 @@ pub struct ProofListItemResponseRestDTO {
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionResponseRestDTO {
@@ -286,7 +286,7 @@ pub struct PresentationDefinitionRuleRestDTO {
 
 // detail endpoint
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[from(ProofDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofDetailResponseRestDTO {
@@ -357,7 +357,7 @@ pub enum ProofClaimValueRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputDTO)]
 pub struct ProofInputRestDTO {

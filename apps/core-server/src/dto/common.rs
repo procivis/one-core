@@ -19,7 +19,7 @@ use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 #[serde(rename_all = "camelCase")]
 pub struct GetListResponseRestDTO<T>
 where
-    T: Clone + fmt::Debug + Serialize,
+    T: fmt::Debug + Serialize,
 {
     pub values: Vec<T>,
     pub total_pages: u64,

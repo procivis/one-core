@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
@@ -20,7 +22,9 @@ pub struct GetIdentifierResponseDTO {
     pub key: Option<KeyResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetIdentifierListItemResponseDTO {
     pub id: IdentifierId,
     pub created_date: OffsetDateTime,

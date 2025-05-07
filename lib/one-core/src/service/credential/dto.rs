@@ -1,7 +1,9 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
+use shared_types::{
+    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
+};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
@@ -18,6 +20,7 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaListItemResponseDTO,
 };
 use crate::service::did::dto::DidListItemResponseDTO;
+use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct CredentialListItemResponseDTO {
@@ -29,6 +32,7 @@ pub struct CredentialListItemResponseDTO {
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
     pub issuer_did: Option<DidListItemResponseDTO>,
+    pub issuer: Option<GetIdentifierListItemResponseDTO>,
     pub credential: Vec<u8>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
@@ -51,6 +55,7 @@ pub struct CredentialDetailResponseDTO {
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,
     pub issuer_did: Option<DidListItemResponseDTO>,
+    pub issuer: Option<GetIdentifierListItemResponseDTO>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
@@ -60,6 +65,7 @@ pub struct CredentialDetailResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
     pub holder_did: Option<DidListItemResponseDTO>,
+    pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub exchange: String,
 }
 
@@ -187,7 +193,8 @@ pub type GetCredentialQueryDTO =
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequestDTO {
     pub credential_schema_id: CredentialSchemaId,
-    pub issuer_did: DidId,
+    pub issuer: Option<IdentifierId>,
+    pub issuer_did: Option<DidId>,
     pub issuer_key: Option<KeyId>,
     pub exchange: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,

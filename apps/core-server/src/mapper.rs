@@ -15,7 +15,7 @@ pub enum MapperError {
 
 impl<T, K> From<GetListResponse<K>> for GetListResponseRestDTO<T>
 where
-    T: From<K> + Clone + fmt::Debug + Serialize,
+    T: From<K> + fmt::Debug + Serialize,
 {
     fn from(value: GetListResponse<K>) -> Self {
         Self {
@@ -30,7 +30,7 @@ pub fn list_try_from<T, K>(
     value: GetListResponse<K>,
 ) -> Result<GetListResponseRestDTO<T>, MapperError>
 where
-    T: TryFrom<K> + Clone + fmt::Debug + Serialize,
+    T: TryFrom<K> + fmt::Debug + Serialize,
     MapperError: From<T::Error>,
 {
     Ok(GetListResponseRestDTO {

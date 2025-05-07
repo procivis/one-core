@@ -57,12 +57,14 @@ pub fn credential_detail_response_from_model(
         claims: from_vec_claim(claims, &schema, config)?,
         schema: schema.try_into()?,
         issuer_did: convert_inner(value.issuer_did),
+        issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
         lvvc_issuance_date: None,
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
         holder_did: convert_inner(value.holder_did),
+        holder: convert_inner(value.holder_identifier),
         exchange: value.exchange,
     })
 }
@@ -286,6 +288,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             last_modified: value.last_modified,
             schema: schema.into(),
             issuer_did: convert_inner(value.issuer_did),
+            issuer: convert_inner(value.issuer_identifier),
             credential: value.credential,
             role: value.role.into(),
             suspend_end_date: value.suspend_end_date,

@@ -73,7 +73,7 @@ pub enum HistoryMetadataRestEnum {
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
 }
 
-#[derive(Debug, Clone, Serialize, ToSchema, TryFrom)]
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = one_core::service::backup::dto::UnexportableEntitiesResponseDTO, Error = MapperError)]
 pub struct UnexportableEntitiesResponseRestDTO {
     #[try_from(with_fn = convert_inner, infallible)]
