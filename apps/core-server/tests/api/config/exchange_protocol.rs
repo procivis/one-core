@@ -29,7 +29,7 @@ async fn test_exchange_protocol_capabilities() {
     );
     assert_eq!(
         resp["verificationProtocol"]["OPENID4VP_DRAFT25"]["capabilities"]["didMethods"],
-        json!(["KEY", "JWK", "WEB", "MDL", "WEBVH"])
+        json!(["MDL"])
     );
 
     assert_eq!(

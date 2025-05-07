@@ -41,7 +41,7 @@ pub(crate) fn map_from_oidc_format_to_core_detailed(
 ) -> Result<String, OpenIDIssuanceError> {
     match format {
         "jwt_vc_json" => Ok(FormatType::Jwt.to_string()),
-        "vc+sd-jwt" | "dc+sd-jwt" => {
+        "vc+sd-jwt" | "dc+sd-jwt" | "vc sd-jwt" => {
             if let Some(token) = token {
                 match detect_sdjwt_type_from_token(token).map_err(|_| {
                     OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
