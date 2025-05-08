@@ -189,6 +189,7 @@ impl CredentialFormatter for JWTFormatter {
                     issuer: Some(issuer_did.did.to_string()),
                     subject: Some(revocation_list_url),
                     custom: content,
+                    issued_at: Some(OffsetDateTime::now_utc()),
                     ..Default::default()
                 };
 
