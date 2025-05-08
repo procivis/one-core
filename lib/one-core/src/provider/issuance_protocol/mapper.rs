@@ -1,4 +1,4 @@
-use shared_types::{DidId, IdentifierId};
+use shared_types::IdentifierId;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -9,14 +9,12 @@ use crate::model::organisation::Organisation;
 
 pub(super) fn get_issued_credential_update(
     token: &str,
-    holder_did_id: DidId,
     holder_identifier_id: IdentifierId,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
         credential: Some(token.bytes().collect()),
         state: Some(CredentialStateEnum::Accepted),
         suspend_end_date: Clearable::DontTouch,
-        holder_did_id: Some(holder_did_id),
         holder_identifier_id: Some(holder_identifier_id),
         ..Default::default()
     }

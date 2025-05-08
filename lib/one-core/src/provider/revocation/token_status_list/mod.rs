@@ -122,7 +122,12 @@ impl RevocationMethod for TokenStatusList {
         ))?;
 
         let issuer_did = credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer identifier is None".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer did is None".to_string(),
@@ -282,7 +287,12 @@ impl TokenStatusList {
         let list_id = data.revocation_list_id;
 
         let issuer_did = credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer identifier is None".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer did is None".to_string(),

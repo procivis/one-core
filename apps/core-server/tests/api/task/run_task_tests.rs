@@ -32,7 +32,7 @@ async fn test_run_task_suspend_check_no_update() {
 #[tokio::test]
 async fn test_run_task_suspend_check_with_update() {
     // GIVEN
-    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -52,7 +52,6 @@ async fn test_run_task_suspend_check_with_update() {
         .create(
             &credential_schema,
             CredentialStateEnum::Suspended,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -167,7 +166,6 @@ async fn test_run_retain_proof_check_with_update() {
         .create(
             &credential_schema,
             CredentialStateEnum::Created,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),

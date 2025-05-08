@@ -294,8 +294,8 @@ async fn test_post_issuer_credential_with(
         organisation,
         context,
         key,
-        issuer_did,
         issuer_identifier,
+        ..
     } = match context {
         None => issuer_setup().await,
         Some(context) => context,
@@ -357,7 +357,6 @@ async fn test_post_issuer_credential_with(
         .create(
             &credential_schema,
             CredentialStateEnum::Offered,
-            &issuer_did,
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -399,7 +398,7 @@ async fn test_post_issuer_credential_with(
                 .target
                 .as_ref()
                 .unwrap(),
-            &credential.holder_did.unwrap().id.to_string()
+            &credential.holder_identifier.unwrap().id.to_string()
         );
     }
 
@@ -496,7 +495,6 @@ async fn test_post_issuer_credential_mdoc() {
         .create(
             &credential_schema,
             CredentialStateEnum::Offered,
-            &issuer_did,
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

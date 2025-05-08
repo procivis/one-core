@@ -9,13 +9,11 @@ use one_core::model::credential::{
     UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use one_core::model::did::{Did, DidRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::model::interaction::InteractionId;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
-use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
@@ -100,12 +98,6 @@ impl CredentialProvider {
         credential: credential::Model,
         relations: &CredentialRelations,
     ) -> Result<Credential, DataLayerError> {
-        let issuer_did = get_related_did(
-            self.did_repository.as_ref(),
-            credential.issuer_did_id.as_ref(),
-            relations.issuer_did.as_ref(),
-        )
-        .await?;
         let issuer_identifier = get_related_identifier(
             self.identifier_repository.as_ref(),
             credential.issuer_identifier_id.as_ref(),
@@ -113,12 +105,6 @@ impl CredentialProvider {
         )
         .await?;
 
-        let holder_did = get_related_did(
-            self.did_repository.as_ref(),
-            credential.holder_did_id.as_ref(),
-            relations.holder_did.as_ref(),
-        )
-        .await?;
         let holder_identifier = get_related_identifier(
             self.identifier_repository.as_ref(),
             credential.holder_identifier_id.as_ref(),
@@ -208,9 +194,7 @@ impl CredentialProvider {
         };
 
         Ok(Credential {
-            issuer_did,
             issuer_identifier,
-            holder_did,
             holder_identifier,
             claims,
             schema,
@@ -316,7 +300,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .column_as(identifier::Column::Type, "issuer_identifier_type")
         .column_as(identifier::Column::IsRemote, "issuer_identifier_is_remote")
         .column_as(identifier::Column::Status, "issuer_identifier_status")
-        .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
+        .join(JoinType::LeftJoin, identifier::Relation::Did.def())
         .column_as(did::Column::CreatedDate, "issuer_did_created_date")
         .column_as(did::Column::Deactivated, "issuer_did_deactivated")
         .column_as(did::Column::Did, "issuer_did_did")
@@ -353,12 +337,11 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let issuer_did_id = request.issuer_did.as_ref().map(|did| did.id);
         let issuer_identifier_id = request
             .issuer_identifier
             .as_ref()
             .map(|identifier| identifier.id);
-        let holder_did_id = request.holder_did.as_ref().map(|did| did.id);
+
         let holder_identifier_id = request
             .holder_identifier
             .as_ref()
@@ -392,9 +375,7 @@ impl CredentialRepository for CredentialProvider {
         request_to_active_model(
             &request,
             schema,
-            issuer_did_id,
             issuer_identifier_id,
-            holder_did_id,
             holder_identifier_id,
             interaction_id,
             revocation_list_id,
@@ -473,7 +454,11 @@ impl CredentialRepository for CredentialProvider {
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
-            .filter(credential::Column::IssuerDidId.eq(issuer_did_id))
+            .join(
+                JoinType::LeftJoin,
+                credential::Relation::IssuerIdentifier.def(),
+            )
+            .filter(identifier::Column::DidId.eq(issuer_did_id))
             .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
@@ -515,19 +500,9 @@ impl CredentialRepository for CredentialProvider {
         credential_id: CredentialId,
         request: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError> {
-        let holder_did_id = match request.holder_did_id {
-            None => Unchanged(Default::default()),
-            Some(holder_did) => Set(Some(holder_did)),
-        };
-
         let holder_identifier_id = match request.holder_identifier_id {
             None => Unchanged(Default::default()),
             Some(identifier_id) => Set(Some(identifier_id)),
-        };
-
-        let issuer_did_id = match request.issuer_did_id {
-            None => Unchanged(Default::default()),
-            Some(issuer_did) => Set(Some(issuer_did)),
         };
 
         let issuer_identifier_id = match request.issuer_identifier_id {
@@ -571,9 +546,7 @@ impl CredentialRepository for CredentialProvider {
         let update_model = credential::ActiveModel {
             id: Unchanged(credential_id),
             last_modified: Set(OffsetDateTime::now_utc()),
-            holder_did_id,
             holder_identifier_id,
-            issuer_did_id,
             issuer_identifier_id,
             credential,
             interaction_id,
@@ -704,28 +677,6 @@ impl CredentialRepository for CredentialProvider {
 
         Ok(())
     }
-}
-
-async fn get_related_did(
-    repo: &dyn DidRepository,
-    id: Option<&DidId>,
-    relations: Option<&DidRelations>,
-) -> Result<Option<Did>, DataLayerError> {
-    let did = match id.zip(relations) {
-        None => None,
-        Some((id, relations)) => {
-            let did = repo.get_did(id, relations).await?.ok_or(
-                DataLayerError::MissingRequiredRelation {
-                    relation: "credential-did",
-                    id: id.to_string(),
-                },
-            )?;
-
-            Some(did)
-        }
-    };
-
-    Ok(did)
 }
 
 async fn get_related_identifier(

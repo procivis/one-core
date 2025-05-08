@@ -108,8 +108,14 @@ impl ProofService {
                                 claim_schemas: Some(Default::default()),
                                 organisation: Some(Default::default()),
                             }),
-                            issuer_did: Some(Default::default()),
-                            holder_did: Some(Default::default()),
+                            issuer_identifier: Some(IdentifierRelations {
+                                did: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            holder_identifier: Some(IdentifierRelations {
+                                did: Some(Default::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         }),
                     }),

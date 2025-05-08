@@ -166,7 +166,6 @@ fn generic_credential() -> Credential {
             path: claim_schema.key.clone(),
             schema: Some(claim_schema.clone()),
         }]),
-        issuer_did: Some(issuer_did.clone()),
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -180,7 +179,6 @@ fn generic_credential() -> Credential {
             did: Some(issuer_did),
             key: None,
         }),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -226,19 +224,6 @@ fn generic_credential_list_entity() -> Credential {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: None,
-        issuer_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            organisation: None,
-            did: "did:example:1".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            keys: None,
-            deactivated: false,
-            log: None,
-        }),
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -249,10 +234,21 @@ fn generic_credential_list_entity() -> Credential {
             status: IdentifierStatus::Active,
             deleted_at: None,
             organisation: None,
-            did: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: None,
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
             key: None,
         }),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -677,7 +673,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
     let credential = generic_credential();
     {
         let clone = credential.clone();
-        let issuer_did = credential.issuer_did.clone().unwrap();
+        let issuer_did = credential.issuer_identifier.clone().unwrap().did.unwrap();
         let credential_schema = credential.schema.clone().unwrap();
 
         identifier_repository
@@ -751,7 +747,16 @@ async fn test_create_credential_based_on_issuer_did_success() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: None,
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -876,7 +881,14 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
 
     let credential = generic_credential();
     {
-        let issuer_did = credential.issuer_did.clone().unwrap();
+        let issuer_did = credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .did
+            .as_ref()
+            .unwrap()
+            .clone();
         let credential_schema = credential.schema.clone().unwrap();
 
         credential_schema_repository
@@ -934,7 +946,16 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: None,
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -966,7 +987,14 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
 
     let credential = generic_credential();
     {
-        let issuer_did = credential.issuer_did.clone().unwrap();
+        let issuer_did = credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .did
+            .as_ref()
+            .unwrap()
+            .clone();
         let credential_schema = credential.schema.clone().unwrap();
 
         credential_schema_repository
@@ -1024,7 +1052,16 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: None,
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -1136,7 +1173,14 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     {
         let clone = credential.clone();
-        let issuer_did = credential.issuer_did.clone().unwrap();
+        let issuer_did = credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .did
+            .as_ref()
+            .unwrap()
+            .clone();
         let credential_schema_clone = credential_schema.clone();
 
         credential_schema_repository
@@ -1210,7 +1254,16 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer: None,
-        issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+        issuer_did: Some(
+            credential
+                .issuer_identifier
+                .as_ref()
+                .unwrap()
+                .did
+                .as_ref()
+                .unwrap()
+                .id,
+        ),
         issuer_key: None,
         exchange: "OPENID4VCI_DRAFT13".to_string(),
         claim_values: vec![],
@@ -1269,7 +1322,14 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     };
 
     {
-        let issuer_did = credential.issuer_did.clone().unwrap();
+        let issuer_did = credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .did
+            .as_ref()
+            .unwrap()
+            .clone();
         let credential_schema_clone = credential_schema.clone();
 
         identifier_repository
@@ -1324,7 +1384,16 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer: None,
-        issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+        issuer_did: Some(
+            credential
+                .issuer_identifier
+                .as_ref()
+                .unwrap()
+                .did
+                .as_ref()
+                .unwrap()
+                .id,
+        ),
         issuer_key: None,
         exchange: "OPENID4VCI_DRAFT13".to_string(),
         claim_values: vec![],
@@ -1367,7 +1436,14 @@ async fn test_create_credential_schema_deleted() {
     };
 
     {
-        let issuer_did = credential.issuer_did.clone().unwrap();
+        let issuer_did = credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .did
+            .as_ref()
+            .unwrap()
+            .clone();
         let credential_schema_clone = credential_schema.clone();
 
         credential_schema_repository
@@ -1425,7 +1501,16 @@ async fn test_create_credential_schema_deleted() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: None,
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -1528,7 +1613,17 @@ async fn test_check_revocation_invalid_state() {
                     valid_until: None,
                     update_at: None,
                     invalid_before: None,
-                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
+                    issuer_did: Some(
+                        credential_clone
+                            .issuer_identifier
+                            .as_ref()
+                            .unwrap()
+                            .did
+                            .as_ref()
+                            .unwrap()
+                            .did
+                            .clone(),
+                    ),
                     subject: None,
                     claims: CredentialSubject {
                         claims: HashMap::new(),
@@ -1674,7 +1769,17 @@ async fn test_check_revocation_already_revoked() {
                     valid_until: None,
                     update_at: None,
                     invalid_before: None,
-                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
+                    issuer_did: Some(
+                        credential_clone
+                            .issuer_identifier
+                            .as_ref()
+                            .unwrap()
+                            .did
+                            .as_ref()
+                            .unwrap()
+                            .did
+                            .clone(),
+                    ),
                     subject: None,
                     claims: CredentialSubject {
                         claims: HashMap::new(),
@@ -1851,7 +1956,14 @@ async fn test_create_credential_key_with_issuer_key() {
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let credential = generic_credential();
-    let issuer_did = credential.issuer_did.clone().unwrap();
+    let issuer_did = credential
+        .issuer_identifier
+        .as_ref()
+        .unwrap()
+        .did
+        .as_ref()
+        .unwrap()
+        .clone();
     let credential_schema = credential.schema.clone().unwrap();
 
     identifier_repository.expect_get_from_did_id().return_once({
@@ -1929,7 +2041,16 @@ async fn test_create_credential_key_with_issuer_key() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -1993,7 +2114,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                 },
             },
         ]),
-        ..credential.issuer_did.clone().unwrap()
+        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2071,7 +2192,16 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: Some(key_id.into()),
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2112,7 +2242,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                 organisation: None,
             },
         }]),
-        ..credential.issuer_did.clone().unwrap()
+        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
 
     let credential_schema = credential.schema.clone().unwrap();
@@ -2181,7 +2311,16 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: None,
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2210,7 +2349,14 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     let mut identifier_repository = MockIdentifierRepository::default();
 
     let credential = generic_credential();
-    let issuer_did = credential.issuer_did.clone().unwrap();
+    let issuer_did = credential
+        .issuer_identifier
+        .as_ref()
+        .unwrap()
+        .did
+        .as_ref()
+        .unwrap()
+        .clone();
     let credential_schema = credential.schema.clone().unwrap();
 
     identifier_repository
@@ -2277,7 +2423,16 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: Some(Uuid::new_v4().into()),
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2322,7 +2477,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                 organisation: None,
             },
         }]),
-        ..credential.issuer_did.clone().unwrap()
+        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2390,7 +2545,16 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: Some(key_id.into()),
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2435,7 +2599,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                 organisation: None,
             },
         }]),
-        ..credential.issuer_did.clone().unwrap()
+        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2503,7 +2667,16 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: Some(key_id.into()),
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2540,7 +2713,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             .returning(move |_, _| Ok(Some(credential_schema.clone())));
     }
 
-    let issuer_did = credential.issuer_did.clone().unwrap();
+    let issuer_did = credential.issuer_identifier.clone().unwrap().did.unwrap();
     identifier_repository
         .expect_get_from_did_id()
         .return_once(|_, _| {
@@ -2590,7 +2763,16 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: None,
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2626,7 +2808,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let credential = generic_credential();
-    let issuer_did = credential.issuer_did.clone().unwrap();
+    let issuer_did = credential.issuer_identifier.clone().unwrap().did.unwrap();
     let credential_schema = credential.schema.clone().unwrap();
 
     identifier_repository.expect_get_from_did_id().return_once({
@@ -2682,7 +2864,16 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer: None,
-            issuer_did: Some(credential.issuer_did.as_ref().unwrap().id.to_owned()),
+            issuer_did: Some(
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .unwrap()
+                    .did
+                    .as_ref()
+                    .unwrap()
+                    .id,
+            ),
             issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
             exchange: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -3700,32 +3891,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
-        issuer_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            organisation: Some(organisation.clone()),
-            did: "did:example:1".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    public_key: vec![],
-                    name: "key_name".to_string(),
-                    key_reference: vec![],
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
-                },
-            }]),
-            deactivated: false,
-            log: None,
-        }),
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -3736,10 +3901,34 @@ async fn test_get_credential_success_array_complex_nested_all() {
             status: IdentifierStatus::Active,
             deleted_at: None,
             organisation: None,
-            did: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: Some(organisation.clone()),
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        public_key: vec![],
+                        name: "key_name".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+                log: None,
+            }),
             key: None,
         }),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -4266,32 +4455,6 @@ async fn test_get_credential_success_array_index_sorting() {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
-        issuer_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            organisation: Some(organisation.clone()),
-            did: "did:example:1".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    public_key: vec![],
-                    name: "key_name".to_string(),
-                    key_reference: vec![],
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
-                },
-            }]),
-            deactivated: false,
-            log: None,
-        }),
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -4302,10 +4465,34 @@ async fn test_get_credential_success_array_index_sorting() {
             status: IdentifierStatus::Active,
             deleted_at: None,
             organisation: None,
-            did: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: Some(organisation.clone()),
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        public_key: vec![],
+                        name: "key_name".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+                log: None,
+            }),
             key: None,
         }),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -4581,32 +4768,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
-        issuer_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            organisation: Some(organisation.clone()),
-            did: "did:example:1".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    public_key: vec![],
-                    name: "key_name".to_string(),
-                    key_reference: vec![],
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
-                },
-            }]),
-            deactivated: false,
-            log: None,
-        }),
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -4617,10 +4778,34 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             status: IdentifierStatus::Active,
             deleted_at: None,
             organisation: None,
-            did: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: Some(organisation.clone()),
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        public_key: vec![],
+                        name: "key_name".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+                log: None,
+            }),
             key: None,
         }),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -4799,32 +4984,6 @@ async fn test_get_credential_success_array_single_element() {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
-        issuer_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            organisation: Some(organisation.clone()),
-            did: "did:example:1".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    public_key: vec![],
-                    name: "key_name".to_string(),
-                    key_reference: vec![],
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
-                },
-            }]),
-            deactivated: false,
-            log: None,
-        }),
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -4835,10 +4994,34 @@ async fn test_get_credential_success_array_single_element() {
             status: IdentifierStatus::Active,
             deleted_at: None,
             organisation: None,
-            did: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: Some(organisation.clone()),
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        public_key: vec![],
+                        name: "key_name".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+                log: None,
+            }),
             key: None,
         }),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

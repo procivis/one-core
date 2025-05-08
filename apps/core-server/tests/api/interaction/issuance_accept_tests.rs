@@ -149,7 +149,6 @@ async fn test_issuance_accept_openid4vc() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -181,7 +180,10 @@ async fn test_issuance_accept_openid4vc() {
     assert_eq!(resp.status(), 204);
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
+    assert_eq!(
+        holder_did.id,
+        credential.holder_identifier.unwrap().did.unwrap().id
+    );
 
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
     let history = context
@@ -193,7 +195,7 @@ async fn test_issuance_accept_openid4vc() {
     assert!(history
         .values
         .iter()
-        .all(|entry| entry.target == Some(issuer_did.id.to_string())),);
+        .all(|entry| entry.target == Some(issuer_identifier.id.to_string())),);
     assert!(history
         .values
         .iter()
@@ -328,7 +330,6 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -487,7 +488,6 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -645,7 +645,6 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -675,7 +674,10 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     assert_eq!(resp.status(), 204);
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
+    assert_eq!(
+        holder_did.id,
+        credential.holder_identifier.unwrap().did.unwrap().id
+    );
     assert_eq!(key.id, credential.key.unwrap().id);
 
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
@@ -746,7 +748,6 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -866,7 +867,6 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -984,7 +984,6 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1120,7 +1119,6 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1234,7 +1232,6 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1360,7 +1357,6 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1510,7 +1506,6 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1543,7 +1538,10 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     assert_eq!(resp.status(), 204);
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
+    assert_eq!(
+        holder_did.id,
+        credential.holder_identifier.unwrap().did.unwrap().id
+    );
 
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
 }
@@ -1676,7 +1674,6 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1889,7 +1886,6 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

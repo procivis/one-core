@@ -3,12 +3,15 @@ use std::str::FromStr;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::IdentifierType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
-use crate::fixtures::{assert_history_count, TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{
+    assert_history_count, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
@@ -32,7 +35,6 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -66,7 +68,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 #[tokio::test]
 async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
     // GIVEN
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -83,7 +85,6 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -136,6 +137,19 @@ async fn test_suspend_credential_with_lvvc_success() {
             },
         )
         .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -147,11 +161,10 @@ async fn test_suspend_credential_with_lvvc_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                holder_did: Some(holder_did),
+                holder_identifier: Some(holder_identifier),
                 key: Some(issuer_key),
                 ..Default::default()
             },
@@ -204,7 +217,6 @@ async fn test_suspend_credential_with_none_fails() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -243,7 +255,6 @@ async fn test_suspend_credential_fails_credential_deleted() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

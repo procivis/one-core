@@ -18,6 +18,7 @@ use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryErrorMetadata};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -224,12 +225,11 @@ impl SSIHolderService {
                         claims: Some(ClaimRelations {
                             schema: Some(ClaimSchemaRelations::default()),
                         }),
-                        holder_did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
-                        issuer_did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
+                        holder_identifier: Some(IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(KeyRelations::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         }),
                         key: Some(KeyRelations::default()),

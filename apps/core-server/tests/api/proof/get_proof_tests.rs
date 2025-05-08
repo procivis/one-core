@@ -457,7 +457,7 @@ async fn test_get_proof_with_empty_array() {
 #[tokio::test]
 async fn test_get_proof_with_array() {
     // GIVEN
-    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -481,7 +481,6 @@ async fn test_get_proof_with_array() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -815,7 +814,6 @@ async fn test_get_proof_with_credentials() {
         .create(
             &credential_schema,
             CredentialStateEnum::Created,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
@@ -1130,7 +1128,6 @@ async fn test_get_proof_with_deleted_claims() {
         .create(
             &credential_schema,
             CredentialStateEnum::Created,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),

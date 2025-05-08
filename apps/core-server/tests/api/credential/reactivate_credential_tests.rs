@@ -1,17 +1,18 @@
 use std::str::FromStr;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::IdentifierType;
 use shared_types::DidValue;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_reactivate_credential_with_bitstring_status_list_success() {
     // GIVEN
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -28,7 +29,6 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Suspended,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -80,6 +80,19 @@ async fn test_reactivate_credential_with_lvvc_success() {
             },
         )
         .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -91,11 +104,10 @@ async fn test_reactivate_credential_with_lvvc_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Suspended,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                holder_did: Some(holder_did),
+                holder_identifier: Some(holder_identifier),
                 key: Some(issuer_key),
                 ..Default::default()
             },

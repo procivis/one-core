@@ -20,7 +20,8 @@ use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::KeyRole;
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -169,7 +170,10 @@ impl OID4VCIDraft13Service {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    issuer_did: Some(DidRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     schema: Some(CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         ..Default::default()
@@ -240,7 +244,11 @@ impl OID4VCIDraft13Service {
             url,
             &interaction.id.to_string(),
             credential
-                .issuer_did
+                .issuer_identifier
+                .ok_or(ServiceError::MappingError(
+                    "issuer_identifier missing".to_string(),
+                ))?
+                .did
                 .ok_or(ServiceError::MappingError("issuer did missing".to_string()))?
                 .did,
             &credential_schema_id,
@@ -345,7 +353,6 @@ impl OID4VCIDraft13Service {
             .update_credential(
                 credential.id,
                 UpdateCredentialRequest {
-                    holder_did_id: Some(holder_did.id),
                     holder_identifier_id: Some(holder_identifier.id),
                     ..Default::default()
                 },

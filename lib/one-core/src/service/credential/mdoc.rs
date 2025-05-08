@@ -89,7 +89,10 @@ impl CredentialService {
             .ok_or(ServiceError::Other("Missing key".to_owned()))?
             .clone();
         let holder_did = credential
-            .holder_did
+            .holder_identifier
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing holder identifier".to_owned()))?
+            .did
             .as_ref()
             .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
             .clone();

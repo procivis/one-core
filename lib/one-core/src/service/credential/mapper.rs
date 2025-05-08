@@ -9,7 +9,6 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::validity_credential::ValidityCredential;
@@ -47,6 +46,16 @@ pub fn credential_detail_response_from_model(
         None
     };
 
+    let issuer_did = value
+        .issuer_identifier
+        .as_ref()
+        .and_then(|identifier| identifier.did.to_owned());
+
+    let holder_did = value
+        .holder_identifier
+        .as_ref()
+        .and_then(|identifier| identifier.did.to_owned());
+
     Ok(CredentialDetailResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -56,14 +65,14 @@ pub fn credential_detail_response_from_model(
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, &schema, config)?,
         schema: schema.try_into()?,
-        issuer_did: convert_inner(value.issuer_did),
+        issuer_did: convert_inner(issuer_did),
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
         lvvc_issuance_date: None,
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
-        holder_did: convert_inner(value.holder_did),
+        holder_did: convert_inner(holder_did),
         holder: convert_inner(value.holder_identifier),
         exchange: value.exchange,
     })
@@ -279,6 +288,11 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
 
         let state = value.state;
 
+        let issuer_did = value
+            .issuer_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.to_owned());
+
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -287,7 +301,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             state: state.into(),
             last_modified: value.last_modified,
             schema: schema.into(),
-            issuer_did: convert_inner(value.issuer_did),
+            issuer_did: convert_inner(issuer_did),
             issuer: convert_inner(value.issuer_identifier),
             credential: value.credential,
             role: value.role.into(),
@@ -312,7 +326,6 @@ pub(super) fn from_create_request(
     request: CreateCredentialRequestDTO,
     credential_id: CredentialId,
     claims: Vec<Claim>,
-    issuer_did: Did,
     issuer_identifier: Identifier,
     schema: CredentialSchema,
     key: Key,
@@ -330,9 +343,7 @@ pub(super) fn from_create_request(
         credential: vec![],
         exchange: request.exchange,
         claims: Some(claims),
-        issuer_did: Some(issuer_did),
         issuer_identifier: Some(issuer_identifier),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,

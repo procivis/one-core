@@ -88,9 +88,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: None,
-        issuer_did: Some(did.to_owned()),
         issuer_identifier: Some(identifier.to_owned()),
-        holder_did: Some(did.to_owned()),
         holder_identifier: Some(identifier.to_owned()),
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

@@ -10,7 +10,7 @@ use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
-use shared_types::{DidId, IdentifierId, KeyId};
+use shared_types::{IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{self, claim, credential, credential_schema, did};
@@ -94,9 +94,7 @@ impl From<entity::credential::Model> for Credential {
             state: credential.state.into(),
             suspend_end_date: credential.suspend_end_date,
             claims: None,
-            issuer_did: None,
             issuer_identifier: None,
-            holder_did: None,
             holder_identifier: None,
             schema: None,
             interaction: None,
@@ -110,9 +108,7 @@ impl From<entity::credential::Model> for Credential {
 pub(super) fn request_to_active_model(
     request: &Credential,
     schema: CredentialSchema,
-    issuer_did_id: Option<DidId>,
     issuer_identifier_id: Option<IdentifierId>,
-    holder_did_id: Option<DidId>,
     holder_identifier_id: Option<IdentifierId>,
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
@@ -128,9 +124,9 @@ pub(super) fn request_to_active_model(
         exchange: Set(request.exchange.to_owned()),
         credential: Set(request.credential.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
-        issuer_did_id: Set(issuer_did_id),
+        issuer_did_id: Set(None),
         issuer_identifier_id: Set(issuer_identifier_id),
-        holder_did_id: Set(holder_did_id),
+        holder_did_id: Set(None),
         holder_identifier_id: Set(holder_identifier_id),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
@@ -214,7 +210,7 @@ pub(super) fn credential_list_model_to_repository_model(
             name: credential
                 .issuer_identifier_name
                 .ok_or(DataLayerError::MappingError)?,
-            did: None,
+            did: issuer_did,
             key: None,
             organisation: None,
             r#type: credential
@@ -245,9 +241,7 @@ pub(super) fn credential_list_model_to_repository_model(
         state: credential.state.into(),
         suspend_end_date: credential.suspend_end_date,
         claims: None,
-        issuer_did,
         issuer_identifier,
-        holder_did: None,
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,
@@ -269,8 +263,14 @@ pub(super) fn credentials_to_repository(
 
 pub(crate) fn target_from_credential(credential: &Credential) -> Option<String> {
     match credential.role {
-        CredentialRole::Holder => credential.issuer_did.as_ref().map(|did| did.id.to_string()),
-        CredentialRole::Issuer => credential.holder_did.as_ref().map(|did| did.id.to_string()),
+        CredentialRole::Holder => credential
+            .issuer_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
+        CredentialRole::Issuer => credential
+            .holder_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
         CredentialRole::Verifier => None,
     }
 }

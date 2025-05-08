@@ -7,7 +7,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_issuance_reject_openid4vc() {
     // GIVEN
-    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -39,7 +39,6 @@ async fn test_issuance_reject_openid4vc() {
         .create(
             &credential_schema,
             CredentialStateEnum::Pending,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

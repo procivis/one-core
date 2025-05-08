@@ -81,7 +81,6 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -97,7 +96,6 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -177,7 +175,6 @@ async fn test_revoke_check_success_statuslist2021() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -440,7 +437,6 @@ async fn setup_bitstring_status_list_success(
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -666,6 +662,19 @@ async fn setup_lvvc_revoke_check_valid(
             },
         )
         .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
     let issuer_did = context
         .db
         .dids
@@ -683,7 +692,7 @@ async fn setup_lvvc_revoke_check_valid(
             },
         )
         .await;
-    let identifier = context
+    let issuer_identifier = context
         .db
         .identifiers
         .create(
@@ -708,12 +717,11 @@ async fn setup_lvvc_revoke_check_valid(
         .create(
             &credential_schema,
             initial_state,
-            &issuer_did,
-            &identifier,
+            &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(&credential_jwt),
-                holder_did: Some(holder_did),
+                holder_identifier: Some(holder_identifier),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -853,14 +861,13 @@ async fn test_revoke_check_mdoc_update() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1003,14 +1010,13 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1164,14 +1170,13 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1318,14 +1323,13 @@ async fn test_revoke_check_token_update() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1458,14 +1462,13 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1594,14 +1597,13 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1740,14 +1742,13 @@ async fn test_suspended_to_valid_mdoc() {
         .create(
             &credential_schema,
             CredentialStateEnum::Suspended,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -1918,14 +1919,13 @@ async fn test_suspended_to_suspended_update_failed() {
         .create(
             &credential_schema,
             CredentialStateEnum::Suspended,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
                 key: Some(local_key),
-                holder_did: Some(issuer_did.clone()),
+                holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -2015,7 +2015,6 @@ async fn test_revoke_check_failed_deleted_credential() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

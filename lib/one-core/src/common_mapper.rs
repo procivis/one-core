@@ -252,14 +252,11 @@ pub(crate) fn value_to_model_claims(
     Ok(model_claims)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
     claims: Vec<(serde_json::Value, ClaimSchema)>,
-    issuer_did: Did,
     issuer_identifier: Identifier,
-    holder_did: Option<Did>,
     holder_identifier: Option<Identifier>,
     exchange: String,
 ) -> Result<Credential, ServiceError> {
@@ -289,9 +286,7 @@ pub(crate) fn extracted_credential_to_model(
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(model_claims),
-        issuer_did: Some(issuer_did),
         issuer_identifier: Some(issuer_identifier),
-        holder_did,
         holder_identifier,
         schema: Some(credential_schema),
         redirect_uri: None,
@@ -647,19 +642,6 @@ mod tests {
                 allow_suspension: true,
             },
             vec![(json!({ "element": "Test" }), namespace_claim_schema)],
-            Did {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                name: "IssuerDid".to_string(),
-                did: "did:issuer:123".parse().unwrap(),
-                did_type: DidType::Remote,
-                did_method: "didMethod".to_string(),
-                deactivated: false,
-                keys: None,
-                organisation: None,
-                log: None,
-            },
             Identifier {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
@@ -670,10 +652,21 @@ mod tests {
                 status: IdentifierStatus::Active,
                 deleted_at: None,
                 organisation: None,
-                did: None,
+                did: Some(Did {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "IssuerDid".to_string(),
+                    did: "did:issuer:123".parse().unwrap(),
+                    did_type: DidType::Remote,
+                    did_method: "didMethod".to_string(),
+                    deactivated: false,
+                    keys: None,
+                    organisation: None,
+                    log: None,
+                }),
                 key: None,
             },
-            None,
             None,
             "ISO_MDL".to_string(),
         )

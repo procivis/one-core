@@ -14,7 +14,7 @@ use crate::model::credential::{
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::did::{DidRelations, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{IdentifierRelations, IdentifierStatus};
 use crate::model::interaction::InteractionRelations;
@@ -222,7 +222,6 @@ impl CredentialService {
             request,
             credential_id,
             claims,
-            issuer_did,
             issuer_identifier,
             schema,
             key,
@@ -254,7 +253,7 @@ impl CredentialService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    issuer_did: Some(DidRelations::default()),
+                    issuer_identifier: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -284,9 +283,9 @@ impl CredentialService {
             .r#type();
 
         let is_issuer = credential
-            .issuer_did
+            .issuer_identifier
             .as_ref()
-            .is_some_and(|did| did.did_type == DidType::Local);
+            .is_some_and(|identifier| !identifier.is_remote);
         if is_issuer && **revocation_type != RevocationType::None {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
@@ -326,10 +325,14 @@ impl CredentialService {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(OrganisationRelations::default()),
                     }),
-                    issuer_did: Some(DidRelations::default()),
-                    issuer_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations::default()),
-                    holder_identifier: Some(Default::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -565,8 +568,14 @@ impl CredentialService {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(OrganisationRelations::default()),
                     }),
-                    issuer_did: Some(DidRelations::default()),
-                    holder_did: Some(DidRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
@@ -587,11 +596,20 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    issuer_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
-                    holder_did: Some(DidRelations::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
@@ -619,12 +637,17 @@ impl CredentialService {
 
         verify_suspension_support(credential_schema, &revocation_state)?;
 
-        let issuer = credential
-            .issuer_did
+        let issuer_did = credential
+            .issuer_identifier
             .as_ref()
-            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+            .ok_or(ServiceError::MappingError(
+                "issuer_identifier is None".to_string(),
+            ))?
+            .did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?;
 
-        let did_document = self.did_method_provider.resolve(&issuer.did).await?;
+        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
 
         let Some(verification_method) =
             did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
@@ -731,12 +754,18 @@ impl CredentialService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    issuer_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
-                    holder_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations {
@@ -863,7 +892,12 @@ impl CredentialService {
             ))?;
 
         let issuer_did = credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "issuer_identifier is None".to_string(),
+            ))?
+            .did
             .to_owned()
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 

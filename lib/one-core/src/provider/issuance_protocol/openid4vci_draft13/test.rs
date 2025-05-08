@@ -135,7 +135,7 @@ fn generic_credential() -> Credential {
         status: IdentifierStatus::Active,
         deleted_at: None,
         organisation: None,
-        did: None,
+        did: Some(issuer_did),
         key: None,
     };
     Credential {
@@ -159,9 +159,7 @@ fn generic_credential() -> Credential {
             path: claim_schema.key.to_owned(),
             schema: Some(claim_schema.clone()),
         }]),
-        issuer_did: Some(issuer_did),
         issuer_identifier: Some(issuer_identifier),
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -214,7 +212,7 @@ async fn test_generate_offer() {
     let offer = create_credential_offer(
         &protocol_base_url,
         &interaction_id.to_string(),
-        credential.issuer_did.unwrap().did,
+        credential.issuer_identifier.unwrap().did.unwrap().did,
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,
@@ -295,7 +293,14 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
         .expect_get_or_create_did_and_identifier()
         .times(1)
         .returning(move |_, _, _| {
-            let did = credential_clone.issuer_did.as_ref().unwrap().clone();
+            let did = credential_clone
+                .issuer_identifier
+                .as_ref()
+                .unwrap()
+                .did
+                .as_ref()
+                .unwrap()
+                .clone();
             Ok((
                 did.clone(),
                 Identifier {
@@ -477,11 +482,18 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     if let Some(issuer_did) = issuer_did {
         assert_eq!(
-            credentials[0].issuer_did.as_ref().unwrap().did,
+            credentials[0]
+                .issuer_identifier
+                .as_ref()
+                .unwrap()
+                .did
+                .as_ref()
+                .unwrap()
+                .did,
             DidValue::from_str(issuer_did.as_str()).unwrap()
         );
     } else {
-        assert!(credentials[0].issuer_did.is_none());
+        assert!(credentials[0].issuer_identifier.is_none());
     }
 }
 

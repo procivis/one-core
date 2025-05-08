@@ -46,7 +46,6 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         &db_conn,
         &credential_schema_1,
         CredentialStateEnum::Accepted,
-        &did,
         &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
@@ -57,7 +56,6 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         &db_conn,
         &credential_schema_2,
         CredentialStateEnum::Accepted,
-        &did,
         &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
@@ -223,7 +221,6 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
@@ -296,7 +293,6 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -506,7 +502,6 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),
@@ -582,7 +577,6 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &db_conn,
         &credential_schema_1,
         CredentialStateEnum::Accepted,
-        &did,
         &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
@@ -605,7 +599,6 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &db_conn,
         &credential_schema_2,
         CredentialStateEnum::Accepted,
-        &did,
         &identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams::default(),
@@ -846,7 +839,6 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -865,7 +857,6 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

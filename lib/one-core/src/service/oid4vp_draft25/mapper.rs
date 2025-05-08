@@ -32,7 +32,7 @@ pub(super) async fn credential_from_proved(
     identifier_repository: &dyn IdentifierRepository,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<Credential, ServiceError> {
-    let (issuer_did, issuer_identifier) = get_or_create_did_and_identifier(
+    let (_, issuer_identifier) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
         identifier_repository,
@@ -41,7 +41,7 @@ pub(super) async fn credential_from_proved(
         DidRole::Issuer,
     )
     .await?;
-    let (holder_did, holder_identifier) = get_or_create_did_and_identifier(
+    let (_, holder_identifier) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
         identifier_repository,
@@ -63,9 +63,7 @@ pub(super) async fn credential_from_proved(
         role: proved_credential.credential.role,
         state: proved_credential.credential.state,
         claims: convert_inner_of_inner(proved_credential.credential.claims),
-        issuer_did: Some(issuer_did),
         issuer_identifier: Some(issuer_identifier),
-        holder_did: Some(holder_did),
         holder_identifier: Some(holder_identifier),
         schema: proved_credential
             .credential

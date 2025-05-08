@@ -115,7 +115,12 @@ impl RevocationMethod for BitstringStatusList {
         ))?;
 
         let issuer_did = credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer identifier is None".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer did is None".to_string(),
@@ -125,7 +130,7 @@ impl RevocationMethod for BitstringStatusList {
             .schema
             .as_ref()
             .ok_or(RevocationError::MappingError(
-                "issuer did is None".to_string(),
+                "credential schema is None".to_string(),
             ))?;
 
         let index_on_status_list = self.get_credential_index_on_revocation_list(
@@ -396,7 +401,12 @@ impl BitstringStatusList {
         };
 
         let issuer_did = credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer identifier is None".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer did is None".to_string(),

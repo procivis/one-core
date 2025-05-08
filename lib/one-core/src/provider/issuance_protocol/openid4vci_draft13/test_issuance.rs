@@ -17,6 +17,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::revocation_list::{
@@ -68,13 +69,19 @@ async fn test_issuer_submit_succeeds() {
     let credential = Credential {
         state: CredentialStateEnum::Offered,
         suspend_end_date: None,
-        holder_did: Some(dummy_did()),
-        issuer_did: Some(Did {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: key.to_owned(),
-            }]),
-            ..dummy_did()
+        holder_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
+        issuer_identifier: Some(Identifier {
+            did: Some(Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                }]),
+                ..dummy_did()
+            }),
+            ..dummy_identifier()
         }),
         key: Some(key),
         ..dummy_credential()
@@ -244,13 +251,19 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
     Credential {
         state,
         suspend_end_date: None,
-        holder_did: Some(dummy_did()),
-        issuer_did: Some(Did {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: key.to_owned(),
-            }]),
-            ..dummy_did()
+        holder_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
+        issuer_identifier: Some(Identifier {
+            did: Some(Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                }]),
+                ..dummy_did()
+            }),
+            ..dummy_identifier()
         }),
         key: Some(key),
         schema: Some(CredentialSchema {
@@ -746,9 +759,7 @@ fn dummy_credential() -> Credential {
                 array: false,
             }),
         }]),
-        issuer_did: None,
         issuer_identifier: None,
-        holder_did: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

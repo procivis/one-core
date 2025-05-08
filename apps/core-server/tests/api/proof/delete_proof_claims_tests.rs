@@ -83,7 +83,6 @@ async fn test_delete_proof_claims_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Created,
-            &verifier_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             Default::default(),

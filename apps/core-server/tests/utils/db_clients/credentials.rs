@@ -5,8 +5,7 @@ use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use one_core::model::did::Did;
-use one_core::model::identifier::Identifier;
+use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::repository::credential_repository::CredentialRepository;
 use shared_types::CredentialId;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -35,8 +34,11 @@ impl CredentialsDB {
                         claim_schemas: Some(Default::default()),
                         organisation: Some(Default::default()),
                     }),
-                    holder_did: Some(Default::default()),
                     interaction: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     key: Some(Default::default()),
                     ..Default::default()
                 },
@@ -50,7 +52,6 @@ impl CredentialsDB {
         &self,
         credential_schema: &CredentialSchema,
         state: CredentialStateEnum,
-        issuer_did: &Did,
         issuer_identifier: &Identifier,
         exchange: &str,
         params: TestingCredentialParams<'_>,
@@ -115,9 +116,7 @@ impl CredentialsDB {
             state,
             suspend_end_date: params.suspend_end_date,
             claims: Some(claims),
-            issuer_did: Some(issuer_did.to_owned()),
             issuer_identifier: Some(issuer_identifier.to_owned()),
-            holder_did: params.holder_did,
             holder_identifier: params.holder_identifier,
             schema: Some(credential_schema.to_owned()),
             interaction: params.interaction,

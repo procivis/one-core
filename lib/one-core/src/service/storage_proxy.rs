@@ -10,7 +10,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
 };
 use crate::model::did::Did;
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -142,8 +142,10 @@ impl StorageProxy for StorageProxyImpl {
             .get_credentials_by_credential_schema_id(
                 schema_id.to_owned(),
                 &CredentialRelations {
-                    issuer_did: Some(Default::default()),
-                    issuer_identifier: Some(Default::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     claims: Some(ClaimRelations {
                         schema: Some(Default::default()),
                     }),

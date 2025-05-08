@@ -3,6 +3,7 @@ use std::sync::Arc;
 use time::Duration;
 use uuid::Uuid;
 
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
@@ -13,7 +14,7 @@ use crate::provider::revocation::bitstring_status_list::resolver::StatusListCach
 use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
 use crate::provider::revocation::RevocationMethod;
-use crate::service::test_utilities::{dummy_credential, dummy_did};
+use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_allowed() {
@@ -60,7 +61,10 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
     );
 
     let mut credential = dummy_credential();
-    credential.issuer_did = Some(dummy_did());
+    credential.issuer_identifier = Some(Identifier {
+        did: Some(dummy_did()),
+        ..dummy_identifier()
+    });
     if let Some(ref mut schema) = credential.schema {
         schema.allow_suspension = suspension;
     }

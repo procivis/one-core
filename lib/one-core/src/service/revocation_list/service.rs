@@ -6,6 +6,7 @@ use super::dto::RevocationListResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
+use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::{Lvvc, ValidityCredentialType};
@@ -41,12 +42,18 @@ impl RevocationListService {
                 id,
                 &CredentialRelations {
                     schema: Some(CredentialSchemaRelations::default()),
-                    issuer_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
-                    holder_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     key: Some(KeyRelations::default()),
@@ -59,7 +66,12 @@ impl RevocationListService {
 
         // validate JWT token was signed with the holder binding DID
         let holder_did = credential
-            .holder_did
+            .holder_identifier
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "holder_identifier is None".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
 

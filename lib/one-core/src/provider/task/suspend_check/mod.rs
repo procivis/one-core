@@ -11,6 +11,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::model::organisation::OrganisationRelations;
@@ -96,11 +97,17 @@ impl Task for SuspendCheckProvider {
                 .get_credential(
                     &credential_id,
                     &CredentialRelations {
-                        issuer_did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
+                        issuer_identifier: Some(IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(KeyRelations::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         }),
-                        holder_did: Some(DidRelations::default()),
+                        holder_identifier: Some(IdentifierRelations {
+                            did: Some(Default::default()),
+                            ..Default::default()
+                        }),
                         key: Some(KeyRelations::default()),
                         schema: Some(CredentialSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
@@ -129,7 +136,12 @@ impl Task for SuspendCheckProvider {
                 ))?;
 
             let issuer = credential
-                .issuer_did
+                .issuer_identifier
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "issuer_identifier is None".to_string(),
+                ))?
+                .did
                 .as_ref()
                 .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 

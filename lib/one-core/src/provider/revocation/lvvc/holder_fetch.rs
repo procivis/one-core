@@ -105,7 +105,12 @@ async fn fetch_remote_lvvc(
     }
 
     let holder_did = linked_credential
-        .holder_did
+        .holder_identifier
+        .as_ref()
+        .ok_or(RevocationError::MappingError(
+            "holder_identifier is None".to_string(),
+        ))?
+        .did
         .as_ref()
         .ok_or(RevocationError::MappingError(
             "holder_did is None".to_string(),

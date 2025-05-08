@@ -20,7 +20,7 @@ use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc() {
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
     let client_metadata = json!(
     {
@@ -60,7 +60,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         setup_submittable_presentation(
             &context,
             &organisation,
-            &issuer_did,
             &identifier,
             &client_metadata.to_string(),
         )
@@ -139,7 +138,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
     let client_metadata = json!({
         "authorization_encrypted_response_alg": "ECDH-ES",
@@ -180,7 +179,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
         setup_submittable_presentation(
             &context,
             &organisation,
-            &issuer_did,
             &identifier,
             &client_metadata.to_string(),
         )
@@ -237,7 +235,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
 async fn setup_submittable_presentation(
     context: &TestContext,
     organisation: &Organisation,
-    issuer_did: &Did,
     issuer_identifier: &Identifier,
     client_metadata: &str,
 ) -> (Did, Did, Credential, Interaction, Proof) {
@@ -318,7 +315,7 @@ async fn setup_submittable_presentation(
         }),
     )
     .await;
-    let _holder_identifier = context
+    let holder_identifier = context
         .db
         .identifiers
         .create(
@@ -346,11 +343,10 @@ async fn setup_submittable_presentation(
         &context.db.db_conn,
         &credential_schema,
         CredentialStateEnum::Accepted,
-        issuer_did,
         issuer_identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
-            holder_did: Some(holder_did.clone()),
+            holder_identifier: Some(holder_identifier.clone()),
             credential: Some("TOKEN"),
             ..Default::default()
         },
@@ -523,11 +519,9 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Accepted,
-        &issuer_did,
         &issuer_identifier,
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
-            holder_did: Some(holder_did.clone()),
             holder_identifier: Some(holder_identifier),
             credential: Some("TOKEN"),
             ..Default::default()

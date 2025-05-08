@@ -780,7 +780,6 @@ pub(crate) fn create_credential(
     claims: Vec<Claim>,
     interaction: Interaction,
     redirect_uri: Option<String>,
-    issuer_did: Option<Did>,
     issuer_identifier: Option<Identifier>,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
@@ -798,9 +797,7 @@ pub(crate) fn create_credential(
         state: CredentialStateEnum::Pending,
         suspend_end_date: None,
         claims: Some(claims),
-        issuer_did,
         issuer_identifier,
-        holder_did: None,
         holder_identifier: None,
         schema: Some(credential_schema),
         key: None,

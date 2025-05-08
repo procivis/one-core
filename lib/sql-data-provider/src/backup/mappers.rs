@@ -50,9 +50,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             state: value.state.into(),
             suspend_end_date: value.suspend_end_date,
             claims: Some(convert_inner(claims_with_schema)),
-            issuer_did: None,
             issuer_identifier: None,
-            holder_did: None,
             holder_identifier: None,
             schema: Some(CredentialSchema {
                 id: value.credential_schema_id,

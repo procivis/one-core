@@ -374,9 +374,17 @@ pub async fn create_lvvc_with_status(
     let base_url = core_base_url.as_ref().ok_or_else(|| {
         RevocationError::MappingError("LVVC issuance is missing core base_url".to_string())
     })?;
-    let issuer_did = credential.issuer_did.as_ref().ok_or_else(|| {
-        RevocationError::MappingError("LVVC issuance is missing issuer DID".to_string())
-    })?;
+    let issuer_did = credential
+        .issuer_identifier
+        .as_ref()
+        .ok_or_else(|| {
+            RevocationError::MappingError("LVVC issuance is missing issuer identifier".to_string())
+        })?
+        .did
+        .as_ref()
+        .ok_or_else(|| {
+            RevocationError::MappingError("LVVC issuance is missing issuer DID".to_string())
+        })?;
 
     let key = credential
         .key

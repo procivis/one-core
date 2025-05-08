@@ -18,7 +18,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -56,7 +56,10 @@ impl SSIHolderService {
                         organisation: Some(OrganisationRelations::default()),
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
-                    issuer_did: Some(DidRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -232,7 +235,6 @@ impl SSIHolderService {
                     state: Some(CredentialStateEnum::Accepted),
                     suspend_end_date: Clearable::DontTouch,
                     credential: Some(issuer_response.credential.bytes().collect()),
-                    holder_did_id: Some(holder_did.id),
                     holder_identifier_id: Some(holder_identifer.id),
                     key: Some(selected_key.id),
                     claims: Some(claims),
@@ -307,10 +309,6 @@ impl SSIHolderService {
                 interaction_id,
                 &CredentialRelations {
                     interaction: Some(InteractionRelations::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()

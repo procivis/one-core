@@ -33,7 +33,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -577,7 +577,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 ))?;
 
         // check did is consistent with what was offered
-        if let Some(ref credential_offer_did) = credential.issuer_did {
+        if let Some(credential_offer_did) = credential
+            .issuer_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.as_ref())
+        {
             if issuer_did_value != credential_offer_did.did {
                 return Err(IssuanceProtocolError::DidMismatch);
             }
@@ -592,62 +596,60 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .id;
 
         let now = OffsetDateTime::now_utc();
-        let (issuer_did_id, issuer_identifier_id, create_did, create_identifier) =
-            match storage_access
-                .get_did_by_value(&issuer_did_value, organisation_id)
-                .await
-                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
-            {
-                Some(did) => {
-                    let identifier = storage_access
-                        .get_identifier_for_did(&did.id)
-                        .await
-                        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+        let (issuer_identifier_id, create_did, create_identifier) = match storage_access
+            .get_did_by_value(&issuer_did_value, organisation_id)
+            .await
+            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
+        {
+            Some(did) => {
+                let identifier = storage_access
+                    .get_identifier_for_did(&did.id)
+                    .await
+                    .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
-                    (did.id, identifier.id, None, None)
-                }
-                None => {
-                    let id = Uuid::new_v4();
-                    let did_method = self
-                        .did_method_provider
-                        .get_did_method_id(&issuer_did_value)
-                        .ok_or(IssuanceProtocolError::Failed(format!(
-                            "unsupported issuer did method: {issuer_did_value}"
-                        )))?;
-                    let did = Did {
+                (identifier.id, None, None)
+            }
+            None => {
+                let id = Uuid::new_v4();
+                let did_method = self
+                    .did_method_provider
+                    .get_did_method_id(&issuer_did_value)
+                    .ok_or(IssuanceProtocolError::Failed(format!(
+                        "unsupported issuer did method: {issuer_did_value}"
+                    )))?;
+                let did = Did {
+                    id: id.into(),
+                    name: format!("issuer {id}"),
+                    created_date: now,
+                    last_modified: now,
+                    did: issuer_did_value,
+                    did_type: DidType::Remote,
+                    did_method,
+                    keys: None,
+                    deactivated: false,
+                    organisation: schema.organisation.clone(),
+                    log: None,
+                };
+
+                (
+                    id.into(),
+                    Some(did.to_owned()),
+                    Some(Identifier {
                         id: id.into(),
                         name: format!("issuer {id}"),
                         created_date: now,
                         last_modified: now,
-                        did: issuer_did_value,
-                        did_type: DidType::Remote,
-                        did_method,
-                        keys: None,
-                        deactivated: false,
+                        did: Some(did),
+                        key: None,
+                        is_remote: true,
+                        deleted_at: None,
+                        r#type: IdentifierType::Did,
+                        status: IdentifierStatus::Active,
                         organisation: schema.organisation.clone(),
-                        log: None,
-                    };
-
-                    (
-                        id.into(),
-                        id.into(),
-                        Some(did.to_owned()),
-                        Some(Identifier {
-                            id: id.into(),
-                            name: format!("issuer {id}"),
-                            created_date: now,
-                            last_modified: now,
-                            did: Some(did),
-                            key: None,
-                            is_remote: true,
-                            deleted_at: None,
-                            r#type: IdentifierType::Did,
-                            status: IdentifierStatus::Active,
-                            organisation: schema.organisation.clone(),
-                        }),
-                    )
-                }
-            };
+                    }),
+                )
+            }
+        };
 
         let redirect_uri = response_value.redirect_uri.clone();
 
@@ -666,7 +668,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
             update_credential: Some((
                 credential.id,
                 UpdateCredentialRequest {
-                    issuer_did_id: Some(issuer_did_id),
                     issuer_identifier_id: Some(issuer_identifier_id),
                     redirect_uri: Some(redirect_uri),
                     suspend_end_date: Clearable::DontTouch,
@@ -720,7 +721,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         if self.params.credential_offer_by_value {
             let issuer_did = credential
-                .issuer_did
+                .issuer_identifier
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing issuer_identifier".to_owned(),
+                ))?
+                .did
                 .as_ref()
                 .ok_or(IssuanceProtocolError::Failed(
                     "Missing issuer did".to_owned(),
@@ -779,8 +785,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
                         organisation: Some(OrganisationRelations::default()),
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
-                    issuer_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     key: Some(KeyRelations::default()),
@@ -796,7 +805,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
         };
 
         let issuer_did = credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "issuer_identifier is None".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
                 "issuer_did is None".to_string(),
@@ -809,7 +823,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
         );
 
-        credential.holder_did = Some(holder_did.clone());
+        credential.holder_identifier = Some(holder_identifier.clone());
 
         let credential_schema = credential
             .schema
@@ -971,7 +985,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?;
 
         let issuer_did_value = &credential
-            .issuer_did
+            .issuer_identifier
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "missing issuer did".to_string(),
+            ))?
+            .did
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
                 "missing issuer did".to_string(),
@@ -1075,7 +1094,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_did.id, holder_identifier.id),
+                        get_issued_credential_update(&token, holder_identifier.id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -1097,7 +1116,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_did.id, holder_identifier.id),
+                        get_issued_credential_update(&token, holder_identifier.id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -1134,7 +1153,7 @@ async fn handle_credential_invitation(
 
     let issuer = match credential_offer.issuer_did {
         Some(issuer_did) => {
-            let (did, identifier) = storage_access
+            let (_, identifier) = storage_access
                 .get_or_create_did_and_identifier(
                     &Some(organisation.clone()),
                     &issuer_did,
@@ -1142,9 +1161,9 @@ async fn handle_credential_invitation(
                 )
                 .await
                 .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-            (Some(did), Some(identifier))
+            Some(identifier)
         }
-        None => (None, None),
+        None => None,
     };
 
     let tx_code = credential_offer.grants.code.tx_code.clone();
@@ -1302,8 +1321,7 @@ async fn handle_credential_invitation(
         claims,
         interaction,
         None,
-        issuer.0,
-        issuer.1,
+        issuer,
     );
 
     Ok(InvitationResponseDTO {

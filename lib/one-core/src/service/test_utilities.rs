@@ -230,9 +230,10 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 array: false,
             }),
         }]),
-        issuer_did: Some(dummy_did()),
-        issuer_identifier: Some(dummy_identifier()),
-        holder_did: None,
+        issuer_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

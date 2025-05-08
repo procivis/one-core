@@ -177,9 +177,7 @@ fn dummy_credential(
         state,
         suspend_end_date: None,
         claims: None,
-        issuer_did: None,
         issuer_identifier: None,
-        holder_did: None,
         holder_identifier: None,
         schema,
         interaction: Some(dummy_interaction(
@@ -868,7 +866,8 @@ async fn test_create_credential_success() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id && request.holder_did_id == Some(holder_did_id)
+                *id == credential.id
+                    && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
             })
             .returning(move |_, _| Ok(()));
     }
@@ -1062,7 +1061,8 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id && request.holder_did_id == Some(holder_did_id)
+                *id == credential.id
+                    && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
             })
             .returning(move |_, _| Ok(()));
     }
@@ -1257,7 +1257,8 @@ async fn test_create_credential_success_mdoc() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id && request.holder_did_id == Some(holder_did_id)
+                *id == credential.id
+                    && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
             })
             .returning(move |_, _| Ok(()));
     }
@@ -1859,7 +1860,8 @@ async fn test_create_credential_issuer_failed() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id && request.holder_did_id == Some(holder_did_id)
+                *id == credential.id
+                    && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
             })
             .returning(move |_, _| Ok(()));
 

@@ -50,9 +50,9 @@ pub(crate) async fn log_history_event_credential(
     {
         id
     } else if let Some(id) = credential
-        .holder_did
+        .holder_identifier
         .as_ref()
-        .and_then(|did| did.organisation.as_ref().map(|org| org.id))
+        .and_then(|identifier| identifier.organisation.as_ref().map(|org| org.id))
     {
         id
     } else {
@@ -202,17 +202,23 @@ pub(crate) async fn log_history_event_proof_schema(
     }
 }
 
-pub(crate) fn target_from_proof(proof: &Proof) -> Option<String> {
+fn target_from_proof(proof: &Proof) -> Option<String> {
     match proof.role {
         ProofRole::Holder => proof.verifier_did.as_ref().map(|did| did.id.to_string()),
         ProofRole::Verifier => proof.holder_did.as_ref().map(|did| did.id.to_string()),
     }
 }
 
-pub(crate) fn target_from_credential(credential: &Credential) -> Option<String> {
+fn target_from_credential(credential: &Credential) -> Option<String> {
     match credential.role {
-        CredentialRole::Holder => credential.issuer_did.as_ref().map(|did| did.id.to_string()),
-        CredentialRole::Issuer => credential.holder_did.as_ref().map(|did| did.id.to_string()),
+        CredentialRole::Holder => credential
+            .issuer_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
+        CredentialRole::Issuer => credential
+            .holder_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
         CredentialRole::Verifier => None,
     }
 }

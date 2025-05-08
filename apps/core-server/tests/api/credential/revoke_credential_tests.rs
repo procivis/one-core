@@ -72,7 +72,6 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -188,11 +187,9 @@ async fn test_revoke_credential_deleted() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                holder_did: Some(holder_did),
                 holder_identifier: Some(holder_identifier),
                 key: Some(key),
                 deleted_at: Some(OffsetDateTime::now_utc()),
@@ -289,11 +286,9 @@ async fn test_revoke_credential_with_lvvc_success() {
         .create(
             &credential_schema,
             CredentialStateEnum::Accepted,
-            &issuer_did,
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                holder_did: Some(holder_did),
                 holder_identifier: Some(holder_identifier),
                 key: Some(key),
                 ..Default::default()

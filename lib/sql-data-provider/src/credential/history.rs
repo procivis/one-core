@@ -7,6 +7,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::CredentialSchemaRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
+use one_core::model::identifier::IdentifierRelations;
 use one_core::model::interaction::InteractionId;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
@@ -32,8 +33,14 @@ impl CredentialHistoryDecorator {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    issuer_did: Some(Default::default()),
-                    holder_did: Some(Default::default()),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )

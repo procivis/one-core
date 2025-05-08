@@ -208,7 +208,7 @@ impl ProofService {
             claim_schemas.push(claim_schema.to_owned());
         }
 
-        let (issuer_did, issuer_identifier) = get_or_create_did_and_identifier(
+        let (_, issuer_identifier) = get_or_create_did_and_identifier(
             &*self.did_method_provider,
             &*self.did_repository,
             &*self.identifier_repository,
@@ -222,9 +222,7 @@ impl ProofService {
             &claim_schemas,
             credential_schema.to_owned(),
             claims,
-            issuer_did,
             issuer_identifier,
-            None,
             None,
             proof.exchange.to_owned(),
         )?;

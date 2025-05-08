@@ -58,7 +58,12 @@ pub(crate) async fn generate_credential_additional_data(
     let params: Params = convert_params(revocation_method.get_params()?)?;
 
     let issuer_did = credential
-        .issuer_did
+        .issuer_identifier
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "issuer_identifier is None".to_string(),
+        ))?
+        .did
         .as_ref()
         .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
