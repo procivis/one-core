@@ -660,7 +660,6 @@ impl OneCore {
             cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
             identifier_service: IdentifierService::new(
                 data_provider.get_identifier_repository(),
-                data_provider.get_did_repository(),
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 did_service,

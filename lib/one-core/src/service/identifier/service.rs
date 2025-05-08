@@ -61,7 +61,17 @@ impl IdentifierService {
     ) -> Result<GetIdentifierResponseDTO, ServiceError> {
         let identifier = self
             .identifier_repository
-            .get_from_did_id(*did_id, &Default::default())
+            .get_from_did_id(
+                *did_id,
+                &IdentifierRelations {
+                    did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        keys: Some(KeyRelations::default()),
+                    }),
+                    key: None,
+                    organisation: Some(Default::default()),
+                },
+            )
             .await?;
 
         let Some(identifier) = identifier else {
@@ -109,7 +119,7 @@ impl IdentifierService {
             None => IdentifierType::Key,
         };
 
-        let did = if r#type == IdentifierType::Did {
+        if r#type == IdentifierType::Did {
             let create_request = request
                 .did
                 .ok_or(ServiceError::ValidationError("Missing did".to_string()))?;
@@ -121,15 +131,8 @@ impl IdentifierService {
                     organisation.id,
                 ))
                 .await?;
-            Ok::<_, ServiceError>(Some(
-                self.did_repository
-                    .get_did(&did_id, &Default::default())
-                    .await?
-                    .ok_or(EntityNotFoundError::Did(did_id))?,
-            ))
-        } else {
-            Ok(None)
-        }?;
+            return self.get_identifier_by_did_id(&did_id).await.map(|i| i.id);
+        }
 
         let key = if let Some(key_id) = request.key_id {
             Ok::<_, ServiceError>(Some(
@@ -153,7 +156,7 @@ impl IdentifierService {
             is_remote: false,
             status: IdentifierStatus::Active,
             deleted_at: None,
-            did,
+            did: None,
             key,
         };
 

@@ -1,6 +1,8 @@
 use one_core::model::identifier::{Identifier, IdentifierFilterValue, SortableIdentifierColumn};
+use one_core::model::organisation::Organisation;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
+use time::OffsetDateTime;
 
 use crate::entity::identifier::ActiveModel;
 use crate::entity::{self, identifier, key, key_did};
@@ -42,7 +44,12 @@ impl From<entity::identifier::Model> for Identifier {
             is_remote: value.is_remote,
             status: value.status.into(),
             deleted_at: value.deleted_at,
-            organisation: None,
+            organisation: value.organisation_id.map(|id| Organisation {
+                id,
+                name: "".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
             did: None,
             key: None,
         }

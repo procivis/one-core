@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use super::error::ErrorCode;
-use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -14,7 +13,6 @@ pub mod service;
 #[derive(Clone)]
 pub struct IdentifierService {
     identifier_repository: Arc<dyn IdentifierRepository>,
-    did_repository: Arc<dyn DidRepository>,
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
 
@@ -24,14 +22,12 @@ pub struct IdentifierService {
 impl IdentifierService {
     pub fn new(
         identifier_repository: Arc<dyn IdentifierRepository>,
-        did_repository: Arc<dyn DidRepository>,
         key_repository: Arc<dyn KeyRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         did_service: DidService,
     ) -> Self {
         Self {
             identifier_repository,
-            did_repository,
             key_repository,
             organisation_repository,
             did_service,

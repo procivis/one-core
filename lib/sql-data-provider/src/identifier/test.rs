@@ -148,7 +148,10 @@ async fn test_get_identifier() {
     assert_eq!(retrieved.r#type, identifier.r#type);
     assert_eq!(retrieved.status, identifier.status);
     assert_eq!(retrieved.is_remote, identifier.is_remote);
-    assert!(retrieved.organisation.is_none());
+    assert_eq!(
+        retrieved.organisation.unwrap().id,
+        identifier.organisation.unwrap().id
+    );
     assert!(retrieved.did.is_none());
     assert!(retrieved.key.is_none());
 }
