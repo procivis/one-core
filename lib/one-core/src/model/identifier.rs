@@ -64,6 +64,7 @@ pub struct UpdateIdentifierRequest {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IdentifierFilterValue {
+    Ids(Vec<IdentifierId>),
     Name(StringMatch),
     Type(IdentifierType),
     Status(IdentifierStatus),

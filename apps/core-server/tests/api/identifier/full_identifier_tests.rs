@@ -27,7 +27,7 @@ async fn test_identifier_success() {
 
     assert_eq!(resp["name"].as_str().unwrap(), "test-identifier");
     assert_eq!(resp["type"].as_str().unwrap(), "KEY");
-    assert_eq!(resp["status"].as_str().unwrap(), "ACTIVE");
+    assert_eq!(resp["state"].as_str().unwrap(), "ACTIVE");
     assert!(!resp["isRemote"].as_bool().unwrap());
     assert_eq!(
         resp["organisationId"].as_str().unwrap(),

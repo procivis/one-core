@@ -3,7 +3,7 @@ use serde_with::skip_serializing_none;
 use shared_types::{IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::common::GetListResponse;
 use crate::model::identifier::{IdentifierStatus, IdentifierType};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
 use crate::service::key::dto::KeyResponseDTO;
@@ -37,7 +37,6 @@ pub struct GetIdentifierListItemResponseDTO {
 }
 
 pub type GetIdentifierListResponseDTO = GetListResponse<GetIdentifierListItemResponseDTO>;
-pub type GetIdentifierQueryDTO = GetListQueryParams<IdentifierType>;
 
 #[derive(Clone, Debug)]
 pub struct CreateIdentifierRequestDTO {

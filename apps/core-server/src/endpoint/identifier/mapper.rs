@@ -2,6 +2,7 @@ use one_core::model::identifier::IdentifierFilterValue;
 use one_core::model::list_filter::{
     ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
+use one_dto_mapper::convert_inner;
 
 use super::dto::{ExactIdentifierFilterColumnRestEnum, IdentifierFilterQueryParamsRestDTO};
 
@@ -26,13 +27,21 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             })
         });
 
+        let ids = value.ids.map(IdentifierFilterValue::Ids);
         let r#type = value
             .r#type
             .map(|r#type| IdentifierFilterValue::Type(r#type.into()));
         let status = value
-            .status
+            .state
             .map(|status| IdentifierFilterValue::Status(status.into()));
+        let key_algorithms = value
+            .key_algorithms
+            .map(IdentifierFilterValue::KeyAlgorithms);
+        let key_roles = value
+            .key_roles
+            .map(|key_roles| IdentifierFilterValue::KeyRoles(convert_inner(key_roles)));
+        let key_storages = value.key_storages.map(IdentifierFilterValue::KeyStorages);
 
-        organisation_id & name & r#type & status
+        organisation_id & name & ids & r#type & status & key_algorithms & key_roles & key_storages
     }
 }

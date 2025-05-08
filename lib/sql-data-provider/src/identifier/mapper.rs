@@ -71,6 +71,7 @@ impl IntoSortingColumn for SortableIdentifierColumn {
 impl IntoFilterCondition for IdentifierFilterValue {
     fn get_condition(self) -> Condition {
         match self {
+            IdentifierFilterValue::Ids(ids) => identifier::Column::Id.is_in(ids).into_condition(),
             IdentifierFilterValue::Name(string_match) => {
                 get_string_match_condition(identifier::Column::Name, string_match)
             }
@@ -85,8 +86,8 @@ impl IntoFilterCondition for IdentifierFilterValue {
             IdentifierFilterValue::OrganisationId(organisation_id) => {
                 get_equals_condition(identifier::Column::OrganisationId, organisation_id)
             }
-            IdentifierFilterValue::KeyAlgorithms(key_ids) => {
-                identifier::Column::KeyId.is_in(key_ids).into_condition()
+            IdentifierFilterValue::KeyAlgorithms(key_algorithms) => {
+                key::Column::KeyType.is_in(key_algorithms).into_condition()
             }
             IdentifierFilterValue::KeyRoles(key_roles) => key_did::Column::Role
                 .is_in(

@@ -12,7 +12,7 @@ use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
 use crate::dto::common::ListQueryParamsRest;
-use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO};
+use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
 use crate::endpoint::key::dto::KeyResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
@@ -53,7 +53,8 @@ pub struct GetIdentifierListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
-    pub status: IdentifierStatusRest,
+    #[from(rename = "status")]
+    pub state: IdentifierStatusRest,
     pub r#type: IdentifierTypeRest,
     pub is_remote: bool,
     pub organisation_id: Option<OrganisationId>,
@@ -80,8 +81,8 @@ pub struct GetIdentifierResponseRestDTO {
     pub key: Option<KeyResponseRestDTO>,
     #[try_from(infallible, with_fn = "convert_inner")]
     pub organisation_id: Option<OrganisationId>,
-    #[try_from(infallible)]
-    pub status: IdentifierStatusRest,
+    #[try_from(infallible, rename = "status")]
+    pub state: IdentifierStatusRest,
     #[try_from(infallible)]
     pub r#type: IdentifierTypeRest,
     #[try_from(infallible)]
@@ -121,13 +122,21 @@ pub enum SortableIdentifierColumnRest {
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentifierFilterQueryParamsRestDTO {
+    #[param(rename = "ids[]", nullable = false)]
+    pub ids: Option<Vec<IdentifierId>>,
     #[param(nullable = false)]
     pub name: Option<String>,
     #[param(nullable = false)]
     pub r#type: Option<IdentifierTypeRest>,
     #[param(nullable = false)]
-    pub status: Option<IdentifierStatusRest>,
-    /// Set which filters apply in an exact way.
+    pub state: Option<IdentifierStatusRest>,
+    #[param(rename = "keyAlgorithms[]", nullable = false)]
+    pub key_algorithms: Option<Vec<String>>,
+    #[param(rename = "keyRoles[]", inline, nullable = false)]
+    pub key_roles: Option<Vec<KeyRoleRestEnum>>,
+    #[param(rename = "keyStorages[]", nullable = false)]
+    pub key_storages: Option<Vec<String>>,
+
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactIdentifierFilterColumnRestEnum>>,
     pub organisation_id: OrganisationId,
