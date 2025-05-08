@@ -63,7 +63,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelDidType)]
 #[into(ModelDidType)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum DidType {
     #[sea_orm(string_value = "REMOTE")]
     Remote,

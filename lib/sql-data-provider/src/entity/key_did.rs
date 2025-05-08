@@ -53,7 +53,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelKeyRole)]
 #[into(ModelKeyRole)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum KeyRole {
     #[sea_orm(string_value = "AUTHENTICATION")]
     Authentication,

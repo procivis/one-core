@@ -50,11 +50,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(one_core::model::revocation_list::RevocationListPurpose)]
 #[into(one_core::model::revocation_list::RevocationListPurpose)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "revocation_list_purpose_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum RevocationListPurpose {
     #[sea_orm(string_value = "REVOCATION")]
     Revocation,
@@ -65,11 +61,7 @@ pub enum RevocationListPurpose {
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(one_core::model::revocation_list::StatusListCredentialFormat)]
 #[into(one_core::model::revocation_list::StatusListCredentialFormat)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "revocation_list_type_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum RevocationListFormat {
     #[sea_orm(string_value = "JWT")]
     Jwt,

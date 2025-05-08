@@ -149,7 +149,7 @@ impl Related<super::revocation_list::Entity> for Entity {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelCredentialRole)]
 #[into(ModelCredentialRole)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum CredentialRole {
     #[sea_orm(string_value = "HOLDER")]
     Holder,
@@ -162,7 +162,7 @@ pub enum CredentialRole {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelCredentialStateEnum)]
 #[into(ModelCredentialStateEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum CredentialState {
     #[sea_orm(string_value = "CREATED")]
     Created,

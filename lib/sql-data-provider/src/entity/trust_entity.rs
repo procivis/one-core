@@ -64,11 +64,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
 #[into(one_core::model::trust_entity::TrustEntityRole)]
 #[from(one_core::model::trust_entity::TrustEntityRole)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "trust_entity_role_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum TrustEntityRole {
     #[sea_orm(string_value = "ISSUER")]
     Issuer,
@@ -81,7 +77,7 @@ pub enum TrustEntityRole {
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
 #[into(one_core::model::trust_entity::TrustEntityState)]
 #[from(one_core::model::trust_entity::TrustEntityState)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "trust_entity_state")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum TrustEntityState {
     #[sea_orm(string_value = "ACTIVE")]
     Active,

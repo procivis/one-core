@@ -1,6 +1,7 @@
 use anyhow::Context;
 use one_core::model;
 use one_dto_mapper::{From, Into};
+use sea_orm::entity::prelude::StringLen;
 use sea_orm::prelude::{
     ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
     EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
@@ -21,11 +22,7 @@ pub struct Model {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "validity_credential_type_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[from("model::validity_credential::ValidityCredentialType")]
 #[into("model::validity_credential::ValidityCredentialType")]
 pub enum ValidityCredentialType {

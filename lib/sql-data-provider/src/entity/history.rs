@@ -60,7 +60,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
 #[from(ModelHistoryAction)]
 #[into(ModelHistoryAction)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum HistoryAction {
     #[sea_orm(string_value = "ACCEPTED")]
     Accepted,
@@ -113,7 +113,7 @@ pub enum HistoryAction {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
 #[from(ModelHistoryEntityType)]
 #[into(ModelHistoryEntityType)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum HistoryEntityType {
     #[sea_orm(string_value = "KEY")]
     Key,

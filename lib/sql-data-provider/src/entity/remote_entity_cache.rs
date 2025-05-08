@@ -31,7 +31,7 @@ pub enum Relation {}
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
 #[from(one_core::model::remote_entity_cache::CacheType)]
 #[into(one_core::model::remote_entity_cache::CacheType)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum CacheType {
     #[sea_orm(string_value = "DID_DOCUMENT")]
     DidDocument,

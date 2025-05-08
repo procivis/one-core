@@ -65,11 +65,7 @@ impl Related<super::key::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "identifier_type_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[from(one_core::model::identifier::IdentifierType)]
 #[into(one_core::model::identifier::IdentifierType)]
 pub enum IdentifierType {
@@ -82,11 +78,7 @@ pub enum IdentifierType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "identifier_status_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[from(one_core::model::identifier::IdentifierStatus)]
 #[into(one_core::model::identifier::IdentifierStatus)]
 pub enum IdentifierStatus {

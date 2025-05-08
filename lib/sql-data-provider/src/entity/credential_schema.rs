@@ -142,11 +142,7 @@ impl sea_orm::sea_query::Nullable for CredentialSchemaType {
 )]
 #[from(ModelWalletStorageTypeEnum)]
 #[into(ModelWalletStorageTypeEnum)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "wallet_storage_type"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WalletStorageType {
     #[sea_orm(string_value = "HARDWARE")]
@@ -158,11 +154,7 @@ pub enum WalletStorageType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "credential_schema_layout_type_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[from(model::credential_schema::LayoutType)]
 #[into(model::credential_schema::LayoutType)]
 pub enum LayoutType {

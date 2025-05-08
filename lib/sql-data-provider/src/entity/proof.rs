@@ -33,11 +33,7 @@ pub struct Model {
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ProofStateEnum)]
 #[into(ProofStateEnum)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "proof_request_state_enum"
-)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum ProofRequestState {
     #[sea_orm(string_value = "CREATED")]
     Created,
@@ -122,7 +118,7 @@ pub enum Relation {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelProofRole)]
 #[into(ModelProofRole)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum ProofRole {
     #[sea_orm(string_value = "HOLDER")]
     Holder,

@@ -100,6 +100,7 @@ mod m20250429_121331_created_date_index;
 mod m20250429_142011_add_identifier;
 mod m20250502_075301_did_identifier;
 mod m20250502_114600_add_deleted_at_to_identifier;
+mod m20250508_072524_change_enum_to_varchar;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -202,6 +203,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250429_142011_add_identifier::Migration),
             Box::new(m20250502_114600_add_deleted_at_to_identifier::Migration),
             Box::new(m20250502_075301_did_identifier::Migration),
+            Box::new(m20250508_072524_change_enum_to_varchar::Migration),
         ]
     }
 }
