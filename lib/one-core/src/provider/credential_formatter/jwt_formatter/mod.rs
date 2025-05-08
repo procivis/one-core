@@ -193,7 +193,13 @@ impl CredentialFormatter for JWTFormatter {
                     ..Default::default()
                 };
 
-                let jwt = Jwt::new("statuslist+jwt".to_owned(), jose_alg, None, None, payload);
+                let jwt = Jwt::new(
+                    "statuslist+jwt".to_owned(),
+                    jose_alg,
+                    auth_fn.get_key_id(),
+                    None,
+                    payload,
+                );
 
                 jwt.tokenize(Some(auth_fn)).await
             }
