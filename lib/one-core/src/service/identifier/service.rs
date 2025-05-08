@@ -112,57 +112,47 @@ impl IdentifierService {
             .await?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
-        let id = Uuid::new_v4().into();
-
-        let r#type = match request.did {
-            Some(_) => IdentifierType::Did,
-            None => IdentifierType::Key,
-        };
-
-        if r#type == IdentifierType::Did {
-            let create_request = request
-                .did
-                .ok_or(ServiceError::ValidationError("Missing did".to_string()))?;
-            let did_id = self
-                .did_service
-                .create_did(to_create_did_request(
-                    &request.name,
-                    create_request,
-                    organisation.id,
-                ))
-                .await?;
-            return self.get_identifier_by_did_id(&did_id).await.map(|i| i.id);
-        }
-
-        let key = if let Some(key_id) = request.key_id {
-            Ok::<_, ServiceError>(Some(
-                self.key_repository
+        match (request.did, request.key_id) {
+            // IdentifierType::Did
+            (Some(did), None) => {
+                let did_id = self
+                    .did_service
+                    .create_did(to_create_did_request(&request.name, did, organisation.id))
+                    .await?;
+                self.get_identifier_by_did_id(&did_id).await.map(|i| i.id)
+            }
+            // IdentifierType::Key
+            (None, Some(key_id)) => {
+                let key = self
+                    .key_repository
                     .get_key(&key_id, &Default::default())
                     .await?
-                    .ok_or(EntityNotFoundError::Key(key_id))?,
-            ))
-        } else {
-            Ok(None)
-        }?;
+                    .ok_or(EntityNotFoundError::Key(key_id))?;
 
-        let now = OffsetDateTime::now_utc();
-        let identifier = Identifier {
-            id,
-            created_date: now,
-            last_modified: now,
-            name: request.name,
-            organisation: Some(organisation),
-            r#type,
-            is_remote: false,
-            status: IdentifierStatus::Active,
-            deleted_at: None,
-            did: None,
-            key,
-        };
+                let id = Uuid::new_v4().into();
+                let now = OffsetDateTime::now_utc();
+                let identifier = Identifier {
+                    id,
+                    created_date: now,
+                    last_modified: now,
+                    name: request.name,
+                    organisation: Some(organisation),
+                    r#type: IdentifierType::Key,
+                    is_remote: false,
+                    status: IdentifierStatus::Active,
+                    deleted_at: None,
+                    did: None,
+                    key: Some(key),
+                };
 
-        self.identifier_repository.create(identifier).await?;
+                self.identifier_repository.create(identifier).await?;
 
-        Ok(id)
+                Ok(id)
+            }
+            _ => Err(ServiceError::ValidationError(
+                "Invalid request, specify either did or keyId".to_string(),
+            )),
+        }
     }
 
     /// Deletes an identifier
