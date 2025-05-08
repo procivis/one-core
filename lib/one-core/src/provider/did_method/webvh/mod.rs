@@ -171,7 +171,7 @@ impl DidMethod for DidWebVh {
     }
 
     fn can_be_deactivated(&self) -> bool {
-        false
+        true
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
