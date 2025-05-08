@@ -284,18 +284,26 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "OBJECT".to_string(),
             "ARRAY".to_string(),
         ];
+        let mut signing_key_algorithms = vec![KeyAlgorithmType::Ecdsa];
+        let mut issuance_exchange_protocols = vec![];
+        let mut issuance_did_methods = vec![DidType::WebVh];
+
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
+            issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13Swiyu);
         } else {
             datatypes.push("PICTURE".to_string());
+            signing_key_algorithms.push(KeyAlgorithmType::Eddsa);
+            signing_key_algorithms.push(KeyAlgorithmType::Dilithium);
+            issuance_did_methods.push(DidType::Key);
+            issuance_did_methods.push(DidType::Web);
+            issuance_did_methods.push(DidType::Jwk);
+            issuance_did_methods.push(DidType::X509);
+            issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13);
         }
 
         FormatterCapabilities {
-            signing_key_algorithms: vec![
-                KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Dilithium,
-            ],
+            signing_key_algorithms,
             allowed_schema_ids: vec![],
             datatypes,
             features: vec![
@@ -304,17 +312,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 Features::SupportsCredentialDesign,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
-            issuance_did_methods: vec![
-                DidType::Key,
-                DidType::Web,
-                DidType::Jwk,
-                DidType::X509,
-                DidType::WebVh,
-            ],
-            issuance_exchange_protocols: vec![
-                IssuanceProtocolType::OpenId4VciDraft13,
-                IssuanceProtocolType::OpenId4VciDraft13Swiyu,
-            ],
+            issuance_did_methods,
+            issuance_exchange_protocols,
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,

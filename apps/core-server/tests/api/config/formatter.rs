@@ -171,13 +171,7 @@ async fn test_config_formatter_issuance_did_methods_capability() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    for format in [
-        "JWT",
-        "SD_JWT",
-        "SD_JWT_VC",
-        "JSON_LD_CLASSIC",
-        "JSON_LD_BBSPLUS",
-    ] {
+    for format in ["JWT", "SD_JWT", "JSON_LD_CLASSIC", "JSON_LD_BBSPLUS"] {
         check(
             &resp,
             format,
@@ -187,6 +181,18 @@ async fn test_config_formatter_issuance_did_methods_capability() {
     }
 
     check(&resp, "MDOC", "issuanceDidMethods", json!(["MDL"]));
+    check(
+        &resp,
+        "SD_JWT_VC",
+        "issuanceDidMethods",
+        json!(["WEBVH", "KEY", "WEB", "JWK", "X509"]),
+    );
+    check(
+        &resp,
+        "SD_JWT_VC_SWIYU",
+        "issuanceDidMethods",
+        json!(["WEBVH"]),
+    );
 }
 
 #[track_caller]
