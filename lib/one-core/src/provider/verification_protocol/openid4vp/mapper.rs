@@ -579,7 +579,7 @@ pub(crate) fn map_credential_formats_to_presentation_format(
     if presented.len() == 1
         && presented.iter().all(|cred| {
             cred.credential_schema.format == FormatType::SdJwt.to_string()
-                || cred.credential_schema.format == FormatType::SdJwtVc.to_string()
+                || cred.credential_schema.schema_type == CredentialSchemaType::SdJwtVc
         })
     {
         return Ok((FormatType::SdJwt.to_string(), "vc+sd-jwt".to_owned()));
