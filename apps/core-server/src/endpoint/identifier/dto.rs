@@ -66,6 +66,8 @@ pub struct GetIdentifierListItemResponseRestDTO {
 #[try_from(T = GetIdentifierResponseDTO, Error = MapperError)]
 pub struct GetIdentifierResponseRestDTO {
     #[try_from(infallible)]
+    pub id: IdentifierId,
+    #[try_from(infallible)]
     pub name: String,
     #[try_from(infallible)]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
