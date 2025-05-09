@@ -133,7 +133,7 @@ pub struct IdentifierFilterQueryParamsRestDTO {
     #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
     #[param(nullable = false)]
-    #[serde(deserialize_with = "deserialize_bool_from_string")]
+    #[serde(default, deserialize_with = "deserialize_bool_from_string")]
     pub is_remote: Option<bool>,
     #[param(rename = "keyAlgorithms[]", nullable = false)]
     pub key_algorithms: Option<Vec<String>>,
