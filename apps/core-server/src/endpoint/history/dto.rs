@@ -3,7 +3,8 @@ use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,
+    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
+    ProofSchemaId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -175,9 +176,9 @@ pub struct HistoryFilterQueryParamsRest {
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(value_type = String)]
     pub created_date_to: Option<OffsetDateTime>,
-    /// Return only events associated with the provided DID UUID.
+    /// Return only events associated with the provided Identifier UUID.
     #[param(nullable = false)]
-    pub did_id: Option<DidId>,
+    pub identifier_id: Option<IdentifierId>,
     /// Return only events associated with the provided credential UUID.
     #[param(nullable = false)]
     pub credential_id: Option<CredentialId>,

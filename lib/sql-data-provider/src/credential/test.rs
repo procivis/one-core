@@ -48,7 +48,6 @@ use crate::test_utilities::*;
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
     pub credential_schema: CredentialSchema,
-    pub did: Did,
     pub identifier: Identifier,
 }
 
@@ -178,7 +177,6 @@ async fn setup_empty() -> TestSetup {
 
     TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
     }
@@ -194,7 +192,6 @@ struct TestSetupWithCredential {
 async fn setup_with_credential() -> TestSetupWithCredential {
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -205,7 +202,6 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -499,7 +495,6 @@ async fn test_create_credential_already_exists() {
 async fn test_delete_credential_success() {
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -510,7 +505,6 @@ async fn test_delete_credential_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -565,7 +559,6 @@ async fn test_delete_credential_failed_not_found() {
 async fn test_get_credential_list_success() {
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -576,7 +569,6 @@ async fn test_get_credential_list_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -588,7 +580,6 @@ async fn test_get_credential_list_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -601,7 +592,6 @@ async fn test_get_credential_list_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         Some(OffsetDateTime::now_utc()),
         None,
@@ -645,7 +635,6 @@ async fn test_get_credential_list_success() {
 async fn test_get_credential_list_success_filter_state() {
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -656,7 +645,6 @@ async fn test_get_credential_list_success_filter_state() {
         &credential_schema.id,
         CredentialStateEnum::Offered,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -669,7 +657,6 @@ async fn test_get_credential_list_success_filter_state() {
         &credential_schema.id,
         CredentialStateEnum::Revoked,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -878,7 +865,6 @@ async fn test_get_credential_success() {
 
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -889,7 +875,6 @@ async fn test_get_credential_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -1034,7 +1019,6 @@ async fn test_update_credential_success() {
 
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -1057,7 +1041,6 @@ async fn test_update_credential_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -1159,7 +1142,6 @@ async fn test_update_credential_success() {
 async fn test_get_credential_by_claim_id_success() {
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -1171,7 +1153,6 @@ async fn test_get_credential_by_claim_id_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -1184,7 +1165,6 @@ async fn test_get_credential_by_claim_id_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -1233,7 +1213,6 @@ async fn test_get_credential_by_claim_id_success() {
 async fn test_delete_credential_blobs_success() {
     let TestSetup {
         credential_schema,
-        did,
         db,
         identifier,
         ..
@@ -1244,7 +1223,6 @@ async fn test_delete_credential_blobs_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,
@@ -1257,7 +1235,6 @@ async fn test_delete_credential_blobs_success() {
         &credential_schema.id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did.id,
         identifier.id,
         None,
         None,

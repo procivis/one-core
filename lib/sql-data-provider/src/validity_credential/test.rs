@@ -163,7 +163,6 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         &credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did_id,
         identifier_id,
         None,
         None,

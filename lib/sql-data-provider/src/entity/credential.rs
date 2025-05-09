@@ -29,11 +29,9 @@ pub struct Model {
 
     pub role: CredentialRole,
 
-    pub issuer_did_id: Option<DidId>,
     pub issuer_identifier_id: Option<IdentifierId>,
     pub key_id: Option<KeyId>,
 
-    pub holder_did_id: Option<DidId>,
     pub holder_identifier_id: Option<IdentifierId>,
 
     pub interaction_id: Option<String>,
@@ -59,14 +57,6 @@ pub enum Relation {
     )]
     CredentialSchema,
     #[sea_orm(
-        belongs_to = "super::did::Entity",
-        from = "Column::IssuerDidId",
-        to = "super::did::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    IssuerDid,
-    #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::IssuerIdentifierId",
         to = "super::identifier::Column::Id",
@@ -74,14 +64,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     IssuerIdentifier,
-    #[sea_orm(
-        belongs_to = "super::did::Entity",
-        from = "Column::HolderDidId",
-        to = "super::did::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    HolderDidId,
     #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::HolderIdentifierId",

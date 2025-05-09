@@ -10,7 +10,7 @@ use one_core::repository::claim_schema_repository::{
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, IdentifierId};
 use uuid::Uuid;
 
 use super::ClaimProvider;
@@ -22,7 +22,6 @@ struct TestSetup {
     pub repository: Box<dyn ClaimRepository>,
     pub claim_schemas: Vec<ClaimSchema>,
     pub credential_id: CredentialId,
-    pub did_id: DidId,
     pub identifier_id: IdentifierId,
     pub credential_schema_id: CredentialSchemaId,
 }
@@ -88,7 +87,6 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did_id,
         identifier_id,
         None,
         None,
@@ -114,7 +112,6 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
                 array: false,
             })
             .collect(),
-        did_id,
         identifier_id,
         credential_schema_id: *credential_schema_id,
     }
@@ -213,8 +210,8 @@ async fn test_delete_claims_for_credentials() {
         db,
         credential_id,
         credential_schema_id,
-        did_id,
         identifier_id,
+        ..
     } = setup(get_claim_schema_repository_mock()).await;
 
     let credential_id_2 = insert_credential(
@@ -222,7 +219,6 @@ async fn test_delete_claims_for_credentials() {
         &credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did_id,
         identifier_id,
         None,
         None,

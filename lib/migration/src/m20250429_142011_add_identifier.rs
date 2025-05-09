@@ -505,7 +505,7 @@ pub enum IdentifierStatus {
     Deactivated,
 }
 
-#[derive(DeriveIden)]
+#[derive(DeriveIden, Clone)]
 pub enum CredentialNew {
     Table,
     Id,

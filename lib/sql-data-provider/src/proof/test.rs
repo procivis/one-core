@@ -622,8 +622,6 @@ async fn test_get_proof_with_relations() {
         exchange: Set("OPENID4VCI_DRAFT13".to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
-        issuer_did_id: Set(Some(did_id)),
-        holder_did_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),
         key_id: Set(None),
@@ -821,7 +819,6 @@ async fn test_set_proof_claims_success() {
         db,
         claim_schema_ids,
         organisation_id,
-        did_id,
         identifier_id,
         ..
     } = setup_with_proof(
@@ -851,7 +848,6 @@ async fn test_set_proof_claims_success() {
         &credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did_id,
         identifier_id,
         None,
         None,

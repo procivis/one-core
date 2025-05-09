@@ -157,7 +157,6 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         &credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
-        did_id,
         identifier_id,
         None,
         None,
@@ -442,7 +441,6 @@ async fn test_get_history_list_schema_joins_credentials() {
             &credential_schema_id,
             CredentialStateEnum::Created,
             "OPENID4VCI_DRAFT13",
-            did_id,
             identifier_id,
             None,
             None,
@@ -533,7 +531,7 @@ async fn test_get_history_list_entity_of_another_type_should_not_get_fetched() {
     let should_be_empty = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::DidId(Uuid::from(credential_schema_id).into()),
+            HistoryFilterValue::IdentifierId(Uuid::from(credential_schema_id).into()),
         ))
         .await
         .unwrap();

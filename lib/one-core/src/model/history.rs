@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,
+    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
+    ProofSchemaId,
 };
 use time::OffsetDateTime;
 
@@ -96,7 +97,7 @@ pub enum HistoryFilterValue {
     EntityIds(Vec<EntityId>),
     Action(HistoryAction),
     CreatedDate(ValueComparison<OffsetDateTime>),
-    DidId(DidId),
+    IdentifierId(IdentifierId),
     CredentialId(CredentialId),
     CredentialSchemaId(CredentialSchemaId),
     SearchQuery(String, HistorySearchEnum),

@@ -8,8 +8,8 @@ use sea_orm::{
 };
 
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
-    proof_input_claim_schema, proof_input_schema, proof_schema,
+    claim, claim_schema, credential, credential_schema, did, history, identifier, proof,
+    proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
 };
 use crate::list_query_generic::{
     get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinRelations,
@@ -49,13 +49,17 @@ impl IntoFilterCondition for HistoryFilterValue {
             Self::CreatedDate(date_comparison) => {
                 get_comparison_condition(history::Column::CreatedDate, date_comparison)
             }
-            Self::DidId(did_id) => credential::Column::IssuerDidId
-                .eq(did_id)
-                .or(credential::Column::HolderDidId.eq(did_id))
-                .or(proof::Column::VerifierDidId.eq(did_id))
-                .or(history::Column::EntityId
-                    .eq(did_id)
-                    .and(history::Column::EntityType.eq(history::HistoryEntityType::Did)))
+            Self::IdentifierId(identifier_id) => credential::Column::IssuerIdentifierId
+                .eq(identifier_id)
+                .or(credential::Column::HolderIdentifierId.eq(identifier_id))
+                .or(proof::Column::VerifierIdentifierId.eq(identifier_id))
+                .or(proof::Column::HolderIdentifierId.eq(identifier_id))
+                .or(history::Column::EntityId.eq(identifier_id).and(
+                    history::Column::EntityType.eq(
+                        // TODO: change to Identifier
+                        history::HistoryEntityType::Did,
+                    ),
+                ))
                 .into_condition(),
             Self::CredentialId(credential_id) => history::Column::EntityId
                 .eq(credential_id)
@@ -199,14 +203,14 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
         HistorySearchEnum::CredentialSchemaName => credential_schema_name_search_condition(
             credential_schema::Column::Name.contains(search_text),
         ),
-        HistorySearchEnum::IssuerDid => search_query_did_filter_condition(
+        HistorySearchEnum::IssuerDid => search_query_identifier_filter_condition(
             credential::Column::Id,
-            credential::Column::IssuerDidId,
+            credential::Column::IssuerIdentifierId,
             did::Column::Did.contains(search_text),
         ),
-        HistorySearchEnum::IssuerName => search_query_did_filter_condition(
+        HistorySearchEnum::IssuerName => search_query_identifier_filter_condition(
             credential::Column::Id,
-            credential::Column::IssuerDidId,
+            credential::Column::IssuerIdentifierId,
             did::Column::Name.contains(search_text),
         ),
         HistorySearchEnum::VerifierDid => search_query_did_filter_condition(
@@ -229,6 +233,55 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
             )
             .into_condition(),
     }
+}
+
+fn search_query_identifier_filter_condition(
+    entity_id_column: impl ColumnTrait,
+    identifier_id_column: impl ColumnTrait + IntoIden,
+    condition: impl IntoCondition + Clone,
+) -> Condition {
+    history::Column::EntityId
+        .in_subquery(
+            Query::select()
+                .expr(entity_id_column.into_expr())
+                .from(entity_id_column.entity_name().into_table_ref())
+                .inner_join(
+                    identifier::Entity,
+                    Expr::col(ColumnRef::TableColumn(
+                        identifier_id_column.entity_name(),
+                        identifier_id_column.into_iden(),
+                    ))
+                    .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
+                )
+                .inner_join(
+                    did::Entity,
+                    Expr::col((identifier::Entity, identifier::Column::DidId))
+                        .eq(Expr::col((did::Entity, did::Column::Id))),
+                )
+                .cond_where(condition.to_owned())
+                .to_owned(),
+        )
+        .or(history::Column::EntityId.in_subquery(
+            Query::select()
+                .expr(did::Column::Id.into_expr())
+                .from(did::Entity)
+                .inner_join(
+                    identifier::Entity,
+                    Expr::col((did::Entity, did::Column::Id))
+                        .eq(Expr::col((identifier::Entity, identifier::Column::DidId))),
+                )
+                .inner_join(
+                    identifier_id_column.entity_name(),
+                    Expr::col(ColumnRef::TableColumn(
+                        identifier_id_column.entity_name(),
+                        identifier_id_column.into_iden(),
+                    ))
+                    .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
+                )
+                .cond_where(condition)
+                .to_owned(),
+        ))
+        .into_condition()
 }
 
 fn search_query_did_filter_condition(
@@ -368,7 +421,7 @@ fn credential_schema_filter_condition(
 impl IntoJoinRelations for HistoryFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
         match self {
-            Self::DidId(_) => {
+            Self::IdentifierId(_) => {
                 vec![
                     JoinRelation {
                         join_type: JoinType::LeftJoin,

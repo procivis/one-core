@@ -61,10 +61,10 @@ impl OneCoreBinding {
                 value.into(),
             )));
         }
-        if let Some(value) = query.did_id {
-            conditions.push(ListFilterCondition::Value(HistoryFilterValue::DidId(
-                into_id(&value)?,
-            )));
+        if let Some(value) = query.identifier_id {
+            conditions.push(ListFilterCondition::Value(
+                HistoryFilterValue::IdentifierId(into_id(&value)?),
+            ));
         }
         if let Some(value) = query.created_date_from {
             let created_date_from = deserialize_timestamp(&value)
@@ -209,7 +209,7 @@ pub struct HistoryListQueryBindingDTO {
     pub action: Option<HistoryActionBindingEnum>,
     pub created_date_from: Option<String>,
     pub created_date_to: Option<String>,
-    pub did_id: Option<String>,
+    pub identifier_id: Option<String>,
     pub credential_id: Option<String>,
     pub credential_schema_id: Option<String>,
     pub proof_schema_id: Option<String>,
