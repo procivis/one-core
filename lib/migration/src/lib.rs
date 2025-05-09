@@ -101,6 +101,7 @@ mod m20250429_142011_add_identifier;
 mod m20250502_075301_did_identifier;
 mod m20250502_114600_add_deleted_at_to_identifier;
 mod m20250508_072524_change_enum_to_varchar;
+mod m20250509_092249_reapply_not_null_constraint_on_enum_columns;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -204,6 +205,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250502_114600_add_deleted_at_to_identifier::Migration),
             Box::new(m20250502_075301_did_identifier::Migration),
             Box::new(m20250508_072524_change_enum_to_varchar::Migration),
+            Box::new(m20250509_092249_reapply_not_null_constraint_on_enum_columns::Migration),
         ]
     }
 }
