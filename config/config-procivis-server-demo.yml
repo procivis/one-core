@@ -21,6 +21,30 @@ issuanceProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+verificationProtocol:
+  OPENID4VP_DRAFT20_SWIYU:
+    display:
+      en: "OpenID4VP draft 20 (SWIYU)"
+      de: "OpenID4VP draft 20 (SWIYU)"
+    order: 7
+    type: "OPENID4VP_DRAFT20_SWIYU"
+    params:
+      public:
+        urlScheme: https
+        useRequestUri: true
+        verifier:
+          supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+          defaultClientIdScheme: verifier_attestation
+        holder:
+          supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+        redirectUri:
+          enabled: true
+          allowedSchemes: [ "https" ]
+        predefinedClientMetadata:
+          vp_formats:
+            dc+sd-jwt:
+              sd-jwt_alg_values: [ "ES256" ]
+              kb-jwt_alg_values: [ "ES256" ]
 format:
   SD_JWT_VC_SWIYU:
     type: "SD_JWT_VC"

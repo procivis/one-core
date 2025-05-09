@@ -377,7 +377,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
             }
         };
 
-        // client_id from the query params must match client_id inisde the token
+        // client_id from the query params must match client_id inside the token
         if referenced_params.client_id != interaction_data.client_id {
             return Err(VerificationProtocolError::InvalidRequest(
                 "client_id mismatch with the request token".to_string(),
@@ -405,7 +405,9 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
         ));
     }
 
-    if let Some(client_metadata_uri) = &interaction_data.client_metadata_uri {
+    if let Some(ref metadata) = params.predefined_client_metadata {
+        interaction_data.client_metadata = Some(metadata.clone());
+    } else if let Some(client_metadata_uri) = &interaction_data.client_metadata_uri {
         if !allow_insecure_http_transport && client_metadata_uri.scheme() != "https" {
             return Err(VerificationProtocolError::InvalidRequest(
                 "client_metadata_uri must use HTTPS scheme".to_string(),

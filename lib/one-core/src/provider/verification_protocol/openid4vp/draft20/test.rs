@@ -97,6 +97,7 @@ fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp20Params {
             enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
+        predefined_client_metadata: None,
     }
 }
 
@@ -1130,5 +1131,6 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
             enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
+        predefined_client_metadata: None,
     }
 }

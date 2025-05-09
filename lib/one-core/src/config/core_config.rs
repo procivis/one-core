@@ -291,6 +291,9 @@ pub enum VerificationProtocolType {
     #[serde(rename = "OPENID4VP_DRAFT20")]
     #[strum(serialize = "OPENID4VP_DRAFT20")]
     OpenId4VpDraft20,
+    #[serde(rename = "OPENID4VP_DRAFT20_SWIYU")]
+    #[strum(serialize = "OPENID4VP_DRAFT20_SWIYU")]
+    OpenId4VpDraft20Swiyu,
     #[serde(rename = "OPENID4VP_DRAFT25")]
     #[strum(serialize = "OPENID4VP_DRAFT25")]
     OpenId4VpDraft25,

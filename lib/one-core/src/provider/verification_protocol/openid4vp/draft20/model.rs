@@ -28,6 +28,9 @@ pub(crate) struct OpenID4Vp20Params {
     pub holder: OpenID4VCPresentationHolderParams,
     pub verifier: OpenID4VCPresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
+    // Required to handle SWIYU verification requests that have invalid client_metadata.
+    // Remove when the SWIYU provider is removed.
+    pub predefined_client_metadata: Option<OpenID4VPClientMetadata>,
 }
 
 #[skip_serializing_none]

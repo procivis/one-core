@@ -22,6 +22,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::util::oidc::map_from_openid4vp_format;
 
 pub mod draft20;
+pub mod draft20_swiyu;
 pub mod draft25;
 pub mod error;
 pub(crate) mod jwe_presentation;

@@ -287,10 +287,16 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let mut signing_key_algorithms = vec![KeyAlgorithmType::Ecdsa];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];
+        let mut proof_exchange_protocols = vec![
+            VerificationProtocolType::OpenId4VpDraft20,
+            VerificationProtocolType::OpenId4VpDraft25,
+            VerificationProtocolType::OpenId4VpProximityDraft00,
+        ];
 
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13Swiyu);
+            proof_exchange_protocols.push(VerificationProtocolType::OpenId4VpDraft20Swiyu)
         } else {
             datatypes.push("PICTURE".to_string());
             signing_key_algorithms.push(KeyAlgorithmType::Eddsa);
@@ -314,11 +320,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods,
             issuance_exchange_protocols,
-            proof_exchange_protocols: vec![
-                VerificationProtocolType::OpenId4VpDraft20,
-                VerificationProtocolType::OpenId4VpDraft25,
-                VerificationProtocolType::OpenId4VpProximityDraft00,
-            ],
+            proof_exchange_protocols,
             revocation_methods: vec![RevocationType::None, RevocationType::TokenStatusList],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,

@@ -34,6 +34,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
+use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4VP20Swiyu;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -144,31 +145,13 @@ pub(crate) fn verification_protocol_providers_from_config(
                         key: name.to_owned(),
                         source,
                     })?;
-
-                // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
-                if params
-                    .holder
-                    .supported_client_id_schemes
-                    .contains(&ClientIdScheme::X509SanDns)
-                    || params
-                        .verifier
-                        .supported_client_id_schemes
-                        .contains(&ClientIdScheme::X509SanDns)
-                {
-                    params
-                        .x509_ca_certificate
-                        .as_ref()
-                        .ok_or(ConfigValidationError::MissingX509CaCertificate)?;
-                };
-
                 // URL schemes are used to select provider, hence must not be duplicated
                 validate_url_scheme_unique(
                     &mut openid_url_schemes,
                     name,
                     params.url_scheme.to_string(),
                 )?;
-
-                let http20 = OpenID4VP20HTTP::new(
+                let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
                     formatter_provider.clone(),
                     did_method_provider.clone(),
@@ -177,9 +160,41 @@ pub(crate) fn verification_protocol_providers_from_config(
                     client.clone(),
                     params.clone(),
                     config.clone(),
-                );
-
+                )?;
                 let protocol = Arc::new(http20);
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
+                providers.insert(name.to_string(), protocol);
+            }
+            VerificationProtocolType::OpenId4VpDraft20Swiyu => {
+                let params = fields
+                    .deserialize::<OpenID4Vp20Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    })?;
+                // URL schemes are used to select provider, hence must not be duplicated
+                validate_url_scheme_unique(
+                    &mut openid_url_schemes,
+                    name,
+                    params.url_scheme.to_string(),
+                )?;
+                let mut inner_params = params.clone();
+                inner_params.url_scheme = "openid4vp".to_string();
+                let http20 = openid4vp_draft20_from_params(
+                    core_base_url.clone(),
+                    formatter_provider.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    key_provider.clone(),
+                    client.clone(),
+                    inner_params,
+                    config.clone(),
+                )?;
+                let protocol = Arc::new(OpenID4VP20Swiyu::new(
+                    http20,
+                    params.clone(),
+                    client.clone(),
+                ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
@@ -223,6 +238,45 @@ pub(crate) fn verification_protocol_providers_from_config(
     }
 
     Ok(providers)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn openid4vp_draft20_from_params(
+    core_base_url: Option<String>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_provider: Arc<dyn KeyProvider>,
+    client: Arc<dyn HttpClient>,
+    params: OpenID4Vp20Params,
+    config: Arc<CoreConfig>,
+) -> Result<OpenID4VP20HTTP, ConfigValidationError> {
+    // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
+    if params
+        .holder
+        .supported_client_id_schemes
+        .contains(&ClientIdScheme::X509SanDns)
+        || params
+            .verifier
+            .supported_client_id_schemes
+            .contains(&ClientIdScheme::X509SanDns)
+    {
+        params
+            .x509_ca_certificate
+            .as_ref()
+            .ok_or(ConfigValidationError::MissingX509CaCertificate)?;
+    };
+
+    Ok(OpenID4VP20HTTP::new(
+        core_base_url,
+        formatter_provider,
+        did_method_provider,
+        key_algorithm_provider,
+        key_provider,
+        client,
+        params,
+        config,
+    ))
 }
 
 fn validate_url_scheme_unique(
