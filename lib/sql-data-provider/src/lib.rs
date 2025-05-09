@@ -7,6 +7,7 @@ use credential::history::CredentialHistoryDecorator;
 use credential_schema::history::CredentialSchemaHistoryDecorator;
 use did::history::DidHistoryDecorator;
 use did::DidProvider;
+use identifier::history::IdentifierHistoryDecorator;
 use identifier::IdentifierProvider;
 use interaction::InteractionProvider;
 use key::history::KeyHistoryDecorator;
@@ -164,6 +165,11 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
             did_repository: did_repository.clone(),
             key_repository: key_repository.clone(),
+        });
+
+        let identifier_repository = Arc::new(IdentifierHistoryDecorator {
+            inner: identifier_repository,
+            history_repository: history_repository.clone(),
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {

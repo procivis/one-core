@@ -135,6 +135,7 @@ pub enum HistoryAction {
 pub enum HistoryEntityType {
     Key,
     Did,
+    Identifier,
     Credential,
     CredentialSchema,
     Proof,

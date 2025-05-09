@@ -160,6 +160,7 @@ pub enum HistoryActionBindingEnum {
 pub enum HistoryEntityTypeBindingEnum {
     Key,
     Did,
+    Identifier,
     Credential,
     CredentialSchema,
     Proof,

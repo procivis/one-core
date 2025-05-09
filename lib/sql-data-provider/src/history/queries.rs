@@ -54,12 +54,9 @@ impl IntoFilterCondition for HistoryFilterValue {
                 .or(credential::Column::HolderIdentifierId.eq(identifier_id))
                 .or(proof::Column::VerifierIdentifierId.eq(identifier_id))
                 .or(proof::Column::HolderIdentifierId.eq(identifier_id))
-                .or(history::Column::EntityId.eq(identifier_id).and(
-                    history::Column::EntityType.eq(
-                        // TODO: change to Identifier
-                        history::HistoryEntityType::Did,
-                    ),
-                ))
+                .or(history::Column::EntityId
+                    .eq(identifier_id)
+                    .and(history::Column::EntityType.eq(history::HistoryEntityType::Identifier)))
                 .into_condition(),
             Self::CredentialId(credential_id) => history::Column::EntityId
                 .eq(credential_id)

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use one_core::model::common::SortDirection;
 use one_core::model::did::Did;
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierStatus, IdentifierType,
     SortableIdentifierColumn,
@@ -12,6 +13,7 @@ use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
@@ -19,6 +21,7 @@ use sea_orm::DatabaseConnection;
 use shared_types::DidValue;
 use uuid::Uuid;
 
+use super::history::IdentifierHistoryDecorator;
 use super::IdentifierProvider;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_did_key, insert_organisation_to_database,
@@ -26,13 +29,19 @@ use crate::test_utilities::{
 };
 
 struct TestSetup {
-    pub provider: IdentifierProvider,
+    pub provider: IdentifierHistoryDecorator,
     pub organisation: Organisation,
     pub did: Did,
     pub db: DatabaseConnection,
 }
 
-async fn setup() -> TestSetup {
+#[derive(Default)]
+struct Repositories {
+    pub history_repository: MockHistoryRepository,
+    pub organisation_repository: MockOrganisationRepository,
+}
+
+async fn setup(repositories: Repositories) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
@@ -67,11 +76,14 @@ async fn setup() -> TestSetup {
     };
 
     TestSetup {
-        provider: IdentifierProvider {
-            db: db.clone(),
-            organisation_repository: Arc::new(MockOrganisationRepository::default()),
-            did_repository: Arc::new(MockDidRepository::default()),
-            key_repository: Arc::new(MockKeyRepository::default()),
+        provider: IdentifierHistoryDecorator {
+            history_repository: Arc::new(repositories.history_repository),
+            inner: Arc::new(IdentifierProvider {
+                db: db.clone(),
+                organisation_repository: Arc::new(repositories.organisation_repository),
+                did_repository: Arc::new(MockDidRepository::default()),
+                key_repository: Arc::new(MockKeyRepository::default()),
+            }),
         },
         organisation,
         did,
@@ -81,7 +93,41 @@ async fn setup() -> TestSetup {
 
 #[tokio::test]
 async fn test_create_and_delete_identifier() {
-    let setup = setup().await;
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|request| {
+            request.entity_type == HistoryEntityType::Identifier
+                && request.action == HistoryAction::Created
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|request| {
+            request.entity_type == HistoryEntityType::Identifier
+                && request.action == HistoryAction::Deleted
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(|_, _| {
+            Ok(Some(Organisation {
+                id: Uuid::new_v4().into(),
+                name: "test_organisation".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            }))
+        });
+
+    let setup = setup(Repositories {
+        history_repository,
+        organisation_repository,
+    })
+    .await;
     let id = Uuid::new_v4().into();
 
     let identifier = Identifier {
@@ -110,7 +156,33 @@ async fn test_create_and_delete_identifier() {
 
 #[tokio::test]
 async fn test_get_identifier() {
-    let setup = setup().await;
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|request| {
+            request.entity_type == HistoryEntityType::Identifier
+                && request.action == HistoryAction::Created
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(|_, _| {
+            Ok(Some(Organisation {
+                id: Uuid::new_v4().into(),
+                name: "test_organisation".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            }))
+        });
+
+    let setup = setup(Repositories {
+        history_repository,
+        organisation_repository,
+    })
+    .await;
     let id = Uuid::new_v4().into();
 
     let identifier = Identifier {
@@ -158,7 +230,33 @@ async fn test_get_identifier() {
 
 #[tokio::test]
 async fn test_get_identifier_list() {
-    let setup = setup().await;
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .times(2)
+        .withf(|request| {
+            request.entity_type == HistoryEntityType::Identifier
+                && request.action == HistoryAction::Created
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(|_, _| {
+            Ok(Some(Organisation {
+                id: Uuid::new_v4().into(),
+                name: "test_organisation".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            }))
+        });
+
+    let setup = setup(Repositories {
+        history_repository,
+        organisation_repository,
+    })
+    .await;
     let id1 = Uuid::new_v4().into();
     let id2 = Uuid::new_v4().into();
 

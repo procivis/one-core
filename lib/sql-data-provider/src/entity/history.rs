@@ -119,6 +119,8 @@ pub enum HistoryEntityType {
     Key,
     #[sea_orm(string_value = "DID")]
     Did,
+    #[sea_orm(string_value = "IDENTIFIER")]
+    Identifier,
     #[sea_orm(string_value = "CREDENTIAL")]
     Credential,
     #[sea_orm(string_value = "CREDENTIAL_SCHEMA")]

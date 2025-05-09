@@ -13,7 +13,7 @@ pub trait IdentifierRepository: Send + Sync {
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError>;
     async fn get(
         &self,
-        d: IdentifierId,
+        id: IdentifierId,
         relations: &IdentifierRelations,
     ) -> Result<Option<Identifier>, DataLayerError>;
     async fn get_from_did_id(
