@@ -5,7 +5,7 @@ use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, S
 use time::OffsetDateTime;
 
 use crate::entity::identifier::ActiveModel;
-use crate::entity::{self, identifier, key, key_did};
+use crate::entity::{self, did, identifier, key, key_did};
 use crate::list_query_generic::{
     get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinRelations,
     IntoSortingColumn, JoinRelation,
@@ -112,26 +112,27 @@ impl IntoFilterCondition for IdentifierFilterValue {
 
 impl IntoJoinRelations for IdentifierFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
+        // TODO(CUSTODY-5750): these join relations and filtering are only correct for Identifiers
+        // of did type
         match self {
-            IdentifierFilterValue::KeyAlgorithms(_)
+            IdentifierFilterValue::DidMethods(_)
+            | IdentifierFilterValue::KeyAlgorithms(_)
             | IdentifierFilterValue::KeyStorages(_)
             | IdentifierFilterValue::KeyRoles(_) => {
                 vec![
                     JoinRelation {
                         join_type: JoinType::InnerJoin,
-                        relation_def: identifier::Relation::Key.def(),
+                        relation_def: identifier::Relation::Did.def(),
                     },
                     JoinRelation {
                         join_type: JoinType::InnerJoin,
-                        relation_def: key::Relation::KeyDid.def(),
+                        relation_def: did::Relation::KeyDid.def(),
+                    },
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: key_did::Relation::Key.def(),
                     },
                 ]
-            }
-            IdentifierFilterValue::DidMethods(_) => {
-                vec![JoinRelation {
-                    join_type: JoinType::InnerJoin,
-                    relation_def: identifier::Relation::Did.def(),
-                }]
             }
             _ => vec![],
         }
