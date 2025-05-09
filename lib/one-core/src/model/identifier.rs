@@ -69,6 +69,8 @@ pub enum IdentifierFilterValue {
     Type(IdentifierType),
     Status(IdentifierStatus),
     OrganisationId(OrganisationId),
+    DidMethods(Vec<String>),
+    IsRemote(bool),
     KeyAlgorithms(Vec<String>),
     KeyRoles(Vec<KeyRole>),
     KeyStorages(Vec<String>),

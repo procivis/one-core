@@ -130,6 +130,11 @@ pub struct IdentifierFilterQueryParamsRestDTO {
     pub r#type: Option<IdentifierTypeRest>,
     #[param(nullable = false)]
     pub state: Option<IdentifierStatusRest>,
+    #[param(rename = "didMethods[]", nullable = false)]
+    pub did_methods: Option<Vec<String>>,
+    #[param(nullable = false)]
+    #[serde(deserialize_with = "deserialize_bool_from_string")]
+    pub is_remote: Option<bool>,
     #[param(rename = "keyAlgorithms[]", nullable = false)]
     pub key_algorithms: Option<Vec<String>>,
     #[param(rename = "keyRoles[]", inline, nullable = false)]
@@ -160,4 +165,19 @@ pub struct GetIdentifierListResponseRestDTO {
     pub total_items: u64,
     #[from(with_fn = "convert_inner")]
     pub values: Vec<GetIdentifierListItemResponseRestDTO>,
+}
+
+fn deserialize_bool_from_string<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    match s {
+        Some(s) => match s.to_lowercase().as_str() {
+            "true" => Ok(Some(true)),
+            "false" => Ok(Some(false)),
+            _ => Err(serde::de::Error::custom("invalid boolean value")),
+        },
+        None => Ok(None),
+    }
 }

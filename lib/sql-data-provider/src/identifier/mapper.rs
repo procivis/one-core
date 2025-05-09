@@ -86,6 +86,12 @@ impl IntoFilterCondition for IdentifierFilterValue {
             IdentifierFilterValue::OrganisationId(organisation_id) => {
                 get_equals_condition(identifier::Column::OrganisationId, organisation_id)
             }
+            IdentifierFilterValue::DidMethods(did_methods) => entity::did::Column::Method
+                .is_in(did_methods)
+                .into_condition(),
+            IdentifierFilterValue::IsRemote(is_remote) => {
+                get_equals_condition(identifier::Column::IsRemote, is_remote)
+            }
             IdentifierFilterValue::KeyAlgorithms(key_algorithms) => {
                 key::Column::KeyType.is_in(key_algorithms).into_condition()
             }
@@ -120,6 +126,12 @@ impl IntoJoinRelations for IdentifierFilterValue {
                         relation_def: key::Relation::KeyDid.def(),
                     },
                 ]
+            }
+            IdentifierFilterValue::DidMethods(_) => {
+                vec![JoinRelation {
+                    join_type: JoinType::InnerJoin,
+                    relation_def: identifier::Relation::Did.def(),
+                }]
             }
             _ => vec![],
         }

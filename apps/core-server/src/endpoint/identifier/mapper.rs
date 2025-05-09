@@ -34,6 +34,8 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
         let status = value
             .state
             .map(|status| IdentifierFilterValue::Status(status.into()));
+        let did_methods = value.did_methods.map(IdentifierFilterValue::DidMethods);
+        let is_remote = value.is_remote.map(IdentifierFilterValue::IsRemote);
         let key_algorithms = value
             .key_algorithms
             .map(IdentifierFilterValue::KeyAlgorithms);
@@ -42,6 +44,15 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             .map(|key_roles| IdentifierFilterValue::KeyRoles(convert_inner(key_roles)));
         let key_storages = value.key_storages.map(IdentifierFilterValue::KeyStorages);
 
-        organisation_id & name & ids & r#type & status & key_algorithms & key_roles & key_storages
+        organisation_id
+            & name
+            & ids
+            & r#type
+            & status
+            & did_methods
+            & is_remote
+            & key_algorithms
+            & key_roles
+            & key_storages
     }
 }
