@@ -67,6 +67,10 @@ impl OneCoreBinding {
                 .status
                 .map(|status| IdentifierFilterValue::Status(status.into()));
 
+            let did_methods = query.did_methods.map(IdentifierFilterValue::DidMethods);
+
+            let is_remote = query.is_remote.map(IdentifierFilterValue::IsRemote);
+
             let key_algorithms = query
                 .key_algorithms
                 .map(IdentifierFilterValue::KeyAlgorithms);
@@ -77,7 +81,15 @@ impl OneCoreBinding {
 
             let key_storages = query.key_storages.map(IdentifierFilterValue::KeyStorages);
 
-            organisation & name & r#type & status & key_algorithms & key_roles & key_storages
+            organisation
+                & name
+                & r#type
+                & status
+                & did_methods
+                & is_remote
+                & key_algorithms
+                & key_roles
+                & key_storages
         };
 
         let sorting = query.sort.map(|sort| ListSorting {
@@ -149,6 +161,8 @@ pub struct IdentifierListQueryBindingDTO {
     pub r#type: Option<IdentifierTypeBindingEnum>,
     pub status: Option<IdentifierStatusBindingEnum>,
     pub exact: Option<Vec<ExactIdentifierFilterColumnBindingEnum>>,
+    pub did_methods: Option<Vec<String>>,
+    pub is_remote: Option<bool>,
     pub key_algorithms: Option<Vec<String>>,
     pub key_roles: Option<Vec<KeyRoleBindingEnum>>,
     pub key_storages: Option<Vec<String>>,
