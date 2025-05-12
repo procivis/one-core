@@ -56,7 +56,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         }
     });
 
-    let (holder_did, verifier_did, credential, interaction, proof) =
+    let (holder_did, _, verifier_did, verifier_identifier, credential, interaction, proof) =
         setup_submittable_presentation(
             &context,
             &organisation,
@@ -118,8 +118,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
             .iter()
             .any(|c| c.claim.value == "test")
     );
-    assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
-    assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
+    assert_eq!(
+        proof.verifier_identifier.unwrap().did.unwrap().did,
+        verifier_did.did
+    );
+    assert_eq!(
+        proof.holder_identifier.unwrap().did.unwrap().did,
+        holder_did.did
+    );
     let proof_history = context
         .db
         .histories
@@ -134,7 +140,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
             .target
             .as_ref()
             .unwrap(),
-        &verifier_did.id.to_string()
+        &verifier_identifier.id.to_string()
     )
 }
 
@@ -177,7 +183,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
         }
     });
 
-    let (holder_did, verifier_did, credential, interaction, proof) =
+    let (holder_did, _, verifier_did, _, credential, interaction, proof) =
         setup_submittable_presentation(
             &context,
             &organisation,
@@ -232,8 +238,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
             .iter()
             .any(|c| c.claim.value == "test")
     );
-    assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
-    assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
+    assert_eq!(
+        proof.verifier_identifier.unwrap().did.unwrap().did,
+        verifier_did.did
+    );
+    assert_eq!(
+        proof.holder_identifier.unwrap().did.unwrap().did,
+        holder_did.did
+    );
 }
 
 async fn setup_submittable_presentation(
@@ -241,7 +253,15 @@ async fn setup_submittable_presentation(
     organisation: &Organisation,
     issuer_identifier: &Identifier,
     client_metadata: &str,
-) -> (Did, Did, Credential, Interaction, Proof) {
+) -> (
+    Did,
+    Identifier,
+    Did,
+    Identifier,
+    Credential,
+    Interaction,
+    Proof,
+) {
     let verifier_key = context
         .db
         .keys
@@ -416,9 +436,7 @@ async fn setup_submittable_presentation(
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             None,
             ProofStateEnum::Requested,
@@ -427,7 +445,15 @@ async fn setup_submittable_presentation(
             verifier_key,
         )
         .await;
-    (holder_did, verifier_did, credential, interaction, proof)
+    (
+        holder_did,
+        holder_identifier,
+        verifier_did,
+        verifier_identifier,
+        credential,
+        interaction,
+        proof,
+    )
 }
 
 #[tokio::test]
@@ -632,9 +658,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
 
     let proof = fixtures::create_proof(
         &db_conn,
-        &verifier_did,
         &verifier_identifier,
-        None,
         None,
         None,
         ProofStateEnum::Requested,
@@ -701,6 +725,12 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
             .iter()
             .any(|claim| claim.claim.path == "cat2")
     );
-    assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
-    assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
+    assert_eq!(
+        proof.verifier_identifier.unwrap().did.unwrap().did,
+        verifier_did.did
+    );
+    assert_eq!(
+        proof.holder_identifier.unwrap().did.unwrap().did,
+        holder_did.did
+    );
 }

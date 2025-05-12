@@ -378,7 +378,7 @@ pub(crate) async fn accept_proof(
             .push(proved_claim);
     }
 
-    let (holder_did, holder_identifier) = get_or_create_did_and_identifier(
+    let (_, holder_identifier) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
         identifier_repository,
@@ -449,7 +449,6 @@ pub(crate) async fn accept_proof(
         .update_proof(
             &proof.id,
             UpdateProofRequest {
-                holder_did_id: Some(holder_did.id),
                 holder_identifier_id: Some(holder_identifier.id),
                 state: Some(ProofStateEnum::Accepted),
                 ..Default::default()

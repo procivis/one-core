@@ -86,9 +86,7 @@ async fn test_list_proof_success() {
             .proofs
             .create(
                 None,
-                &verifier_did,
                 &verifier_identifier,
-                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -192,9 +190,7 @@ async fn test_list_proofs_by_ids() {
             .proofs
             .create(
                 None,
-                &verifier_did,
                 &verifier_identifier,
-                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -334,9 +330,7 @@ async fn test_list_proofs_by_name() {
             .proofs
             .create(
                 None,
-                &verifier_did,
                 &verifier_identifier,
-                None,
                 None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
@@ -354,9 +348,7 @@ async fn test_list_proofs_by_name() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
@@ -493,9 +485,7 @@ async fn test_list_proofs_by_schema_ids() {
             .proofs
             .create(
                 None,
-                &verifier_did,
                 &verifier_identifier,
-                None,
                 None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
@@ -513,9 +503,7 @@ async fn test_list_proofs_by_schema_ids() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
@@ -632,9 +620,7 @@ async fn test_list_proofs_by_state() {
             .proofs
             .create(
                 None,
-                &verifier_did,
                 &verifier_identifier,
-                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -652,9 +638,7 @@ async fn test_list_proofs_by_state() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Error,
@@ -768,9 +752,7 @@ async fn test_list_proof_with_retain_date() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
@@ -806,7 +788,7 @@ async fn test_list_proof_with_retain_date() {
 #[tokio::test]
 async fn test_list_proofs_with_org_by_interaction() {
     // GIVEN
-    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let interaction = context
         .db
@@ -821,9 +803,7 @@ async fn test_list_proofs_with_org_by_interaction() {
             .proofs
             .create(
                 None,
-                &did,
                 &identifier,
-                None,
                 None,
                 None,
                 ProofStateEnum::Requested,
@@ -870,9 +850,7 @@ async fn test_list_proofs_with_org_by_interaction() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Error,
@@ -979,9 +957,7 @@ async fn test_list_proofs_by_role() {
             .proofs
             .create(
                 None,
-                &verifier_did,
                 &verifier_identifier,
-                None,
                 None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
@@ -1003,9 +979,7 @@ async fn test_list_proofs_by_role() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             None,
             ProofStateEnum::Error,

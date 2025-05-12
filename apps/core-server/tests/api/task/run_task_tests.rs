@@ -177,9 +177,7 @@ async fn test_run_retain_proof_check_with_update() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,

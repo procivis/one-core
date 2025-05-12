@@ -56,37 +56,6 @@ impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
 
     fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
-        let verifier_identifier = match value.verifier_identifier_id {
-            None => None,
-            Some(verifier_identifier_id) => Some(Identifier {
-                id: verifier_identifier_id,
-                created_date: value
-                    .verifier_identifier_created_date
-                    .ok_or(DataLayerError::MappingError)?,
-                last_modified: value
-                    .verifier_identifier_last_modified
-                    .ok_or(DataLayerError::MappingError)?,
-                name: value
-                    .verifier_identifier_name
-                    .ok_or(DataLayerError::MappingError)?,
-                did: None,
-                key: None,
-                organisation: None,
-                r#type: value
-                    .verifier_identifier_type
-                    .ok_or(DataLayerError::MappingError)?
-                    .into(),
-                is_remote: value
-                    .verifier_identifier_is_remote
-                    .ok_or(DataLayerError::MappingError)?,
-                status: value
-                    .verifier_identifier_status
-                    .ok_or(DataLayerError::MappingError)?
-                    .into(),
-                deleted_at: None,
-            }),
-        };
-
         let verifier_did = match value.verifier_did_id {
             None => None,
             Some(verifier_did_id) => Some(Did {
@@ -112,6 +81,37 @@ impl TryFrom<ProofListItemModel> for Proof {
                 keys: None,
                 deactivated: false,
                 log: None,
+            }),
+        };
+
+        let verifier_identifier = match value.verifier_identifier_id {
+            None => None,
+            Some(verifier_identifier_id) => Some(Identifier {
+                id: verifier_identifier_id,
+                created_date: value
+                    .verifier_identifier_created_date
+                    .ok_or(DataLayerError::MappingError)?,
+                last_modified: value
+                    .verifier_identifier_last_modified
+                    .ok_or(DataLayerError::MappingError)?,
+                name: value
+                    .verifier_identifier_name
+                    .ok_or(DataLayerError::MappingError)?,
+                did: verifier_did,
+                key: None,
+                organisation: None,
+                r#type: value
+                    .verifier_identifier_type
+                    .ok_or(DataLayerError::MappingError)?
+                    .into(),
+                is_remote: value
+                    .verifier_identifier_is_remote
+                    .ok_or(DataLayerError::MappingError)?,
+                status: value
+                    .verifier_identifier_status
+                    .ok_or(DataLayerError::MappingError)?
+                    .into(),
+                deleted_at: None,
             }),
         };
 
@@ -150,9 +150,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             completed_date: value.completed_date,
             schema,
             claims: None,
-            verifier_did,
             verifier_identifier,
-            holder_did: None,
             holder_identifier: None,
             verifier_key: None,
             interaction: None,
@@ -176,9 +174,7 @@ impl From<proof::Model> for Proof {
             completed_date: value.completed_date,
             schema: None,
             claims: None,
-            verifier_did: None,
             verifier_identifier: None,
-            holder_did: None,
             holder_identifier: None,
             verifier_key: None,
             interaction: None,
@@ -201,8 +197,6 @@ impl TryFrom<Proof> for proof::ActiveModel {
             role: Set(value.role.into()),
             requested_date: Set(value.requested_date),
             completed_date: Set(value.completed_date),
-            verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
-            holder_did_id: Set(value.holder_did.map(|did| did.id)),
             verifier_identifier_id: Set(value.verifier_identifier.map(|identifier| identifier.id)),
             holder_identifier_id: Set(value.holder_identifier.map(|identifier| identifier.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id)),
@@ -262,7 +256,13 @@ pub(crate) fn organisation_id_from_proof(proof: &Proof) -> Result<OrganisationId
 pub(crate) fn target_from_proof(proof: &Proof) -> Option<String> {
     use one_core::model::proof::ProofRole as Role;
     match proof.role {
-        Role::Holder => proof.verifier_did.as_ref().map(|did| did.id.to_string()),
-        Role::Verifier => proof.holder_did.as_ref().map(|did| did.id.to_string()),
+        Role::Holder => proof
+            .verifier_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
+        Role::Verifier => proof
+            .holder_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
     }
 }

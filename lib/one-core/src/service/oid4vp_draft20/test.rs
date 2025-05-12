@@ -12,6 +12,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -191,9 +192,7 @@ async fn test_presentation_definition_success() {
                         }]),
                     }),
                     claims: None,
-                    verifier_did: None,
                     verifier_identifier: None,
-                    holder_did: None,
                     holder_identifier: None,
                     verifier_key: None,
                     interaction: Some(Interaction {
@@ -299,13 +298,19 @@ async fn test_submit_proof_failed_credential_suspended() {
         .return_once(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                verifier_did: Some(Did {
-                    did: verifier_did,
-                    ..dummy_did()
+                verifier_identifier: Some(Identifier {
+                    did: Some(Did {
+                        did: verifier_did,
+                        ..dummy_did()
+                    }),
+                    ..dummy_identifier()
                 }),
-                holder_did: Some(Did {
-                    did: holder_did_clone,
-                    ..dummy_did()
+                holder_identifier: Some(Identifier {
+                    did: Some(Did {
+                        did: holder_did_clone,
+                        ..dummy_did()
+                    }),
+                    ..dummy_identifier()
                 }),
                 state: ProofStateEnum::Pending,
                 schema: Some(ProofSchema {
@@ -525,42 +530,43 @@ async fn test_get_client_metadata_success() {
         completed_date: None,
         schema: None,
         claims: None,
-        verifier_did: Some(Did {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
-                .unwrap()
-                .into(),
-            created_date: now,
-            last_modified: now,
-            name: "did1".to_string(),
-            organisation: Some(dummy_organisation(Some(
-                Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
                     .unwrap()
                     .into(),
-            ))),
-            did: "did:example:1".parse().unwrap(),
-            did_type: DidType::Remote,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::KeyAgreement,
-                key: Key {
-                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: Some(dummy_organisation(Some(
+                    Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                         .unwrap()
                         .into(),
-                    created_date: now,
-                    last_modified: now,
-                    public_key: vec![],
-                    name: "verifier_key1".to_string(),
-                    key_reference: vec![],
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
-                },
-            }]),
-            deactivated: false,
-            log: None,
+                ))),
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Remote,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::KeyAgreement,
+                    key: Key {
+                        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                            .unwrap()
+                            .into(),
+                        created_date: now,
+                        last_modified: now,
+                        public_key: vec![],
+                        name: "verifier_key1".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,

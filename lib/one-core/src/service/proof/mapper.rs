@@ -15,7 +15,6 @@ use super::dto::{
 use crate::common_mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
-use crate::model::did::Did;
 use crate::model::history::History;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
@@ -116,6 +115,11 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             _ => None,
         };
 
+        let verifier_did = value
+            .verifier_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.to_owned());
+
         Ok(ProofListItemResponseDTO {
             id: value.id,
             created_date: value.created_date,
@@ -125,7 +129,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             retain_until_date,
             transport: value.transport,
             completed_date: value.completed_date,
-            verifier_did: convert_inner(value.verifier_did),
+            verifier_did: convert_inner(verifier_did),
             verifier: convert_inner(value.verifier_identifier),
             exchange: value.exchange,
             state: value.state,
@@ -396,7 +400,13 @@ pub(super) async fn get_verifier_proof_detail(
 
     let redirect_uri = proof.redirect_uri.to_owned();
 
-    let holder_did = convert_inner(proof.holder_did.to_owned());
+    let holder_did = convert_inner(
+        proof
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.to_owned()),
+    );
+
     let holder = convert_inner(proof.holder_identifier.to_owned());
 
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
@@ -506,9 +516,9 @@ pub(super) async fn get_holder_proof_detail(
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let organisation_id = value
-        .holder_did
+        .holder_identifier
         .as_ref()
-        .and_then(|did| did.organisation.as_ref().map(|o| o.id));
+        .and_then(|identifier| identifier.organisation.as_ref().map(|o| o.id));
 
     let redirect_uri = value.redirect_uri.to_owned();
 
@@ -602,7 +612,12 @@ pub(super) async fn get_holder_proof_detail(
         })
         .collect();
 
-    let holder_did = convert_inner(value.holder_did.to_owned());
+    let holder_did = convert_inner(
+        value
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.to_owned()),
+    );
     let holder = convert_inner(value.holder_identifier.to_owned());
 
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
@@ -636,7 +651,6 @@ pub fn proof_from_create_request(
     now: OffsetDateTime,
     schema: ProofSchema,
     transport: String,
-    verifier_did: Did,
     verifier_identifier: Identifier,
     verifier_key: Option<Key>,
 ) -> Proof {
@@ -654,9 +668,7 @@ pub fn proof_from_create_request(
         schema: Some(schema),
         transport,
         claims: None,
-        verifier_did: Some(verifier_did),
         verifier_identifier: Some(verifier_identifier),
-        holder_did: None,
         holder_identifier: None,
         verifier_key,
         interaction: None,
@@ -684,9 +696,7 @@ pub fn proof_for_scan_to_verify(
         schema: Some(schema.clone()),
         transport: transport.to_owned(),
         claims: None,
-        verifier_did: None,
         verifier_identifier: None,
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: Some(Interaction {

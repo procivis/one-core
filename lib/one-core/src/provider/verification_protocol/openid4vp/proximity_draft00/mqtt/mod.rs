@@ -359,7 +359,7 @@ impl OpenId4VcMqtt {
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         let organisation_as_option = Some(organisation.clone());
-        let (verifier_did, verifier_identifier) = {
+        let (_, verifier_identifier) = {
             let did_value =
                 DidValue::from_did_url(presentation_request.payload.custom.client_id.as_str())
                     .map_err(|_| {
@@ -406,7 +406,6 @@ impl OpenId4VcMqtt {
         let (interaction_id, proof) = create_interaction_and_proof(
             interaction_data,
             organisation,
-            Some(verifier_did),
             Some(verifier_identifier),
             VerificationProtocolType::OpenId4VpDraft20,
             TransportType::Mqtt,

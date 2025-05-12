@@ -16,6 +16,7 @@ use super::model::OpenID4Vp20Params;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -386,9 +387,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
             }]),
         }),
         claims: None,
-        verifier_did: None,
         verifier_identifier: None,
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,
@@ -461,9 +460,10 @@ async fn test_share_proof_with_use_request_uri() {
             }]),
         }),
         claims: None,
-        verifier_did: Some(did.clone()),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(did.clone()),
+            ..dummy_identifier()
+        }),
         holder_identifier: None,
         verifier_key: None,
         interaction: None,

@@ -58,8 +58,8 @@ impl ProofHistoryDecorator {
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
-                    holder_did: Some(Default::default()),
-                    verifier_did: Some(Default::default()),
+                    holder_identifier: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
                     ..Default::default()
                 },
             )

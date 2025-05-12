@@ -17,7 +17,7 @@ use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInput
 #[tokio::test]
 async fn test_share_proof_success() {
     // GIVEN
-    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema =
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
@@ -49,9 +49,7 @@ async fn test_share_proof_success() {
 
     let proof = fixtures::create_proof(
         &context.db.db_conn,
-        &did,
         &identifier,
-        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
@@ -74,7 +72,7 @@ async fn test_share_proof_success() {
 #[tokio::test]
 async fn test_share_proof_success_mdoc() {
     // GIVEN
-    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (
@@ -139,9 +137,7 @@ async fn test_share_proof_success_mdoc() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -224,7 +220,7 @@ async fn test_share_proof_success_jsonld() {
   "}
         .to_string(),
     );
-    let (context, organisation, did, identifier, key) =
+    let (context, organisation, _, identifier, key) =
         TestContext::new_with_did(additional_config).await;
 
     let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
@@ -267,9 +263,7 @@ async fn test_share_proof_success_jsonld() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -322,7 +316,7 @@ async fn test_share_proof_success_jsonld() {
 }
 
 async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
-    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema =
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
@@ -354,9 +348,7 @@ async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
 
     let proof = fixtures::create_proof(
         &context.db.db_conn,
-        &did,
         &identifier,
-        None,
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
@@ -420,7 +412,16 @@ async fn test_share_proof_client_id_scheme_did() {
 
     // THEN
     let client_id = extract_client_id(resp).await;
-    assert_eq!(client_id, proof.verifier_did.unwrap().did.to_string());
+    assert_eq!(
+        client_id,
+        proof
+            .verifier_identifier
+            .unwrap()
+            .did
+            .unwrap()
+            .did
+            .to_string()
+    );
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }

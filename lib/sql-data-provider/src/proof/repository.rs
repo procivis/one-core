@@ -151,19 +151,9 @@ impl ProofRepository for ProofProvider {
         proof: UpdateProofRequest,
         _error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
-        let holder_did_id = match proof.holder_did_id {
-            None => Unchanged(Default::default()),
-            Some(holder_did) => Set(Some(holder_did)),
-        };
-
         let holder_identifier_id = match proof.holder_identifier_id {
             None => Unchanged(Default::default()),
             Some(identifier_id) => Set(Some(identifier_id)),
-        };
-
-        let verifier_did_id = match proof.verifier_did_id {
-            None => Unchanged(Default::default()),
-            Some(verifier_did_id) => Set(Some(verifier_did_id)),
         };
 
         let verifier_identifier_id = match proof.verifier_identifier_id {
@@ -195,9 +185,7 @@ impl ProofRepository for ProofProvider {
         let mut update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
             last_modified: Set(now),
-            holder_did_id,
             holder_identifier_id,
-            verifier_did_id,
             verifier_identifier_id,
             interaction_id,
             redirect_uri,
@@ -274,10 +262,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         )
         .column_as(identifier::Column::Status, "verifier_identifier_status")
         // add related verifierDid
-        .join(
-            sea_orm::JoinType::LeftJoin,
-            proof::Relation::VerifierDid.def(),
-        )
+        .join(sea_orm::JoinType::LeftJoin, identifier::Relation::Did.def())
         .column_as(did::Column::Id, "verifier_did_id")
         .column_as(did::Column::Did, "verifier_did")
         .column_as(did::Column::CreatedDate, "verifier_did_created_date")
@@ -382,17 +367,6 @@ impl ProofProvider {
             };
         }
 
-        if let Some(did_relations) = &relations.verifier_did {
-            if let Some(verifier_did_id) = &proof_model.verifier_did_id {
-                let verifier_did = self
-                    .did_repository
-                    .get_did(verifier_did_id, did_relations)
-                    .await?
-                    .ok_or(DataLayerError::Db(anyhow!("Verifier DID not found")))?;
-                proof.verifier_did = Some(verifier_did);
-            }
-        }
-
         if let Some(identifier_relations) = &relations.verifier_identifier {
             if let Some(verifier_identifier_id) = &proof_model.verifier_identifier_id {
                 let verifier_identifier = self
@@ -401,19 +375,6 @@ impl ProofProvider {
                     .await?
                     .ok_or(DataLayerError::Db(anyhow!("Verifier identifier not found")))?;
                 proof.verifier_identifier = Some(verifier_identifier);
-            }
-        }
-
-        if let Some(did_relations) = &relations.holder_did {
-            if let Some(holder_did_id) = &proof_model.holder_did_id {
-                let holder_did_id = self
-                    .did_repository
-                    .get_did(holder_did_id, did_relations)
-                    .await?
-                    .ok_or(DataLayerError::Db(anyhow!(
-                        "Holder DID not found".to_string()
-                    )))?;
-                proof.holder_did = Some(holder_did_id);
             }
         }
 

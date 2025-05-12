@@ -6,7 +6,9 @@ use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType};
-use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use one_core::model::identifier::{
+    Identifier, IdentifierRelations, IdentifierStatus, IdentifierType,
+};
 use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::list_filter::ListFilterValue;
@@ -17,7 +19,6 @@ use one_core::model::proof::{
 use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
 use one_core::repository::credential_repository::{CredentialRepository, MockCredentialRepository};
-use one_core::repository::did_repository::{DidRepository, MockDidRepository};
 use one_core::repository::identifier_repository::{IdentifierRepository, MockIdentifierRepository};
 use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
@@ -55,7 +56,6 @@ async fn setup(
     credential_repository: Arc<dyn CredentialRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
-    did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     key_repository: Arc<dyn KeyRepository>,
@@ -159,7 +159,6 @@ async fn setup(
             proof_schema_repository,
             claim_repository,
             credential_repository,
-            did_repository,
             identifier_repository,
             interaction_repository,
             key_repository,
@@ -179,7 +178,6 @@ struct TestSetupWithProof {
     pub repository: Box<dyn ProofRepository>,
     pub organisation_id: OrganisationId,
     pub proof_schema_id: ProofSchemaId,
-    pub did_id: DidId,
     pub identifier_id: IdentifierId,
     pub proof_id: ProofId,
     pub db: DatabaseConnection,
@@ -192,7 +190,6 @@ async fn setup_with_proof(
     credential_repository: Arc<dyn CredentialRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
-    did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     key_repository: Arc<dyn KeyRepository>,
@@ -201,7 +198,6 @@ async fn setup_with_proof(
         repository,
         db,
         proof_schema_id,
-        did_id,
         identifier_id,
         organisation_id,
         claim_schema_ids,
@@ -212,7 +208,6 @@ async fn setup_with_proof(
         credential_repository,
         proof_schema_repository,
         claim_repository,
-        did_repository,
         identifier_repository,
         interaction_repository,
         key_repository,
@@ -221,9 +216,7 @@ async fn setup_with_proof(
 
     let proof_id = insert_proof_request_to_database(
         &db,
-        did_id,
         identifier_id,
-        None,
         None,
         &proof_schema_id,
         key_id,
@@ -236,7 +229,6 @@ async fn setup_with_proof(
         repository,
         organisation_id,
         proof_schema_id,
-        did_id,
         identifier_id,
         proof_id,
         db,
@@ -256,10 +248,6 @@ fn get_claim_repository_mock() -> Arc<dyn ClaimRepository> {
 
 fn get_credential_repository_mock() -> Arc<dyn CredentialRepository> {
     Arc::from(MockCredentialRepository::default())
-}
-
-fn get_did_repository_mock() -> Arc<dyn DidRepository> {
-    Arc::from(MockDidRepository::default())
 }
 
 fn get_identifier_repository_mock() -> Arc<dyn IdentifierRepository> {
@@ -288,7 +276,6 @@ async fn test_create_proof_success() {
         get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
-        get_did_repository_mock(),
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
@@ -320,20 +307,6 @@ async fn test_create_proof_success() {
             input_schemas: None,
         }),
         claims: None,
-        verifier_did: Some(Did {
-            id: did_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "verifier".to_string(),
-            did: "did:key:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
-        }),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: Some(Key {
             id: key_id,
@@ -356,7 +329,19 @@ async fn test_create_proof_success() {
             status: IdentifierStatus::Active,
             deleted_at: None,
             organisation: None,
-            did: None,
+            did: Some(Did {
+                id: did_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "verifier".to_string(),
+                did: "did:key:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
             key: None,
         }),
         interaction: None,
@@ -386,7 +371,6 @@ async fn test_get_proof_list() {
         get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
-        get_did_repository_mock(),
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
@@ -422,7 +406,6 @@ async fn test_get_proof_missing() {
         get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
-        get_did_repository_mock(),
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
@@ -445,7 +428,6 @@ async fn test_get_proof_no_relations() {
         get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
-        get_did_repository_mock(),
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
@@ -496,22 +478,37 @@ async fn test_get_proof_with_relations() {
             }))
         });
 
-    let mut did_repository = MockDidRepository::default();
-    did_repository.expect_get_did().times(1).returning(|id, _| {
-        Ok(Some(Did {
-            id: id.to_owned(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "verifier".to_string(),
-            did: "did:key:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
-        }))
-    });
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .times(1)
+        .returning(|id, _| {
+            Ok(Some(Identifier {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "identifier".to_string(),
+                r#type: IdentifierType::Did,
+                is_remote: false,
+                status: IdentifierStatus::Active,
+                deleted_at: None,
+                organisation: None,
+                did: Some(Did {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    name: "verifier".to_string(),
+                    did: "did:key:123".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".to_string(),
+                    organisation: None,
+                    keys: None,
+                    deactivated: false,
+                    log: None,
+                }),
+                key: None,
+            }))
+        });
 
     let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
@@ -582,7 +579,6 @@ async fn test_get_proof_with_relations() {
         repository,
         proof_id,
         proof_schema_id,
-        did_id,
         interaction_id,
         claim_schema_ids,
         db,
@@ -593,8 +589,7 @@ async fn test_get_proof_with_relations() {
         Arc::from(credential_repository),
         Arc::from(proof_schema_repository),
         Arc::from(claim_repository),
-        Arc::from(did_repository),
-        get_identifier_repository_mock(),
+        Arc::from(identifier_repository),
         Arc::from(interaction_repository),
         Arc::from(key_repository),
     )
@@ -661,11 +656,16 @@ async fn test_get_proof_with_relations() {
                     credential: Some(CredentialRelations::default()),
                 }),
                 schema: Some(ProofSchemaRelations::default()),
-                verifier_did: Some(DidRelations::default()),
-                holder_did: Some(DidRelations::default()),
+                verifier_identifier: Some(IdentifierRelations {
+                    did: Some(DidRelations::default()),
+                    ..Default::default()
+                }),
+                holder_identifier: Some(IdentifierRelations {
+                    did: Some(DidRelations::default()),
+                    ..Default::default()
+                }),
                 verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations::default()),
-                ..Default::default()
             },
         )
         .await
@@ -674,8 +674,7 @@ async fn test_get_proof_with_relations() {
 
     assert_eq!(proof.id, proof_id);
     assert_eq!(proof.schema.unwrap().id, proof_schema_id);
-    assert_eq!(proof.verifier_did.unwrap().id, did_id);
-    assert!(proof.holder_did.is_none());
+    assert!(proof.holder_identifier.is_none());
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
     assert_eq!(proof.verifier_key.unwrap().id, key_id);
 
@@ -691,7 +690,6 @@ async fn test_get_proof_by_interaction_id_missing() {
         get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
-        get_did_repository_mock(),
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
@@ -739,23 +737,6 @@ async fn test_get_proof_by_interaction_id_success() {
             }))
         });
 
-    let mut did_repository = MockDidRepository::default();
-    did_repository.expect_get_did().times(1).returning(|id, _| {
-        Ok(Some(Did {
-            id: id.to_owned(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "verifier".to_string(),
-            did: "did:key:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
-        }))
-    });
-
     let mut key_repository = MockKeyRepository::default();
     key_repository
         .expect_get_key()
@@ -783,7 +764,6 @@ async fn test_get_proof_by_interaction_id_success() {
         get_credential_repository_mock(),
         Arc::from(proof_schema_repository),
         get_claim_repository_mock(),
-        Arc::from(did_repository),
         get_identifier_repository_mock(),
         Arc::from(interaction_repository),
         Arc::from(key_repository),
@@ -796,8 +776,6 @@ async fn test_get_proof_by_interaction_id_success() {
             &ProofRelations {
                 claims: Some(ProofClaimRelations::default()),
                 schema: Some(ProofSchemaRelations::default()),
-                verifier_did: Some(DidRelations::default()),
-                holder_did: Some(DidRelations::default()),
                 verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations::default()),
                 ..Default::default()
@@ -825,7 +803,6 @@ async fn test_set_proof_claims_success() {
         get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
-        get_did_repository_mock(),
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),

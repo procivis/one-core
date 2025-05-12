@@ -202,8 +202,8 @@ impl ProofService {
                     .map(|cred| &cred.holder_did_value)
                     .all_equal_value()
                     .ok();
-                let holder_id = if let Some(holder_did_value) = holder_did_value {
-                    let (did, identifer) = get_or_create_did_and_identifier(
+                let holder_identifier_id = if let Some(holder_did_value) = holder_did_value {
+                    let (_, identifer) = get_or_create_did_and_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
                         &*self.identifier_repository,
@@ -212,9 +212,9 @@ impl ProofService {
                         DidRole::Holder,
                     )
                     .await?;
-                    (Some(did.id), Some(identifer.id))
+                    Some(identifer.id)
                 } else {
-                    (None, None)
+                    None
                 };
 
                 for proved_credential in accept_proof_result.proved_credentials {
@@ -261,8 +261,7 @@ impl ProofService {
                         &proof.id,
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
-                            holder_did_id: holder_id.0,
-                            holder_identifier_id: holder_id.1,
+                            holder_identifier_id,
                             ..Default::default()
                         },
                         None,

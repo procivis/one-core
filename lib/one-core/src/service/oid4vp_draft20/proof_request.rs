@@ -109,7 +109,12 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
     });
 
     let verifier_did = proof
-        .verifier_did
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .did
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "verifier_did is None".to_string(),
@@ -211,7 +216,12 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
     } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
 
     let verifier_did = proof
-        .verifier_did
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .did
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "verifier_did is None".to_string(),
@@ -287,7 +297,12 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
     } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
 
     let verifier_did = proof
-        .verifier_did
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .did
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "verifier_did is None".to_string(),

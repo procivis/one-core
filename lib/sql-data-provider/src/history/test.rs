@@ -229,18 +229,10 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
-    let proof_id = insert_proof_request_to_database(
-        &db,
-        did_id,
-        identifier_id,
-        None,
-        None,
-        &proof_schema_id,
-        key_id,
-        None,
-    )
-    .await
-    .unwrap();
+    let proof_id =
+        insert_proof_request_to_database(&db, identifier_id, None, &proof_schema_id, key_id, None)
+            .await
+            .unwrap();
     let proof_claim: Vec<(ProofId, ClaimId)> = vec![(proof_id.to_owned(), claims[0].0)];
     insert_many_proof_claim_to_database(&db, proof_claim.as_slice())
         .await

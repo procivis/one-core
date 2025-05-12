@@ -10,9 +10,11 @@ use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutProperties, LayoutType, WalletStorageTypeEnum,
 };
-use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
+use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
-use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use one_core::model::identifier::{
+    Identifier, IdentifierRelations, IdentifierStatus, IdentifierType,
+};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
@@ -697,9 +699,7 @@ pub async fn create_credential(
 #[allow(clippy::too_many_arguments)]
 pub async fn create_proof(
     db_conn: &DbConn,
-    verifier_did: &Did,
     verifier_identifier: &Identifier,
-    holder_did: Option<&Did>,
     holder_identifier: Option<&Identifier>,
     proof_schema: Option<&ProofSchema>,
     state: ProofStateEnum,
@@ -736,9 +736,7 @@ pub async fn create_proof(
         completed_date,
         claims: None,
         schema: proof_schema.cloned(),
-        verifier_did: Some(verifier_did.to_owned()),
         verifier_identifier: Some(verifier_identifier.to_owned()),
-        holder_did: holder_did.cloned(),
         holder_identifier: holder_identifier.cloned(),
         verifier_key: None,
         interaction: interaction.cloned(),
@@ -773,11 +771,16 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                         credential_schema: Some(CredentialSchemaRelations::default()),
                     }),
                 }),
-                verifier_did: Some(DidRelations::default()),
-                holder_did: Some(DidRelations::default()),
+                verifier_identifier: Some(IdentifierRelations {
+                    did: Some(Default::default()),
+                    ..Default::default()
+                }),
+                holder_identifier: Some(IdentifierRelations {
+                    did: Some(Default::default()),
+                    ..Default::default()
+                }),
                 verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations { organisation: None }),
-                ..Default::default()
             },
         )
         .await

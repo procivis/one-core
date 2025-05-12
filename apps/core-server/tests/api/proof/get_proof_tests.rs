@@ -88,9 +88,7 @@ async fn test_get_proof_success() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -196,9 +194,7 @@ async fn test_get_proof_detached_success() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -312,9 +308,7 @@ async fn test_get_proof_with_nested_claims() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -423,9 +417,7 @@ async fn test_get_proof_with_empty_array() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -576,9 +568,7 @@ async fn test_get_proof_with_array() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -703,9 +693,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -825,9 +813,7 @@ async fn test_get_proof_with_credentials() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Created,
@@ -923,9 +909,7 @@ async fn test_get_proof_as_holder_success() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            Some(&holder_did),
             Some(&holder_identifier),
             None, // Proof schema is empty on holder side
             ProofStateEnum::Created,
@@ -1019,9 +1003,7 @@ async fn test_get_proof_with_retain_date() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
@@ -1139,9 +1121,7 @@ async fn test_get_proof_with_deleted_claims() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,

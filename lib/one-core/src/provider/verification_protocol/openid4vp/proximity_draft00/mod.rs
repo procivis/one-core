@@ -538,7 +538,6 @@ fn merge_query_params(mut first: Url, second: Url) -> Url {
 pub(super) async fn create_interaction_and_proof(
     interaction_data: Option<Vec<u8>>,
     organisation: Organisation,
-    verifier_did: Option<Did>,
     verifier_identifier: Option<Identifier>,
     verification_protocol_type: VerificationProtocolType,
     transport_type: TransportType,
@@ -566,7 +565,6 @@ pub(super) async fn create_interaction_and_proof(
             &proof_id,
             verification_protocol_type.as_ref(),
             None,
-            verifier_did,
             verifier_identifier,
             interaction,
             now,
@@ -701,7 +699,12 @@ pub(super) async fn prepare_proof_share(
         params.formatter_provider,
     )?;
 
-    let Some(verifier_did) = params.proof.verifier_did.as_ref() else {
+    let Some(verifier_did) = params
+        .proof
+        .verifier_identifier
+        .as_ref()
+        .and_then(|identifier| identifier.did.as_ref())
+    else {
         return Err(VerificationProtocolError::InvalidRequest(format!(
             "Verifier DID missing for proof {}",
             { params.proof.id }

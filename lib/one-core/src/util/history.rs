@@ -136,15 +136,15 @@ pub(crate) async fn log_history_event_proof(
     {
         id
     } else if let Some(id) = proof
-        .holder_did
+        .holder_identifier
         .as_ref()
-        .and_then(|did| did.organisation.as_ref().map(|org| org.id))
+        .and_then(|identifier| identifier.organisation.as_ref().map(|org| org.id))
     {
         id
     } else if let Some(id) = proof
-        .verifier_did
+        .verifier_identifier
         .as_ref()
-        .and_then(|did| did.organisation.as_ref().map(|org| org.id))
+        .and_then(|identifier| identifier.organisation.as_ref().map(|org| org.id))
     {
         id
     } else {
@@ -210,8 +210,14 @@ pub(crate) async fn log_history_event_proof_schema(
 
 fn target_from_proof(proof: &Proof) -> Option<String> {
     match proof.role {
-        ProofRole::Holder => proof.verifier_did.as_ref().map(|did| did.id.to_string()),
-        ProofRole::Verifier => proof.holder_did.as_ref().map(|did| did.id.to_string()),
+        ProofRole::Holder => proof
+            .verifier_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
+        ProofRole::Verifier => proof
+            .holder_identifier
+            .as_ref()
+            .map(|identifier| identifier.id.to_string()),
     }
 }
 

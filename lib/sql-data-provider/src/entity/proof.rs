@@ -21,9 +21,7 @@ pub struct Model {
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did_id: Option<DidId>,
     pub verifier_identifier_id: Option<IdentifierId>,
-    pub holder_did_id: Option<DidId>,
     pub holder_identifier_id: Option<IdentifierId>,
     pub proof_schema_id: Option<ProofSchemaId>,
     pub verifier_key_id: Option<KeyId>,
@@ -56,14 +54,6 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::did::Entity",
-        from = "Column::VerifierDidId",
-        to = "super::did::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    VerifierDid,
-    #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::VerifierIdentifierId",
         to = "super::identifier::Column::Id",
@@ -71,14 +61,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     VerifierIdentifier,
-    #[sea_orm(
-        belongs_to = "super::did::Entity",
-        from = "Column::HolderDidId",
-        to = "super::did::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    HolderDid,
     #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::HolderIdentifierId",

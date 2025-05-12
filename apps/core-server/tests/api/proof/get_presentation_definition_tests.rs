@@ -5,7 +5,9 @@ use serde_json::{Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{self, TestingCredentialParams, TestingCredentialSchemaParams};
+use crate::fixtures::{
+    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingIdentifierParams,
+};
 use crate::utils;
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
@@ -20,7 +22,15 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(did),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential_schema_1 = fixtures::create_credential_schema(
         &db_conn,
@@ -71,9 +81,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
     .await;
     let proof = fixtures::create_proof(
         &db_conn,
-        &did,
         &identifier,
-        Some(&did),
         Some(&identifier),
         None,
         ProofStateEnum::Requested,
@@ -207,7 +215,7 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_match() {
     // GIVEN
-    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -243,9 +251,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            Some(&did),
             Some(&identifier),
             None,
             ProofStateEnum::Requested,
@@ -279,7 +285,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
     // GIVEN
-    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -318,9 +324,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            Some(&did),
             Some(&identifier),
             None,
             ProofStateEnum::Requested,
@@ -350,7 +354,15 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(did),
+            ..Default::default()
+        }),
+    )
+    .await;
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let interaction = fixtures::create_interaction(
         &db_conn,
@@ -361,9 +373,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     .await;
     let proof = fixtures::create_proof(
         &db_conn,
-        &did,
         &identifier,
-        Some(&did),
         Some(&identifier),
         None,
         ProofStateEnum::Requested,
@@ -488,7 +498,7 @@ fn get_open_id_interaction_data_without_vp_formats(
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty() {
     // GIVEN
-    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -524,9 +534,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            Some(&did),
             Some(&identifier),
             None,
             ProofStateEnum::Requested,
@@ -559,7 +567,15 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let identifier = fixtures::create_identifier(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(did),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let claim_schemas_1: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (Uuid::new_v4(), "first.f0", true, "STRING", false),
@@ -729,9 +745,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     .await;
     let proof = fixtures::create_proof(
         &db_conn,
-        &did,
         &identifier,
-        Some(&did),
         Some(&identifier),
         None,
         ProofStateEnum::Requested,
@@ -822,7 +836,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_matched_only_complete_credential() {
     // GIVEN
-    let (context, organisation, did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -975,9 +989,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .proofs
         .create(
             None,
-            &did,
             &identifier,
-            Some(&did),
             Some(&identifier),
             None,
             ProofStateEnum::Requested,

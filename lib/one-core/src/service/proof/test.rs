@@ -21,7 +21,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutType, WalletStorageTypeEnum,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
@@ -176,34 +176,35 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             input_schemas: None,
         }),
         claims: None,
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            organisation: Some(dummy_organisation(None)),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::KeyAgreement,
-                key: Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    public_key: vec![],
-                    name: "key".to_string(),
-                    key_reference: vec![],
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
-                },
-            }]),
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                organisation: Some(dummy_organisation(None)),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::KeyAgreement,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        public_key: vec![],
+                        name: "key".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,
@@ -298,34 +299,40 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             }]),
         }),
         claims: Some(vec![]),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            is_remote: false,
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Remote,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        holder_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Remote,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            is_remote: true,
+            ..dummy_identifier()
         }),
-        holder_identifier: Some(dummy_identifier()),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Verifier,
@@ -426,21 +433,22 @@ async fn test_get_proof_exists() {
             }]),
         }),
         claims: Some(vec![]),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,
@@ -486,13 +494,15 @@ async fn test_get_proof_exists() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -624,22 +634,26 @@ async fn test_get_proof_with_array_holder() {
                 })
                 .collect(),
         ),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: Some(dummy_did()),
-        holder_identifier: Some(dummy_identifier()),
+        holder_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Holder,
@@ -684,13 +698,15 @@ async fn test_get_proof_with_array_holder() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -849,22 +865,26 @@ async fn test_get_proof_with_array_in_object_holder() {
                 })
                 .collect(),
         ),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: Some(dummy_did()),
-        holder_identifier: Some(dummy_identifier()),
+        holder_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Holder,
@@ -909,13 +929,15 @@ async fn test_get_proof_with_array_in_object_holder() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -1079,22 +1101,26 @@ async fn test_get_proof_with_object_array_holder() {
                 })
                 .collect(),
         ),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: Some(dummy_did()),
-        holder_identifier: Some(dummy_identifier()),
+        holder_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
         verifier_key: None,
         interaction: None,
         role: ProofRole::Holder,
@@ -1139,13 +1165,15 @@ async fn test_get_proof_with_object_array_holder() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -1310,21 +1338,22 @@ async fn test_get_proof_with_array() {
                 })
                 .collect(),
         ),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,
@@ -1370,13 +1399,15 @@ async fn test_get_proof_with_array() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -1553,21 +1584,22 @@ async fn test_get_proof_with_array_in_object() {
                 })
                 .collect(),
         ),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,
@@ -1613,13 +1645,15 @@ async fn test_get_proof_with_array_in_object() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -1802,21 +1836,22 @@ async fn test_get_proof_with_object_array() {
                 })
                 .collect(),
         ),
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,
@@ -1862,13 +1897,15 @@ async fn test_get_proof_with_object_array() {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 }),
@@ -1976,21 +2013,22 @@ async fn test_get_proof_list_success() {
             input_schemas: None,
         }),
         claims: None,
-        verifier_did: Some(Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "did".to_string(),
-            did: "did:example:123".parse().unwrap(),
-            did_type: DidType::Local,
-            did_method: "KEY".to_string(),
-            organisation: None,
-            keys: None,
-            deactivated: false,
-            log: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
         }),
-        verifier_identifier: Some(dummy_identifier()),
-        holder_did: None,
         holder_identifier: None,
         verifier_key: None,
         interaction: None,

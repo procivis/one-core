@@ -210,14 +210,14 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
             credential::Column::IssuerIdentifierId,
             did::Column::Name.contains(search_text),
         ),
-        HistorySearchEnum::VerifierDid => search_query_did_filter_condition(
+        HistorySearchEnum::VerifierDid => search_query_identifier_filter_condition(
             proof::Column::Id,
-            proof::Column::VerifierDidId,
+            proof::Column::VerifierIdentifierId,
             did::Column::Did.contains(search_text),
         ),
-        HistorySearchEnum::VerifierName => search_query_did_filter_condition(
+        HistorySearchEnum::VerifierName => search_query_identifier_filter_condition(
             proof::Column::Id,
-            proof::Column::VerifierDidId,
+            proof::Column::VerifierIdentifierId,
             did::Column::Name.contains(search_text),
         ),
         HistorySearchEnum::ProofSchemaName => history::Column::EntityId
@@ -274,45 +274,6 @@ fn search_query_identifier_filter_condition(
                         identifier_id_column.into_iden(),
                     ))
                     .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
-                )
-                .cond_where(condition)
-                .to_owned(),
-        ))
-        .into_condition()
-}
-
-fn search_query_did_filter_condition(
-    id_column: impl ColumnTrait,
-    did_id_column: impl ColumnTrait + IntoIden,
-    condition: impl IntoCondition + Clone,
-) -> Condition {
-    history::Column::EntityId
-        .in_subquery(
-            Query::select()
-                .expr(id_column.into_expr())
-                .from(id_column.entity_name().into_table_ref())
-                .inner_join(
-                    did::Entity,
-                    Expr::col(ColumnRef::TableColumn(
-                        did_id_column.entity_name(),
-                        did_id_column.into_iden(),
-                    ))
-                    .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(condition.to_owned())
-                .to_owned(),
-        )
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(did::Column::Id.into_expr())
-                .from(did::Entity)
-                .inner_join(
-                    did_id_column.entity_name(),
-                    Expr::col(ColumnRef::TableColumn(
-                        did_id_column.entity_name(),
-                        did_id_column.into_iden(),
-                    ))
-                    .eq(Expr::col((did::Entity, did::Column::Id))),
                 )
                 .cond_where(condition)
                 .to_owned(),

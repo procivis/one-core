@@ -1,4 +1,4 @@
-use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
@@ -15,7 +15,6 @@ pub struct TestContextWithOID4VCIData {
     pub context: TestContext,
     pub new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)>,
     pub proof_schema: ProofSchema,
-    pub verifier_did: Did,
     pub verifier_identifier: Identifier,
     pub interaction: Interaction,
     pub verifier_key: Key,
@@ -130,7 +129,6 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         context,
         new_claim_schemas,
         proof_schema,
-        verifier_did,
         verifier_identifier,
         interaction,
         verifier_key,
@@ -144,7 +142,6 @@ async fn test_get_presentation_definition_success() {
         context,
         new_claim_schemas,
         proof_schema,
-        verifier_did,
         verifier_identifier,
         interaction,
         verifier_key,
@@ -156,9 +153,7 @@ async fn test_get_presentation_definition_success() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
@@ -228,7 +223,6 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
     let TestContextWithOID4VCIData {
         context,
         proof_schema,
-        verifier_did,
         verifier_identifier,
         interaction,
         verifier_key,
@@ -240,9 +234,7 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
@@ -269,7 +261,6 @@ async fn test_get_presentation_definition_failed_wrong_state() {
     let TestContextWithOID4VCIData {
         context,
         proof_schema,
-        verifier_did,
         verifier_identifier,
         interaction,
         verifier_key,
@@ -281,9 +272,7 @@ async fn test_get_presentation_definition_failed_wrong_state() {
         .proofs
         .create(
             None,
-            &verifier_did,
             &verifier_identifier,
-            None,
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,

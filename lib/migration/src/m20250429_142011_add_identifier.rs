@@ -529,7 +529,7 @@ pub enum CredentialNew {
     IssuerIdentifierId,
 }
 
-#[derive(DeriveIden)]
+#[derive(DeriveIden, Clone)]
 pub enum ProofNew {
     Table,
     Id,

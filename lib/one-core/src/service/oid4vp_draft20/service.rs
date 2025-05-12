@@ -25,6 +25,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -65,8 +66,11 @@ impl OID4VPDraft20Service {
                 &id,
                 &ProofRelations {
                     interaction: Some(Default::default()),
-                    verifier_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
@@ -164,8 +168,11 @@ impl OID4VPDraft20Service {
             .get_proof(
                 &id,
                 &ProofRelations {
-                    verifier_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
@@ -298,8 +305,8 @@ impl OID4VPDraft20Service {
                     .map(|cred| &cred.holder_did_value)
                     .all_equal_value()
                     .ok();
-                let holder_id = if let Some(holder_did_value) = holder_did_value {
-                    let (did, identifer) = get_or_create_did_and_identifier(
+                let holder_identifier_id = if let Some(holder_did_value) = holder_did_value {
+                    let (_, identifer) = get_or_create_did_and_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
                         &*self.identifier_repository,
@@ -308,9 +315,9 @@ impl OID4VPDraft20Service {
                         DidRole::Holder,
                     )
                     .await?;
-                    (Some(did.id), Some(identifer.id))
+                    Some(identifer.id)
                 } else {
-                    (None, None)
+                    None
                 };
 
                 for proved_credential in accept_proof_result.proved_credentials {
@@ -357,8 +364,7 @@ impl OID4VPDraft20Service {
                         &proof.id,
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
-                            holder_did_id: holder_id.0,
-                            holder_identifier_id: holder_id.1,
+                            holder_identifier_id,
                             ..Default::default()
                         },
                         None,

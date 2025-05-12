@@ -179,12 +179,9 @@ pub async fn get_proof_by_id(
     proof::Entity::find_by_id(id).one(database).await
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
-    verifier_did_id: DidId,
     verifier_identifier_id: IdentifierId,
-    holder_did_id: Option<DidId>,
     holder_identifier_id: Option<IdentifierId>,
     proof_schema_id: &ProofSchemaId,
     verifier_key_id: KeyId,
@@ -202,9 +199,7 @@ pub async fn insert_proof_request_to_database(
         role: Set(ProofRole::Verifier),
         requested_date: Set(None),
         completed_date: Set(None),
-        verifier_did_id: Set(Some(verifier_did_id)),
         verifier_identifier_id: Set(Some(verifier_identifier_id)),
-        holder_did_id: Set(holder_did_id),
         holder_identifier_id: Set(holder_identifier_id),
         proof_schema_id: Set(Some(*proof_schema_id)),
         verifier_key_id: Set(Some(verifier_key_id)),

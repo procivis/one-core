@@ -119,13 +119,15 @@ impl ProofService {
                             ..Default::default()
                         }),
                     }),
-                    verifier_did: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    holder_did: Some(DidRelations {
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    holder_identifier: Some(Default::default()),
                     verifier_key: None,
                     interaction: Some(Default::default()),
                 },
@@ -188,7 +190,8 @@ impl ProofService {
             .get_proof(
                 id,
                 &ProofRelations {
-                    holder_did: Some(DidRelations {
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -202,12 +205,12 @@ impl ProofService {
             .ok_or(EntityNotFoundError::Proof(*id))?;
 
         if proof
-            .holder_did
+            .holder_identifier
             .as_ref()
-            .is_some_and(|did| did.did_type.is_remote())
+            .is_some_and(|identifier| identifier.is_remote)
         {
             return Err(BusinessLogicError::IncompatibleDidType {
-                reason: "holder_did is remote".to_string(),
+                reason: "holder_identifier is remote".to_string(),
             }
             .into());
         }
@@ -475,7 +478,6 @@ impl ProofService {
                 now,
                 proof_schema,
                 transport,
-                verifier_did,
                 verifier_identifier,
                 Some(verifier_key),
             ))
@@ -719,9 +721,7 @@ impl ProofService {
                 schema: None,
                 transport: transport.to_owned(),
                 claims: None,
-                verifier_did: None,
                 verifier_identifier: None,
-                holder_did: None,
                 holder_identifier: None,
                 verifier_key: None,
                 interaction: Some(interaction.clone()),
@@ -826,8 +826,11 @@ impl ProofService {
                         ..Default::default()
                     }),
                     verifier_key: Some(KeyRelations::default()),
-                    verifier_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
+                    verifier_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     ..Default::default()

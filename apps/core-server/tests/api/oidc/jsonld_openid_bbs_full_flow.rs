@@ -90,7 +90,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     .await;
 
     let (server_remote_holder_did, server_remote_holder_identifier) = holder.unwrap();
-    let (server_local_verifier_did, server_local_verifier_identifier) = verifier.unwrap();
+    let (_, server_local_verifier_identifier) = verifier.unwrap();
     let server_local_verifier_key = local_verifier_key.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -263,9 +263,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         .proofs
         .create(
             None,
-            &server_local_verifier_did,
             &server_local_verifier_identifier,
-            Some(&server_remote_holder_did),
             Some(&server_remote_holder_identifier),
             Some(&proof_schema),
             ProofStateEnum::Pending,
@@ -317,7 +315,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     .await;
 
     let (holder_local_holder_did, holder_local_holder_identifier) = holder_local.unwrap();
-    let (holder_remote_verifier_did, holder_remote_verifier_identifier) = verifier_remote.unwrap();
+    let (_, holder_remote_verifier_identifier) = verifier_remote.unwrap();
     let holder_local_holer_key = local_holer_key.unwrap();
 
     let (_, remote_issuer, _) = prepare_dids(
@@ -463,9 +461,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
         .proofs
         .create(
             Some(proof.id),
-            &holder_remote_verifier_did,
             &holder_remote_verifier_identifier,
-            Some(&holder_local_holder_did),
             Some(&holder_local_holder_identifier),
             None,
             ProofStateEnum::Requested,

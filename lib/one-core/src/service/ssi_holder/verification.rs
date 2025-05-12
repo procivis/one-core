@@ -49,8 +49,9 @@ impl SSIHolderService {
                 interaction_id,
                 &ProofRelations {
                     interaction: Some(InteractionRelations::default()),
-                    holder_did: Some(DidRelations {
+                    verifier_identifier: Some(IdentifierRelations {
                         organisation: Some(OrganisationRelations::default()),
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -104,8 +105,9 @@ impl SSIHolderService {
             .get_proof_by_interaction_id(
                 &submission.interaction_id,
                 &ProofRelations {
-                    holder_did: Some(DidRelations {
+                    holder_identifier: Some(IdentifierRelations {
                         organisation: Some(OrganisationRelations::default()),
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations {
@@ -406,7 +408,6 @@ impl SSIHolderService {
             .update_proof(
                 &proof.id,
                 UpdateProofRequest {
-                    holder_did_id: Some(holder_did.id),
                     holder_identifier_id: Some(holder_identifier.id),
                     state: Some(state),
                     ..Default::default()
@@ -489,7 +490,7 @@ impl SSIHolderService {
                     let did_value = DidValue::from_str(&did_value).map_err(|_| {
                         ServiceError::MappingError("failed to parse did value".to_string())
                     })?;
-                    let (did, identifier) = get_or_create_did_and_identifier(
+                    let (_, identifier) = get_or_create_did_and_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
                         &*self.identifier_repository,
@@ -499,7 +500,6 @@ impl SSIHolderService {
                     )
                     .await?;
 
-                    proof.verifier_did = Some(did);
                     proof.verifier_identifier = Some(identifier);
                 }
             }

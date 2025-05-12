@@ -308,7 +308,12 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     key_provider: &dyn KeyProvider,
 ) -> Result<PublicKeyWithJwk, ServiceError> {
     let verifier_did = proof
-        .verifier_did
+        .verifier_identifier
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .did
         .as_ref()
         .ok_or(ServiceError::MappingError(
             "verifier_did is None".to_string(),

@@ -490,7 +490,13 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                     .to_string()
             }
             ClientIdScheme::Did => proof
-                .verifier_did
+                .verifier_identifier
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "proof is missing verifier_identifier, required for did client_id_scheme"
+                        .to_string(),
+                ))?
+                .did
                 .as_ref()
                 .ok_or(VerificationProtocolError::Failed(
                     "proof is missing verifier_did, required for did client_id_scheme".to_string(),
@@ -654,7 +660,6 @@ async fn handle_proof_invitation(
         &proof_id,
         VerificationProtocolType::OpenId4VpDraft25.as_ref(),
         holder_interaction_data.redirect_uri,
-        None,
         None,
         interaction,
         now,
