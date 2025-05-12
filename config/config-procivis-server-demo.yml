@@ -45,6 +45,25 @@ verificationProtocol:
             dc+sd-jwt:
               sd-jwt_alg_values: [ "ES256" ]
               kb-jwt_alg_values: [ "ES256" ]
+  OPENID4VP_DRAFT25_EUDI:
+    display:
+      en: "OpenID4VP draft 25 (EUDI)"
+      de: "OpenID4VP draft 25 (EUDI)"
+    order: 8
+    type: "OPENID4VP_DRAFT25"
+    params:
+      public:
+        useRequestUri: true
+        urlScheme: eudi-openid4vp
+        x509CaCertificate: MIIC3TCCAoOgAwIBAgIUEwybFc9Jw-az3r188OiHDaxCfHEwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIFVUIDAyMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAlVUMB4XDTI1MDMyNDIwMjYxNFoXDTM0MDYyMDIwMjYxM1owXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIFVUIDAyMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAlVUMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEesDKj9rCIcrGj0wbSXYvCV953bOPSYLZH5TNmhTz2xa7VdlvQgQeGZRg1PrF5AFwt070wvL9qr1DUDdvLp6a1qOCASEwggEdMBIGA1UdEwEB_wQIMAYBAf8CAQAwHwYDVR0jBBgwFoAUYseURyi9D6IWIKeawkmURPEB08cwEwYDVR0lBAwwCgYIK4ECAgAAAQcwQwYDVR0fBDwwOjA4oDagNIYyaHR0cHM6Ly9wcmVwcm9kLnBraS5ldWRpdy5kZXYvY3JsL3BpZF9DQV9VVF8wMi5jcmwwHQYDVR0OBBYEFGLHlEcovQ-iFiCnmsJJlETxAdPHMA4GA1UdDwEB_wQEAwIBBjBdBgNVHRIEVjBUhlJodHRwczovL2dpdGh1Yi5jb20vZXUtZGlnaXRhbC1pZGVudGl0eS13YWxsZXQvYXJjaGl0ZWN0dXJlLWFuZC1yZWZlcmVuY2UtZnJhbWV3b3JrMAoGCCqGSM49BAMDA0gAMEUCIQCe4R9rO4JhFp821kO8Gkb8rXm4qGG_e5_Oi2XmnTQqOQIgfFs-LDbnP2_j1MB4rwZ1FgGdpr4oyrFB9daZyRIcP90
+        verifier:
+          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]
+          defaultClientIdScheme: x509_san_dns
+        holder:
+          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
 format:
   SD_JWT_VC_SWIYU:
     type: "SD_JWT_VC"
