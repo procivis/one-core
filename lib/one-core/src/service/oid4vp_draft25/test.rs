@@ -621,7 +621,7 @@ async fn test_get_client_metadata_success() {
     let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
         OpenID4VPClientMetadata {
-            jwks: OpenID4VPClientMetadataJwks {
+            jwks: Some(OpenID4VPClientMetadataJwks {
                 keys: vec![OpenID4VPClientMetadataJwkDTO {
                     key_id: "c322aa7f-9803-410d-b891-939b279fb965"
                         .parse::<Uuid>()
@@ -635,7 +635,7 @@ async fn test_get_client_metadata_success() {
                         y: None,
                     }),
                 }]
-            },
+            }),
             vp_formats: HashMap::from([
                 (
                     "jwt_vp_json".to_string(),

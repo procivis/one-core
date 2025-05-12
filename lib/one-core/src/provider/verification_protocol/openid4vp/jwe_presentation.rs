@@ -59,8 +59,9 @@ pub(crate) fn ec_key_from_metadata(
     metadata: OpenID4VPClientMetadata,
 ) -> Option<OpenID4VPClientMetadataJwkDTO> {
     metadata
-        .jwks.keys
+        .jwks
         .into_iter()
+        .flat_map(|jwk| jwk.keys)
         .find(|key| {
             matches!(&key.jwk,
                 PublicKeyJwkDTO::Ec(key) | PublicKeyJwkDTO::Okp(key) if key.r#use.as_deref() == Some("enc")

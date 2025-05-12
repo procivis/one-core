@@ -106,7 +106,7 @@ pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct OpenID4VPClientMetadata {
     #[serde(default)]
-    pub jwks: OpenID4VPClientMetadataJwks,
+    pub jwks: Option<OpenID4VPClientMetadataJwks>,
     #[serde(default)]
     pub jwks_uri: Option<String>,
     #[serde(default)]

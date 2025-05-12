@@ -398,11 +398,7 @@ fn generate_client_metadata(
     let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, key_provider)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    Ok(create_open_id_for_vp_client_metadata(
-        jwk.key_id,
-        jwk.jwk.into(),
-        vp_formats,
-    ))
+    Ok(create_open_id_for_vp_client_metadata(jwk, vp_formats))
 }
 
 struct JWTSigner<'a> {

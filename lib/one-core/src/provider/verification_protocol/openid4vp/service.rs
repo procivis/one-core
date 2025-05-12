@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::{CredentialSchemaId, KeyId};
+use shared_types::CredentialSchemaId;
 use time::{Duration, OffsetDateTime};
 
 use super::draft25::mappers::encode_client_id_with_scheme;
@@ -12,6 +12,7 @@ use super::model::{
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO,
     OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::model::claim::Claim;
@@ -38,32 +39,31 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
 };
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
 pub(crate) fn create_open_id_for_vp_client_metadata(
-    key_id: KeyId,
-    jwk: PublicKeyJwkDTO,
+    jwk: Option<PublicKeyWithJwk>,
     vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
 ) -> OpenID4VPClientMetadata {
-    OpenID4VPClientMetadata {
-        jwks: OpenID4VPClientMetadataJwks {
-            keys: vec![OpenID4VPClientMetadataJwkDTO {
-                key_id: key_id.to_string(),
-                jwk,
-            }],
-        },
+    let mut metadata = OpenID4VPClientMetadata {
         vp_formats,
-        id_token_ecrypted_response_enc: None,
-        id_token_encrypted_response_alg: None,
-        subject_syntax_types_supported: vec![],
-        jwks_uri: None,
-        authorization_encrypted_response_alg: Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs),
-        authorization_encrypted_response_enc: Some(
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
-        ),
+        ..Default::default()
+    };
+    if let Some(jwk) = jwk {
+        metadata.jwks = Some(OpenID4VPClientMetadataJwks {
+            keys: vec![OpenID4VPClientMetadataJwkDTO {
+                key_id: jwk.key_id.to_string(),
+                jwk: jwk.jwk.into(),
+            }],
+        });
+        metadata.authorization_encrypted_response_alg =
+            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs);
+        metadata.authorization_encrypted_response_enc =
+            Some(AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM);
     }
+
+    metadata
 }
 
 pub(crate) fn oidc_verifier_presentation_definition(

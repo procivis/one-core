@@ -16,7 +16,8 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
 use super::validator::{
-    validate_mdl_exchange, validate_redirect_uri, validate_verification_key_storage_compatibility,
+    validate_did_and_format_compatibility, validate_mdl_exchange, validate_redirect_uri,
+    validate_verification_key_storage_compatibility,
 };
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -414,8 +415,14 @@ impl ProofService {
         }
 
         let verifier_key = match request.verifier_key {
-            Some(verifier_key) => verifier_did.find_key(&verifier_key, KeyRole::Authentication)?,
-            None => verifier_did.find_first_key_by_role(KeyRole::Authentication)?,
+            Some(verifier_key) => verifier_did
+                .find_key(&verifier_key, KeyRole::Authentication)?
+                .ok_or(ValidationError::KeyNotFound)?,
+            None => verifier_did
+                .find_first_key_by_role(KeyRole::Authentication)?
+                .ok_or(ValidationError::InvalidKey(
+                    "No authentication key found".to_string(),
+                ))?,
         }
         .to_owned();
 
@@ -438,6 +445,11 @@ impl ProofService {
             &exchange_protocol_capabilities.did_methods,
             &verifier_did.did_method,
             &self.config.did,
+        )?;
+        validate_did_and_format_compatibility(
+            &proof_schema,
+            &verifier_did,
+            &*self.credential_formatter_provider,
         )?;
 
         let transport = validate_and_select_transport_type(
@@ -526,7 +538,7 @@ impl ProofService {
         )?;
 
         let formats = create_open_id_for_vp_formats();
-        let jwk = get_encryption_key_jwk_from_proof(
+        let encryption_key = get_encryption_key_jwk_from_proof(
             &proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
@@ -554,8 +566,7 @@ impl ProofService {
             .verifier_share_proof(
                 &proof,
                 format_type_mapper,
-                jwk.key_id,
-                jwk.jwk.into(),
+                encryption_key,
                 formats,
                 type_to_descriptor_mapper,
                 on_submission_callback,

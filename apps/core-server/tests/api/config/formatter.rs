@@ -67,7 +67,8 @@ async fn test_expected_format_features() {
         json!([
             "SELECTIVE_DISCLOSURE",
             "REQUIRES_SCHEMA_ID",
-            "SUPPORTS_CREDENTIAL_DESIGN"
+            "SUPPORTS_CREDENTIAL_DESIGN",
+            "REQUIRES_PRESENTATION_ENCRYPTION"
         ])
     );
     assert_eq!(

@@ -12,7 +12,7 @@ use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::error::{MissingProviderError, ServiceError};
+use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
 use crate::util::key_verification::KeyVerification;
 
 /// JWT authorization token for use of authenticated holder/verifier access (LVVC fetching, remote trust-entity)
@@ -22,7 +22,9 @@ pub(crate) async fn prepare_bearer_token(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ServiceError> {
-    let authentication_key = did.find_first_key_by_role(KeyRole::Authentication)?;
+    let authentication_key = did
+        .find_first_key_by_role(KeyRole::Authentication)?
+        .ok_or(ValidationError::KeyNotFound)?;
 
     let key_algorithm = key_algorithm_provider
         .key_algorithm_from_name(&authentication_key.key_type)

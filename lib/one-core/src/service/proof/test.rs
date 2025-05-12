@@ -2371,7 +2371,7 @@ async fn test_create_proof_using_identifier() {
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
         .expect_get_capabilities()
-        .times(2)
+        .times(3)
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
@@ -2382,7 +2382,7 @@ async fn test_create_proof_using_identifier() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .times(2)
+        .times(3)
         .returning(move |_| Some(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
@@ -2500,7 +2500,7 @@ async fn test_create_proof_without_related_key() {
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
         .expect_get_capabilities()
-        .times(2)
+        .times(3)
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
@@ -2511,7 +2511,7 @@ async fn test_create_proof_without_related_key() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .times(2)
+        .times(3)
         .returning(move |_| Some(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
@@ -2627,7 +2627,7 @@ async fn test_create_proof_with_related_key() {
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
         .expect_get_capabilities()
-        .times(2)
+        .times(3)
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
@@ -2638,7 +2638,7 @@ async fn test_create_proof_with_related_key() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .times(2)
+        .times(3)
         .returning(move |_| Some(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
@@ -2678,7 +2678,7 @@ async fn test_create_proof_with_related_key() {
 }
 
 #[tokio::test]
-async fn test_create_proof_failed_no_key_with_assertion_method_role() {
+async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
@@ -3209,7 +3209,7 @@ async fn test_share_proof_created_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -3323,7 +3323,7 @@ async fn test_share_proof_pending_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,

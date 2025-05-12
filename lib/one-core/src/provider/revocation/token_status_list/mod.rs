@@ -420,7 +420,10 @@ pub async fn format_status_list_credential(
 
     let key = issuer_did
         .find_first_key_by_role(KeyRole::AssertionMethod)
-        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?;
+        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
+        .ok_or(RevocationError::KeyWithRoleNotFound(
+            KeyRole::AssertionMethod,
+        ))?;
 
     let auth_fn =
         key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;

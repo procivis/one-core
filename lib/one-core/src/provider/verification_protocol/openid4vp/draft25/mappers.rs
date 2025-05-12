@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Deserialize;
-use shared_types::KeyId;
 use url::Url;
 
 use super::model::{
     OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
 };
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -19,7 +19,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oid4vp_draft25::proof_request::{
     generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_verifier_attestation,
@@ -36,8 +35,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
     interaction_data: &OpenID4VPVerifierInteractionContent,
     nonce: String,
     proof: &Proof,
-    key_id: KeyId,
-    encryption_key_jwk: PublicKeyJwkDTO,
+    jwk: Option<PublicKeyWithJwk>,
     vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
@@ -60,8 +58,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
                 interaction_id,
                 nonce,
                 proof,
-                key_id,
-                encryption_key_jwk,
+                jwk,
                 vp_formats,
                 interaction_data,
             )?,
@@ -127,20 +124,15 @@ fn get_params_for_redirect_uri(
     interaction_id: InteractionId,
     nonce: String,
     proof: &Proof,
-    key_id: KeyId,
-    encryption_key_jwk: PublicKeyJwkDTO,
+    jwk: Option<PublicKeyWithJwk>,
     vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     interaction_data: &OpenID4VPVerifierInteractionContent,
 ) -> Result<OpenID4VP25AuthorizationRequestQueryParams, VerificationProtocolError> {
     let presentation_definition = serde_json::to_string(&interaction_data.presentation_definition)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(
-        key_id,
-        encryption_key_jwk,
-        vp_formats,
-    ))
-    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(jwk, vp_formats))
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(OpenID4VP25AuthorizationRequestQueryParams {
         client_id: encode_client_id_with_scheme(client_id.clone(), ClientIdScheme::RedirectUri),

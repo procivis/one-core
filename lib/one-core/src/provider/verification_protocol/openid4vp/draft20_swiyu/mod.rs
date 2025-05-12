@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use shared_types::KeyId;
 use url::Url;
 
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{DidType, TransportType};
 use crate::model::did::Did;
 use crate::model::key::Key;
@@ -27,7 +27,6 @@ use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentat
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub(crate) struct OpenID4VP20Swiyu {
@@ -163,8 +162,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        key_id: KeyId,
-        encryption_key_jwk: PublicKeyJwkDTO,
+        encryption_key_jwk: Option<PublicKeyWithJwk>,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
@@ -174,7 +172,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             .verifier_share_proof(
                 proof,
                 format_to_type_mapper,
-                key_id,
                 encryption_key_jwk,
                 vp_formats,
                 type_to_descriptor,

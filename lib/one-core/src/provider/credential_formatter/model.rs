@@ -272,6 +272,7 @@ pub enum Features {
     SelectiveDisclosure,
     SupportsCredentialDesign,
     RequiresSchemaId,
+    RequiresPresentationEncryption,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

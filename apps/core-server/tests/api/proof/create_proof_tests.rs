@@ -1,4 +1,6 @@
+use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{Value, json};
 
@@ -9,6 +11,8 @@ use crate::fixtures::{
 use crate::utils;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::DbClient;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::field_match::FieldHelpers;
 use crate::utils::server::run_server;
@@ -303,4 +307,202 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
     let proof = db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "SCAN_TO_VERIFY");
     assert_eq!(proof.state, ProofStateEnum::Error);
+}
+
+#[tokio::test]
+async fn test_create_proof_mdoc_without_key_agreement_key() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![
+                    RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: key.to_owned(),
+                    },
+                    RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: key.to_owned(),
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(
+            &proof_schema.id.to_string(),
+            "OPENID4VP_DRAFT20",
+            &did.id.to_string(),
+            None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0222", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_create_proof_success_without_key_agreement_key() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![
+                    RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: key.to_owned(),
+                    },
+                    RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: key.to_owned(),
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(
+            &proof_schema.id.to_string(),
+            "OPENID4VP_DRAFT20",
+            &did.id.to_string(),
+            None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
 }

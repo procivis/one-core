@@ -87,7 +87,8 @@ pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPClientMetadata)]
 pub(crate) struct OpenID4VPClientMetadataResponseRestDTO {
-    pub jwks: OpenID4VPClientMetadataJwksRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub jwks: Option<OpenID4VPClientMetadataJwksRestDTO>,
     pub jwks_uri: Option<String>,
     pub id_token_ecrypted_response_enc: Option<String>,
     pub id_token_encrypted_response_alg: Option<String>,

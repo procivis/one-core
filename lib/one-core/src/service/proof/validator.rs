@@ -4,8 +4,10 @@ use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationProtocolConfig, VerificationProtocolType,
 };
+use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp25Params;
@@ -66,6 +68,49 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
     })?;
 
     Ok(())
+}
+
+pub(super) fn validate_did_and_format_compatibility(
+    proof_schema: &ProofSchema,
+    verifier_did: &Did,
+    formatter_provider: &dyn CredentialFormatterProvider,
+) -> Result<(), ServiceError> {
+    let input_schemas = proof_schema
+        .input_schemas
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "input_schemas is None".to_string(),
+        ))?;
+
+    let key_agreement_key = verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)?;
+
+    input_schemas.iter().try_for_each(|input_schema| {
+        let credential_schema =
+            input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "credential_schema is None".to_string(),
+                ))?;
+
+        let formatter = formatter_provider
+            .get_formatter(&credential_schema.format.to_string())
+            .ok_or(MissingProviderError::Formatter(
+                credential_schema.format.to_string(),
+            ))?;
+
+        let capabilities = formatter.get_capabilities();
+        if capabilities
+            .features
+            .contains(&Features::RequiresPresentationEncryption)
+            && key_agreement_key.is_none()
+        {
+            return Err(ServiceError::Validation(ValidationError::NoKeyWithRole(
+                KeyRole::KeyAgreement,
+            )));
+        }
+        Ok(())
+    })
 }
 
 pub(super) fn validate_scan_to_verify_compatibility(

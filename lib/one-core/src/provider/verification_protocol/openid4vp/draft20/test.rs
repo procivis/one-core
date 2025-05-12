@@ -13,11 +13,12 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VP20HTTP;
 use super::model::OpenID4Vp20Params;
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
-use crate::model::key::Key;
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -43,7 +44,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
 };
-use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
@@ -204,14 +204,16 @@ async fn test_share_proof() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let key_id = Uuid::new_v4().into();
-    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-        r#use: None,
-        kid: None,
-        crv: "P-256".to_string(),
-        x: "x".to_string(),
-        y: None,
-    });
+    let encryption_key_jwk = PublicKeyWithJwk {
+        key_id: Uuid::new_v4().into(),
+        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "x".to_string(),
+            y: None,
+        }),
+    };
     let vp_formats = HashMap::new();
 
     let ShareResponse {
@@ -222,8 +224,7 @@ async fn test_share_proof() {
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            key_id,
-            encryption_key_jwk,
+            Some(encryption_key_jwk),
             vp_formats,
             type_to_descriptor_mapper,
             None,
@@ -310,22 +311,23 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let key_id = Uuid::new_v4().into();
-    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-        r#use: None,
-        kid: None,
-        crv: "P-256".to_string(),
-        x: "x".to_string(),
-        y: None,
-    });
+    let encryption_key_jwk = PublicKeyWithJwk {
+        key_id: Uuid::new_v4().into(),
+        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "x".to_string(),
+            y: None,
+        }),
+    };
     let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            key_id,
-            encryption_key_jwk,
+            Some(encryption_key_jwk),
             vp_formats,
             type_to_descriptor_mapper,
             None,
@@ -473,22 +475,23 @@ async fn test_share_proof_with_use_request_uri() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let key_id = Uuid::new_v4().into();
-    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-        r#use: None,
-        kid: None,
-        crv: "P-256".to_string(),
-        x: "x".to_string(),
-        y: None,
-    });
+    let encryption_key_jwk = PublicKeyWithJwk {
+        key_id: Uuid::new_v4().into(),
+        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "x".to_string(),
+            y: None,
+        }),
+    };
     let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            key_id,
-            encryption_key_jwk,
+            Some(encryption_key_jwk),
             vp_formats,
             type_to_descriptor_mapper,
             None,
@@ -542,22 +545,23 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let key_id = Uuid::new_v4().into();
-    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-        r#use: None,
-        kid: None,
-        crv: "P-256".to_string(),
-        x: "x".to_string(),
-        y: None,
-    });
+    let encryption_key_jwk = PublicKeyWithJwk {
+        key_id: Uuid::new_v4().into(),
+        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "x".to_string(),
+            y: None,
+        }),
+    };
     let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            key_id,
-            encryption_key_jwk,
+            Some(encryption_key_jwk),
             vp_formats,
             type_to_descriptor_mapper,
             None,
@@ -1082,22 +1086,23 @@ async fn test_share_proof_custom_scheme() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let key_id = Uuid::new_v4().into();
-    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-        r#use: None,
-        kid: None,
-        crv: "P-256".to_string(),
-        x: "x".to_string(),
-        y: None,
-    });
+    let encryption_key_jwk = PublicKeyWithJwk {
+        key_id: Uuid::new_v4().into(),
+        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "x".to_string(),
+            y: None,
+        }),
+    };
     let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            key_id,
-            encryption_key_jwk,
+            Some(encryption_key_jwk),
             vp_formats,
             type_to_descriptor_mapper,
             None,

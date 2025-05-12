@@ -6,7 +6,6 @@ use futures::future::BoxFuture;
 use mappers::create_openidvp20_authorization_request;
 use model::OpenID4Vp20Params;
 use one_crypto::utilities;
-use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
@@ -18,6 +17,7 @@ use uuid::Uuid;
 use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::map_credential_formats_to_presentation_format;
 use super::mdoc::mdoc_presentation_context;
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
@@ -53,7 +53,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub mod mappers;
@@ -133,7 +132,12 @@ impl OpenID4VP20HTTP {
             Some(alg) => alg,
         };
 
-        if client_metadata.jwks.keys.is_empty() {
+        if client_metadata
+            .jwks
+            .as_ref()
+            .map(|jwks| jwks.keys.is_empty())
+            .unwrap_or(true)
+        {
             if let Some(ref uri) = client_metadata.jwks_uri {
                 let jwks = self
                     .client
@@ -434,8 +438,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        key_id: KeyId,
-        encryption_key_jwk: PublicKeyJwkDTO,
+        encryption_key_jwk: Option<PublicKeyWithJwk>,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
@@ -521,7 +524,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             &interaction_content,
             nonce,
             proof,
-            key_id,
             encryption_key_jwk,
             vp_formats,
             client_id_scheme,

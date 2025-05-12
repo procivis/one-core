@@ -10,7 +10,6 @@ use ble::ISO_MDL_FLOW;
 use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
 use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
-use shared_types::KeyId;
 use url::Url;
 
 use super::dto::{
@@ -24,7 +23,7 @@ use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
-use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, PublicKeyWithJwk, decode_cbor_base64};
 use crate::config::core_config::{CoreConfig, DidType, TransportType};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::Did;
@@ -43,7 +42,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
 
@@ -237,8 +235,7 @@ impl VerificationProtocol for IsoMdl {
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
-        _key_id: KeyId,
-        _encryption_key_jwk: PublicKeyJwkDTO,
+        _encryption_key_jwk: Option<PublicKeyWithJwk>,
         _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,

@@ -196,11 +196,7 @@ impl OID4VPDraft20Service {
             &*self.key_provider,
         )?;
 
-        Ok(create_open_id_for_vp_client_metadata(
-            jwk.key_id,
-            jwk.jwk.into(),
-            formats,
-        ))
+        Ok(create_open_id_for_vp_client_metadata(jwk, formats))
     }
 
     pub async fn direct_post(

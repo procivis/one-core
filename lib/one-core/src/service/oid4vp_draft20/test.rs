@@ -622,7 +622,7 @@ async fn test_get_client_metadata_success() {
     let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
         OpenID4VPClientMetadata {
-            jwks: OpenID4VPClientMetadataJwks {
+            jwks: Some(OpenID4VPClientMetadataJwks {
                 keys: vec![OpenID4VPClientMetadataJwkDTO {
                     key_id: "c322aa7f-9803-410d-b891-939b279fb965"
                         .parse::<Uuid>()
@@ -636,7 +636,7 @@ async fn test_get_client_metadata_success() {
                         y: None,
                     }),
                 }]
-            },
+            }),
             vp_formats: HashMap::from([
                 (
                     "jwt_vp_json".to_string(),
@@ -683,6 +683,112 @@ async fn test_get_client_metadata_success() {
             authorization_encrypted_response_enc: Some(
                 AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
             ),
+            ..Default::default()
+        },
+        result
+    );
+}
+
+#[tokio::test]
+async fn test_get_client_metadata_success_no_encryption() {
+    let mut proof_repository = MockProofRepository::default();
+
+    let now = OffsetDateTime::now_utc();
+    let proof_id: ProofId = Uuid::new_v4().into();
+    let proof = Proof {
+        id: proof_id,
+        created_date: now,
+        last_modified: now,
+        issuance_date: now,
+        exchange: "OPENID4VP_DRAFT20".to_string(),
+        transport: "HTTP".to_string(),
+        redirect_uri: None,
+        state: ProofStateEnum::Pending,
+        role: ProofRole::Holder,
+        requested_date: Some(now),
+        completed_date: None,
+        schema: None,
+        claims: None,
+        verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+                    .unwrap()
+                    .into(),
+                created_date: now,
+                last_modified: now,
+                name: "did1".to_string(),
+                organisation: Some(dummy_organisation(Some(
+                    Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                        .unwrap()
+                        .into(),
+                ))),
+                did: "did:example:1".parse().unwrap(),
+                did_type: DidType::Remote,
+                did_method: "KEY".to_string(),
+                keys: Some(vec![]),
+                deactivated: false,
+                log: None,
+            }),
+            ..dummy_identifier()
+        }),
+        holder_identifier: None,
+        verifier_key: None,
+        interaction: None,
+    };
+    {
+        proof_repository
+            .expect_get_proof()
+            .times(1)
+            .return_once(move |_, _| Ok(Some(proof)));
+    }
+    let service = setup_service(Mocks {
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+    let result = service.get_client_metadata(proof_id).await.unwrap();
+    assert_eq!(
+        OpenID4VPClientMetadata {
+            vp_formats: HashMap::from([
+                (
+                    "jwt_vp_json".to_string(),
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    })
+                ),
+                (
+                    "ldp_vp".to_string(),
+                    OpenID4VpPresentationFormat::LdpVcAlgs(LdpVcAlgs {
+                        proof_type: vec!["DataIntegrityProof".to_string()],
+                    })
+                ),
+                (
+                    "vc+sd-jwt".to_string(),
+                    OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    })
+                ),
+                (
+                    "dc+sd-jwt".to_string(),
+                    OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    })
+                ),
+                (
+                    "jwt_vc_json".to_string(),
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    })
+                ),
+                (
+                    "mso_mdoc".to_string(),
+                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    })
+                ),
+            ]),
             ..Default::default()
         },
         result

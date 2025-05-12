@@ -307,7 +307,7 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
-) -> Result<PublicKeyWithJwk, ServiceError> {
+) -> Result<Option<PublicKeyWithJwk>, ServiceError> {
     let verifier_did = proof
         .verifier_identifier
         .as_ref()
@@ -328,14 +328,16 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
         ))
         .and_then(|value| verifier_did.find_key(&value.id, KeyRole::KeyAgreement));
 
-    let encryption_key = match verifier_key {
-        Ok(key) => Ok(key),
-        Err(ServiceError::Validation(_) | ServiceError::MappingError(_)) => {
-            verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)
+    let Some(encryption_key) = match verifier_key {
+        Ok(Some(key)) => Some(key),
+        Err(ServiceError::Validation(_) | ServiceError::MappingError(_)) | Ok(None) => {
+            verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)?
         }
-        Err(error) => Err(error),
-    }?
-    .to_owned();
+        Err(error) => Err(error)?,
+    }
+    .to_owned() else {
+        return Ok(None);
+    };
 
     let key_algorithm = key_algorithm_provider
         .key_algorithm_from_name(&encryption_key.key_type)
@@ -364,12 +366,12 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
         None
     };
 
-    Ok(PublicKeyWithJwk {
+    Ok(Some(PublicKeyWithJwk {
         key_id: encryption_key.id,
         jwk: key_algorithm
             .reconstruct_key(&encryption_key.public_key, None, r#use)?
             .public_key_as_jwk()?,
-    })
+    }))
 }
 
 pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {

@@ -13,6 +13,7 @@ use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
+use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
@@ -528,6 +529,9 @@ pub enum ValidationError {
 
     #[error("Invalid image data: `{0}`")]
     InvalidImage(String),
+
+    #[error("Missing key with role `{0}`")]
+    NoKeyWithRole(KeyRole),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1057,6 +1061,8 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Identifier not compatible with format")]
     BR_0218,
+    #[strum(to_string = "No key with required role available")]
+    BR_0222,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1259,6 +1265,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::EmptyArrayValueNotAllowed => ErrorCode::BR_0195,
             Self::InvalidImage(_) => ErrorCode::BR_0193,
             Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
+            Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
         }
     }
 }

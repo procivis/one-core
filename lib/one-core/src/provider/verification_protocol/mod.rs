@@ -15,10 +15,10 @@ use openid4vp::model::{ClientIdScheme, OpenID4VpPresentationFormat};
 use openid4vp::proximity_draft00::{OpenID4VPProximityDraft00, OpenID4VPProximityDraft00Params};
 use serde::de::Deserialize;
 use serde_json::json;
-use shared_types::KeyId;
 use url::Url;
 
 use super::mqtt_client::MqttClient;
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     CoreConfig, FormatType, VerificationProtocolConfig, VerificationProtocolType,
@@ -37,7 +37,6 @@ use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4VP20Swiyu;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
@@ -361,8 +360,7 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        key_id: KeyId,
-        encryption_key_jwk: PublicKeyJwkDTO,
+        encryption_key_jwk: Option<PublicKeyWithJwk>,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,

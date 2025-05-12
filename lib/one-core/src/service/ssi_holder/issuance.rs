@@ -95,8 +95,14 @@ impl SSIHolderService {
         };
 
         let selected_key = match key_id {
-            Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
-            None => did.find_first_key_by_role(KeyRole::Authentication)?,
+            Some(key_id) => did
+                .find_key(&key_id, KeyRole::Authentication)?
+                .ok_or(ValidationError::KeyNotFound)?,
+            None => did.find_first_key_by_role(KeyRole::Authentication)?.ok_or(
+                ValidationError::InvalidKey(
+                    "No key with role authentication available".to_string(),
+                ),
+            )?,
         };
 
         let holder_jwk_key_id = self

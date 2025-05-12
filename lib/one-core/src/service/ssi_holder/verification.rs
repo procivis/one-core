@@ -146,8 +146,12 @@ impl SSIHolderService {
         };
 
         let selected_key = match submission.key_id {
-            Some(key_id) => holder_did.find_key(&key_id, KeyRole::Authentication)?,
-            None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
+            Some(key_id) => holder_did
+                .find_key(&key_id, KeyRole::Authentication)?
+                .ok_or(ValidationError::KeyNotFound)?,
+            None => holder_did
+                .find_first_key_by_role(KeyRole::Authentication)?
+                .ok_or(ValidationError::KeyNotFound)?,
         };
 
         let holder_jwk_key_id = self

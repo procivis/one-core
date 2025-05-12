@@ -63,7 +63,7 @@ impl Did {
         self.did_type.is_remote()
     }
 
-    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&Key, ServiceError> {
+    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<Option<&Key>, ServiceError> {
         let mut same_id_keys = self
             .keys
             .as_ref()
@@ -73,24 +73,25 @@ impl Did {
             .peekable();
 
         if same_id_keys.peek().is_none() {
-            return Err(ValidationError::KeyNotFound.into());
+            return Ok(None);
         }
 
-        Ok(&same_id_keys
-            .find(|entry| entry.role == role)
-            .ok_or_else(|| ValidationError::InvalidKey("key has wrong role".into()))?
-            .key)
+        Ok(Some(
+            &same_id_keys
+                .find(|entry| entry.role == role)
+                .ok_or_else(|| ValidationError::InvalidKey("key has wrong role".into()))?
+                .key,
+        ))
     }
 
-    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<&Key, ServiceError> {
-        Ok(&self
+    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<Option<&Key>, ServiceError> {
+        Ok(self
             .keys
             .as_ref()
             .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
             .iter()
             .find(|entry| entry.role == role)
-            .ok_or_else(|| ValidationError::InvalidKey("no matching keys found".into()))?
-            .key)
+            .map(|entry| &entry.key))
     }
 }
 

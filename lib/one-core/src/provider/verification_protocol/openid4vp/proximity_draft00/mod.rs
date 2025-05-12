@@ -19,6 +19,7 @@ use super::model::{
     OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO,
     default_presentation_url_scheme,
 };
+use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
@@ -55,7 +56,6 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
@@ -327,8 +327,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        key_id: KeyId,
-        _encryption_key_jwk: PublicKeyJwkDTO,
+        _encryption_key_jwk: Option<PublicKeyWithJwk>,
         _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
@@ -336,6 +335,10 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let transport = get_transport(proof)?;
         let on_submission_callback = on_submission_callback.map(|fut| fut.shared());
+
+        let auth_key_id = proof.verifier_key.as_ref().map(|key| key.id).ok_or(
+            VerificationProtocolError::Failed("Missing verifier key".to_string()),
+        )?;
 
         match transport.as_slice() {
             [TransportType::Ble] => {
@@ -346,7 +349,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     .verifier_share_proof(
                         proof,
                         format_to_type_mapper,
-                        key_id,
+                        auth_key_id,
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
@@ -375,7 +378,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 mqtt.verifier_share_proof(
                     proof,
                     format_to_type_mapper,
-                    key_id,
+                    auth_key_id,
                     type_to_descriptor,
                     interaction_id,
                     key_agreement,
@@ -405,7 +408,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     .verifier_share_proof(
                         proof,
                         format_to_type_mapper.clone(),
-                        key_id,
+                        auth_key_id,
                         type_to_descriptor.clone(),
                         interaction_id,
                         key_agreement.clone(),
@@ -419,7 +422,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     .verifier_share_proof(
                         proof,
                         format_to_type_mapper,
-                        key_id,
+                        auth_key_id,
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
@@ -711,7 +714,8 @@ pub(super) async fn prepare_proof_share(
         )));
     };
 
-    let Ok(verifier_key) = verifier_did.find_key(&params.key_id, KeyRole::Authentication) else {
+    let Ok(Some(verifier_key)) = verifier_did.find_key(&params.key_id, KeyRole::Authentication)
+    else {
         return Err(VerificationProtocolError::InvalidRequest(format!(
             "Verifier key {} not found for proof {}",
             params.key_id,
