@@ -7,9 +7,9 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodProviderError;
-use crate::provider::did_method::DidMethod;
 
 pub struct DidResolver {
     pub did_methods: IndexMap<String, Arc<dyn DidMethod>>,

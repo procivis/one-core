@@ -11,18 +11,18 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
 };
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
-use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait NativeKeyStorage: Send + Sync {
     async fn generate_key(&self, key_alias: String)
-        -> Result<StorageGeneratedKey, KeyStorageError>;
+    -> Result<StorageGeneratedKey, KeyStorageError>;
     async fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
 }
 

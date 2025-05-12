@@ -3,8 +3,8 @@ use std::hash::Hash;
 
 use super::DidDeactivationError;
 use crate::model::did::Did;
-use crate::provider::did_method::model::AmountOfKeys;
 use crate::provider::did_method::DidMethod;
+use crate::provider::did_method::model::AmountOfKeys;
 use crate::service::did::dto::CreateDidRequestKeysDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 

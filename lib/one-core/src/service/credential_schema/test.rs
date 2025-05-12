@@ -10,8 +10,8 @@ use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use super::validator::{
     check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
 };
-use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::config::ConfigValidationError;
+use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -20,15 +20,16 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
@@ -38,7 +39,6 @@ use crate::service::credential_schema::dto::{
     ImportCredentialSchemaRequestSchemaDTO,
 };
 use crate::service::credential_schema::mapper::{renest_claim_schemas, unnest_claim_schemas};
-use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
@@ -1189,7 +1189,9 @@ async fn test_create_credential_schema_fail_validation() {
             allow_suspension: Some(true),
         })
         .await;
-    assert!(non_existing_format.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
+    assert!(
+        non_existing_format.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_)))
+    );
 
     let non_existing_revocation_method = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -1212,8 +1214,10 @@ async fn test_create_credential_schema_fail_validation() {
             allow_suspension: Some(true),
         })
         .await;
-    assert!(non_existing_revocation_method
-        .is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
+    assert!(
+        non_existing_revocation_method
+            .is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_)))
+    );
 
     let wrong_datatype = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {

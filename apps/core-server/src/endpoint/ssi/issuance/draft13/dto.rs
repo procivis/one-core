@@ -12,7 +12,7 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
 use one_core::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
-use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;

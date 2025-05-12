@@ -5,7 +5,7 @@ use anyhow::Context;
 use dto::OpenID4VPMqttQueryParams;
 use futures::future::{BoxFuture, Shared};
 use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessionKeys};
-use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
+use oidc_mqtt_verifier::{Topics, mqtt_verifier_flow};
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use shared_types::{DidValue, KeyId, ProofId};
@@ -17,10 +17,10 @@ use url::Url;
 
 use super::key_agreement_key::KeyAgreementKey;
 use super::{
-    create_interaction_and_proof, create_presentation, prepare_proof_share,
     CreatePresentationParams, OpenID4VPProximityDraft00Params, ProofShareParams,
+    create_interaction_and_proof, create_presentation, prepare_proof_share,
 };
-use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
+use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::InteractionId;
@@ -42,11 +42,11 @@ use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::provider::verification_protocol::openid4vp::{
-    get_presentation_definition_with_local_credentials, InvitationResponseDTO,
-    OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
+    InvitationResponseDTO, OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
+    get_presentation_definition_with_local_credentials,
 };
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
+    FormatMapper, TypeToDescriptorMapper, deserialize_interaction_data,
 };
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;

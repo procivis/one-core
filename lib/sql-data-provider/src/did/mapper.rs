@@ -1,15 +1,15 @@
 use one_core::model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn};
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::ActiveValue::NotSet;
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 
 use crate::common::calculate_pages_count;
 use crate::entity::{self, did, key, key_did};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinRelations,
-    IntoSortingColumn, JoinRelation,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl From<entity::did::Model> for Did {

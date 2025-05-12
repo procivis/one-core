@@ -1,6 +1,7 @@
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
 use uuid::Uuid;
 
+use super::TrustEntityService;
 use super::dto::{
     CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO,
     GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO, ListTrustEntitiesQueryDTO,
@@ -10,8 +11,7 @@ use super::mapper::{
     trust_entity_from_did_request, trust_entity_from_partial_and_did_and_anchor,
     trust_entity_from_request, update_request_from_dto,
 };
-use super::TrustEntityService;
-use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
+use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};

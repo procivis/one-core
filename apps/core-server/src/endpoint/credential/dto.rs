@@ -5,7 +5,7 @@ use one_core::service::credential::dto::{
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId};

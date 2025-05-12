@@ -5,7 +5,7 @@ use sea_orm::{IntoSimpleExpr, Set};
 
 use crate::entity::trust_anchor::{self};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
 };
 
 impl From<TrustAnchor> for trust_anchor::ActiveModel {

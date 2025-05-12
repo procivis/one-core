@@ -1,11 +1,11 @@
-use axum::extract::{Path, State};
-use axum::http::{header, StatusCode};
-use axum::response::{IntoResponse, Response};
 use axum::Json;
+use axum::extract::{Path, State};
+use axum::http::{StatusCode, header};
+use axum::response::{IntoResponse, Response};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::authorization::Bearer;
 use headers::Authorization;
+use headers::authorization::Bearer;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId, TrustAnchorId,
@@ -344,7 +344,7 @@ pub(crate) async fn ssi_patch_trust_entity(
             return EmptyOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state
@@ -382,7 +382,7 @@ pub(crate) async fn ssi_post_trust_entity(
             return CreatedOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state

@@ -5,22 +5,22 @@ use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::DidService;
 use super::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO, DidResponseDTO,
     GetDidListResponseDTO,
 };
 use super::mapper::{did_from_did_request, identifier_from_did};
 use super::validator::validate_deactivation_request;
-use super::DidService;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
 use crate::model::identifier::{IdentifierStatus, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::did_method::DidCreateKeys;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
-use crate::provider::did_method::DidCreateKeys;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{

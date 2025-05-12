@@ -10,7 +10,7 @@ use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use serde_with::{serde_as, skip_serializing_none};

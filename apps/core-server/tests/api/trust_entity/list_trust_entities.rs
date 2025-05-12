@@ -188,11 +188,13 @@ async fn test_list_trust_entities_filter_trust_anchor() {
     let values = body["values"].as_array().unwrap();
     assert_eq!(values.len(), 2);
 
-    assert!(values.iter().all(|entity| [
-        entity1.id.to_string().as_str(),
-        entity2.id.to_string().as_str()
-    ]
-    .contains(&entity["id"].as_str().unwrap())));
+    assert!(values.iter().all(|entity| {
+        [
+            entity1.id.to_string().as_str(),
+            entity2.id.to_string().as_str(),
+        ]
+        .contains(&entity["id"].as_str().unwrap())
+    }));
 }
 
 #[tokio::test]
@@ -273,11 +275,13 @@ async fn test_list_trust_entities_find_by_name() {
     let values = body["values"].as_array().unwrap();
     assert_eq!(values.len(), 2);
 
-    assert!(values.iter().all(|entity| [
-        entity1.id.to_string().as_str(),
-        entity2.id.to_string().as_str()
-    ]
-    .contains(&entity["id"].as_str().unwrap())));
+    assert!(values.iter().all(|entity| {
+        [
+            entity1.id.to_string().as_str(),
+            entity2.id.to_string().as_str(),
+        ]
+        .contains(&entity["id"].as_str().unwrap())
+    }));
 }
 
 fn compare_entity(result: &Value, entity: &TrustEntity, trust_anchor: &TrustAnchor) {

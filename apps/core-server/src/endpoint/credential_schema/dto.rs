@@ -4,7 +4,7 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaListItemResponseDTO,
 };
 use one_core::service::error::ServiceError;
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialSchemaId, OrganisationId};

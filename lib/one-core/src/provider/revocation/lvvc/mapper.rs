@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 use super::dto::LvvcStatus;
 use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
@@ -51,7 +51,7 @@ pub fn status_from_lvvc_claims(
         _ => {
             return Err(RevocationError::ValidationError(format!(
                 "Unknown LVVC status `{status}`"
-            )))
+            )));
         }
     })
 }

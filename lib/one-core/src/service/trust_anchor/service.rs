@@ -1,11 +1,11 @@
 use shared_types::TrustAnchorId;
 
+use super::TrustAnchorService;
 use super::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO,
     GetTrustAnchorEntityListResponseDTO, GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO,
 };
 use super::mapper::trust_anchor_from_request;
-use super::TrustAnchorService;
 use crate::config::core_config::TrustManagementType;
 use crate::config::validator::trust_management::validate_trust_management;
 use crate::repository::error::DataLayerError;

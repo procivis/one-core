@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use indexmap::IndexSet;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, skip_serializing_none, OneOrMany};
+use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;

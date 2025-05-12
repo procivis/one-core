@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof_schema::{

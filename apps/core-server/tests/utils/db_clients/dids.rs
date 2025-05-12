@@ -9,7 +9,7 @@ use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{unwrap_or_random, TestingDidParams};
+use crate::fixtures::{TestingDidParams, unwrap_or_random};
 
 pub struct DidsDB {
     repository: Arc<dyn DidRepository>,

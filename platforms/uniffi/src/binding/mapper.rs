@@ -74,7 +74,7 @@ use crate::binding::trust_entity::{
 };
 use crate::error::ErrorResponseBindingDTO;
 use crate::error_code::ErrorCode;
-use crate::utils::{into_id, into_timestamp, TimestampFormat};
+use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
 impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
     fn from(value: CredentialDetailResponseDTO) -> Self {

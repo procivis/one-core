@@ -16,11 +16,11 @@ use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredential
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::service::test_utilities::generic_config;
 
 #[test]
@@ -348,9 +348,11 @@ async fn test_credential_formatting_ok_for_ecdsa() {
     // additional namespace is included always when credential schema contains layout
     assert_eq!(2, mso.inner().value_digests.len());
     assert_eq!(1, mso.inner().value_digests["a"].len());
-    assert!(mso.inner().value_digests["a"]
-        .get(&signed_item.digest_id)
-        .is_some());
+    assert!(
+        mso.inner().value_digests["a"]
+            .get(&signed_item.digest_id)
+            .is_some()
+    );
 
     // check COSE_Key
     let cose_key = mso.into_inner().device_key_info.device_key.0;
@@ -542,11 +544,13 @@ async fn test_credential_formatting_ok_for_ecdsa_layout_transfered() {
 #[tokio::test]
 async fn test_credential_formatting_ok_for_ecdsa_layout_not_transfered() {
     let detailed_credential = format_and_extract_ecdsa(false).await;
-    assert!(detailed_credential
-        .credential_schema
-        .unwrap()
-        .metadata
-        .is_none());
+    assert!(
+        detailed_credential
+            .credential_schema
+            .unwrap()
+            .metadata
+            .is_none()
+    );
 }
 
 async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {

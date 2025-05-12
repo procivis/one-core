@@ -15,13 +15,13 @@ use one_core::service::credential_schema::dto::{
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
     ImportCredentialSchemaRequestSchemaDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use shared_types::CredentialSchemaId;
 
-use super::common::SortDirection;
 use super::OneCoreBinding;
+use super::common::SortDirection;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{into_id, into_timestamp, TimestampFormat};
+use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -50,11 +50,10 @@ impl OneCoreBinding {
             direction: query.sort_direction.map(Into::into),
         });
 
-        let mut conditions =
-            vec![
-                CredentialSchemaFilterValue::OrganisationId(into_id(&query.organisation_id)?)
-                    .condition(),
-            ];
+        let mut conditions = vec![
+            CredentialSchemaFilterValue::OrganisationId(into_id(&query.organisation_id)?)
+                .condition(),
+        ];
 
         if let Some(name) = query.name {
             let name_filter = if query

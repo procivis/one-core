@@ -7,11 +7,11 @@ use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
-use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::model::Features;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,

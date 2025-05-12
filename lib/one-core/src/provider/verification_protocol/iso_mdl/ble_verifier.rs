@@ -9,12 +9,12 @@ use uuid::Uuid;
 
 use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
 use super::common::{
-    create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, DocRequest,
-    EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
+    Chunk, DeviceRequest, DocRequest, EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
+    create_session_transcript_bytes, split_into_chunks, to_cbor,
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
-use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};

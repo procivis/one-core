@@ -2,9 +2,9 @@ use std::string::FromUtf8Error;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use time::OffsetDateTime;
 use time::format_description::well_known::Rfc2822;
 use time::macros::offset;
-use time::OffsetDateTime;
 
 use crate::provider::caching_loader::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
 use crate::provider::http_client::HttpClient;

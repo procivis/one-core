@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 use crate::model::key::Key;
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
-use crate::provider::key_storage::KeyStorage;
 
 fn get_params() -> Params {
     Params {

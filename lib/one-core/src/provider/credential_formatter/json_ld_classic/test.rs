@@ -4,7 +4,7 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
@@ -17,13 +17,13 @@ use crate::provider::credential_formatter::model::{
     PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::HttpClient;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::util::test_utilities::prepare_caching_loader;
 
 #[tokio::test]

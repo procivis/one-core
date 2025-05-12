@@ -12,8 +12,8 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use super::api_clients::Client;
-use super::db_clients::keys::ecdsa_testing_params;
 use super::db_clients::DbClient;
+use super::db_clients::keys::ecdsa_testing_params;
 use super::mock_server::MockServer;
 use super::server::run_server;
 use crate::fixtures::{self, TestingConfigParams, TestingDidParams, TestingIdentifierParams};

@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use one_crypto::SignerError;
 
-use super::error::{KeyStorageError, KeyStorageProviderError};
 use super::KeyStorage;
+use super::error::{KeyStorageError, KeyStorageProviderError};
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 use crate::provider::key_algorithm::key::KeyHandle;

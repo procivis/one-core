@@ -8,18 +8,18 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
     ProofSchemaShareResponseDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use shared_types::ProofSchemaId;
 
+use super::OneCoreBinding;
 use super::common::SortDirection;
 use super::credential_schema::{
     CredentialSchemaBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
     CredentialSchemaTypeBindingEnum, LayoutTypeBindingEnum, WalletStorageTypeBindingEnum,
 };
 use super::mapper::optional_time;
-use super::OneCoreBinding;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{into_id, into_timestamp, TimestampFormat};
+use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

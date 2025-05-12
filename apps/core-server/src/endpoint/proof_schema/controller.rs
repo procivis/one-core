@@ -1,5 +1,5 @@
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use shared_types::ProofSchemaId;
 
@@ -167,7 +167,7 @@ pub(crate) async fn import_proof_schema(
             return CreatedOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state

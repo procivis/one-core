@@ -11,11 +11,11 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
 };
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
-use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_utils::{eddsa_public_key_as_jwk, eddsa_public_key_as_multibase};
 
 pub struct RemoteSecureElementKeyProvider {

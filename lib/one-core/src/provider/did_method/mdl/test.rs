@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use rcgen::{
-    CertificateParams, CertifiedKey, SignatureAlgorithm, PKCS_ECDSA_P256_SHA256, PKCS_ED25519,
+    CertificateParams, CertifiedKey, PKCS_ECDSA_P256_SHA256, PKCS_ED25519, SignatureAlgorithm,
 };
 use serde_json::json;
 use shared_types::DidId;
@@ -13,10 +13,10 @@ use super::{DidMdl, Params};
 use crate::model::key::Key;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::{DidCreateKeys, DidMethod};
+use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::KeyAlgorithm;
 
 #[test]
 fn test_new_did_mdl_instance() {

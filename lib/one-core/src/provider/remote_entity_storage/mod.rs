@@ -32,7 +32,7 @@ pub trait RemoteEntityStorage: Send + Sync {
     ) -> Result<(), RemoteEntityStorageError>;
 
     async fn get_by_key(&self, key: &str)
-        -> Result<Option<RemoteEntity>, RemoteEntityStorageError>;
+    -> Result<Option<RemoteEntity>, RemoteEntityStorageError>;
 
     async fn get_storage_size(
         &self,

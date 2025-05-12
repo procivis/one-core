@@ -18,8 +18,8 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::create_list_response;
 use super::ProofSchemaProvider;
+use super::mapper::create_list_response;
 use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};

@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO};
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{

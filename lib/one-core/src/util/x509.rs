@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::{

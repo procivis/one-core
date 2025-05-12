@@ -12,18 +12,18 @@ use crate::model::revocation_list::{
     StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::Lvvc;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::bitstring_status_list::{
-    format_status_list_credential, generate_bitstring_from_credentials,
-    purpose_to_credential_state_enum, Params,
+    Params, format_status_list_credential, generate_bitstring_from_credentials,
+    purpose_to_credential_state_enum,
 };
 use crate::provider::revocation::model::{CredentialAdditionalData, RevocationUpdate};
 use crate::provider::revocation::token_status_list::generate_token_from_credentials;
-use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;

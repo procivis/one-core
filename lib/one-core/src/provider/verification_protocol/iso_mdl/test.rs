@@ -23,14 +23,14 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionRuleTypeEnum;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
 use crate::provider::verification_protocol::iso_mdl::common::{
-    to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
+    DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor,
 };
-use crate::provider::verification_protocol::VerificationProtocol;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 use crate::util::ble_resource::{BleWaiter, OnConflict};

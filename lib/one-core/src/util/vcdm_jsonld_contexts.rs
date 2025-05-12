@@ -1,4 +1,4 @@
-use indexmap::{indexset, IndexSet};
+use indexmap::{IndexSet, indexset};
 
 use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::vcdm::ContextType;

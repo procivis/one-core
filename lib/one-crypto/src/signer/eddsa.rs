@@ -1,9 +1,9 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use ed25519_compact::{x25519, PublicKey};
+use ed25519_compact::{PublicKey, x25519};
 use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::encryption::EncryptionError;
-use crate::jwe::{decode_b64, RemoteJwk};
+use crate::jwe::{RemoteJwk, decode_b64};
 use crate::{Signer, SignerError};
 
 pub struct EDDSASigner {}

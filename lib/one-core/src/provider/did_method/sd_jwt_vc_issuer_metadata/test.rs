@@ -4,18 +4,18 @@ use mockall::predicate::eq;
 use serde_json::json;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::sd_jwt_vc_issuer_metadata::{
     Params, SdJwtVcIssuerMetadataDidMethod,
 };
-use crate::provider::did_method::DidMethod;
 use crate::provider::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::util::test_utilities::mock_http_get_request;
 
 fn expected_did_document(did: &str) -> DidDocument {

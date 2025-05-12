@@ -800,7 +800,11 @@ pub async fn assert_history_count(
         .iter()
         .filter(|entry| entry.action == action)
         .count();
-    assert_eq!(num_entries, expected_count, "expected {expected_count} entries with action {:?} for entity {entity_id}, but found {num_entries}", action);
+    assert_eq!(
+        num_entries, expected_count,
+        "expected {expected_count} entries with action {:?} for entity {entity_id}, but found {num_entries}",
+        action
+    );
 }
 
 pub fn encrypted_token(token: &str) -> Vec<u8> {

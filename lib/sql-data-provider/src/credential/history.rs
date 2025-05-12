@@ -53,8 +53,8 @@ impl CredentialHistoryDecorator {
             }
             _ => {
                 tracing::warn!(
-                "failed inserting {action:?} history event for credential. missing credential {credential_id}",
-            );
+                    "failed inserting {action:?} history event for credential. missing credential {credential_id}",
+                );
             }
         }
     }

@@ -32,12 +32,12 @@ use one_core::service::trust_entity::dto::{
     UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{
-    convert_inner, convert_inner_of_inner, try_convert_inner, try_convert_inner_of_inner, From,
-    Into, TryInto,
+    From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
+    try_convert_inner_of_inner,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::{serde_as, skip_serializing_none, OneOrMany};
+use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{CredentialId, DidValue, TrustAnchorId, TrustEntityId};
 use strum::Display;
 use time::OffsetDateTime;

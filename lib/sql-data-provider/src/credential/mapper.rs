@@ -7,17 +7,17 @@ use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialFilterValue;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
+use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use shared_types::{IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{self, claim, credential, credential_schema, did};
 use crate::list_query_generic::{
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
-    get_string_match_condition, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn,
-    JoinRelation,
+    get_string_match_condition,
 };
 
 impl IntoSortingColumn for SortableCredentialColumn {

@@ -1,7 +1,7 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::proof::ProofStateEnum;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -998,17 +998,17 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
     let credentials = resp["credentials"].as_array().unwrap();
     assert_eq!(2, credentials.len());
 
-    let applicable_credentials = resp["requestGroups"][0]["requestedCredentials"][0]
-        ["applicableCredentials"]
-        .as_array()
-        .unwrap();
+    let applicable_credentials =
+        resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+            .as_array()
+            .unwrap();
     assert_eq!(1, applicable_credentials.len());
     applicable_credentials[0].assert_eq(&complete_credential.id);
 
-    let applicable_credentials = resp["requestGroups"][0]["requestedCredentials"][0]
-        ["inapplicableCredentials"]
-        .as_array()
-        .unwrap();
+    let applicable_credentials =
+        resp["requestGroups"][0]["requestedCredentials"][0]["inapplicableCredentials"]
+            .as_array()
+            .unwrap();
     assert_eq!(1, applicable_credentials.len());
     applicable_credentials[0].assert_eq(&incomplete_credential.id);
 }

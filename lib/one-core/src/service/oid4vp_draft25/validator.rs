@@ -1,5 +1,5 @@
-use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::config::ConfigValidationError;
+use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 
 pub(super) fn validate_config_entity_presence(
     config: &CoreConfig,

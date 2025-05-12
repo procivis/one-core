@@ -12,8 +12,8 @@ use crate::entity::{
     proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
 };
 use crate::list_query_generic::{
-    get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinRelations,
-    IntoSortingColumn, JoinRelation,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    get_comparison_condition, get_equals_condition,
 };
 
 impl IntoSortingColumn for SortableHistoryColumn {

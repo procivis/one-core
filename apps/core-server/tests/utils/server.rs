@@ -1,8 +1,8 @@
 use std::net::TcpListener;
 
+use core_server::ServerConfig;
 use core_server::init::initialize_core;
 use core_server::router::start_server;
-use core_server::ServerConfig;
 use one_core::config::core_config::AppConfig;
 use sql_data_provider::DbConn;
 use tokio::task::JoinHandle;

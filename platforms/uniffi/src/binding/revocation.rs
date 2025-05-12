@@ -1,8 +1,8 @@
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
-use one_dto_mapper::{convert_inner, From};
+use one_dto_mapper::{From, convert_inner};
 
-use super::credential::CredentialStateBindingEnum;
 use super::OneCoreBinding;
+use super::credential::CredentialStateBindingEnum;
 use crate::error::BindingError;
 use crate::utils::into_id;
 

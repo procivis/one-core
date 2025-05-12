@@ -89,11 +89,11 @@ mod test {
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::MockKeyAlgorithm;
     use crate::provider::key_algorithm::key::{
         KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
     };
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-    use crate::provider::key_algorithm::MockKeyAlgorithm;
 
     fn get_dummy_did_document() -> DidDocument {
         DidDocument {

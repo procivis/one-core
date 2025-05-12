@@ -10,11 +10,11 @@ use url::Url;
 
 use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use crate::provider::did_method::DidMethod;
 use crate::provider::http_client::HttpClient;
 
 #[derive(Debug, Clone, Default)]

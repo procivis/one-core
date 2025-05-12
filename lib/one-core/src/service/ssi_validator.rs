@@ -1,5 +1,5 @@
-use crate::config::core_config::{CoreConfig, IssuanceProtocolType, VerificationProtocolType};
 use crate::config::ConfigValidationError;
+use crate::config::core_config::{CoreConfig, IssuanceProtocolType, VerificationProtocolType};
 
 pub(super) fn validate_issuance_protocol_type(
     expected_exchange_type: IssuanceProtocolType,

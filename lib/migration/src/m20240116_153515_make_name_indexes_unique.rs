@@ -1,8 +1,8 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20240110_000001_initial::{
-    CredentialSchema, ProofSchema, CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX,
-    PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX,
+    CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX, CredentialSchema,
+    PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX, ProofSchema,
 };
 
 #[derive(DeriveMigrationName)]

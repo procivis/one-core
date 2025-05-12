@@ -18,9 +18,9 @@ use crate::provider::credential_formatter::model::{
     MockTokenVerifier, SignatureProvider, TokenVerifier,
 };
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
+use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::bbs::BBS;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_storage::provider::SignatureProviderImpl;
 
 #[tokio::test]

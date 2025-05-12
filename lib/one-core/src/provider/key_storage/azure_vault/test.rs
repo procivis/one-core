@@ -16,8 +16,8 @@ use super::dto::AzureHsmGetTokenResponse;
 use super::{AzureVaultKeyProvider, Params};
 use crate::model::key::Key;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
-use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_storage::error::KeyStorageError;
 
 fn get_params(mock_base_url: String) -> Params {
     Params {

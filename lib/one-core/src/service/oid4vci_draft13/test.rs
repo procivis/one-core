@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
 use shared_types::DidId;
@@ -24,21 +24,21 @@ use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
-use crate::provider::issuance_protocol::MockIssuanceProtocol;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -275,18 +275,22 @@ async fn test_get_issuer_metadata_jwt() {
     );
     assert!(credential.claims.is_none()); // This is present of mdoc only
     let credential_definition = credential.credential_definition.as_ref().unwrap();
-    assert!(credential_definition
-        .r#type
-        .contains(&"VerifiableCredential".to_string()));
-    assert!(credential_definition
-        .r#credential_subject
-        .as_ref()
-        .unwrap()
-        .claims
-        .as_ref()
-        .unwrap()
-        .get("key")
-        .is_some());
+    assert!(
+        credential_definition
+            .r#type
+            .contains(&"VerifiableCredential".to_string())
+    );
+    assert!(
+        credential_definition
+            .r#credential_subject
+            .as_ref()
+            .unwrap()
+            .claims
+            .as_ref()
+            .unwrap()
+            .get("key")
+            .is_some()
+    );
 }
 
 #[tokio::test]
@@ -371,18 +375,22 @@ async fn test_get_issuer_metadata_sd_jwt() {
         vec!["ES256".to_string()]
     );
     let credential_definition = credential.credential_definition.as_ref().unwrap();
-    assert!(credential_definition
-        .r#type
-        .contains(&"VerifiableCredential".to_string()));
-    assert!(credential_definition
-        .r#credential_subject
-        .as_ref()
-        .unwrap()
-        .claims
-        .as_ref()
-        .unwrap()
-        .get("key")
-        .is_some());
+    assert!(
+        credential_definition
+            .r#type
+            .contains(&"VerifiableCredential".to_string())
+    );
+    assert!(
+        credential_definition
+            .r#credential_subject
+            .as_ref()
+            .unwrap()
+            .claims
+            .as_ref()
+            .unwrap()
+            .get("key")
+            .is_some()
+    );
 }
 
 #[tokio::test]
@@ -600,10 +608,12 @@ async fn test_create_token() {
 
     let result_content = result.unwrap();
     assert_eq!("bearer", result_content.token_type);
-    assert!(result_content
-        .access_token
-        .expose_secret()
-        .starts_with(&format!("{interaction_id}.")));
+    assert!(
+        result_content
+            .access_token
+            .expose_secret()
+            .starts_with(&format!("{interaction_id}."))
+    );
 
     assert!(result_content.refresh_token.is_none());
     assert!(result_content.refresh_token_expires_in.is_none());
@@ -2025,16 +2035,20 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
 
     let result = result.unwrap();
     assert_eq!("bearer", result.token_type);
-    assert!(result
-        .access_token
-        .expose_secret()
-        .starts_with(&format!("{interaction_id}.")));
+    assert!(
+        result
+            .access_token
+            .expose_secret()
+            .starts_with(&format!("{interaction_id}."))
+    );
 
-    assert!(result
-        .refresh_token
-        .unwrap()
-        .expose_secret()
-        .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
+    assert!(
+        result
+            .refresh_token
+            .unwrap()
+            .expose_secret()
+            .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7.")
+    );
 
     assert!(result.refresh_token_expires_in.is_some());
 }
@@ -2108,16 +2122,20 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
         .unwrap();
 
     assert_eq!("bearer", result.token_type);
-    assert!(result
-        .access_token
-        .expose_secret()
-        .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
+    assert!(
+        result
+            .access_token
+            .expose_secret()
+            .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7.")
+    );
 
-    assert!(result
-        .refresh_token
-        .unwrap()
-        .expose_secret()
-        .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
+    assert!(
+        result
+            .refresh_token
+            .unwrap()
+            .expose_secret()
+            .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7.")
+    );
 
     assert!(result.refresh_token_expires_in.is_some());
 }

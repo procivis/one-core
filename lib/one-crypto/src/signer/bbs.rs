@@ -1,6 +1,6 @@
 use blstrs::G2Affine;
 use pairing_crypto::bbs::ciphersuites::bls12_381::{
-    KeyPair, PublicKey, SecretKey, BBS_BLS12381G1_SIGNATURE_LENGTH,
+    BBS_BLS12381G1_SIGNATURE_LENGTH, KeyPair, PublicKey, SecretKey,
 };
 use pairing_crypto::bbs::ciphersuites::bls12_381_g1_sha_256::{
     proof_gen, proof_verify, sign, verify,
@@ -193,7 +193,7 @@ impl BBSSigner {
             _ => {
                 return Err(SignerError::CouldNotExtractPublicKey(
                     "Invalid key size".to_string(),
-                ))
+                ));
             }
         };
 

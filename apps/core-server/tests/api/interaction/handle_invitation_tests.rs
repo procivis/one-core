@@ -307,8 +307,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 }
 
 #[tokio::test]
-async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_double_layered_nested_claims(
-) {
+async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_double_layered_nested_claims()
+ {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -501,8 +501,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 }
 
 #[tokio::test]
-async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_optional_object_array_and_required_field(
-) {
+async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_optional_object_array_and_required_field()
+ {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -705,8 +705,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 }
 
 #[tokio::test]
-async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_similar_prefix_keys(
-) {
+async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_similar_prefix_keys()
+ {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -1049,8 +1049,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
 }
 
 #[tokio::test]
-async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not_match_deleted_schema(
-) {
+async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not_match_deleted_schema()
+ {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

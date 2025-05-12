@@ -17,7 +17,7 @@ use super::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use crate::common_mapper::{
-    get_or_create_did_and_identifier, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
+    DidRole, NESTED_CLAIM_MARKER, get_or_create_did_and_identifier, value_to_model_claims,
 };
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
@@ -29,8 +29,8 @@ use crate::model::interaction::InteractionId;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{AuthenticationFn, ExtractPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -260,7 +260,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
             _ => {
                 return Err(VerificationProtocolError::Failed(
                     "Missing proof input schemas".to_owned(),
-                ))
+                ));
             }
         };
 

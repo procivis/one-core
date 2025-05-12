@@ -6,19 +6,19 @@ use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::jwt::mapper::{
     bin_to_b64url_string, string_to_b64url_string,
 };
-use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
+use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Signer;
+use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::json;
-use time::macros::format_description;
 use time::OffsetDateTime;
+use time::macros::format_description;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::{
-    encrypted_token, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+    TestingCredentialParams, TestingDidParams, TestingIdentifierParams, encrypted_token,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -543,16 +543,20 @@ async fn test_revoke_check_success_lvvc_initially_suspended() {
     // unsuspend added two new history entries
     assert_eq!(history.values.len(), history_previous.values.len() + 2);
     // Within the first two entries there needs to be one Reactivated and one Accepted
-    assert!(history
-        .values
-        .iter()
-        .take(2)
-        .any(|x| x.action == HistoryAction::Accepted));
-    assert!(history
-        .values
-        .iter()
-        .take(2)
-        .any(|x| x.action == HistoryAction::Reactivated));
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Accepted)
+    );
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Reactivated)
+    );
 }
 
 async fn setup_lvvc_revoke_check_valid(
@@ -1806,16 +1810,20 @@ async fn test_suspended_to_valid_mdoc() {
     // unsuspend added two new history entries
     assert_eq!(history.values.len(), history_previous.values.len() + 2);
     // Within the first two entries there needs to be one Reactivated and one Accepted
-    assert!(history
-        .values
-        .iter()
-        .take(2)
-        .any(|x| x.action == HistoryAction::Accepted));
-    assert!(history
-        .values
-        .iter()
-        .take(2)
-        .any(|x| x.action == HistoryAction::Reactivated));
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Accepted)
+    );
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Reactivated)
+    );
 }
 
 #[tokio::test]

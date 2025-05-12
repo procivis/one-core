@@ -605,10 +605,11 @@ async fn test_create_did_webvh_success() {
     assert_eq!(did.did_type, DidType::Local);
 
     assert!(did.did.as_str().starts_with("did:tdw:"));
-    assert!(did
-        .did
-        .as_str()
-        .ends_with(&format!(":ssi:did-webvh:v1:{}", did.id)));
+    assert!(
+        did.did
+            .as_str()
+            .ends_with(&format!(":ssi:did-webvh:v1:{}", did.id))
+    );
 
     let log = did.log.unwrap();
     assert_eq!(log.lines().count(), 1);

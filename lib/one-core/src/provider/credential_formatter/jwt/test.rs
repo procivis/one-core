@@ -4,15 +4,15 @@ use async_trait::async_trait;
 use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
-use time::macros::datetime;
 use time::OffsetDateTime;
+use time::macros::datetime;
 
 use super::model::JWTPayload;
 use super::{Jwt, TokenVerifier};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 struct Payload {

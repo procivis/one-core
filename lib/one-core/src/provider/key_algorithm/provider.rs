@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use secrecy::SecretSlice;
 
-use super::error::KeyAlgorithmProviderError;
 use super::KeyAlgorithm;
+use super::error::KeyAlgorithmProviderError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -19,7 +19,7 @@ pub struct ParsedKey {
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyAlgorithmProvider: Send + Sync {
     fn key_algorithm_from_type(&self, algorithm: KeyAlgorithmType)
-        -> Option<Arc<dyn KeyAlgorithm>>;
+    -> Option<Arc<dyn KeyAlgorithm>>;
 
     /// This method returns KeyAlgorithm using key_type value (as it's stored in database)
     fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;

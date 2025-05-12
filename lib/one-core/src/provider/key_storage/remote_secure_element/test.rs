@@ -6,10 +6,10 @@ use uuid::Uuid;
 
 use super::RemoteSecureElementKeyProvider;
 use crate::model::key::Key;
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::secure_element::MockNativeKeyStorage;
-use crate::provider::key_storage::KeyStorage;
 
 #[tokio::test]
 async fn test_generate_success() {

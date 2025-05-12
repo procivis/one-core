@@ -4,11 +4,11 @@ use ciborium::tag::Required;
 use coset::AsCborValue;
 use indexmap::IndexMap;
 use serde::de::{self, DeserializeOwned};
-use serde::{ser, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, ser};
 use serde_with::skip_serializing_none;
 use sha2::{Digest, Sha256};
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 use crate::provider::verification_protocol::iso_mdl::common::EReaderKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::DeviceEngagement;

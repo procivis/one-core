@@ -1,5 +1,5 @@
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use shared_types::{DidId, TrustEntityId};
 
@@ -39,7 +39,7 @@ pub(crate) async fn create_trust_entity(
             return CreatedOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state
@@ -79,7 +79,7 @@ pub(crate) async fn update_trust_entity(
             return EmptyOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state
@@ -163,7 +163,7 @@ pub(crate) async fn create_remote_trust_entity(
             return CreatedOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state
@@ -204,7 +204,7 @@ pub(crate) async fn update_remote_trust_entity(
             return EmptyOrErrorResponse::from_service_error(
                 err,
                 state.config.hide_error_response_cause,
-            )
+            );
         }
     };
     let result = state

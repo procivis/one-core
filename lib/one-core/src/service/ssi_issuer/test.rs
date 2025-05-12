@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::service::ssi_issuer::SSIIssuerService;
 use crate::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
-use crate::service::ssi_issuer::SSIIssuerService;
 use crate::service::test_utilities::generic_config;
 
 fn mock_ssi_issuer_service() -> SSIIssuerService {

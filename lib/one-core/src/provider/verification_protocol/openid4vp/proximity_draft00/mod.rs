@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use ble::OpenID4VCBLE;
-use futures::future::BoxFuture;
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use key_agreement_key::KeyAgreementKey;
 use mqtt::OpenId4VcMqtt;
 use serde::Deserialize;
@@ -16,8 +16,8 @@ use url::Url;
 use uuid::Uuid;
 
 use super::model::{
-    default_presentation_url_scheme, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
-    PresentationSubmissionMappingDTO,
+    OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO,
+    default_presentation_url_scheme,
 };
 use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};

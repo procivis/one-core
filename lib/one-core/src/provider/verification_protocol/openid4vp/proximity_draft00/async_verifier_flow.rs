@@ -1,8 +1,8 @@
 use std::future;
 use std::sync::Arc;
 
-use futures::future::BoxFuture;
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use one_crypto::utilities;
 use shared_types::DidValue;
 use tokio::select;

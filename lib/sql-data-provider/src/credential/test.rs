@@ -1096,19 +1096,21 @@ async fn test_update_credential_success() {
     )
     .unwrap();
 
-    assert!(provider
-        .update_credential(
-            credential_id,
-            UpdateCredentialRequest {
-                credential: Some(token.to_owned()),
-                state: Some(CredentialStateEnum::Pending),
-                suspend_end_date: Clearable::DontTouch,
-                interaction: Some(interaction_id),
-                ..Default::default()
-            }
-        )
-        .await
-        .is_ok());
+    assert!(
+        provider
+            .update_credential(
+                credential_id,
+                UpdateCredentialRequest {
+                    credential: Some(token.to_owned()),
+                    state: Some(CredentialStateEnum::Pending),
+                    suspend_end_date: Clearable::DontTouch,
+                    interaction: Some(interaction_id),
+                    ..Default::default()
+                }
+            )
+            .await
+            .is_ok()
+    );
     let credential_after_update = provider
         .get_credential(
             &credential_id,

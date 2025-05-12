@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use super::model::{
-    IdentityCard, OptiocalBarcodeCredential, TerseBitstringStatusListEntry,
-    MRZ_CREDENTIAL_SUBJECT_TYPE,
+    IdentityCard, MRZ_CREDENTIAL_SUBJECT_TYPE, OptiocalBarcodeCredential,
+    TerseBitstringStatusListEntry,
 };
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{

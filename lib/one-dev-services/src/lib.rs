@@ -113,27 +113,27 @@ use one_core::provider::did_method::universal::{
     Params as UniversalDidMethodParams, UniversalDidMethod,
 };
 use one_core::provider::did_method::web::{Params as WebDidMethodParams, WebDidMethod};
-use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::http_client::HttpClient;
+use one_core::provider::http_client::reqwest_client::ReqwestClient;
+use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::bbs::BBS;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::{
     InternalKeyProvider, Params as InternalKeyProviderParams,
 };
 use one_core::provider::key_storage::provider::KeyProviderImpl;
-use one_core::provider::key_storage::KeyStorage;
-use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
+use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use one_crypto::CryptoProviderImpl;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::utilities::generate_random_bytes;
-use one_crypto::CryptoProviderImpl;
 use secrecy::SecretSlice;
 use service::credential_service::CredentialService;
 use service::did_service::DidService;

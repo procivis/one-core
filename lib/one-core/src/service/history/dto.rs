@@ -1,4 +1,4 @@
-use one_dto_mapper::{convert_inner, From};
+use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;

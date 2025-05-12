@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use futures::future::{BoxFuture, Shared};
 use futures::FutureExt;
+use futures::future::{BoxFuture, Shared};
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -18,14 +18,14 @@ use crate::provider::mqtt_client::MqttTopic;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
-    async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
-    AsyncVerifierFlowParams, FlowState,
-};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
+    AsyncTransportHooks, AsyncVerifierFlowParams, FlowState, async_verifier_flow, never,
+    set_proof_state_infallible,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
@@ -79,7 +79,7 @@ pub(crate) async fn mqtt_verifier_flow(
                 callback.await;
             }
         }
-        Err(ref err) => {
+        Err(err) => {
             let message = format!("MQTT verifier flow failure: {err}");
             info!(message);
             let error_metadata = HistoryErrorMetadata {

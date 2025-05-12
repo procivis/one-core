@@ -1,5 +1,5 @@
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum};

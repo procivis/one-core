@@ -4,6 +4,7 @@ use shared_types::{CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::ProofSchemaService;
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
     GetProofSchemaResponseDTO, ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO,
@@ -14,7 +15,6 @@ use super::validator::{
     extract_claims_from_credential_schema, proof_schema_name_already_exists,
     validate_create_request, validate_imported_proof_schema,
 };
-use super::ProofSchemaService;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{

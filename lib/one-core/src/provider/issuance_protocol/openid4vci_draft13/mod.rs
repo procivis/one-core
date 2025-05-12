@@ -10,9 +10,9 @@ use indexmap::IndexMap;
 use one_crypto::encryption::encrypt_string;
 use one_dto_mapper::convert_inner;
 use secrecy::ExposeSecret;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde::de::DeserializeOwned;
+use serde_json::{Value, json};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -218,7 +218,7 @@ impl OpenID4VCI13 {
             _ => {
                 return Err(IssuanceProtocolError::InvalidRequest(
                     "invalid state".to_string(),
-                ))
+                ));
             }
         }
 
@@ -1341,9 +1341,9 @@ async fn resolve_credential_offer(
         query_pairs.get(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY);
 
     if credential_offer_param.is_some() && credential_offer_reference_param.is_some() {
-        return Err(IssuanceProtocolError::Failed(
-            format!("Detected both {CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY} and {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY}"),
-        ));
+        return Err(IssuanceProtocolError::Failed(format!(
+            "Detected both {CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY} and {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY}"
+        )));
     }
 
     if let Some(credential_offer) = credential_offer_param {
@@ -1450,7 +1450,7 @@ fn build_claim_keys(
         (None, None) | (Some(_), Some(_)) => {
             return Err(IssuanceProtocolError::Failed(
                 "Incorrect or missing credential claims".to_string(),
-            ))
+            ));
         }
         (None, Some(mdoc_claims)) => mdoc_claims,
         (Some(credential_definition), None) => credential_definition

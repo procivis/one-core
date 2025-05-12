@@ -6,7 +6,7 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
     ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{OrganisationId, ProofSchemaId};

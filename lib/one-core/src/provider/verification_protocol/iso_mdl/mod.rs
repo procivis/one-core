@@ -7,8 +7,8 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use ble::ISO_MDL_FLOW;
-use ble_holder::{send_mdl_response, MdocBleHolderInteractionData};
-use common::{to_cbor, DeviceRequest};
+use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
+use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
 use shared_types::KeyId;
 use url::Url;
@@ -24,7 +24,7 @@ use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
-use crate::common_mapper::{decode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::config::core_config::{CoreConfig, DidType, TransportType};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::Did;

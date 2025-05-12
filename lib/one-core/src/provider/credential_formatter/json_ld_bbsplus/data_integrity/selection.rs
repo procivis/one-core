@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
-use json_ld::{rdf_types, BlankIdBuf, JsonLdProcessor, Loader, RemoteDocument};
+use json_ld::{BlankIdBuf, JsonLdProcessor, Loader, RemoteDocument, rdf_types};
 use sophia_api::quad::Spog;
 
 use super::skolemize::to_deskolemized_nquads;

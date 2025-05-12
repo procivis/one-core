@@ -1,6 +1,6 @@
 //! `struct`s and `enum`s for DID method provider.
 
-use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use serde::Serialize;
 use shared_types::DidValue;
 

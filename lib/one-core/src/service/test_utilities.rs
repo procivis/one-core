@@ -2,8 +2,8 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidValue, OrganisationId};
-use time::macros::datetime;
 use time::OffsetDateTime;
+use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::config::core_config::{

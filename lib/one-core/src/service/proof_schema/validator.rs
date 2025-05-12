@@ -4,18 +4,18 @@ use itertools::Itertools;
 use shared_types::OrganisationId;
 use time::{Duration, OffsetDateTime};
 
+use super::ProofSchemaImportError;
 use super::dto::{
     CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
     ProofInputSchemaRequestDTO,
 };
-use super::ProofSchemaImportError;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,

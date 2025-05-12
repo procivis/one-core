@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::MockHasher;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -16,7 +16,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::nest_claims;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
-    compute_object_disclosures, parse_disclosure, select_disclosures, DisclosureArray,
+    DisclosureArray, compute_object_disclosures, parse_disclosure, select_disclosures,
 };
 use crate::provider::credential_formatter::sdjwt::model::{Disclosure, KeyBindingPayload};
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
@@ -314,13 +314,15 @@ fn test_gather_disclosures_and_objects_with_nesting() {
     ];
 
     // simple disclosures
-    assert!(expected_disclosures
-        .iter()
-        .all(|(expected_key, expected_value)| {
-            disclosures
-                .iter()
-                .any(|disc| disc.key == *expected_key && disc.value == *expected_value)
-        }));
+    assert!(
+        expected_disclosures
+            .iter()
+            .all(|(expected_key, expected_value)| {
+                disclosures
+                    .iter()
+                    .any(|disc| disc.key == *expected_key && disc.value == *expected_value)
+            })
+    );
 
     // _sd array in address disclosure needs to be compared order independent
     assert_eq!(

@@ -7,7 +7,7 @@ use shared_types::IdentifierId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{unwrap_or_random, TestingIdentifierParams};
+use crate::fixtures::{TestingIdentifierParams, unwrap_or_random};
 
 pub struct IdentifiersDB {
     repository: Arc<dyn IdentifierRepository>,

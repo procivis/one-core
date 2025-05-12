@@ -7,10 +7,10 @@
 
 use std::sync::Arc;
 
+use one_core::provider::did_method::DidMethod;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::provider::did_method::model::DidDocument;
 use one_core::provider::did_method::provider::DidMethodProvider;
-use one_core::provider::did_method::DidMethod;
 use shared_types::DidValue;
 
 #[derive(Clone)]

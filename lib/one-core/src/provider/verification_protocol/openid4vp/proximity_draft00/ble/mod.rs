@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, LazyLock};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use dto::OpenID4VPBleData;
 use futures::future::{BoxFuture, Shared};
 use futures::{Stream, TryStreamExt};
@@ -21,8 +21,8 @@ use uuid::Uuid;
 use super::dto::MessageSize;
 use super::peer_encryption::PeerEncryption;
 use super::{
-    create_interaction_and_proof, create_presentation, prepare_proof_share,
     CreatePresentationParams, KeyAgreementKey, OpenID4VPProximityDraft00Params, ProofShareParams,
+    create_interaction_and_proof, create_presentation, prepare_proof_share,
 };
 use crate::config::core_config::{self, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
@@ -30,8 +30,8 @@ use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::bluetooth_low_energy::BleError;
+use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::credential_formatter::model::HolderBindingCtx;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -41,10 +41,10 @@ use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::{
-    get_presentation_definition_with_local_credentials, FormatMapper, TypeToDescriptorMapper,
+    FormatMapper, TypeToDescriptorMapper, get_presentation_definition_with_local_credentials,
 };
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, VerificationProtocolError,
+    VerificationProtocolError, deserialize_interaction_data,
 };
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;

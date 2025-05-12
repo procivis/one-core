@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use indexmap::IndexMap;
-use one_dto_mapper::{convert_inner, Into};
+use one_dto_mapper::{Into, convert_inner};
 use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};

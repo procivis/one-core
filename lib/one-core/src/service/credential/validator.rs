@@ -5,12 +5,12 @@ use regex::Regex;
 use url::Url;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
-use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
+use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::exchange::{
     validate_exchange_type, validate_protocol_did_compatibility,
 };
-use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;

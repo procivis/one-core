@@ -6,10 +6,11 @@ use one_core::config::core_config::{
     AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType, Fields,
     FormatType, KeyAlgorithmType, KeyStorageType, Params, RevocationType,
 };
-use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
+use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError, core_config};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
+use one_core::provider::credential_formatter::CredentialFormatter;
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::JsonLdBbsplus;
 use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
@@ -19,7 +20,7 @@ use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatt
 use one_core::provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use one_core::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatter;
-use one_core::provider::credential_formatter::CredentialFormatter;
+use one_core::provider::did_method::DidMethod;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
@@ -30,36 +31,35 @@ use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::webvh::DidWebVh;
 use one_core::provider::did_method::x509::X509Method;
-use one_core::provider::did_method::DidMethod;
-use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::http_client::HttpClient;
+use one_core::provider::http_client::reqwest_client::ReqwestClient;
+use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::bbs::BBS;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
 use one_core::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::azure_vault::AzureVaultKeyProvider;
 use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
-use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
-use one_core::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
+use one_core::provider::revocation::RevocationMethod;
 use one_core::provider::revocation::bitstring_status_list::BitstringStatusList;
+use one_core::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
 use one_core::provider::revocation::lvvc::LvvcProvider;
 use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
 use one_core::provider::revocation::token_status_list::TokenStatusList;
-use one_core::provider::revocation::RevocationMethod;
-use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::repository::DataRepository;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::{
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
     KeyStorageCreator, OneCore, OneCoreBuilder, RevocationMethodCreator,
@@ -79,7 +79,7 @@ use tracing_subscriber::prelude::*;
 use crate::did_config::{
     DidMdlParams, DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams, DidWebVhParams,
 };
-use crate::{build_info, did_config, ServerConfig};
+use crate::{ServerConfig, build_info, did_config};
 
 pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) -> OneCore {
     let reqwest_client = reqwest::Client::builder()

@@ -1,12 +1,12 @@
 use anyhow::Context;
 use one_core::model;
 use one_dto_mapper::{From, Into};
+use sea_orm::DeriveActiveEnum;
 use sea_orm::entity::prelude::StringLen;
 use sea_orm::prelude::{
     ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
     EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
 };
-use sea_orm::DeriveActiveEnum;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

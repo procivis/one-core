@@ -1,9 +1,9 @@
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
-use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::config::ConfigValidationError;
+use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,

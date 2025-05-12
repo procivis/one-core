@@ -7,12 +7,12 @@ use one_crypto::utilities::build_hmac_sha256;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::canonicalize::{
-    canonicalize_and_group, create_shuffled_id_label_map_function, CanonicializeAndGroupOutput,
+    CanonicializeAndGroupOutput, canonicalize_and_group, create_shuffled_id_label_map_function,
 };
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::parse_base_proof_value;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::selection::select_json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
-    BbsDerivedProofComponents, ParsedBbsDerivedProofComponents, CBOR_PREFIX_DERIVED,
+    BbsDerivedProofComponents, CBOR_PREFIX_DERIVED, ParsedBbsDerivedProofComponents,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
 

@@ -3,12 +3,12 @@ use shared_types::DidValue;
 use super::model::CredentialRevocationInfo;
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationState, JsonLdContext,
     RevocationMethodCapabilities, RevocationUpdate,
 };
-use crate::provider::revocation::RevocationMethod;
 
 pub struct NoneRevocation {}
 

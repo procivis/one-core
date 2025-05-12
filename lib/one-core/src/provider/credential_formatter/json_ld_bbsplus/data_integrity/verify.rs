@@ -1,6 +1,6 @@
 use json_ld::Loader;
-use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 use one_crypto::Hasher;
+use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 
 use super::parse_base_proof_value;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -205,8 +205,8 @@ mod test {
     use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::document_loader;
     use crate::provider::credential_formatter::model::MockTokenVerifier;
-    use crate::provider::key_algorithm::bbs::BBS;
     use crate::provider::key_algorithm::KeyAlgorithm;
+    use crate::provider::key_algorithm::bbs::BBS;
 
     #[tokio::test]
     // from https://www.w3.org/TR/vc-di-bbs/#example-signed-base-document

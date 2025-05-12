@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::dto::BleOpenId4VpResponse;
 use super::BLEPeer;
+use super::dto::BleOpenId4VpResponse;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 

@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
-use crate::config::core_config::VerificationProtocolType;
 use crate::config::ConfigValidationError;
+use crate::config::core_config::VerificationProtocolType;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;

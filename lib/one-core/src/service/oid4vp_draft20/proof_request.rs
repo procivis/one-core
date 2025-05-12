@@ -9,14 +9,14 @@ use crate::common_mapper::get_encryption_key_jwk_from_proof;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::proof::Proof;
+use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt::model::{
     JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;

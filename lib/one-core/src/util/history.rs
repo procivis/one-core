@@ -92,7 +92,10 @@ pub(crate) async fn log_history_event_credential_schema(
     event: HistoryAction,
 ) {
     let Some(ref organisation) = schema.organisation else {
-        warn!("failed to create history event {event:#?} for credential schema {}: missing organisation_id", schema.id);
+        warn!(
+            "failed to create history event {event:#?} for credential schema {}: missing organisation_id",
+            schema.id
+        );
         return;
     };
 
@@ -180,7 +183,10 @@ pub(crate) async fn log_history_event_proof_schema(
     event: HistoryAction,
 ) {
     let Some(ref organisation) = proof_schema.organisation else {
-        warn!("failed to create history event {event:#?} for proof schema {}: missing organisation_id", proof_schema.id);
+        warn!(
+            "failed to create history event {event:#?} for proof schema {}: missing organisation_id",
+            proof_schema.id
+        );
         return;
     };
 

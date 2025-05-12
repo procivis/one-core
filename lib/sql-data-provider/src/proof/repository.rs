@@ -19,9 +19,9 @@ use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::ProofProvider;
 use super::mapper::{create_list_response, get_proof_claim_active_model};
 use super::model::ProofListItemModel;
-use super::ProofProvider;
 use crate::entity::{did, identifier, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_update_data_layer_error;

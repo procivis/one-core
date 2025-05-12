@@ -8,11 +8,11 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationState, RevocationUpdate};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::provider::task::Task;
+use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;

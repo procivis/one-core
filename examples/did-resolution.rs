@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use one_core::provider::did_method::DidMethod;
 use one_core::provider::did_method::error::DidMethodError;
 use one_core::provider::did_method::universal::{
     Params as UniversalDidMethodParams, UniversalDidMethod,
 };
-use one_core::provider::did_method::DidMethod;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::OneDevCore;
 

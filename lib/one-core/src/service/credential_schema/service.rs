@@ -8,13 +8,13 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
+use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
     GetCredentialSchemaQueryDTO, ImportCredentialSchemaRequestDTO,
 };
 use crate::service::credential_schema::mapper::from_create_request_with_id;
-use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
 use secrecy::SecretSlice;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -24,23 +24,23 @@ use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
+use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIParams, OpenID4VCRedirectUriParams,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
-use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;

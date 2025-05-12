@@ -5,12 +5,12 @@ use one_core::service::backup::dto::{
 };
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
-use one_dto_mapper::{convert_inner, From};
+use one_dto_mapper::{From, convert_inner};
 use secrecy::SecretString;
 
+use super::OneCoreBinding;
 use super::credential::CredentialDetailBindingDTO;
 use super::did::DidListItemBindingDTO;
-use super::OneCoreBinding;
 use crate::error::BindingError;
 use crate::utils::TimestampFormat;
 

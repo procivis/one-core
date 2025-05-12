@@ -1,15 +1,15 @@
 use one_core::model::history::HistoryAction;
 use one_core::model::proof::ProofStateEnum;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::fixtures::{
-    self, assert_history_count, TestingConfigParams, TestingCredentialSchemaParams,
-    TestingDidParams, TestingIdentifierParams,
+    self, TestingConfigParams, TestingCredentialSchemaParams, TestingDidParams,
+    TestingIdentifierParams, assert_history_count,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::db_clients::DbClient;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::field_match::FieldHelpers;
 use crate::utils::server::run_server;
 

@@ -9,9 +9,9 @@ use super::dto::DidDocumentDTO;
 use super::resolver::{DidCachingLoader, DidResolver};
 use crate::model::did::Did;
 use crate::model::key::Key;
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::did_method::model::DidDocument;
-use crate::provider::did_method::DidMethod;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -146,10 +146,10 @@ mod tests {
     use crate::model::did::{DidType, KeyRole, RelatedKey};
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkOctData};
     use crate::provider::caching_loader::CachingLoader;
-    use crate::provider::did_method::model::{DidCapabilities, DidVerificationMethod};
     use crate::provider::did_method::MockDidMethod;
-    use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+    use crate::provider::did_method::model::{DidCapabilities, DidVerificationMethod};
     use crate::provider::remote_entity_storage::RemoteEntityType;
+    use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 
     #[tokio::test]
     async fn test_resolve_only_one_verification_method() {

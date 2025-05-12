@@ -33,9 +33,7 @@ pub enum DidMethodProviderError {
     #[error("Missing did provider: `{0}`")]
     MissingProvider(String),
 
-    #[error(
-        "Verification method id of key `{key_id}` not found in did document for did '{did_id}"
-    )]
+    #[error("Verification method id of key `{key_id}` not found in did document for did '{did_id}")]
     VerificationMethodIdNotFound { key_id: KeyId, did_id: DidId },
 
     #[error("Other: `{0}`")]

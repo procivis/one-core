@@ -1,16 +1,16 @@
 use std::future::Future;
 use std::sync::Arc;
 
-use futures::future::BoxFuture;
 use futures::FutureExt;
-use tokio::sync::{mpsc, Mutex};
+use futures::future::BoxFuture;
+use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tracing::warn;
 use uuid::Uuid;
 
+use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use crate::provider::bluetooth_low_energy::BleError;
 
 /// Represents flow that requires exclusive access to BLE
 struct Action {

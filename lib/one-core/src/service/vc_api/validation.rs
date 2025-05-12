@@ -50,9 +50,7 @@ pub enum VpValidationError {
     #[error("Provided presentation doesn't contain any VCs")]
     MissingVerifiableCredential,
 
-    #[error(
-        "Provided presentation doesn't contain context as first element in the `@context` set"
-    )]
+    #[error("Provided presentation doesn't contain context as first element in the `@context` set")]
     ContextNotInFirstPosition,
 
     #[error("Provided presentation is missing the specified `type` property")]

@@ -18,7 +18,9 @@ impl MigrationTrait for Migration {
                 let q1 = "ALTER TABLE credential_schema ADD COLUMN deleted_at_materialized VARCHAR(50) AS (COALESCE(deleted_at, 'not_deleted')) PERSISTENT;".to_string();
                 db.execute_unprepared(&q1).await?;
 
-                let q2 = format!("CREATE UNIQUE INDEX `{UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_TYPE_ID_DELETED_AT_UNIQUE}` ON credential_schema(`organisation_id`,`schema_id`,`schema_type`,`deleted_at_materialized`);");
+                let q2 = format!(
+                    "CREATE UNIQUE INDEX `{UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_TYPE_ID_DELETED_AT_UNIQUE}` ON credential_schema(`organisation_id`,`schema_id`,`schema_type`,`deleted_at_materialized`);"
+                );
                 db.execute_unprepared(&q2).await?;
 
                 let q3 =
@@ -26,7 +28,9 @@ impl MigrationTrait for Migration {
                 db.execute_unprepared(&q3).await?;
             }
             sea_orm::DatabaseBackend::Sqlite => {
-                let q1 = format!("CREATE UNIQUE INDEX `{UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_TYPE_ID_DELETED_AT_UNIQUE}` ON credential_schema(`organisation_id`,`schema_id`, `schema_type`, COALESCE(deleted_at, 'not_deleted'));");
+                let q1 = format!(
+                    "CREATE UNIQUE INDEX `{UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_TYPE_ID_DELETED_AT_UNIQUE}` ON credential_schema(`organisation_id`,`schema_id`, `schema_type`, COALESCE(deleted_at, 'not_deleted'));"
+                );
                 db.execute_unprepared(&q1).await?;
 
                 let q2 = format!("DROP INDEX `{SCHEMA_ID_IN_ORGANISATION_INDEX}`");

@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::vec;
 
 use anyhow::Context;
-use futures::{stream, Stream, StreamExt, TryFutureExt};
+use futures::{Stream, StreamExt, TryFutureExt, stream};
 use one_crypto::utilities::generate_random_bytes;
 use shared_types::{DidValue, ProofId};
 use time::OffsetDateTime;
@@ -11,27 +11,28 @@ use tokio::select;
 use uuid::Uuid;
 
 use super::{
-    BLEParse, BLEPeer, IdentityRequest, TransferSummaryReport, CONTENT_SIZE_UUID, DISCONNECT_UUID,
-    IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
-    TRANSFER_SUMMARY_REPORT_UUID,
+    BLEParse, BLEPeer, CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, IdentityRequest,
+    OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+    TransferSummaryReport,
 };
-use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
+use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
+use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, DeviceInfo,
 };
-use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::BleOpenId4VpResponse;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
@@ -40,9 +41,8 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
     Chunk, ChunkExt, Chunks, MessageSize,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, VerificationProtocolError,
+    VerificationProtocolError, deserialize_interaction_data,
 };
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;

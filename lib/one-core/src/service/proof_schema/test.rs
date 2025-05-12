@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
+use mockall::predicate::*;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -23,17 +23,17 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     Features, FormatterCapabilities, SelectiveDisclosure,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
+use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::RevocationMethodCapabilities;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -43,13 +43,13 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ErrorCode, ErrorCodeMixin, ServiceError,
     ValidationError,
 };
+use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
     ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
     ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofInputSchemaRequestDTO,
     ProofSchemaFilterValue,
 };
-use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::test_utilities::{
     dummy_credential_schema, dummy_organisation, dummy_proof_schema, generic_config,
     generic_formatter_capabilities, get_dummy_date,
@@ -2287,13 +2287,15 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
 #[tokio::test]
 async fn test_create_proof_schema_verify_nested_2nd_level_success() {
     let keys = ["root/nested", "root/nested2", "root/nested3"];
-    assert!(test_create_proof_schema_verify_nested_generic(
-        &keys,
-        &[Features::SelectiveDisclosure],
-        &[SelectiveDisclosure::SecondLevel]
+    assert!(
+        test_create_proof_schema_verify_nested_generic(
+            &keys,
+            &[Features::SelectiveDisclosure],
+            &[SelectiveDisclosure::SecondLevel]
+        )
+        .await
+        .is_ok()
     )
-    .await
-    .is_ok())
 }
 
 #[tokio::test]
@@ -2303,25 +2305,29 @@ async fn test_create_proof_schema_verify_nested_2nd_level_fail_3rd_level() {
         "root/nested2",
         "root/nested3/even more nested",
     ];
-    assert!(test_create_proof_schema_verify_nested_generic(
-        &keys,
-        &[Features::SelectiveDisclosure],
-        &[SelectiveDisclosure::SecondLevel]
-    )
-    .await
-    .is_err_and(|e| e.error_code() == ErrorCode::BR_0130));
+    assert!(
+        test_create_proof_schema_verify_nested_generic(
+            &keys,
+            &[Features::SelectiveDisclosure],
+            &[SelectiveDisclosure::SecondLevel]
+        )
+        .await
+        .is_err_and(|e| e.error_code() == ErrorCode::BR_0130)
+    );
 }
 
 #[tokio::test]
 async fn test_create_proof_schema_verify_nested_2nd_level_success_root_level() {
     let keys = ["root/nested", "root", "root/nested3"];
-    assert!(test_create_proof_schema_verify_nested_generic(
-        &keys,
-        &[Features::SelectiveDisclosure],
-        &[SelectiveDisclosure::SecondLevel]
-    )
-    .await
-    .is_ok());
+    assert!(
+        test_create_proof_schema_verify_nested_generic(
+            &keys,
+            &[Features::SelectiveDisclosure],
+            &[SelectiveDisclosure::SecondLevel]
+        )
+        .await
+        .is_ok()
+    );
 }
 
 #[tokio::test]
@@ -2332,13 +2338,15 @@ async fn test_create_proof_schema_verify_nested_any_level_success() {
         "root/nested3",
         "root/nested4/even more nested/with nested claim",
     ];
-    assert!(test_create_proof_schema_verify_nested_generic(
-        &keys,
-        &[Features::SelectiveDisclosure],
-        &[SelectiveDisclosure::AnyLevel]
-    )
-    .await
-    .is_ok());
+    assert!(
+        test_create_proof_schema_verify_nested_generic(
+            &keys,
+            &[Features::SelectiveDisclosure],
+            &[SelectiveDisclosure::AnyLevel]
+        )
+        .await
+        .is_ok()
+    );
 }
 
 #[tokio::test]

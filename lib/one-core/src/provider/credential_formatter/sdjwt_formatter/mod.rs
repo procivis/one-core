@@ -313,7 +313,7 @@ pub(super) async fn extract_credentials_internal(
         (None, None) => {
             return Err(FormatterError::Failed(
                 "Missing issuer in SD-JWT".to_string(),
-            ))
+            ));
         }
         (None, Some(iss)) => iss.to_did_value()?,
         (Some(iss), None) => iss

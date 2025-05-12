@@ -10,12 +10,12 @@ use one_core::model::revocation_list::{
     RevocationListPurpose, RevocationListRelations, StatusListType,
 };
 use one_core::model::validity_credential::ValidityCredentialType;
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use shared_types::{CredentialId, DidValue};
-use time::macros::format_description;
 use time::OffsetDateTime;
+use time::macros::format_description;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::full_flow_common::proof_jwt;
@@ -117,8 +117,8 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method() {
 }
 
 #[tokio::test]
-async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existing_token_status_list(
-) {
+async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existing_token_status_list()
+ {
     let issuer_setup = issuer_setup().await;
     issuer_setup
         .context

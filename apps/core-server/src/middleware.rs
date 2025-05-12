@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use axum::Extension;
 use axum::body::Body;
 use axum::extract::MatchedPath;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
-use axum::Extension;
 use headers::HeaderValue;
 use sentry::{Hub, SentryFutureExt};
 

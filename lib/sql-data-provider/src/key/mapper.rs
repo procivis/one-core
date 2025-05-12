@@ -7,7 +7,7 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use crate::common::calculate_pages_count;
 use crate::entity;
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
 };
 
 pub(super) fn from_model_and_relations(

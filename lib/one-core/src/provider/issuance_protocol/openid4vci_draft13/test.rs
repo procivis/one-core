@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use secrecy::SecretSlice;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -249,7 +249,10 @@ async fn test_generate_share_credentials() {
     let protocol = setup_protocol(Default::default());
 
     let result = protocol.issuer_share_credential(&credential).await.unwrap();
-    assert_eq!(result.url, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    assert_eq!(
+        result.url,
+        "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+    );
 }
 
 #[tokio::test]
@@ -278,9 +281,11 @@ async fn test_generate_share_credentials_offer_by_value() {
     assert!(
         result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     );
-    assert!(result
-        .url
-        .contains("%22issuer_did%22%3A%22did%3Aexample%3A123%22"))
+    assert!(
+        result
+            .url
+            .contains("%22issuer_did%22%3A%22did%3Aexample%3A123%22")
+    )
 }
 
 #[tokio::test]
@@ -1192,8 +1197,8 @@ fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_f
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_root_field_missing_error(
-) {
+fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_root_field_missing_error()
+ {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([(
@@ -1219,7 +1224,9 @@ async fn test_can_handle_issuance_success_with_custom_url_scheme() {
         ..Default::default()
     });
 
-    let test_url = format!("{url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    let test_url = format!(
+        "{url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+    );
     assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
@@ -1233,7 +1240,9 @@ fn test_can_handle_issuance_fail_with_custom_url_scheme() {
         ..Default::default()
     });
 
-    let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    let test_url = format!(
+        "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+    );
     assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
@@ -1246,7 +1255,9 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
         ..Default::default()
     });
 
-    let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    let test_url = format!(
+        "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+    );
     assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 

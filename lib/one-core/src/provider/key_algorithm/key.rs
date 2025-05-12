@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use one_crypto::SignerError;
 use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::bbs::parse_bbs_input;
-use one_crypto::SignerError;
 use secrecy::SecretString;
 use thiserror::Error;
 

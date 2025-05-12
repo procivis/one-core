@@ -10,8 +10,8 @@ use sea_orm::{
 use shared_types::KeyId;
 
 use crate::entity::key;
-use crate::key::mapper::{create_list_response, from_model_and_relations};
 use crate::key::KeyProvider;
+use crate::key::mapper::{create_list_response, from_model_and_relations};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 

@@ -11,16 +11,17 @@ use shared_types::{CredentialId, DidId, DidValue};
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
 use crate::provider::credential_formatter::model::{CredentialStatus, TokenVerifier};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -31,9 +32,8 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::token_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::token_status_list::resolver::StatusListCachingLoader;
 use crate::provider::revocation::token_status_list::util::{
-    calculate_preferred_token_size, PREFERRED_ENTRY_SIZE,
+    PREFERRED_ENTRY_SIZE, calculate_preferred_token_size,
 };
-use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 

@@ -5,8 +5,9 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::IssuerResponseDTO;
 use super::Params;
+use super::dto::IssuerResponseDTO;
+use crate::KeyProvider;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::validity_credential::{Lvvc, ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::CredentialStatus;
@@ -16,7 +17,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::bearer_token::prepare_bearer_token;
-use crate::KeyProvider;
 
 /// HOLDER: fetch remote or get locally cached LVVC credential
 #[allow(clippy::too_many_arguments)]

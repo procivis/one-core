@@ -7,13 +7,13 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::{Keys, MinMax};
 use crate::provider::did_method::model::AmountOfKeys;
 use crate::provider::did_method::web::{
-    did_value_to_url, fetch_did_web_document, Params, WebDidMethod,
+    Params, WebDidMethod, did_value_to_url, fetch_did_web_document,
 };
-use crate::provider::did_method::DidMethod;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::{HttpClient, MockHttpClient};
 use crate::service::key::dto::{
@@ -169,7 +169,7 @@ async fn test_did_web_value_extract() {
         (
             "did:web:test-domain.com%3A54812:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7",
             "https://test-domain.com:54812/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
-        )
+        ),
     ];
 
     for case in test_cases {
@@ -205,7 +205,7 @@ async fn test_did_web_value_extract_debug_http() {
         (
             "did:web:test-domain.com%3A54812:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7",
             "http://test-domain.com:54812/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
-        )
+        ),
     ];
 
     for case in test_cases {

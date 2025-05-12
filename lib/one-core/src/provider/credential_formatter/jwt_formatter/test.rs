@@ -13,10 +13,10 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
-use crate::provider::credential_formatter::jwt_formatter::model::{
-    VcClaim, VerifiableCredential, VP,
-};
 use crate::provider::credential_formatter::jwt_formatter::Params;
+use crate::provider::credential_formatter::jwt_formatter::model::{
+    VP, VcClaim, VerifiableCredential,
+};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
     CredentialStatus, ExtractPresentationCtx, Issuer, MockTokenVerifier, PublishedClaim,
@@ -24,9 +24,9 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
@@ -217,15 +217,17 @@ async fn test_format_credential() {
 
     assert!(vc.credential_schema.unwrap()[0].metadata.is_none());
 
-    assert!(vc
-        .credential_subject
-        .iter()
-        .flat_map(|v| v.claims.iter())
-        .all(|claim| ["name", "age"].contains(&claim.0.as_str())));
+    assert!(
+        vc.credential_subject
+            .iter()
+            .flat_map(|v| v.claims.iter())
+            .all(|claim| ["name", "age"].contains(&claim.0.as_str()))
+    );
 
-    assert!(vc
-        .context
-        .contains(&ContextType::Url("http://context.com".parse().unwrap())));
+    assert!(
+        vc.context
+            .contains(&ContextType::Url("http://context.com".parse().unwrap()))
+    );
     assert!(vc.r#type.contains(&String::from("Type1")));
 
     assert_eq!(1, vc.credential_status.len());
@@ -310,11 +312,12 @@ async fn test_format_credential_with_layout_properties() {
 
     assert!(vc.credential_schema.unwrap()[0].metadata.is_some());
 
-    assert!(vc
-        .credential_subject
-        .iter()
-        .flat_map(|v| v.claims.iter())
-        .all(|claim| ["name", "age"].contains(&claim.0.as_str())));
+    assert!(
+        vc.credential_subject
+            .iter()
+            .flat_map(|v| v.claims.iter())
+            .all(|claim| ["name", "age"].contains(&claim.0.as_str()))
+    );
 
     assert!(vc.context.contains(&ContextType::Url(
         "https://custom-context.org".parse().unwrap()

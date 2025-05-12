@@ -10,19 +10,19 @@ use super::model::{
     OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
 };
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
 use crate::provider::verification_protocol::openid4vp::x509::extract_x5c_san_dns;
-use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::util::key_verification::KeyVerification;
 use crate::util::x509::is_dns_name_matching;
 
@@ -507,7 +507,7 @@ pub(crate) fn validate_interaction_data(
             _ => {
                 return Err(VerificationProtocolError::InvalidRequest(
                     "invalid client_metadata.vp_formats[\"ldp_vp\"] structure".to_string(),
-                ))
+                ));
             }
         }
     }
@@ -520,7 +520,7 @@ pub(crate) fn validate_interaction_data(
             _ => {
                 return Err(VerificationProtocolError::InvalidRequest(
                     "invalid client_metadata.vp_formats[\"vc+sd-jwt\"] structure".to_string(),
-                ))
+                ));
             }
         };
 
@@ -557,7 +557,7 @@ pub(crate) fn validate_interaction_data(
         Some(_) => {
             return Err(VerificationProtocolError::InvalidRequest(
                 "invalid client_metadata.vp_formats[\"mso_mdoc\"] structure".to_string(),
-            ))
+            ));
         }
         None => {}
     };

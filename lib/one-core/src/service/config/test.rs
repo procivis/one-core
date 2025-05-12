@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields, Params};
 use crate::service::config::dto::ConfigDTO;

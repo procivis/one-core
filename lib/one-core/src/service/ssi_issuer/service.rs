@@ -5,13 +5,13 @@ use convert_case::{Case, Casing};
 use shared_types::{CredentialSchemaId, OrganisationId};
 use url::Url;
 
+use super::SSIIssuerService;
 use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
     SdJwtVcTypeMetadataResponseDTO,
 };
-use super::SSIIssuerService;
-use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
+use crate::config::core_config::{FormatType, Params};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::list_filter::{ListFilterValue, StringMatch};

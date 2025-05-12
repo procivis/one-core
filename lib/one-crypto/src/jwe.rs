@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
+use aes::Aes128;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut};
-use aes::Aes128;
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
@@ -13,9 +13,9 @@ use serde_json::json;
 use serde_with::skip_serializing_none;
 use strum::Display;
 
+use crate::HmacSha256;
 use crate::encryption::EncryptionError;
 use crate::utilities::{generate_random_bytes, get_rng};
-use crate::HmacSha256;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Header {

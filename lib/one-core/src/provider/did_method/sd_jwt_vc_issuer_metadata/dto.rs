@@ -2,7 +2,7 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use url::Url;
 
-use crate::provider::did_method::common::{jwk_context, jwk_verification_method, ENC, SIG};
+use crate::provider::did_method::common::{ENC, SIG, jwk_context, jwk_verification_method};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::service::key::dto::PublicKeyJwkDTO;
 

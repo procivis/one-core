@@ -11,11 +11,11 @@ use crate::provider::did_method::model::{
     AmountOfKeys, DidDocument, DidVerificationMethod, Operation,
 };
 use crate::provider::did_method::{DidCreateKeys, DidMethod};
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 
 #[tokio::test]
 async fn test_resolve_jwk_did_without_use_field() {

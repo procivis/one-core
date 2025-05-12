@@ -16,8 +16,8 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::revocation_list::dto::RevocationListResponseDTO;
 use crate::service::revocation_list::RevocationListService;
+use crate::service::revocation_list::dto::RevocationListResponseDTO;
 use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{DidId, DidValue, OrganisationId};
 
-use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
+use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{

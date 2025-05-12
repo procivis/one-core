@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use config::ConfigError;
 use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
-use config::ConfigError;
 use one_crypto::CryptoProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
@@ -44,8 +44,8 @@ use crate::provider::credential_formatter::json_ld::context::caching_loader::Jso
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::HttpClient;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::issuance_protocol_providers_from_config;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;

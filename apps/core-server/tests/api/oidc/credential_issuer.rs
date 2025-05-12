@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use one_core::model::credential_schema::CredentialSchemaType;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -204,13 +204,13 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
         "did:tdw",
         "jwk",
     ]);
-    let cryptographic_binding_methods_supported = &metadata
-        ["cryptographic_binding_methods_supported"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|val| val.as_str().unwrap())
-        .collect::<HashSet<&str>>();
+    let cryptographic_binding_methods_supported =
+        &metadata["cryptographic_binding_methods_supported"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|val| val.as_str().unwrap())
+            .collect::<HashSet<&str>>();
     assert_eq!(
         *cryptographic_binding_methods_supported,
         expected_binding_methods
@@ -218,13 +218,13 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
 
     let expected_proof_signing_algs =
         HashSet::from(["BBS_PLUS", "EdDSA", "EDDSA", "CRYDI3", "DILITHIUM", "ES256"]);
-    let proof_signing_algs = &metadata["proof_types_supported"]["jwt"]
-        ["proof_signing_alg_values_supported"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|val| val.as_str().unwrap())
-        .collect::<HashSet<&str>>();
+    let proof_signing_algs =
+        &metadata["proof_types_supported"]["jwt"]["proof_signing_alg_values_supported"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|val| val.as_str().unwrap())
+            .collect::<HashSet<&str>>();
     assert_eq!(*proof_signing_algs, expected_proof_signing_algs);
 
     metadata["format"].assert_eq(&json!("mso_mdoc"));

@@ -1,7 +1,7 @@
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::json;
 
-use crate::fixtures::{encrypted_token, TestingCredentialParams};
+use crate::fixtures::{TestingCredentialParams, encrypted_token};
 use crate::utils::context::TestContext;
 
 #[tokio::test]

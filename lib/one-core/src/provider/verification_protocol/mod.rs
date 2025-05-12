@@ -7,10 +7,10 @@ use dto::{
 };
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
-use openid4vp::draft20::model::OpenID4Vp20Params;
 use openid4vp::draft20::OpenID4VP20HTTP;
-use openid4vp::draft25::model::OpenID4Vp25Params;
+use openid4vp::draft20::model::OpenID4Vp20Params;
 use openid4vp::draft25::OpenID4VP25HTTP;
+use openid4vp::draft25::model::OpenID4Vp25Params;
 use openid4vp::model::{ClientIdScheme, OpenID4VpPresentationFormat};
 use openid4vp::proximity_draft00::{OpenID4VPProximityDraft00, OpenID4VPProximityDraft00Params};
 use serde::de::Deserialize;
@@ -19,10 +19,10 @@ use shared_types::KeyId;
 use url::Url;
 
 use super::mqtt_client::MqttClient;
+use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     CoreConfig, FormatType, VerificationProtocolConfig, VerificationProtocolType,
 };
-use crate::config::ConfigValidationError;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;

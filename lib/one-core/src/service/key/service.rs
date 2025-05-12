@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use one_crypto::signer::ecdsa::ECDSASigner;
-use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
+use rcgen::{KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519, RemoteKeyPair};
 use shared_types::KeyId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyCheckCertificateRequestDTO};
 use super::mapper::request_to_certificate_params;
-use super::KeyService;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;

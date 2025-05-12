@@ -79,7 +79,7 @@ pub(crate) fn oidc_verifier_presentation_definition(
         _ => {
             return Err(OpenID4VCError::MappingError(
                 "input_schemas are missing".to_string(),
-            ))
+            ));
         }
     };
 

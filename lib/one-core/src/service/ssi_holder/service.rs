@@ -1,8 +1,8 @@
 use shared_types::OrganisationId;
 use url::Url;
 
-use super::dto::HandleInvitationResultDTO;
 use super::SSIHolderService;
+use super::dto::HandleInvitationResultDTO;
 use crate::service::error::{EntityNotFoundError, ServiceError};
 
 impl SSIHolderService {

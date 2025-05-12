@@ -6,8 +6,8 @@ use utoipa::openapi::{Contact, ExternalDocs, Server, Tag};
 use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
-use crate::build_info::{build, APP_VERSION};
 use crate::ServerConfig;
+use crate::build_info::{APP_VERSION, build};
 
 pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
@@ -127,19 +127,21 @@ pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::op
 }
 
 fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
-    let mut tags = vec![Tag::builder()
-        .name("other")
-        .description(Some(indoc::formatdoc! {"
+    let mut tags = vec![
+        Tag::builder()
+            .name("other")
+            .description(Some(indoc::formatdoc! {"
                 Returns the system configuration, along with other system information.
 
                 Related guide: [Configuration](/configure)
             "}))
-        .extensions(Some(
-            Extensions::builder()
-                .add("x-displayName", "System information")
-                .build(),
-        ))
-        .build()];
+            .extensions(Some(
+                Extensions::builder()
+                    .add("x-displayName", "System information")
+                    .build(),
+            ))
+            .build(),
+    ];
 
     if config.enable_management_endpoints {
         tags.append(& mut vec![Tag::builder()

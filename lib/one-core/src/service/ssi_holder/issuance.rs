@@ -4,8 +4,8 @@ use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::dto::HandleInvitationResultDTO;
 use super::SSIHolderService;
+use super::dto::HandleInvitationResultDTO;
 use crate::common_mapper::value_to_model_claims;
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::model::claim::Claim;
@@ -22,12 +22,12 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,

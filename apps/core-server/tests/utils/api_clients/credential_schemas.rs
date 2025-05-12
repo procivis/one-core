@@ -82,7 +82,9 @@ impl CredentialSchemasApi {
         organisation_id: &impl Display,
         include: Option<Vec<CredentialSchemaListIncludeEntityTypeEnum>>,
     ) -> Response {
-        let mut url = format!("/api/credential-schema/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}");
+        let mut url = format!(
+            "/api/credential-schema/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}"
+        );
 
         if let Some(include) = include {
             for item in include {

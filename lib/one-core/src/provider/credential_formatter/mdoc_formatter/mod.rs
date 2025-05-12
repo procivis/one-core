@@ -15,15 +15,15 @@ use coset::{
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::{DataElementValue, DeviceNamespaces};
-use one_crypto::utilities::generate_random_bytes;
 use one_crypto::SignerError;
+use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use serde_json::json;
-use serde_with::{serde_as, DurationSeconds};
+use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{CredentialSchemaId, DidValue};
-use time::format_description::well_known::Rfc3339;
 use time::format_description::FormatItem;
+use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
 use url::Url;
@@ -39,7 +39,7 @@ use self::mdoc::{
 };
 use super::model::{CredentialData, HolderBindingCtx};
 use super::nest_claims;
-use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
@@ -48,6 +48,7 @@ use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
@@ -55,7 +56,6 @@ use crate::provider::credential_formatter::model::{
     FormatterCapabilities, Presentation, PublishedClaim, SelectiveDisclosure, SignatureProvider,
     TokenVerifier, VerificationFn,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -1173,7 +1173,7 @@ fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, Format
         _ => {
             return Err(FormatterError::Failed(format!(
                 "Failed mapping algorithm `{algorithm}` to name compatible with allowed COSE Algorithms"
-            )))
+            )));
         }
     };
     let algorithm_header = coset::HeaderBuilder::new().algorithm(algorithm).build();
@@ -1322,7 +1322,7 @@ async fn try_build_cose_key(
         key => {
             return Err(FormatterError::Failed(format!(
                 "Key not available for mdoc {key:?}"
-            )))
+            )));
         }
     };
 

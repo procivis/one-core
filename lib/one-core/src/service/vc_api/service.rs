@@ -4,13 +4,13 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::VCAPIService;
 use super::dto::{
     CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
     CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
     PresentationVerifyResponse,
 };
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
-use super::VCAPIService;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;

@@ -4,8 +4,8 @@ use json_ld::context_processing::ProcessedOwned;
 use json_ld::rdf::RdfDirection;
 use json_ld::rdf_types::Generator;
 use json_ld::{
-    rdf_types, BlankIdBuf, Compact, ExpandedDocument, ExtractContext, IriBuf, JsonLdProcessor,
-    Loader, Process, RdfQuads, RemoteDocument,
+    BlankIdBuf, Compact, ExpandedDocument, ExtractContext, IriBuf, JsonLdProcessor, Loader,
+    Process, RdfQuads, RemoteDocument, rdf_types,
 };
 use sophia_api::quad::Spog;
 use uuid::Uuid;
@@ -122,10 +122,10 @@ mod test {
 
     use super::*;
     use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
+    use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::NQuadLines;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
         context_examples_vocabulary, context_vc2_0,
     };
-    use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::NQuadLines;
 
     #[tokio::test]
     async fn test_skolemize_jsonld() {
@@ -170,15 +170,19 @@ mod test {
 
         let compact = skolemized.compact.into_serde_json();
 
-        assert!(compact["credentialSubject"]["degree"]["id"]
-            .as_str()
-            .unwrap()
-            .starts_with(URN_CUSTOM_SCHEME_PREFIX));
+        assert!(
+            compact["credentialSubject"]["degree"]["id"]
+                .as_str()
+                .unwrap()
+                .starts_with(URN_CUSTOM_SCHEME_PREFIX)
+        );
 
-        assert!(compact["credentialSubject"]["alumniOf"]["id"]
-            .as_str()
-            .unwrap()
-            .starts_with(URN_CUSTOM_SCHEME_PREFIX));
+        assert!(
+            compact["credentialSubject"]["alumniOf"]["id"]
+                .as_str()
+                .unwrap()
+                .starts_with(URN_CUSTOM_SCHEME_PREFIX)
+        );
     }
 
     #[tokio::test]

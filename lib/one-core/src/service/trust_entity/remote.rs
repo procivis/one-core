@@ -2,11 +2,11 @@ use std::str::FromStr;
 
 use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 
+use super::TrustEntityService;
 use super::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityFromDidPublisherRequestDTO,
     GetTrustEntityResponseDTO, UpdateTrustEntityFromDidRequestDTO,
 };
-use super::TrustEntityService;
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::key::KeyRelations;
 use crate::service::error::{

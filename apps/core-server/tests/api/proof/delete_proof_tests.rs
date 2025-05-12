@@ -35,24 +35,28 @@ async fn test_delete_proof_created_holder_success() {
         .await;
 
     // WHEN
-    assert!(!context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await
-        .values
-        .is_empty());
+    assert!(
+        !context
+            .db
+            .histories
+            .get_by_entity_id(&proof.id.into())
+            .await
+            .values
+            .is_empty()
+    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);
-    assert!(context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await
-        .values
-        .is_empty());
+    assert!(
+        context
+            .db
+            .histories
+            .get_by_entity_id(&proof.id.into())
+            .await
+            .values
+            .is_empty()
+    );
 
     let resp = context.api.proofs.get(proof.id).await;
     assert_eq!(resp.status(), 404);
@@ -118,24 +122,28 @@ async fn test_delete_proof_created_issuer_success() {
         .await;
 
     // WHEN
-    assert!(!context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await
-        .values
-        .is_empty());
+    assert!(
+        !context
+            .db
+            .histories
+            .get_by_entity_id(&proof.id.into())
+            .await
+            .values
+            .is_empty()
+    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);
-    assert!(context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await
-        .values
-        .is_empty());
+    assert!(
+        context
+            .db
+            .histories
+            .get_by_entity_id(&proof.id.into())
+            .await
+            .values
+            .is_empty()
+    );
 
     let resp = context.api.proofs.get(proof.id).await;
     assert_eq!(resp.status(), 404);
@@ -195,13 +203,15 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
         .await;
 
     // WHEN
-    assert!(!context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await
-        .values
-        .is_empty());
+    assert!(
+        !context
+            .db
+            .histories
+            .get_by_entity_id(&proof.id.into())
+            .await
+            .values
+            .is_empty()
+    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN
@@ -291,13 +301,15 @@ async fn test_delete_proof_old_exchange() {
         .await;
 
     // WHEN
-    assert!(!context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await
-        .values
-        .is_empty());
+    assert!(
+        !context
+            .db
+            .histories
+            .get_by_entity_id(&proof.id.into())
+            .await
+            .values
+            .is_empty()
+    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN

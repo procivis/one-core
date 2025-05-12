@@ -5,8 +5,8 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use itertools::Itertools;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use strum::Display;
 use thiserror::Error;
 

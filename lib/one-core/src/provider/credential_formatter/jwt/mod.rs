@@ -7,8 +7,8 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_crypto::SignerError;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use shared_types::DidValue;
 
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};

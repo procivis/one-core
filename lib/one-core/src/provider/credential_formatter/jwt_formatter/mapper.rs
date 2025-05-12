@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::Context;
 use shared_types::DidValue;
 
-use super::model::{VcClaim, VerifiableCredential, VP};
+use super::model::{VP, VcClaim, VerifiableCredential};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{

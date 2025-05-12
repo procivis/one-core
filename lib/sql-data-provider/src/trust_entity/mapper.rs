@@ -5,14 +5,14 @@ use one_core::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 use one_core::service::trust_entity::dto::{
     SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityFilterValue,
 };
-use sea_orm::sea_query::SimpleExpr;
 use sea_orm::IntoSimpleExpr;
+use sea_orm::sea_query::SimpleExpr;
 use shared_types::OrganisationId;
 
 use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
 };
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
 

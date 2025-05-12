@@ -58,7 +58,7 @@ pub(crate) fn select_disclosures(
                 None => {
                     return Err(FormatterError::Failed(format!(
                         "Cannot find `{key_part}` from key `{disclosed_key}` in disclosures"
-                    )))
+                    )));
                 }
                 Some(node) => {
                     current_node = &node.subdisclosures;

@@ -2,10 +2,10 @@ use shared_types::{DidId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::IdentifierService;
 use super::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
-use super::IdentifierService;
 use crate::model::did::DidRelations;
 use crate::model::identifier::{
     Identifier, IdentifierListQuery, IdentifierRelations, IdentifierStatus, IdentifierType,

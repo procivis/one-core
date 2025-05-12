@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use hex_literal::hex;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
-use one_dev_services::model::KeyAlgorithmType;
 use one_dev_services::OneDevCore;
+use one_dev_services::model::KeyAlgorithmType;
 
 fn main() {
     let core = OneDevCore::new(None, Arc::new(ReqwestClient::default())).unwrap();

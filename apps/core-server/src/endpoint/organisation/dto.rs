@@ -1,7 +1,7 @@
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;

@@ -1,5 +1,5 @@
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::GetCredentialQueryDTO;
@@ -101,7 +101,7 @@ pub(crate) async fn get_credential_list(
                 Err::<GetCredentialsResponseDTO, _>(err),
                 state,
                 "getting credential list",
-            )
+            );
         }
     };
 

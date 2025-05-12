@@ -5,7 +5,7 @@ use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use shared_types::ProofId;
 
-use crate::fixtures::{create_organisation, TestingDidParams, TestingIdentifierParams};
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams, create_organisation};
 use crate::utils::api_clients::proofs::ProofFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -794,11 +794,13 @@ async fn test_list_proof_with_retain_date() {
     assert_eq!(resp["totalItems"], 1);
     assert_eq!(resp["totalPages"], 1);
     assert_eq!(resp["values"].as_array().unwrap().len(), 1);
-    assert!(resp["values"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|proof| !proof["retainUntilDate"].is_null()))
+    assert!(
+        resp["values"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|proof| !proof["retainUntilDate"].is_null())
+    )
 }
 
 #[tokio::test]

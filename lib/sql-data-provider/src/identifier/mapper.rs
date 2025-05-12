@@ -7,8 +7,8 @@ use time::OffsetDateTime;
 use crate::entity::identifier::ActiveModel;
 use crate::entity::{self, did, identifier, key, key_did};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinRelations,
-    IntoSortingColumn, JoinRelation,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl From<Identifier> for ActiveModel {

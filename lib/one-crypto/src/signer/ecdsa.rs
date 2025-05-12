@@ -10,7 +10,7 @@ use p256::{AffinePoint, EncodedPoint, NistP256, PublicKey};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::encryption::EncryptionError;
-use crate::jwe::{decode_b64, RemoteJwk};
+use crate::jwe::{RemoteJwk, decode_b64};
 use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
 

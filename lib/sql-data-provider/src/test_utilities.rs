@@ -26,7 +26,7 @@ use crate::entity::{
     identifier, interaction, key, key_did, organisation, proof, proof_claim,
     proof_input_claim_schema, proof_input_schema, proof_schema,
 };
-use crate::{db_conn, DataLayer};
+use crate::{DataLayer, db_conn};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)

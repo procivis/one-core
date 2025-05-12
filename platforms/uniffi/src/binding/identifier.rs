@@ -9,13 +9,13 @@ use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::identifier::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 
 use super::common::SortDirection;
 use super::did::KeyRoleBindingEnum;
-use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{from_id_opt, into_id, into_id_opt, TimestampFormat};
 use crate::OneCoreBinding;
+use crate::error::{BindingError, ErrorResponseBindingDTO};
+use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

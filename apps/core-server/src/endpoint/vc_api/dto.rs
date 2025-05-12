@@ -6,7 +6,7 @@ use one_core::service::vc_api::dto::{
     CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
     PresentationVerifyResponse, VerifyOptions,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 

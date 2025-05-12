@@ -18,7 +18,7 @@ use crate::provider::key_algorithm::key::{
     SignaturePrivateKeyHandle, SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::key_algorithm::{parse_multibase_with_tag, KeyAlgorithm};
+use crate::provider::key_algorithm::{KeyAlgorithm, parse_multibase_with_tag};
 use crate::provider::key_utils::{eddsa_public_key_as_jwk, eddsa_public_key_as_multibase};
 
 pub struct Eddsa;

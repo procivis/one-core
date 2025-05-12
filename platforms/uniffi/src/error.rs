@@ -149,7 +149,9 @@ pub enum BleError {
     InvalidUUID { uuid: String },
     #[error("Not connected to device {address}")]
     DeviceNotConnected { address: String },
-    #[error("Operation {operation} can not be performed on characteristic {characteristic}, service UUID {service}")]
+    #[error(
+        "Operation {operation} can not be performed on characteristic {characteristic}, service UUID {service}"
+    )]
     InvalidCharacteristicOperation {
         service: String,
         characteristic: String,

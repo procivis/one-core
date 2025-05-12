@@ -14,7 +14,7 @@ use crate::common::calculate_pages_count;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{did, interaction, proof, proof_claim, proof_schema};
 use crate::list_query_generic::{
-    get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    IntoFilterCondition, IntoSortingColumn, get_string_match_condition,
 };
 
 impl IntoSortingColumn for SortableProofColumn {

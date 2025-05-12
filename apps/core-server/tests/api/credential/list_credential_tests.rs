@@ -142,11 +142,13 @@ async fn test_get_list_credential_filter_by_role() {
         assert_eq!(credentials["totalItems"], number);
         assert_eq!(credentials["totalPages"], 1);
         assert_eq!(credentials["values"].as_array().unwrap().len(), number);
-        assert!(credentials["values"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|credential| { credential["role"] == role }));
+        assert!(
+            credentials["values"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|credential| { credential["role"] == role })
+        );
     }
 }
 

@@ -1,8 +1,8 @@
 use one_core::model;
 use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
-use one_dto_mapper::{convert_inner, From, Into};
-use sea_orm::entity::prelude::*;
+use one_dto_mapper::{From, Into, convert_inner};
 use sea_orm::FromJsonQueryResult;
+use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;

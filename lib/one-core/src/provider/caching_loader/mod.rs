@@ -145,7 +145,9 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                         RemoteEntityStorageError::NotUpdated => {
                             // ONE-4160: ignoring potential failure when update fails due to missing entry
                             // the updated entry might be deleted at this point by another thread
-                            tracing::debug!("Cache entry deleted while updating. It will be recreated on next usage.");
+                            tracing::debug!(
+                                "Cache entry deleted while updating. It will be recreated on next usage."
+                            );
                         }
                         _ => return Err(error.into()),
                     }

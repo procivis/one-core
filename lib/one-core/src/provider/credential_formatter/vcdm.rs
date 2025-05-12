@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use bon::bon;
-use indexmap::{indexset, IndexMap, IndexSet};
+use indexmap::{IndexMap, IndexSet, indexset};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, skip_serializing_none, OneOrMany};
+use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -486,9 +486,11 @@ mod test {
     fn test_some_or_error_deserialization_fails_for_null_value() {
         let error = serde_json::from_str::<Foo>(r#"{"x": null}"#).err().unwrap();
 
-        assert!(error
-            .to_string()
-            .starts_with("Deserializer forbids deserializing `null`"));
+        assert!(
+            error
+                .to_string()
+                .starts_with("Deserializer forbids deserializing `null`")
+        );
     }
 
     #[test]

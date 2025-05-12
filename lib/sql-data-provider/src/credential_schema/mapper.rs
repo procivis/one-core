@@ -5,15 +5,15 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::SimpleExpr;
 use sea_orm::ActiveValue::Set;
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use shared_types::CredentialSchemaId;
 
 use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
 use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
 };
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {

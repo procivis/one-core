@@ -2,7 +2,7 @@ use one_core::service::did::dto::{
     CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
     DidResponseKeysDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryFrom};
+use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;

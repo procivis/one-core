@@ -2,12 +2,12 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
 use one_core::service::error::ServiceError;
-use one_dto_mapper::{convert_inner, From};
+use one_dto_mapper::{From, convert_inner};
 use url::Url;
 
+use crate::OneCoreBinding;
 use crate::error::BindingError;
 use crate::utils::into_id;
-use crate::OneCoreBinding;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

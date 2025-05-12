@@ -19,10 +19,10 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::common::calculate_pages_count;
+use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{
     claim_schemas_to_model_vec, claim_schemas_to_relations, credential_schema_from_models,
 };
-use crate::credential_schema::CredentialSchemaProvider;
 use crate::entity::credential_schema::LayoutType;
 use crate::entity::{
     claim_schema, credential_schema, credential_schema_claim_schema, organisation,

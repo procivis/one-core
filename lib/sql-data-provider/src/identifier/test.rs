@@ -21,8 +21,8 @@ use sea_orm::DatabaseConnection;
 use shared_types::DidValue;
 use uuid::Uuid;
 
-use super::history::IdentifierHistoryDecorator;
 use super::IdentifierProvider;
+use super::history::IdentifierHistoryDecorator;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_did_key, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
@@ -202,12 +202,14 @@ async fn test_get_identifier() {
     setup.provider.create(identifier.clone()).await.unwrap();
 
     let non_existent_id = Uuid::new_v4().into();
-    assert!(setup
-        .provider
-        .get(non_existent_id, &Default::default())
-        .await
-        .unwrap()
-        .is_none());
+    assert!(
+        setup
+            .provider
+            .get(non_existent_id, &Default::default())
+            .await
+            .unwrap()
+            .is_none()
+    );
 
     let retrieved = setup
         .provider

@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use ProofStateEnum::{Created, Pending, Requested, Retracted};
 use anyhow::Context;
 use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use ProofStateEnum::{Created, Pending, Requested, Retracted};
 
+use super::ProofService;
 use super::dto::{
     CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
     ProofDetailResponseDTO, ProposeProofResponseDTO, ShareProofRequestDTO,
@@ -17,7 +18,6 @@ use super::mapper::{
 use super::validator::{
     validate_mdl_exchange, validate_redirect_uri, validate_verification_key_storage_compatibility,
 };
-use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
@@ -25,7 +25,7 @@ use crate::config::validator::exchange::{
     validate_exchange_type, validate_protocol_did_compatibility,
 };
 use crate::config::validator::transport::{
-    validate_and_select_transport_type, SelectedTransportType,
+    SelectedTransportType, validate_and_select_transport_type,
 };
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -52,7 +52,7 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
-    receive_mdl_request, start_mdl_server, MdocBleHolderInteractionData,
+    MdocBleHolderInteractionData, receive_mdl_request, start_mdl_server,
 };
 use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{

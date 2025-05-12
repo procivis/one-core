@@ -10,13 +10,14 @@ use axum::extract::DefaultBodyLimit;
 use axum::http::{Request, Response};
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, patch, post};
-use axum::{middleware, Extension, Router};
+use axum::{Extension, Router, middleware};
 use one_core::OneCore;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{info, info_span, warn, Span};
+use tracing::{Span, info, info_span, warn};
 use utoipa_swagger_ui::SwaggerUi;
 
+use crate::ServerConfig;
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, config, credential, credential_schema, did, did_resolver, history, identifier,
@@ -25,7 +26,6 @@ use crate::endpoint::{
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
-use crate::ServerConfig;
 
 pub(crate) struct InternalAppState {
     pub core: OneCore,

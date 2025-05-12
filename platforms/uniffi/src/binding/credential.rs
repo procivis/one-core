@@ -9,15 +9,15 @@ use one_core::service::credential::dto::{
     CredentialStateEnum, GetCredentialListResponseDTO, GetCredentialQueryDTO,
 };
 use one_core::service::error::{BusinessLogicError, ServiceError};
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 
 use super::common::SortDirection;
 use super::credential_schema::CredentialSchemaBindingDTO;
 use super::did::DidListItemBindingDTO;
 use super::identifier::GetIdentifierListItemBindingDTO;
+use crate::OneCoreBinding;
 use crate::error::BindingError;
 use crate::utils::into_id;
-use crate::OneCoreBinding;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

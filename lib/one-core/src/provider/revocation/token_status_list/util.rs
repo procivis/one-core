@@ -4,9 +4,9 @@ use std::io::{Read, Write};
 
 use bit_vec::BitVec;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use flate2::Compression;
 use thiserror::Error;
 
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;

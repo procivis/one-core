@@ -26,10 +26,10 @@ use crate::provider::credential_formatter::sdjwt_formatter::{Params, VcClaim};
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::test_utilities::{dummy_did_document, dummy_jwk};
 
 impl From<&str> for DisclosureArray {
@@ -107,12 +107,16 @@ async fn test_format_credential_a() {
         DisclosureArray::from_b64(parts[1]),
         DisclosureArray::from_b64(parts[2]),
     ];
-    assert!(disclosures
-        .iter()
-        .any(|disc| disc.key == "name" && disc.value == "John"));
-    assert!(disclosures
-        .iter()
-        .any(|disc| disc.key == "age" && disc.value == "42"));
+    assert!(
+        disclosures
+            .iter()
+            .any(|disc| disc.key == "name" && disc.value == "John")
+    );
+    assert!(
+        disclosures
+            .iter()
+            .any(|disc| disc.key == "age" && disc.value == "42")
+    );
 
     let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
 
@@ -157,23 +161,28 @@ async fn test_format_credential_a() {
 
     let vc = payload.custom.vc;
 
-    assert!(vc.credential_subject[0].claims["_sd"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|hashed_claim| hashed_claim.as_str().unwrap() == "YWJjMTIz"));
+    assert!(
+        vc.credential_subject[0].claims["_sd"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|hashed_claim| hashed_claim.as_str().unwrap() == "YWJjMTIz")
+    );
 
-    assert!(vc
-        .context
-        .contains(&ContextType::Url("http://context.com".parse().unwrap())));
+    assert!(
+        vc.context
+            .contains(&ContextType::Url("http://context.com".parse().unwrap()))
+    );
     assert!(vc.r#type.contains(&String::from("Type1")));
 
     assert_eq!(1, vc.credential_status.len());
     let first_credential_status = vc.credential_status.first().unwrap();
-    assert!(first_credential_status
-        .id
-        .as_ref()
-        .is_some_and(|id| id.as_str() == "did:status:id"));
+    assert!(
+        first_credential_status
+            .id
+            .as_ref()
+            .is_some_and(|id| id.as_str() == "did:status:id")
+    );
     assert_eq!(first_credential_status.r#type, "TYPE");
     assert_eq!(
         first_credential_status.status_purpose.as_deref(),
@@ -188,7 +197,10 @@ async fn test_format_credential_a() {
 async fn test_format_credential_with_array() {
     let claim1 = ("array", "[\"array_item\"]");
     let claim2 = ("nested", "nested_item");
-    let claim3 = ("root", "{\"_sd\":[\"MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs\",\"r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw\"]}");
+    let claim3 = (
+        "root",
+        "{\"_sd\":[\"MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs\",\"r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw\"]}",
+    );
     let claim4 = ("root_item", "root_item");
 
     let hash1 = "MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs";
@@ -421,10 +433,12 @@ async fn test_extract_credentials() {
 
     assert_eq!(1, credentials.status.len());
     let first_credential_status = credentials.status.first().unwrap();
-    assert!(first_credential_status
-        .id
-        .as_ref()
-        .is_some_and(|id| id.as_str() == "https://www.test-vc.com/status/id"));
+    assert!(
+        first_credential_status
+            .id
+            .as_ref()
+            .is_some_and(|id| id.as_str() == "https://www.test-vc.com/status/id")
+    );
     assert_eq!(first_credential_status.r#type, "TYPE");
     assert_eq!(
         first_credential_status.status_purpose.as_deref(),

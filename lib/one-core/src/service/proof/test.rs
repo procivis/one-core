@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use mockall::predicate::*;
 use mockall::Sequence;
+use mockall::predicate::*;
 use rstest::rstest;
 use secrecy::SecretSlice;
 use shared_types::ProofId;
@@ -43,15 +43,16 @@ use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ShareResponse, VerificationProtocolCapabilities,
 };
@@ -59,10 +60,9 @@ use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPPresentationDefinition,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
-use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::claim_repository::MockClaimRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;

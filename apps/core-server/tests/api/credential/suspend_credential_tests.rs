@@ -6,11 +6,11 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 use crate::fixtures::{
-    assert_history_count, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+    TestingCredentialParams, TestingDidParams, TestingIdentifierParams, assert_history_count,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;

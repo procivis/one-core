@@ -1,7 +1,7 @@
-use indexmap::map::Entry;
 use indexmap::IndexMap;
-use one_crypto::hasher::sha256::SHA256;
+use indexmap::map::Entry;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
@@ -33,11 +33,11 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, OpenID4VCICredentialValueDetails,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::ServiceError;
 use crate::util::oidc::map_to_openid4vp_format;
@@ -619,7 +619,7 @@ fn visit_nested_object_field(
             return Err(IssuanceProtocolError::Failed(format!(
                 "Validation Error. Claim key {} has wrong type",
                 object.claim.schema.key,
-            )))
+            )));
         }
         ClaimsNestedFieldView::Nodes(claims) => claims,
     };
@@ -674,7 +674,7 @@ fn visit_nested_array_field(
             return Err(IssuanceProtocolError::Failed(format!(
                 "Validation Error. Claim key {} has wrong type",
                 array.key(),
-            )))
+            )));
         }
         ClaimsNestedFieldView::Nodes(claims) => claims,
     };

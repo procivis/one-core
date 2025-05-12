@@ -1,11 +1,11 @@
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::token_status_list::util::{
-    extract_state_from_token, generate_token, get_most_significant_bit_index, TokenError,
+    TokenError, extract_state_from_token, generate_token, get_most_significant_bit_index,
 };
 
-fn example_token_status_list_subject_with_bit_size_1(
-) -> (TokenStatusListSubject, Vec<CredentialRevocationState>) {
+fn example_token_status_list_subject_with_bit_size_1()
+-> (TokenStatusListSubject, Vec<CredentialRevocationState>) {
     // Taken from: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-03.html#name-status-list-in-json-format
     (
         TokenStatusListSubject {
@@ -33,8 +33,8 @@ fn example_token_status_list_subject_with_bit_size_1(
     )
 }
 
-fn example_token_status_list_subject_with_bit_size_2(
-) -> (TokenStatusListSubject, Vec<CredentialRevocationState>) {
+fn example_token_status_list_subject_with_bit_size_2()
+-> (TokenStatusListSubject, Vec<CredentialRevocationState>) {
     // Taken from: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-03.html#name-status-list-in-json-format
     (
         TokenStatusListSubject {

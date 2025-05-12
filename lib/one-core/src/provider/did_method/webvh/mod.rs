@@ -116,7 +116,7 @@ impl DidMethod for DidWebVh {
             None | Some([]) => {
                 return Err(DidMethodError::CouldNotCreate(
                     "Missing update keys for did:webvh".to_string(),
-                ))
+                ));
             }
             Some([active, next @ ..]) => UpdateKeys { active, next },
         };

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serializer};
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 pub(super) fn into_timestamp_opt<S>(dt: &Option<OffsetDateTime>, s: S) -> Result<S::Ok, S::Error>
 where

@@ -12,8 +12,8 @@ use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    encrypted_token, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
-    TestingKeyParams,
+    TestingCredentialParams, TestingDidParams, TestingIdentifierParams, TestingKeyParams,
+    encrypted_token,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -192,20 +192,26 @@ async fn test_issuance_accept_openid4vc() {
         .get_by_entity_id(&credential.id.into())
         .await;
     assert_eq!(history.values.len(), 3); // one per state: Pending, Accepted, Issued
-    assert!(history
-        .values
-        .iter()
-        .all(|entry| entry.target == Some(issuer_identifier.id.to_string())),);
-    assert!(history
-        .values
-        .iter()
-        .take(2)
-        .any(|x| x.action == HistoryAction::Accepted));
-    assert!(history
-        .values
-        .iter()
-        .take(2)
-        .any(|x| x.action == HistoryAction::Issued));
+    assert!(
+        history
+            .values
+            .iter()
+            .all(|entry| entry.target == Some(issuer_identifier.id.to_string())),
+    );
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Accepted)
+    );
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Issued)
+    );
 }
 
 #[tokio::test]

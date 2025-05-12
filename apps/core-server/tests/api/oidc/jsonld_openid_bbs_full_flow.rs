@@ -2,11 +2,11 @@ use axum::http::StatusCode;
 use one_core::config::core_config::VerificationProtocolType;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
-use time::macros::format_description;
 use time::OffsetDateTime;
+use time::macros::format_description;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::full_flow_common::{
@@ -506,31 +506,39 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
 
 fn verify_claims(claims: Vec<ProofClaim>) {
     // Key was not disclosed
-    assert!(!claims
-        .iter()
-        .any(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/Key 1"));
+    assert!(
+        !claims
+            .iter()
+            .any(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/Key 1")
+    );
 
-    assert!(claims
-        .iter()
-        .find(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/USCIS#")
-        .unwrap()
-        .claim
-        .value
-        .starts_with("test"));
+    assert!(
+        claims
+            .iter()
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/USCIS#")
+            .unwrap()
+            .claim
+            .value
+            .starts_with("test")
+    );
 
-    assert!(claims
-        .iter()
-        .find(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/Address root/Address1")
-        .unwrap()
-        .claim
-        .value
-        .starts_with("test"));
+    assert!(
+        claims
+            .iter()
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/Address root/Address1")
+            .unwrap()
+            .claim
+            .value
+            .starts_with("test")
+    );
 
-    assert!(claims
-        .iter()
-        .find(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/Address root/Address2")
-        .unwrap()
-        .claim
-        .value
-        .starts_with("test"));
+    assert!(
+        claims
+            .iter()
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "TestSubject/Address root/Address2")
+            .unwrap()
+            .claim
+            .value
+            .starts_with("test")
+    );
 }

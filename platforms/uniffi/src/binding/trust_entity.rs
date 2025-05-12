@@ -4,15 +4,15 @@ use one_core::service::trust_entity::dto::{
     GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 
+use super::OneCoreBinding;
 use super::common::SortDirection;
 use super::did::DidListItemBindingDTO;
 use super::mapper::OptionalString;
 use super::trust_anchor::GetTrustAnchorResponseBindingDTO;
-use super::OneCoreBinding;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{from_id_opt, into_id, into_id_opt, TimestampFormat};
+use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
 
+use figment::Figment;
 #[cfg(feature = "config_env")]
 use figment::providers::Env;
 use figment::providers::Format;
@@ -8,11 +9,10 @@ use figment::providers::Format;
 use figment::providers::Json;
 #[cfg(feature = "config_yaml")]
 use figment::providers::Yaml;
-use figment::Figment;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Value};
-use serde_with::{serde_as, skip_serializing_none, DurationSeconds};
+use serde_json::{Value, json};
+use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};

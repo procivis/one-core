@@ -17,7 +17,7 @@ use one_core::service::proof::dto::{
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 
 use super::common::SortDirection;
 use super::credential::CredentialDetailBindingDTO;
@@ -26,9 +26,9 @@ use super::did::DidListItemBindingDTO;
 use super::identifier::GetIdentifierListItemBindingDTO;
 use super::mapper::{optional_did_id_string, optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofRequestClaimBindingDTO};
-use crate::error::BindingError;
-use crate::utils::{format_timestamp_opt, into_id, into_id_opt, TimestampFormat};
 use crate::OneCoreBinding;
+use crate::error::BindingError;
+use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

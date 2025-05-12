@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use futures::future::{BoxFuture, Shared};
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt, TryStreamExt};
@@ -16,36 +16,36 @@ use uuid::Uuid;
 
 use super::dto::BleOpenId4VpResponse;
 use super::{
-    BLEParse, BLEPeer, IdentityRequest, TransferSummaryReport, CONTENT_SIZE_UUID, DISCONNECT_UUID,
-    IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
-    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
+    BLEParse, BLEPeer, CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, IdentityRequest,
+    OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
+    TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID, TransferSummaryReport,
 };
 use crate::config::core_config::TransportType;
 use crate::model::did::Did;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
-use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
-    async_verifier_flow, never, set_proof_state_infallible, AsyncTransportHooks,
-    AsyncVerifierFlowParams, FlowState,
+    AsyncTransportHooks, AsyncVerifierFlowParams, FlowState, async_verifier_flow, never,
+    set_proof_state_infallible,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
     Chunk, ChunkExt, Chunks, MessageSize,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, VerificationProtocolError,
+    VerificationProtocolError, deserialize_interaction_data,
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -165,7 +165,7 @@ impl OpenID4VCBLEVerifier {
                                 callback.await;
                             }
                         }
-                        Err(ref err) => {
+                        Err(err) => {
                             let message = format!("BLE verifier flow failure: {err}");
                             info!(message);
                             let metadata = Some(HistoryErrorMetadata {
@@ -410,7 +410,7 @@ pub(crate) fn read(
     id: &str,
     device_info: &DeviceInfo,
     ble_peripheral: Arc<dyn BlePeripheral>,
-) -> impl Stream<Item = Result<Vec<u8>, BleError>> + Send {
+) -> impl Stream<Item = Result<Vec<u8>, BleError>> + Send + use<> {
     let address = device_info.address.clone();
 
     let stream_of_streams = futures::stream::unfold(

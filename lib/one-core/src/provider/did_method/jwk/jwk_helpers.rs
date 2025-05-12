@@ -2,7 +2,7 @@ use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use shared_types::DidValue;
 
-use crate::provider::did_method::common::{jwk_context, jwk_verification_method, ENC, SIG};
+use crate::provider::did_method::common::{ENC, SIG, jwk_context, jwk_verification_method};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
 use crate::service::key::dto::PublicKeyJwkDTO;

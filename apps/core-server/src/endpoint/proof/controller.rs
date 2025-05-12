@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
-use axum::Json;
 use axum_extra::extract::WithRejection;
 use one_core::service::error::{ServiceError, ValidationError};
 use shared_types::ProofId;

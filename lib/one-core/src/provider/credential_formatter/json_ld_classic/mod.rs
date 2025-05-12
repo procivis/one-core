@@ -10,7 +10,7 @@ use one_crypto::{CryptoProvider, Hasher};
 use serde::ser::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_with::{serde_as, DurationSeconds};
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -28,6 +28,7 @@ use crate::config::core_config::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
@@ -40,7 +41,6 @@ use crate::provider::credential_formatter::model::{
     Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::ContextType;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -243,7 +243,7 @@ impl CredentialFormatter for JsonLdClassic {
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported algorithm: {algorithm}"
-                )))
+                )));
             }
         };
 
@@ -500,7 +500,7 @@ impl JsonLdClassic {
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported algorithm: {algorithm}"
-                )))
+                )));
             }
         };
 
@@ -660,7 +660,7 @@ pub(super) async fn verify_proof_signature(
         _ => {
             return Err(FormatterError::CouldNotVerify(format!(
                 "Unsupported cryptosuite: {cryptosuite}"
-            )))
+            )));
         }
     };
 

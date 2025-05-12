@@ -18,21 +18,22 @@ use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
-use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
+use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -40,7 +41,6 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
-use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -51,17 +51,17 @@ use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
-use crate::service::ssi_holder::SSIHolderService;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof, generic_config,
 };
 
 #[tokio::test]
-async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested(
-) {
+async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested()
+ {
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4().into();
     let protocol = "OPENID4VP_DRAFT20";

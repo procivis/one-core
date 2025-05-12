@@ -1,7 +1,7 @@
 use one_dto_mapper::{From, TryFrom};
 use serde::{Deserialize, Serialize};
-use time::format_description::well_known::{Iso8601, Rfc3339};
 use time::OffsetDateTime;
+use time::format_description::well_known::{Iso8601, Rfc3339};
 
 use super::mappers::ProtectedOpticalData;
 use crate::provider::credential_formatter::error::FormatterError;

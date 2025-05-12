@@ -4,12 +4,12 @@ use one_core::model::did::{DidFilterValue, DidListQuery, DidType, KeyRole, Sorta
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 
 use super::common::SortDirection;
-use crate::error::BindingError;
-use crate::utils::{into_id, TimestampFormat};
 use crate::OneCoreBinding;
+use crate::error::BindingError;
+use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

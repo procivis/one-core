@@ -143,8 +143,8 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
 }
 
 #[tokio::test]
-async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens(
-) {
+async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens()
+ {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 

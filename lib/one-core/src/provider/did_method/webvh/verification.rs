@@ -1,23 +1,23 @@
 use std::str::FromStr;
 
+use DidMethodError::{Deactivated, ResolutionError};
 use json_syntax::json;
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use shared_types::DidValue;
 use time::OffsetDateTime;
-use DidMethodError::{Deactivated, ResolutionError};
 
 use super::common::{
-    canonicalized_hash, multihash_b58_encode, DidLogEntry, DidLogParameters, DidMethodVersion,
+    DidLogEntry, DidLogParameters, DidMethodVersion, canonicalized_hash, multihash_b58_encode,
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::webvh::Params;
+use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::provider::key_algorithm::KeyAlgorithm;
 
 pub async fn verify_did_log(
     log: &[(DidLogEntry, String)],
@@ -26,7 +26,11 @@ pub async fn verify_did_log(
 ) -> Result<(), DidMethodError> {
     if let Some(limit) = params.max_did_log_entry_check {
         if log.len() > limit as usize {
-            return Err(ResolutionError(format!("Failed to verify did log: log has {} entries which is more than the max allowed length ({})", log.len(), limit)));
+            return Err(ResolutionError(format!(
+                "Failed to verify did log: log has {} entries which is more than the max allowed length ({})",
+                log.len(),
+                limit
+            )));
         }
     }
 
@@ -60,7 +64,10 @@ pub async fn verify_did_log(
 
         if let Some(prev_time) = last_entry_time.replace(entry.version_time) {
             if prev_time > entry.version_time {
-                return Err(ResolutionError(format!("Invalid log entry {}: version time {} is before version time of the previous entry",entry.version_id, entry.version_time)));
+                return Err(ResolutionError(format!(
+                    "Invalid log entry {}: version time {} is before version time of the previous entry",
+                    entry.version_id, entry.version_time
+                )));
             }
         }
 
@@ -217,7 +224,9 @@ fn verify_version_id(
             )))?;
 
     if index != expected_index.to_string() {
-        return Err(ResolutionError(format!("Unexpected versionId '{current_version_id}', expected index {expected_index}, got {index}.")));
+        return Err(ResolutionError(format!(
+            "Unexpected versionId '{current_version_id}', expected index {expected_index}, got {index}."
+        )));
     }
 
     json_array[0] = json!(scid_or_prev_version_id);

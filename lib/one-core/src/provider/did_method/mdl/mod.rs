@@ -14,14 +14,14 @@ use x509_parser::pem::Pem;
 use super::common::expect_one_key;
 use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::common::jwk_context;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::key_helpers::{decode_did, generate_document, DidKeyType};
+use crate::provider::did_method::key_helpers::{DidKeyType, decode_did, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{
     AmountOfKeys, DidCapabilities, DidDocument, DidVerificationMethod, Operation,
 };
-use crate::provider::did_method::DidMethod;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::util::x509::extract_jwk_from_der;
 

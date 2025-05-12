@@ -8,11 +8,12 @@ use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::OpenID4VCICredentialResponseDTO;
 use super::OID4VCIDraft13Service;
+use super::dto::OpenID4VCICredentialResponseDTO;
 use crate::common_mapper::{
-    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
-    get_exchange_param_token_expires_in, get_or_create_did_and_identifier, DidRole,
+    DidRole, get_exchange_param_pre_authorization_expires_in,
+    get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
+    get_or_create_did_and_identifier,
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::IssuanceProtocolType;

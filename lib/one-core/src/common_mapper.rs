@@ -3,8 +3,8 @@ use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use strum::Display;
 use time::{Duration, OffsetDateTime};

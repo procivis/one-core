@@ -1,10 +1,10 @@
 use one_dto_mapper::convert_inner;
 use shared_types::OrganisationId;
 
+use super::OrganisationService;
 use super::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, UpsertOrganisationRequestDTO,
 };
-use super::OrganisationService;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};

@@ -10,28 +10,32 @@ use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::remote_entity_storage::{MockRemoteEntityStorage, RemoteEntityType};
-use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
-use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
-use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
 use crate::provider::revocation::RevocationMethod;
+use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
+use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
+use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
 use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_allowed() {
     let status = revocation_status(true).await;
 
-    assert!(status
-        .iter()
-        .any(|s| s.credential_status.status_purpose.as_deref() == Some("suspension")));
+    assert!(
+        status
+            .iter()
+            .any(|s| s.credential_status.status_purpose.as_deref() == Some("suspension"))
+    );
 }
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_forbidden() {
     let status = revocation_status(false).await;
 
-    assert!(!status
-        .iter()
-        .any(|s| s.credential_status.status_purpose.as_deref() == Some("suspension")));
+    assert!(
+        !status
+            .iter()
+            .any(|s| s.credential_status.status_purpose.as_deref() == Some("suspension"))
+    );
 }
 
 async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {

@@ -4,14 +4,14 @@ use std::sync::LazyLock;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::IndexMap;
 use itertools::Itertools;
-use json_ld::{rdf_types, JsonLdProcessor, Loader, RemoteDocument};
+use json_ld::{JsonLdProcessor, Loader, RemoteDocument, rdf_types};
 use regex::{Captures, Regex};
 use sophia_api::quad::Spog;
 use sophia_c14n::rdfc10::C14nIdMap;
 
-use super::selection::{select_canonical_nquads, SelectionResult};
-use super::skolemize::{skolemize_compact_json_ld, to_deskolemized_nquads};
 use super::NQuadLines;
+use super::selection::{SelectionResult, select_canonical_nquads};
+use super::skolemize::{skolemize_compact_json_ld, to_deskolemized_nquads};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::canonization::TermAdapter;
 

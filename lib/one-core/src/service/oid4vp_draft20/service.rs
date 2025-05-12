@@ -8,16 +8,16 @@ use time::OffsetDateTime;
 use tracing::warn;
 use uuid::Uuid;
 
+use super::OID4VPDraft20Service;
 use super::proof_request::{
     generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_redirect_uri,
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
-use super::OID4VPDraft20Service;
 use crate::common_mapper::{
-    encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_did_and_identifier,
-    DidRole,
+    DidRole, encode_cbor_base64, get_encryption_key_jwk_from_proof,
+    get_or_create_did_and_identifier,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType;

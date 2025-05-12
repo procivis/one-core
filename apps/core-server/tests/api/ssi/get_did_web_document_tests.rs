@@ -167,9 +167,11 @@ async fn test_get_did_web_document_eddsa_success() {
             .unwrap(),
         "3LOKxB5ik9WikgQmqNFtmuvNC0FMFFVXr6ATVoL-kT4"
     );
-    assert!(resp["verificationMethod"][0]["publicKeyJwk"]["y"]
-        .as_str()
-        .is_none());
+    assert!(
+        resp["verificationMethod"][0]["publicKeyJwk"]["y"]
+            .as_str()
+            .is_none()
+    );
 }
 
 #[tokio::test]

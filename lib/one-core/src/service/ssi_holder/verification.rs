@@ -4,13 +4,13 @@ use futures::TryFutureExt;
 use shared_types::{DidValue, ProofId};
 use url::Url;
 
-use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
 use super::SSIHolderService;
-use crate::common_mapper::{get_or_create_did_and_identifier, DidRole, NESTED_CLAIM_MARKER};
+use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
+use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER, get_or_create_did_and_identifier};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
-    validate_and_select_transport_type, SelectedTransportType,
+    SelectedTransportType, validate_and_select_transport_type,
 };
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;

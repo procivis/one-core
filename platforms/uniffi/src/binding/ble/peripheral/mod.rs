@@ -4,7 +4,7 @@ use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, MacAddress, ServiceDescription, ServiceUUID,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 
 use crate::error::BleError;
 

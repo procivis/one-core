@@ -1,6 +1,6 @@
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
-use crate::common_mapper::{get_or_create_did_and_identifier, DidRole};
+use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;

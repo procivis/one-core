@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use one_crypto::SignerError;
+use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -15,7 +15,7 @@ use crate::provider::key_algorithm::key::{
     MultiMessageSignaturePrivateKeyHandle, MultiMessageSignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::key_algorithm::{parse_multibase_with_tag, KeyAlgorithm};
+use crate::provider::key_algorithm::{KeyAlgorithm, parse_multibase_with_tag};
 
 pub struct BBS;
 

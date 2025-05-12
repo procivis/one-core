@@ -9,8 +9,8 @@ use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     JsonLdCachingLoader, JsonLdResolver,
 };
-use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::MockHttpClient;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::remote_entity_storage::{
     MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
 };

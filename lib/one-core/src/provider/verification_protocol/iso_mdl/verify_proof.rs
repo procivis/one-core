@@ -5,7 +5,7 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
 
 use super::common::to_cbor;
 use crate::common_mapper::{
-    extracted_credential_to_model, get_or_create_did_and_identifier, DidRole, NESTED_CLAIM_MARKER,
+    DidRole, NESTED_CLAIM_MARKER, extracted_credential_to_model, get_or_create_did_and_identifier,
 };
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
@@ -341,7 +341,7 @@ pub(crate) async fn accept_proof(
         _ => {
             return Err(ServiceError::MappingError(
                 "proof input schemas are missing".to_string(),
-            ))
+            ));
         }
     };
 

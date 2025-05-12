@@ -4,9 +4,9 @@ use url::Url;
 
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    default_presentation_url_scheme, ClientIdScheme, OpenID4VCPresentationHolderParams,
-    OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
+    OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
+    default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]

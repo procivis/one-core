@@ -1,10 +1,10 @@
 use shared_types::ProofId;
 
+use super::ProofService;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
-use super::ProofService;
 use crate::common_mapper::{
-    extracted_credential_to_model, get_or_create_did_and_identifier, DidRole,
+    DidRole, extracted_credential_to_model, get_or_create_did_and_identifier,
 };
 use crate::config::validator::transport::get_first_available_transport;
 use crate::model::claim::Claim;

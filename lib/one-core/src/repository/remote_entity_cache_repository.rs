@@ -24,7 +24,7 @@ pub trait RemoteEntityCacheRepository: Send + Sync {
     ) -> Result<Option<RemoteEntityCacheEntry>, DataLayerError>;
 
     async fn get_by_key(&self, key: &str)
-        -> Result<Option<RemoteEntityCacheEntry>, DataLayerError>;
+    -> Result<Option<RemoteEntityCacheEntry>, DataLayerError>;
 
     async fn get_repository_size(&self, r#type: CacheType) -> Result<u32, DataLayerError>;
 

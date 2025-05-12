@@ -3,13 +3,13 @@ use std::str::ParseBoolError;
 
 use serde::Deserialize;
 use thiserror::Error;
-use time::format_description::well_known::Rfc3339;
 use time::format_description::FormatItem;
+use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, OffsetDateTime};
 
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::config::ConfigValidationError;
+use crate::config::core_config::{DatatypeConfig, DatatypeType};
 
 const DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
@@ -170,14 +170,14 @@ fn validate_number(value: &str, params: NumberParams) -> Result<(), DatatypeVali
 
     match params.min {
         Some(min) if min > number => {
-            return Err(DatatypeValidationError::NumberTooSmall(number, min))
+            return Err(DatatypeValidationError::NumberTooSmall(number, min));
         }
         _ => {}
     };
 
     match params.max {
         Some(max) if max < number => {
-            return Err(DatatypeValidationError::NumberTooBig(number, max))
+            return Err(DatatypeValidationError::NumberTooBig(number, max));
         }
         _ => {}
     };

@@ -1,6 +1,6 @@
 use axum::extract::FromRequestParts;
-use axum::http::request::Parts;
 use axum::http::StatusCode;
+use axum::http::request::Parts;
 use serde_qs::Config;
 
 pub struct Qs<T>(pub T);

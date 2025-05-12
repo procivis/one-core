@@ -3,9 +3,9 @@ use shared_types::KeyId;
 
 use crate::model::key::Key;
 use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
-use crate::provider::key_storage::KeyStorage;
 
 #[derive(Default)]
 pub struct PKCS11KeyProvider {}

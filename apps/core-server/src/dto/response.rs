@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::Json;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -94,8 +94,8 @@ impl IntoResponse for ErrorResponse {
     }
 }
 
-fn with_error_responses<SuccessResponse: utoipa::IntoResponses>(
-) -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
+fn with_error_responses<SuccessResponse: utoipa::IntoResponses>()
+-> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
     use utoipa::IntoResponses;
     let mut responses = SuccessResponse::responses();
     responses.append(&mut ErrorResponse::responses());

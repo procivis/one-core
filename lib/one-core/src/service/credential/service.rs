@@ -28,6 +28,7 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
 };
 use crate::repository::error::DataLayerError;
+use crate::service::credential::CredentialService;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialRevocationCheckResponseDTO,
     GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
@@ -35,7 +36,6 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::{
     claims_from_create_request, credential_revocation_state_to_model_state, from_create_request,
 };
-use crate::service::credential::CredentialService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -925,7 +925,7 @@ impl CredentialService {
                         status: current_state.into(),
                         success: false,
                         reason: Some(error.to_string()),
-                    })
+                    });
                 }
                 Ok(state) => match state {
                     CredentialRevocationState::Valid => {}

@@ -152,8 +152,8 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
 }
 
 #[tokio::test]
-async fn test_create_credential_schema_with_the_same_name_and_organisation_as_deleted_credential_schema(
-) {
+async fn test_create_credential_schema_with_the_same_name_and_organisation_as_deleted_credential_schema()
+ {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -361,8 +361,8 @@ async fn test_duplicate_schema() {
 }
 
 #[tokio::test]
-async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspension_only_revocation_method(
-) {
+async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspension_only_revocation_method()
+ {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -388,8 +388,8 @@ async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspens
 }
 
 #[tokio::test]
-async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_only_revocation_method(
-) {
+async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_only_revocation_method()
+ {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

@@ -14,7 +14,7 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use crate::provider::did_method::{key_helpers, DidMethod};
+use crate::provider::did_method::{DidMethod, key_helpers};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct KeyDidMethod {

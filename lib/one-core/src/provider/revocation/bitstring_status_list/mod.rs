@@ -14,14 +14,15 @@ use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::{
     RevocationUpdateData, StatusPurpose,
 };
@@ -33,7 +34,6 @@ use crate::provider::revocation::model::{
     RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
-use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
@@ -259,7 +259,7 @@ impl RevocationMethod for BitstringStatusList {
             _ => {
                 return Err(RevocationError::ValidationError(
                     "Missing content type".to_string(),
-                ))
+                ));
             }
         };
 

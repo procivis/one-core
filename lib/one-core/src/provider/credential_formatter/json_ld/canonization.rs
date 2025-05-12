@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 use std::string::FromUtf8Error;
 
-use json_ld::{rdf_types, Loader};
+use json_ld::{Loader, rdf_types};
 use serde::Serialize;
+use sophia_api::MownStr;
 use sophia_api::quad::Spog;
 use sophia_api::term::{Term, TermKind};
-use sophia_api::MownStr;
 use sophia_c14n::rdfc10;
 
 #[derive(Debug, thiserror::Error)]
@@ -209,8 +209,9 @@ _:c14n1 <https://schema.org/name> "Bachelor of Science and Arts" .
             .await
             .unwrap();
 
-        assert_eq!(canonical_doc,
-        "_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#DataIntegrityProof> .\n\
+        assert_eq!(
+            canonical_doc,
+            "_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#DataIntegrityProof> .\n\
         _:c14n0 <https://w3id.org/security#cryptosuite> \"bbs-2023\"^^<https://w3id.org/security#cryptosuiteString> .\n\
         _:c14n0 <https://w3id.org/security#proofPurpose> <https://w3id.org/security#assertionMethod> .\n\
         _:c14n0 <https://w3id.org/security#verificationMethod> <did:key:zUC76eySqgji6uNDaCrsWnmQnwq8pj1MZUDrRGc2BGRu61baZPKPFB7YpHawussp2YohcEMAeMVGHQ9JtKvjxgGTkYSMN53ZfCH4pZ6TGYLawvzy1wE54dS6PQcut9fxdHH32gi#zUC76eySqgji6uNDaCrsWnmQnwq8pj1MZUDrRGc2BGRu61baZPKPFB7YpHawussp2YohcEMAeMVGHQ9JtKvjxgGTkYSMN53ZfCH4pZ6TGYLawvzy1wE54dS6PQcut9fxdHH32gi> .\n"

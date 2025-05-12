@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use model::{EnvelopedContent, VPContent, VcClaim, VerifiableCredential, VP};
+use model::{EnvelopedContent, VP, VPContent, VcClaim, VerifiableCredential};
 use serde::Deserialize;
 use serde_json::json;
 use shared_types::DidValue;
@@ -13,8 +13,8 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
+use super::jwt::model::JWTPayload;
 use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::{
@@ -24,6 +24,7 @@ use crate::config::core_config::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt_formatter::model::{
     TokenStatusListContent, TokenStatusListSubject,
@@ -32,7 +33,6 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx,
     FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;

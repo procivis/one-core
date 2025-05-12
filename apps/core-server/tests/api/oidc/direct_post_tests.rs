@@ -197,13 +197,15 @@ async fn test_direct_post_one_credential_correct() {
     );
 
     let claims = proof.claims.unwrap();
-    assert!(new_claim_schemas
-        .iter()
-        .filter(|required_claim| required_claim.2) //required
-        .all(|required_claim| claims
+    assert!(
+        new_claim_schemas
             .iter()
-            // Values are just keys uppercase
-            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
+            .filter(|required_claim| required_claim.2) //required
+            .all(|required_claim| claims
+                .iter()
+                // Values are just keys uppercase
+                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+    );
 }
 
 #[tokio::test]
@@ -913,11 +915,13 @@ async fn test_direct_post_draft25() {
     );
 
     let claims = proof.claims.unwrap();
-    assert!(new_claim_schemas
-        .iter()
-        .filter(|required_claim| required_claim.2) //required
-        .all(|required_claim| claims
+    assert!(
+        new_claim_schemas
             .iter()
-            // Values are just keys uppercase
-            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
+            .filter(|required_claim| required_claim.2) //required
+            .all(|required_claim| claims
+                .iter()
+                // Values are just keys uppercase
+                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+    );
 }

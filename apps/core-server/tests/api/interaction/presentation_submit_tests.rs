@@ -11,8 +11,8 @@ use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
 
 use crate::fixtures::{
-    self, create_credential_schema_with_claims, TestingCredentialParams,
-    TestingCredentialSchemaParams, TestingDidParams, TestingIdentifierParams, TestingKeyParams,
+    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
+    TestingIdentifierParams, TestingKeyParams, create_credential_schema_with_claims,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -110,12 +110,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
 
     let proof = fixtures::get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-    assert!(proof
-        .claims
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|c| c.claim.value == "test"));
+    assert!(
+        proof
+            .claims
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|c| c.claim.value == "test")
+    );
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
     assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
     let proof_history = context
@@ -222,12 +224,14 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
 
     let proof = fixtures::get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-    assert!(proof
-        .claims
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|c| c.claim.value == "test"));
+    assert!(
+        proof
+            .claims
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|c| c.claim.value == "test")
+    );
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
     assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
 }
@@ -681,18 +685,22 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
 
     let proof = fixtures::get_proof(&db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-    assert!(proof
-        .claims
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|claim| claim.claim.path == "cat"));
-    assert!(!proof
-        .claims
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|claim| claim.claim.path == "cat2"));
+    assert!(
+        proof
+            .claims
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|claim| claim.claim.path == "cat")
+    );
+    assert!(
+        !proof
+            .claims
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|claim| claim.claim.path == "cat2")
+    );
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
     assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
 }

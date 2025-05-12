@@ -1,7 +1,7 @@
 use shared_types::DidValue;
 
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::util::x509::{extract_leaf_certificate_from_verified_chain, Certificate};
+use crate::util::x509::{Certificate, extract_leaf_certificate_from_verified_chain};
 
 pub(crate) fn extract_x5c_san_dns(
     x5c: &[String],

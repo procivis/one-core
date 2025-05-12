@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
 use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};

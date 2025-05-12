@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use clap::Parser;
 use core_server::init::{initialize_core, initialize_sentry, initialize_tracing};
 use core_server::router::start_server;
-use core_server::{metrics, ServerConfig};
-use one_core::config::core_config::AppConfig;
+use core_server::{ServerConfig, metrics};
 use one_core::OneCore;
+use one_core::config::core_config::AppConfig;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -33,7 +33,8 @@ fn main() {
     let app_config: AppConfig<ServerConfig> =
         AppConfig::from_files(&config_files).expect("Failed creating config");
 
-    env::set_var("MIGRATION_CORE_URL", &app_config.app.core_base_url);
+    // SAFETY: at that stage, it's a single-threaded application
+    unsafe { env::set_var("MIGRATION_CORE_URL", &app_config.app.core_base_url) };
 
     let _sentry_init_guard = initialize_sentry(&app_config.app);
 

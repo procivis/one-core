@@ -13,8 +13,8 @@ use sea_orm::{
 };
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 
-use super::mapper::create_list_response;
 use super::DidProvider;
+use super::mapper::create_list_response;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};

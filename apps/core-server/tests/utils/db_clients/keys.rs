@@ -8,7 +8,7 @@ use shared_types::KeyId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{unwrap_or_random, TestingKeyParams};
+use crate::fixtures::{TestingKeyParams, unwrap_or_random};
 
 pub struct KeysDB {
     repository: Arc<dyn KeyRepository>,

@@ -237,10 +237,12 @@ mod tests {
         .is_ok());
 
         assert!(&DidValue::from_str("did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6#zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6").is_err());
-        assert!(&DidValue::from_str(
-            "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6?version=1"
-        )
-        .is_err());
+        assert!(
+            &DidValue::from_str(
+                "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6?version=1"
+            )
+            .is_err()
+        );
 
         assert!(&DidValue::from_str("did:example.12345").is_err());
         assert!(&DidValue::from_str("did:example:path/123/345345").is_err());

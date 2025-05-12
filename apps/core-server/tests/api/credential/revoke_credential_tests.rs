@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    assert_history_count, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+    TestingCredentialParams, TestingDidParams, TestingIdentifierParams, assert_history_count,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;

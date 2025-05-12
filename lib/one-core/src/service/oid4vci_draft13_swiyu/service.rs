@@ -6,8 +6,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCITokenResponseDTO,
 };
 use crate::service::error::ServiceError;
-use crate::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
+use crate::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 
 impl OID4VCIDraft13SwiyuService {
     pub async fn get_issuer_metadata(

@@ -1,4 +1,4 @@
-use super::{data_integrity, JsonLdBbsplus};
+use super::{JsonLdBbsplus, data_integrity};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::json_ld_processor_options;

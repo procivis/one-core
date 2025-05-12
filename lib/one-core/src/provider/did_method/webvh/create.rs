@@ -1,10 +1,10 @@
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
-use serde::ser::SerializeSeq;
+use one_crypto::hasher::sha256::SHA256;
 use serde::Serialize;
+use serde::ser::SerializeSeq;
 use shared_types::DidValue;
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 use super::common::multihash_b58_encode;
 use crate::config::core_config::KeyAlgorithmType;
@@ -13,7 +13,7 @@ use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::dto::DidVerificationMethodDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::webvh::common::{
-    canonicalized_hash, DidLogParameters, DidMethodVersion,
+    DidLogParameters, DidMethodVersion, canonicalized_hash,
 };
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -435,12 +435,12 @@ mod test {
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::did_method::webvh::verification::verify_did_log;
-    use crate::provider::did_method::webvh::{common, Params};
+    use crate::provider::did_method::webvh::{Params, common};
+    use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::eddsa::Eddsa;
-    use crate::provider::key_algorithm::KeyAlgorithm;
-    use crate::provider::key_storage::provider::MockKeyProvider;
     use crate::provider::key_storage::MockKeyStorage;
+    use crate::provider::key_storage::provider::MockKeyProvider;
 
     #[tokio::test]
     async fn test_create_fails_for_non_eddsa_update_keys() {
@@ -460,9 +460,11 @@ mod test {
             capability_delegation: vec![],
         };
         let provider = MockKeyProvider::new();
-        assert!(create("test-domain", did_doc_keys, update_keys, &provider)
-            .await
-            .is_err());
+        assert!(
+            create("test-domain", did_doc_keys, update_keys, &provider)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -726,8 +728,11 @@ mod test {
         );
 
         let did_doc_key_handle = make_key_handle(
-            &hex_literal::hex!("04a51f0f7f0bc35c44a0a84df7e38f62214ba3e91fbc87c40b1d983f4fbbe1614ebbe45135d3213c2c2ef52897710f719a890bae812add735f55418eb0585e1d44"),
-            hex_literal::hex!("cddd4dcf9de47ee105b1f6058f04ba88d2327d977511568eb52f9f2c93652574").to_vec(),
+            &hex_literal::hex!(
+                "04a51f0f7f0bc35c44a0a84df7e38f62214ba3e91fbc87c40b1d983f4fbbe1614ebbe45135d3213c2c2ef52897710f719a890bae812add735f55418eb0585e1d44"
+            ),
+            hex_literal::hex!("cddd4dcf9de47ee105b1f6058f04ba88d2327d977511568eb52f9f2c93652574")
+                .to_vec(),
             &Ecdsa,
         );
         let did_doc_key_kid = uuid::uuid!("763E6AEA-B0AE-43F5-A54A-0D4CBADC2C6F").into();

@@ -28,12 +28,12 @@ impl<const MAX: usize> TryFrom<String> for BoundedB64Image<MAX> {
             Some(data) => {
                 return Err(ValidationError::InvalidImage(format!(
                     "Invalid mime type: {data}"
-                )))
+                )));
             }
             None => {
                 return Err(ValidationError::InvalidImage(
                     "Missing mime type".to_owned(),
-                ))
+                ));
             }
         };
         let Some(base64) = splits.next() else {

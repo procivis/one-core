@@ -8,15 +8,15 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::json;
-use serde_with::{serde_as, DurationSeconds};
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
+use super::CredentialFormatter;
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
 use super::model::{CredentialData, HolderBindingCtx, Issuer};
-use super::CredentialFormatter;
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,

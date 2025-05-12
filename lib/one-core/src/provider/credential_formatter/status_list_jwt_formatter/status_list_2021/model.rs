@@ -3,7 +3,7 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::{
-    from_timestamp, StatusPurpose,
+    StatusPurpose, from_timestamp,
 };
 use crate::util::timestamp::into_timestamp;
 

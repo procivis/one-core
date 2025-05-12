@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::iter;
 
+use aes_gcm::aead::Aead;
 use aes_gcm::aead::consts::U32;
 use aes_gcm::aead::generic_array::GenericArray;
-use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use coset::iana::{self, EnumI64};
 use coset::{AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label};
 use hkdf::Hkdf;

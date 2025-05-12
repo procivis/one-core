@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use serde_json::json;
 use shared_types::DidValue;
 
+use super::DidCreateKeys;
 use super::error::DidMethodError;
 use super::model::DidVerificationMethod;
-use super::DidCreateKeys;
 use crate::model::key::{Key, PublicKeyJwk};
 
 pub const ENC: &str = "enc";

@@ -2,8 +2,8 @@ use anyhow::Context;
 use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
 use one_crypto::{CryptoProvider, Hasher};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 

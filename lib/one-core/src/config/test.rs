@@ -135,8 +135,11 @@ rusty_fork_test! {
         }
         "};
 
-        env::set_var("ONE_keyAlgorithm__BBS_PLUS__display", "NewDisplay");
-        env::set_var("ONE_app__serverIp", "192.168.1.1");
+        // SAFETY: `rusty_fork` spawns each test as separate subprocess so that should be safe
+        unsafe {
+            env::set_var("ONE_keyAlgorithm__BBS_PLUS__display", "NewDisplay");
+            env::set_var("ONE_app__serverIp", "192.168.1.1") ;
+        };
 
         let config = AppConfig::<SystemConfig>::parse(vec![
             InputFormat::yaml(config1),

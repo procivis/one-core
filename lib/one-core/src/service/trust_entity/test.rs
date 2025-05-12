@@ -1,8 +1,8 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use mockall::predicate::{always, eq};
 use mockall::Sequence;
+use mockall::predicate::{always, eq};
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
 use uuid::Uuid;
 
@@ -20,8 +20,8 @@ use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::test_utilities::get_dummy_date;
-use crate::service::trust_entity::dto::CreateTrustEntityRequestDTO;
 use crate::service::trust_entity::TrustEntityService;
+use crate::service::trust_entity::dto::CreateTrustEntityRequestDTO;
 
 #[derive(Default)]
 struct TestData {

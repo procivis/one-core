@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofId};
 use tokio::sync::oneshot;
@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
 use super::common::{
-    create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, EDeviceKey,
-    KeyAgreement, SkDevice, SkReader,
+    Chunk, DeviceRequest, EDeviceKey, KeyAgreement, SkDevice, SkReader,
+    create_session_transcript_bytes, split_into_chunks, to_cbor,
 };
 use super::device_engagement::DeviceEngagement;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
@@ -26,7 +26,7 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     Bstr, DeviceResponse, EmbeddedCbor,
 };
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, VerificationProtocolError,
+    VerificationProtocolError, deserialize_interaction_data,
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;

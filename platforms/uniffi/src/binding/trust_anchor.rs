@@ -2,13 +2,13 @@ use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO,
     SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use shared_types::TrustAnchorId;
 
-use super::common::SortDirection;
 use super::OneCoreBinding;
+use super::common::SortDirection;
 use crate::error::BindingError;
-use crate::utils::{into_id, TimestampFormat};
+use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {

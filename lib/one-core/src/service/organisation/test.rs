@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use mockall::predicate::eq;
 use mockall::Sequence;
+use mockall::predicate::eq;
 use uuid::Uuid;
 
 use super::OrganisationService;

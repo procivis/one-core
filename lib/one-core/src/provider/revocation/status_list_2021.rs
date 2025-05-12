@@ -9,6 +9,7 @@ use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::util::extract_bitstring_index;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -17,7 +18,6 @@ use crate::provider::revocation::model::{
     RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
-use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
 
 pub struct StatusList2021 {

@@ -10,13 +10,13 @@ use secrecy::SecretSlice;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
+use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
 };
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::key_algorithm::KeyAlgorithm;
 
 pub struct MlDsa;
 

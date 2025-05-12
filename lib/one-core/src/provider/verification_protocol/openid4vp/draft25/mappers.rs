@@ -13,12 +13,12 @@ use crate::model::proof::Proof;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
-use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oid4vp_draft25::proof_request::{
     generate_authorization_request_client_id_scheme_did,

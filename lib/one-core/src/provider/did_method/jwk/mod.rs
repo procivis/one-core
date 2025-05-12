@@ -12,13 +12,13 @@ use shared_types::{DidId, DidValue};
 use super::common::expect_one_key;
 use super::{DidCreateKeys, DidCreated};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::{
     encode_to_did, extract_jwk, generate_document,
 };
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use crate::provider::did_method::DidMethod;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct JWKDidMethod {

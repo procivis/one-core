@@ -1,9 +1,9 @@
 use std::convert::TryInto;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use ciborium::cbor;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use serde::{de, ser, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, de, ser};
 use uuid::Uuid;
 
 use super::common::EDeviceKey;
@@ -399,7 +399,8 @@ mod test {
         let data = hex!(
             "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d9\
              3e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32\
-             fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917")
+             fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917"
+        )
         .to_vec();
 
         // failing due to unsupported key type

@@ -12,8 +12,8 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use util::get_lvvc_credential_subject;
-use uuid::fmt::Urn;
 use uuid::Uuid;
+use uuid::fmt::Urn;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
@@ -23,11 +23,12 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{nest_claims, CredentialFormatter};
+use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::dto::Lvvc;
 use crate::provider::revocation::model::{
@@ -35,7 +36,6 @@ use crate::provider::revocation::model::{
     CredentialRevocationState, JsonLdContext, Operation, RevocationMethodCapabilities,
     RevocationUpdate, VerifierCredentialData,
 };
-use crate::provider::revocation::RevocationMethod;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::params::convert_params;
 

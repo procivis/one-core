@@ -1,6 +1,6 @@
 use one_core::service::error::ServiceError;
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 /// Date-time formatting
@@ -8,7 +8,9 @@ pub trait TimestampFormat {
     fn format_timestamp(&self) -> String;
 }
 
-const TIMESTAMP_FORMAT: &[time::format_description::FormatItem<'static>] = time::macros::format_description!("[year]-[month]-[day padding:zero]T[hour padding:zero]:[minute padding:zero]:[second padding:zero].000Z");
+const TIMESTAMP_FORMAT: &[time::format_description::FormatItem<'static>] = time::macros::format_description!(
+    "[year]-[month]-[day padding:zero]T[hour padding:zero]:[minute padding:zero]:[second padding:zero].000Z"
+);
 
 impl TimestampFormat for OffsetDateTime {
     fn format_timestamp(&self) -> String {

@@ -18,8 +18,8 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::ActiveValue::NotSet;
+use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
     PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
@@ -30,9 +30,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common::calculate_pages_count;
+use crate::credential::CredentialProvider;
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
-use crate::credential::CredentialProvider;
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
     identifier,

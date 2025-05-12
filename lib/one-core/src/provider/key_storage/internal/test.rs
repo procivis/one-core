@@ -6,16 +6,16 @@ use secrecy::{ExposeSecret, SecretSlice};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{decrypt_data, InternalKeyProvider};
+use super::{InternalKeyProvider, decrypt_data};
 use crate::model::key::Key;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::provider::key_storage::internal::Params;
 use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_storage::internal::Params;
 
 #[tokio::test]
 async fn test_internal_generate_with_encryption() {

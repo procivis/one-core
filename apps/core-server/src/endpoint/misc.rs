@@ -1,10 +1,10 @@
 use std::future;
 
+use axum::Json;
 use axum::handler::Handler;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::build_info;
 use crate::metrics::encode_metrics;

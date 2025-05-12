@@ -3,8 +3,8 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -55,12 +55,12 @@ impl OpenID4VCIProofJWTFormatter {
             (Some(_), Some(_)) => {
                 return Err(FormatterError::CouldNotVerify(
                     "Only kid or jwt allowed in proof.jwt but not both".to_string(),
-                ))
+                ));
             }
             (None, None) => {
                 return Err(FormatterError::CouldNotVerify(
                     "Missing kid or jwk".to_string(),
-                ))
+                ));
             }
             (Some(key_id), None) => {
                 let (did, fragment) = match key_id.find('#') {
@@ -180,9 +180,9 @@ mod test {
     use crate::provider::credential_formatter::model::SignatureProvider;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-    use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_storage::provider::SignatureProviderImpl;
     use crate::util::key_verification::KeyVerification;
 

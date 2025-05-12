@@ -132,7 +132,7 @@ fn insert_claim(
                 _ => {
                     return Err(ServiceError::MappingError(
                         "Parent claim should be nested".into(),
-                    ))
+                    ));
                 }
             }
         }

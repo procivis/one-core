@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use anyhow::Context;
-use futures::future::BoxFuture;
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use shared_types::ProofId;
@@ -11,7 +11,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::common_mapper::{encode_cbor_base64, get_or_create_did_and_identifier, DidRole};
+use crate::common_mapper::{DidRole, encode_cbor_base64, get_or_create_did_and_identifier};
 use crate::config::core_config::TransportType;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;

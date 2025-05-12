@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -11,36 +11,36 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::model::OpenID4Vp20Params;
 use super::OpenID4VP20HTTP;
+use super::model::OpenID4Vp20Params;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::did_method::DidMethod;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
     OpenID4VCRedirectUriParams, OpenID4VPAlgs, OpenID4VPClientMetadata,
     OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
 };
-use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::{
-    deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
 };
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
@@ -1035,7 +1035,9 @@ async fn test_can_handle_presentation_success_with_custom_url_scheme() {
         ..Default::default()
     });
 
-    let test_url = format!("{url_scheme}://?response_type=vp_token&nonce=123&client_id_scheme=redirect_uri&client_id=abc&client_metadata=foo&response_mode=direct_post&response_uri=uri&presentation_definition=def");
+    let test_url = format!(
+        "{url_scheme}://?response_type=vp_token&nonce=123&client_id_scheme=redirect_uri&client_id=abc&client_metadata=foo&response_mode=direct_post&response_uri=uri&presentation_definition=def"
+    );
     assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
@@ -1049,7 +1051,9 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
         ..Default::default()
     });
 
-    let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    let test_url = format!(
+        "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+    );
     assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 

@@ -1,7 +1,7 @@
+use one_core::provider::bluetooth_low_energy::BleError;
 use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicUUID, ConnectionEvent, DeviceAddress, MacAddress, ServiceDescription, ServiceUUID,
 };
-use one_core::provider::bluetooth_low_energy::BleError;
 use one_dto_mapper::convert_inner_of_inner;
 
 use super::BlePeripheralWrapper;

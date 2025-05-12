@@ -5,8 +5,8 @@ use one_core::model::credential_schema::CredentialSchemaClaim;
 use serde_json::json;
 use shared_types::ProofSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
