@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use shared_types::IdentifierId;
@@ -35,7 +35,7 @@ impl IdentifiersDB {
             did: params.did,
             key: params.key,
             certificates: params.certificates,
-            status: params.status.unwrap_or(IdentifierStatus::Active),
+            state: params.state.unwrap_or(IdentifierState::Active),
             r#type: params.r#type.unwrap_or(IdentifierType::Did),
             is_remote: params.is_remote.unwrap_or_default(),
             deleted_at: params.deleted_at,

@@ -10,7 +10,7 @@ use super::dto::{
     GetDidListResponseDTO,
 };
 use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::{DidCreateKeys, DidCreated};
@@ -126,7 +126,7 @@ pub(super) fn identifier_from_did(did: Did, now: OffsetDateTime) -> Identifier {
         organisation: did.organisation,
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         deleted_at: None,
         key: None,
         certificates: None,

@@ -299,7 +299,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .column_as(identifier::Column::Name, "issuer_identifier_name")
         .column_as(identifier::Column::Type, "issuer_identifier_type")
         .column_as(identifier::Column::IsRemote, "issuer_identifier_is_remote")
-        .column_as(identifier::Column::Status, "issuer_identifier_status")
+        .column_as(identifier::Column::State, "issuer_identifier_state")
         .join(JoinType::LeftJoin, identifier::Relation::Did.def())
         .column_as(did::Column::CreatedDate, "issuer_did_created_date")
         .column_as(did::Column::Deactivated, "issuer_did_deactivated")

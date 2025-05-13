@@ -15,7 +15,7 @@ use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
-use crate::model::identifier::{IdentifierStatus, UpdateIdentifierRequest};
+use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::did_method::DidCreateKeys;
@@ -326,10 +326,10 @@ impl DidService {
                 .update(
                     &identifier.id,
                     UpdateIdentifierRequest {
-                        status: Some(if deactivated {
-                            IdentifierStatus::Deactivated
+                        state: Some(if deactivated {
+                            IdentifierState::Deactivated
                         } else {
-                            IdentifierStatus::Active
+                            IdentifierState::Active
                         }),
                         ..Default::default()
                     },

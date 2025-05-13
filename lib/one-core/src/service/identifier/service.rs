@@ -9,7 +9,7 @@ use super::dto::{
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
 use crate::model::identifier::{
-    Identifier, IdentifierListQuery, IdentifierRelations, IdentifierStatus, IdentifierType,
+    Identifier, IdentifierListQuery, IdentifierRelations, IdentifierState, IdentifierType,
 };
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -143,7 +143,7 @@ impl IdentifierService {
                     organisation: Some(organisation),
                     r#type: IdentifierType::Key,
                     is_remote: false,
-                    status: IdentifierStatus::Active,
+                    state: IdentifierState::Active,
                     deleted_at: None,
                     did: None,
                     key: Some(key),

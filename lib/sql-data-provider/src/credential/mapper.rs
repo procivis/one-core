@@ -219,8 +219,8 @@ pub(super) fn credential_list_model_to_repository_model(
             is_remote: credential
                 .issuer_identifier_is_remote
                 .ok_or(DataLayerError::MappingError)?,
-            status: credential
-                .issuer_identifier_status
+            state: credential
+                .issuer_identifier_state
                 .ok_or(DataLayerError::MappingError)?
                 .into(),
             deleted_at: None,

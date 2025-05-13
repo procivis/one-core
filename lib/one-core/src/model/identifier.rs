@@ -18,7 +18,7 @@ pub struct Identifier {
     pub name: String,
     pub r#type: IdentifierType,
     pub is_remote: bool,
-    pub status: IdentifierStatus,
+    pub state: IdentifierState,
     pub deleted_at: Option<OffsetDateTime>,
 
     // Relations:
@@ -33,7 +33,7 @@ pub enum SortableIdentifierColumn {
     Name,
     CreatedDate,
     Type,
-    Status,
+    State,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -46,7 +46,7 @@ pub enum IdentifierType {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum IdentifierStatus {
+pub enum IdentifierState {
     Active,
     Deactivated,
 }
@@ -62,7 +62,7 @@ pub struct IdentifierRelations {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateIdentifierRequest {
     pub name: Option<String>,
-    pub status: Option<IdentifierStatus>,
+    pub state: Option<IdentifierState>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -70,7 +70,7 @@ pub enum IdentifierFilterValue {
     Ids(Vec<IdentifierId>),
     Name(StringMatch),
     Type(IdentifierType),
-    Status(IdentifierStatus),
+    State(IdentifierState),
     OrganisationId(OrganisationId),
     DidMethods(Vec<String>),
     IsRemote(bool),

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_core::model::identifier::{
-    IdentifierFilterValue, IdentifierListQuery, IdentifierStatus, IdentifierType,
+    IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
     SortableIdentifierColumn,
 };
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
@@ -63,9 +63,9 @@ impl OneCoreBinding {
                 .r#type
                 .map(|r#type| IdentifierFilterValue::Type(r#type.into()));
 
-            let status = query
-                .status
-                .map(|status| IdentifierFilterValue::Status(status.into()));
+            let state = query
+                .state
+                .map(|state| IdentifierFilterValue::State(state.into()));
 
             let did_methods = query.did_methods.map(IdentifierFilterValue::DidMethods);
 
@@ -84,7 +84,7 @@ impl OneCoreBinding {
             organisation
                 & name
                 & r#type
-                & status
+                & state
                 & did_methods
                 & is_remote
                 & key_algorithms
@@ -143,7 +143,7 @@ pub struct GetIdentifierListItemBindingDTO {
     pub name: String,
     pub r#type: IdentifierTypeBindingEnum,
     pub is_remote: bool,
-    pub status: IdentifierStatusBindingEnum,
+    pub state: IdentifierStateBindingEnum,
     #[from(with_fn = "from_id_opt")]
     pub organisation_id: Option<String>,
 }
@@ -159,7 +159,7 @@ pub struct IdentifierListQueryBindingDTO {
     pub organisation_id: String,
     pub name: Option<String>,
     pub r#type: Option<IdentifierTypeBindingEnum>,
-    pub status: Option<IdentifierStatusBindingEnum>,
+    pub state: Option<IdentifierStateBindingEnum>,
     pub exact: Option<Vec<ExactIdentifierFilterColumnBindingEnum>>,
     pub did_methods: Option<Vec<String>>,
     pub is_remote: Option<bool>,
@@ -174,7 +174,7 @@ pub enum SortableIdentifierColumnBindingEnum {
     Name,
     CreatedDate,
     Type,
-    Status,
+    State,
 }
 
 #[derive(Clone, Debug, PartialEq, uniffi::Enum)]
@@ -192,9 +192,9 @@ pub enum IdentifierTypeBindingEnum {
 }
 
 #[derive(Clone, Debug, Into, From, uniffi::Enum)]
-#[into(IdentifierStatus)]
-#[from(IdentifierStatus)]
-pub enum IdentifierStatusBindingEnum {
+#[into(IdentifierState)]
+#[from(IdentifierState)]
+pub enum IdentifierStateBindingEnum {
     Active,
     Deactivated,
 }

@@ -31,9 +31,9 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
         let r#type = value
             .r#type
             .map(|r#type| IdentifierFilterValue::Type(r#type.into()));
-        let status = value
+        let state = value
             .state
-            .map(|status| IdentifierFilterValue::Status(status.into()));
+            .map(|state| IdentifierFilterValue::State(state.into()));
         let did_methods = value.did_methods.map(IdentifierFilterValue::DidMethods);
         let is_remote = value.is_remote.map(IdentifierFilterValue::IsRemote);
         let key_algorithms = value
@@ -48,7 +48,7 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             & name
             & ids
             & r#type
-            & status
+            & state
             & did_methods
             & is_remote
             & key_algorithms

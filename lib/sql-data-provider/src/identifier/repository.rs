@@ -159,9 +159,9 @@ impl IdentifierRepository for IdentifierProvider {
             id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
             name: request.name.map(Set).unwrap_or_default(),
-            status: request
-                .status
-                .map(|status| Set(status.into()))
+            state: request
+                .state
+                .map(|state| Set(state.into()))
                 .unwrap_or_default(),
             ..Default::default()
         };

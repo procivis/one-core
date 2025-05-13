@@ -21,7 +21,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -156,7 +156,7 @@ pub(crate) async fn get_or_create_did_and_identifier(
                 name: did.name.to_owned(),
                 r#type: IdentifierType::Did,
                 is_remote: did.did_type == DidType::Remote,
-                status: IdentifierStatus::Active,
+                state: IdentifierState::Active,
                 deleted_at: None,
                 organisation: organisation.to_owned(),
                 did: Some(did.to_owned()),
@@ -655,7 +655,7 @@ mod tests {
                 name: "IssuerIdentifier".to_string(),
                 r#type: IdentifierType::Did,
                 is_remote: true,
-                status: IdentifierStatus::Active,
+                state: IdentifierState::Active,
                 deleted_at: None,
                 organisation: None,
                 did: Some(Did {

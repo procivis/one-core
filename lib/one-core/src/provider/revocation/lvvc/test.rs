@@ -12,7 +12,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -68,7 +68,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         name: "identifier".to_string(),
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         deleted_at: None,
         organisation: None,
         did: Some(did.to_owned()),

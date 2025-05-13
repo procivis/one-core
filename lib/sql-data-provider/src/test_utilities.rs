@@ -460,7 +460,7 @@ pub async fn insert_identifier(
         deleted_at: NotSet,
         r#type: Set(identifier::IdentifierType::Did),
         is_remote: Set(remote.into()),
-        status: Set(identifier::IdentifierStatus::Active),
+        state: Set(identifier::IdentifierState::Active),
         did_id: Set(did_id),
         key_id: NotSet,
     }

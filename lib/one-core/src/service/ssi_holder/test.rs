@@ -14,7 +14,7 @@ use crate::model::credential_schema::{
     CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
@@ -895,7 +895,7 @@ fn dummy_credential() -> Credential {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: true,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {

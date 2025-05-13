@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use crate::entity::credential;
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutProperties, WalletStorageType};
 use crate::entity::did::DidType;
-use crate::entity::identifier::{IdentifierStatus, IdentifierType};
+use crate::entity::identifier::{IdentifierState, IdentifierType};
 
 #[derive(FromQueryResult)]
 pub(super) struct CredentialListEntityModel {
@@ -50,5 +50,5 @@ pub(super) struct CredentialListEntityModel {
     pub issuer_identifier_name: Option<String>,
     pub issuer_identifier_type: Option<IdentifierType>,
     pub issuer_identifier_is_remote: Option<bool>,
-    pub issuer_identifier_status: Option<IdentifierStatus>,
+    pub issuer_identifier_state: Option<IdentifierState>,
 }

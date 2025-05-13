@@ -24,7 +24,7 @@ impl From<Identifier> for ActiveModel {
             name: Set(identifier.name),
             r#type: Set(identifier.r#type.into()),
             is_remote: Set(identifier.is_remote),
-            status: Set(identifier.status.into()),
+            state: Set(identifier.state.into()),
             organisation_id: Set(organisation_id),
             did_id: Set(did_id),
             key_id: Set(key_id),
@@ -42,7 +42,7 @@ impl From<entity::identifier::Model> for Identifier {
             name: value.name,
             r#type: value.r#type.into(),
             is_remote: value.is_remote,
-            status: value.status.into(),
+            state: value.state.into(),
             deleted_at: value.deleted_at,
             organisation: value.organisation_id.map(|id| Organisation {
                 id,
@@ -63,7 +63,7 @@ impl IntoSortingColumn for SortableIdentifierColumn {
             SortableIdentifierColumn::Name => identifier::Column::Name,
             SortableIdentifierColumn::CreatedDate => identifier::Column::CreatedDate,
             SortableIdentifierColumn::Type => identifier::Column::Type,
-            SortableIdentifierColumn::Status => identifier::Column::Status,
+            SortableIdentifierColumn::State => identifier::Column::State,
         }
         .into_simple_expr()
     }
@@ -80,9 +80,9 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 identifier::Column::Type,
                 identifier::IdentifierType::from(r#type),
             ),
-            IdentifierFilterValue::Status(status) => get_equals_condition(
-                identifier::Column::Status,
-                identifier::IdentifierStatus::from(status),
+            IdentifierFilterValue::State(state) => get_equals_condition(
+                identifier::Column::State,
+                identifier::IdentifierState::from(state),
             ),
             IdentifierFilterValue::OrganisationId(organisation_id) => {
                 get_equals_condition(identifier::Column::OrganisationId, organisation_id)

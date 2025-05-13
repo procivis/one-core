@@ -3,7 +3,7 @@ use shared_types::{DidId, DidValue, IdentifierId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::entity::did::DidType;
-use crate::entity::identifier::{IdentifierStatus, IdentifierType};
+use crate::entity::identifier::{IdentifierState, IdentifierType};
 use crate::entity::proof::{ProofRequestState, ProofRole};
 
 /// temporary struct to map items returned from the list DB query
@@ -29,7 +29,7 @@ pub(super) struct ProofListItemModel {
     pub verifier_identifier_name: Option<String>,
     pub verifier_identifier_type: Option<IdentifierType>,
     pub verifier_identifier_is_remote: Option<bool>,
-    pub verifier_identifier_status: Option<IdentifierStatus>,
+    pub verifier_identifier_state: Option<IdentifierState>,
 
     // verifier_did
     pub verifier_did_id: Option<DidId>,

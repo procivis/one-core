@@ -18,7 +18,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
@@ -301,7 +301,7 @@ pub fn dummy_identifier() -> Identifier {
         name: "identifier".to_string(),
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         deleted_at: None,
         organisation: None,
         did: None,

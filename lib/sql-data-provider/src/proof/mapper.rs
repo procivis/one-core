@@ -108,8 +108,8 @@ impl TryFrom<ProofListItemModel> for Proof {
                 is_remote: value
                     .verifier_identifier_is_remote
                     .ok_or(DataLayerError::MappingError)?,
-                status: value
-                    .verifier_identifier_status
+                state: value
+                    .verifier_identifier_state
                     .ok_or(DataLayerError::MappingError)?
                     .into(),
                 deleted_at: None,

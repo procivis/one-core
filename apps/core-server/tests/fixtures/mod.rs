@@ -14,7 +14,7 @@ use one_core::model::credential_schema::{
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{
-    Identifier, IdentifierRelations, IdentifierStatus, IdentifierType,
+    Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
@@ -332,7 +332,7 @@ pub struct TestingIdentifierParams {
     pub last_modified: Option<OffsetDateTime>,
     pub name: Option<String>,
     pub r#type: Option<IdentifierType>,
-    pub status: Option<IdentifierStatus>,
+    pub state: Option<IdentifierState>,
     pub did: Option<Did>,
     pub key: Option<Key>,
     pub certificates: Option<Vec<Certificate>>,
@@ -359,7 +359,7 @@ pub async fn create_identifier(
         did: params.did,
         key: params.key,
         certificates: params.certificates,
-        status: params.status.unwrap_or(IdentifierStatus::Active),
+        state: params.state.unwrap_or(IdentifierState::Active),
         r#type: params.r#type.unwrap_or(IdentifierType::Did),
         is_remote: params.is_remote.unwrap_or_default(),
         deleted_at: params.deleted_at,

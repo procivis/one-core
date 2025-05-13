@@ -93,7 +93,7 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
     ) -> Result<(), DataLayerError> {
         self.inner.update(id, request.clone()).await?;
 
-        if request.status.is_none() {
+        if request.state.is_none() {
             return Ok(());
         };
 

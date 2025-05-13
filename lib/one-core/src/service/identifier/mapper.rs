@@ -40,7 +40,7 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
             organisation_id,
             r#type: value.r#type,
             is_remote: value.is_remote,
-            status: value.status,
+            state: value.state,
             did: value.did.map(TryInto::try_into).transpose()?,
             key: value.key.map(TryInto::try_into).transpose()?,
         })
@@ -56,7 +56,7 @@ impl From<Identifier> for GetIdentifierListItemResponseDTO {
             name: value.name,
             r#type: value.r#type,
             is_remote: value.is_remote,
-            status: value.status,
+            state: value.state,
             organisation_id: value.organisation.map(|org| org.id),
         }
     }

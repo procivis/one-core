@@ -1,4 +1,4 @@
-use one_core::model::identifier::{IdentifierStatus, IdentifierType, SortableIdentifierColumn};
+use one_core::model::identifier::{IdentifierState, IdentifierType, SortableIdentifierColumn};
 use one_core::service::identifier::dto::{
     CreateIdentifierDidRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
@@ -53,8 +53,7 @@ pub struct GetIdentifierListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
-    #[from(rename = "status")]
-    pub state: IdentifierStatusRest,
+    pub state: IdentifierStateRest,
     pub r#type: IdentifierTypeRest,
     pub is_remote: bool,
     pub organisation_id: Option<OrganisationId>,
@@ -83,8 +82,8 @@ pub struct GetIdentifierResponseRestDTO {
     pub key: Option<KeyResponseRestDTO>,
     #[try_from(infallible, with_fn = "convert_inner")]
     pub organisation_id: Option<OrganisationId>,
-    #[try_from(infallible, rename = "status")]
-    pub state: IdentifierStatusRest,
+    #[try_from(infallible)]
+    pub state: IdentifierStateRest,
     #[try_from(infallible)]
     pub r#type: IdentifierTypeRest,
     #[try_from(infallible)]
@@ -93,9 +92,9 @@ pub struct GetIdentifierResponseRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[from(IdentifierStatus)]
-#[into(IdentifierStatus)]
-pub enum IdentifierStatusRest {
+#[from(IdentifierState)]
+#[into(IdentifierState)]
+pub enum IdentifierStateRest {
     Active,
     Deactivated,
 }
@@ -118,7 +117,7 @@ pub enum SortableIdentifierColumnRest {
     Name,
     CreatedDate,
     Type,
-    Status,
+    State,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
@@ -131,7 +130,7 @@ pub struct IdentifierFilterQueryParamsRestDTO {
     #[param(nullable = false)]
     pub r#type: Option<IdentifierTypeRest>,
     #[param(nullable = false)]
-    pub state: Option<IdentifierStatusRest>,
+    pub state: Option<IdentifierStateRest>,
     #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
     #[param(nullable = false)]

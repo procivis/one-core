@@ -260,7 +260,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             identifier::Column::IsRemote,
             "verifier_identifier_is_remote",
         )
-        .column_as(identifier::Column::Status, "verifier_identifier_status")
+        .column_as(identifier::Column::State, "verifier_identifier_state")
         // add related verifierDid
         .join(sea_orm::JoinType::LeftJoin, identifier::Relation::Did.def())
         .column_as(did::Column::Id, "verifier_did_id")

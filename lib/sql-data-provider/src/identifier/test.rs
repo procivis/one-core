@@ -5,7 +5,7 @@ use one_core::model::common::SortDirection;
 use one_core::model::did::Did;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{
-    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierStatus, IdentifierType,
+    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
     SortableIdentifierColumn,
 };
 use one_core::model::list_filter::ListFilterCondition;
@@ -139,7 +139,7 @@ async fn test_create_and_delete_identifier() {
         name: "test_identifier".to_string(),
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         organisation: Some(setup.organisation),
         did: Some(setup.did),
         key: None,
@@ -195,7 +195,7 @@ async fn test_get_identifier() {
         name: "test_identifier".to_string(),
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         organisation: Some(setup.organisation.clone()),
         did: Some(setup.did.clone()),
         key: None,
@@ -224,7 +224,7 @@ async fn test_get_identifier() {
     assert_eq!(retrieved.id, identifier.id);
     assert_eq!(retrieved.name, identifier.name);
     assert_eq!(retrieved.r#type, identifier.r#type);
-    assert_eq!(retrieved.status, identifier.status);
+    assert_eq!(retrieved.state, identifier.state);
     assert_eq!(retrieved.is_remote, identifier.is_remote);
     assert_eq!(
         retrieved.organisation.unwrap().id,
@@ -273,7 +273,7 @@ async fn test_get_identifier_list() {
         name: "test_identifier1".to_string(),
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         organisation: Some(setup.organisation.clone()),
         did: Some(setup.did.clone()),
         key: None,
@@ -313,7 +313,7 @@ async fn test_get_identifier_list() {
         name: "test_identifier2".to_string(),
         r#type: IdentifierType::Did,
         is_remote: true,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         organisation: Some(setup.organisation.clone()),
         did: Some(did2),
         key: None,

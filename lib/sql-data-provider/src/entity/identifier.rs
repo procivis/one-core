@@ -15,7 +15,7 @@ pub struct Model {
     #[sea_orm(column_name = "type")]
     pub r#type: IdentifierType,
     pub is_remote: bool,
-    pub status: IdentifierStatus,
+    pub state: IdentifierState,
     pub organisation_id: Option<OrganisationId>,
     pub did_id: Option<DidId>,
     pub key_id: Option<KeyId>,
@@ -81,9 +81,9 @@ pub enum IdentifierType {
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
-#[from(one_core::model::identifier::IdentifierStatus)]
-#[into(one_core::model::identifier::IdentifierStatus)]
-pub enum IdentifierStatus {
+#[from(one_core::model::identifier::IdentifierState)]
+#[into(one_core::model::identifier::IdentifierState)]
+pub enum IdentifierState {
     #[sea_orm(string_value = "ACTIVE")]
     Active,
     #[sea_orm(string_value = "DEACTIVATED")]

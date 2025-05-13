@@ -20,7 +20,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
@@ -173,7 +173,7 @@ fn generic_credential() -> Credential {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(issuer_did),
@@ -232,7 +232,7 @@ fn generic_credential_list_entity() -> Credential {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {
@@ -3900,7 +3900,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {
@@ -4465,7 +4465,7 @@ async fn test_get_credential_success_array_index_sorting() {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {
@@ -4779,7 +4779,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {
@@ -4996,7 +4996,7 @@ async fn test_get_credential_success_array_single_element() {
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {

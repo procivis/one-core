@@ -20,7 +20,7 @@ use crate::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -868,7 +868,7 @@ async fn test_create_credential_success() {
                     certificates: None,
                     r#type: IdentifierType::Did,
                     is_remote: true,
-                    status: IdentifierStatus::Active,
+                    state: IdentifierState::Active,
                     deleted_at: None,
                 }))
             });
@@ -1064,7 +1064,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
                     certificates: None,
                     r#type: IdentifierType::Did,
                     is_remote: true,
-                    status: IdentifierStatus::Active,
+                    state: IdentifierState::Active,
                     deleted_at: None,
                 }))
             });
@@ -1261,7 +1261,7 @@ async fn test_create_credential_success_mdoc() {
                     certificates: None,
                     r#type: IdentifierType::Did,
                     is_remote: true,
-                    status: IdentifierStatus::Active,
+                    state: IdentifierState::Active,
                     deleted_at: None,
                 }))
             });
@@ -1865,7 +1865,7 @@ async fn test_create_credential_issuer_failed() {
                     certificates: None,
                     r#type: IdentifierType::Did,
                     is_remote: true,
-                    status: IdentifierStatus::Active,
+                    state: IdentifierState::Active,
                     deleted_at: None,
                 }))
             });

@@ -16,7 +16,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::{IdentifierRelations, IdentifierStatus};
+use crate::model::identifier::{IdentifierRelations, IdentifierState};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -120,7 +120,7 @@ impl CredentialService {
             .into());
         }
 
-        if issuer_did.deactivated || issuer_identifier.status != IdentifierStatus::Active {
+        if issuer_did.deactivated || issuer_identifier.state != IdentifierState::Active {
             return Err(BusinessLogicError::DidIsDeactivated(issuer_did.id).into());
         }
 

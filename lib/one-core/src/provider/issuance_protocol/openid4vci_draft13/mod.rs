@@ -33,7 +33,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
-use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -646,7 +646,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                         is_remote: true,
                         deleted_at: None,
                         r#type: IdentifierType::Did,
-                        status: IdentifierStatus::Active,
+                        state: IdentifierState::Active,
                         organisation: schema.organisation.clone(),
                     }),
                 )

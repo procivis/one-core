@@ -22,7 +22,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -132,7 +132,7 @@ fn generic_credential() -> Credential {
         name: "did1".to_string(),
         r#type: IdentifierType::Did,
         is_remote: true,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         deleted_at: None,
         organisation: None,
         did: Some(issuer_did),
@@ -319,7 +319,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
                     name: did.name,
                     r#type: IdentifierType::Did,
                     is_remote: true,
-                    status: IdentifierStatus::Active,
+                    state: IdentifierState::Active,
                     deleted_at: None,
                     organisation: did.organisation,
                     key: None,

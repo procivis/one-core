@@ -13,7 +13,7 @@ use one_core::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::Did;
-use one_core::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
@@ -168,7 +168,7 @@ async fn setup_empty() -> TestSetup {
         name: "name".to_string(),
         r#type: IdentifierType::Did,
         is_remote: false,
-        status: IdentifierStatus::Active,
+        state: IdentifierState::Active,
         deleted_at: None,
         organisation: Some(dummy_organisation(Some(organisation_id))),
         did: Some(did.clone()),

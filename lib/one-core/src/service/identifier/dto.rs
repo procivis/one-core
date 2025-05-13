@@ -4,7 +4,7 @@ use shared_types::{IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::identifier::{IdentifierStatus, IdentifierType};
+use crate::model::identifier::{IdentifierState, IdentifierType};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
 use crate::service::key::dto::KeyResponseDTO;
 
@@ -17,7 +17,7 @@ pub struct GetIdentifierResponseDTO {
     pub organisation_id: Option<OrganisationId>,
     pub r#type: IdentifierType,
     pub is_remote: bool,
-    pub status: IdentifierStatus,
+    pub state: IdentifierState,
     pub did: Option<DidResponseDTO>,
     pub key: Option<KeyResponseDTO>,
 }
@@ -32,7 +32,7 @@ pub struct GetIdentifierListItemResponseDTO {
     pub name: String,
     pub r#type: IdentifierType,
     pub is_remote: bool,
-    pub status: IdentifierStatus,
+    pub state: IdentifierState,
     pub organisation_id: Option<OrganisationId>,
 }
 

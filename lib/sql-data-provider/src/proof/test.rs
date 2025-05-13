@@ -7,7 +7,7 @@ use one_core::model::credential::{
 };
 use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::identifier::{
-    Identifier, IdentifierRelations, IdentifierStatus, IdentifierType,
+    Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
 use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
@@ -326,7 +326,7 @@ async fn test_create_proof_success() {
             name: "verifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: false,
-            status: IdentifierStatus::Active,
+            state: IdentifierState::Active,
             deleted_at: None,
             organisation: None,
             did: Some(Did {
@@ -491,7 +491,7 @@ async fn test_get_proof_with_relations() {
                 name: "identifier".to_string(),
                 r#type: IdentifierType::Did,
                 is_remote: false,
-                status: IdentifierStatus::Active,
+                state: IdentifierState::Active,
                 deleted_at: None,
                 organisation: None,
                 did: Some(Did {

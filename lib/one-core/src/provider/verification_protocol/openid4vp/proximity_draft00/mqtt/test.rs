@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::{Fields, FormatType, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::identifier::{Identifier, IdentifierStatus, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -216,7 +216,7 @@ async fn test_handle_invitation_success() {
                 certificates: None,
                 r#type: IdentifierType::Did,
                 is_remote: true,
-                status: IdentifierStatus::Active,
+                state: IdentifierState::Active,
                 deleted_at: None,
             }))
         });

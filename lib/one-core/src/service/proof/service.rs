@@ -34,7 +34,7 @@ use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
-use crate::model::identifier::{IdentifierRelations, IdentifierStatus};
+use crate::model::identifier::{IdentifierRelations, IdentifierState};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -402,7 +402,7 @@ impl ProofService {
                 "missing identifier did".to_string(),
             ))?;
 
-        if verifier_did.deactivated || verifier_identifier.status != IdentifierStatus::Active {
+        if verifier_did.deactivated || verifier_identifier.state != IdentifierState::Active {
             return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
         }
 
