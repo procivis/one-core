@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType, VerificationProtocolType};
 
@@ -19,15 +21,18 @@ pub(super) fn validate_issuance_protocol_type(
 }
 
 pub(super) fn validate_verification_protocol_type(
-    expected_exchange_type: VerificationProtocolType,
+    expected_exchange_types: &[VerificationProtocolType],
     config: &CoreConfig,
     exchange: &str,
 ) -> Result<(), ConfigValidationError> {
     let exchange_type = config.verification_protocol.get_fields(exchange)?.r#type;
 
-    if exchange_type != expected_exchange_type {
+    if !expected_exchange_types.contains(&exchange_type) {
         Err(ConfigValidationError::InvalidType(
-            expected_exchange_type.to_string(),
+            expected_exchange_types
+                .iter()
+                .map(|v| v.to_string())
+                .join(", "),
             exchange.to_string(),
         ))
     } else {

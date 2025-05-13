@@ -346,6 +346,11 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 get(ssi::verification::draft20::controller::oid4vp_draft20_client_request),
             )
             .route(
+                "/ssi/openid4vp/draft-20-swiyu/response/{id}",
+                post(ssi::verification::draft20_swiyu::controller::oid4vp_draft20_swiyu_direct_post)
+                    .layer(DefaultBodyLimit::disable()),
+            )
+            .route(
                 "/ssi/openid4vp/draft-25/response",
                 post(ssi::verification::draft25::controller::oid4vp_draft25_direct_post)
                     .layer(DefaultBodyLimit::disable()),

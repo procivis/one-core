@@ -337,6 +337,12 @@ async fn process_proof_submission(
                             "Client ID scheme is missing".to_string(),
                         ))?,
                 ),
+                VerificationProtocolType::OpenId4VpDraft20Swiyu => interaction_data
+                    .response_uri
+                    .clone()
+                    .ok_or(OpenID4VCError::ValidationError(
+                        "response uri is missing".to_string(),
+                    ))?,
                 _ => interaction_data.client_id.clone(),
             }
         };

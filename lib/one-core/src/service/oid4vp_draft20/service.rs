@@ -20,7 +20,9 @@ use crate::common_mapper::{
     get_or_create_did_and_identifier,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::VerificationProtocolType;
+use crate::config::core_config::VerificationProtocolType::{
+    OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
+};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
@@ -89,7 +91,7 @@ impl OID4VPDraft20Service {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft20,
+            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
             &self.config,
             &proof.exchange,
         )?;
@@ -183,11 +185,7 @@ impl OID4VPDraft20Service {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-        validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft20,
-            &self.config,
-            &proof.exchange,
-        )?;
+        validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.exchange)?;
 
         let formats = create_open_id_for_vp_formats();
         let jwk = get_encryption_key_jwk_from_proof(
@@ -406,11 +404,7 @@ impl OID4VPDraft20Service {
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
-        validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft20,
-            &self.config,
-            &proof.exchange,
-        )?;
+        validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.exchange)?;
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let interaction = proof

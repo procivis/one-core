@@ -23,7 +23,9 @@ use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
     OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
+use crate::provider::verification_protocol::openid4vp::model::{
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
+};
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
@@ -165,19 +167,61 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         encryption_key_jwk: Option<PublicKeyWithJwk>,
         vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-        _callback: Option<BoxFuture<'static, ()>>,
+        callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
-        self.inner
+        let mut response = self
+            .inner
             .verifier_share_proof(
                 proof,
                 format_to_type_mapper,
                 encryption_key_jwk,
                 vp_formats,
                 type_to_descriptor,
-                _callback,
+                callback,
                 params,
             )
-            .await
+            .await?;
+        let mut interaction_data: OpenID4VPVerifierInteractionContent =
+            serde_json::from_value(response.context).map_err(|err| {
+                VerificationProtocolError::Failed(format!(
+                    "failed to parse interaction data: {}",
+                    err
+                ))
+            })?;
+        let mut response_url: Url = interaction_data
+            .response_uri
+            .ok_or(VerificationProtocolError::Failed(
+                "missing response_uri".to_string(),
+            ))?
+            .parse()
+            .map_err(|err| {
+                VerificationProtocolError::Failed(format!(
+                    "failed to parse response_uri in response URL: {err}"
+                ))
+            })?;
+        response_url.set_path(&format!(
+            "/ssi/openid4vp/draft-20-swiyu/response/{}",
+            response.interaction_id
+        ));
+        interaction_data.response_uri = Some(response_url.to_string());
+
+        let url = response.url.parse::<Url>().map_err(|e| {
+            VerificationProtocolError::Failed(format!("failed to transform response URL: {e}"))
+        })?;
+
+        response.context = serde_json::to_value(&interaction_data).map_err(|err| {
+            VerificationProtocolError::Failed(format!(
+                "failed to serialize interaction data: {err}"
+            ))
+        })?;
+        response.url = url
+            .query_pairs()
+            .find(|(k, _)| k == "request_uri")
+            .map(|(_, v)| v.to_string())
+            .ok_or(VerificationProtocolError::Failed(
+                "failed to find request_uri in response URL".to_string(),
+            ))?;
+        Ok(response)
     }
 }

@@ -88,7 +88,7 @@ impl OID4VPDraft25Service {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
             &proof.exchange,
         )?;
@@ -183,7 +183,7 @@ impl OID4VPDraft25Service {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
             &proof.exchange,
         )?;
@@ -406,7 +406,7 @@ impl OID4VPDraft25Service {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         validate_verification_protocol_type(
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
             &proof.exchange,
         )?;
