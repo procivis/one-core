@@ -210,6 +210,7 @@ pub(super) fn credential_list_model_to_repository_model(
                 .ok_or(DataLayerError::MappingError)?,
             did: issuer_did,
             key: None,
+            certificates: None,
             organisation: None,
             r#type: credential
                 .issuer_identifier_type

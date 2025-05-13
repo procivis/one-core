@@ -2,6 +2,7 @@ pub mod error;
 
 // New traits
 pub mod backup_repository;
+pub mod certificate_repository;
 pub mod claim_repository;
 pub mod claim_schema_repository;
 pub mod credential_repository;
@@ -23,6 +24,7 @@ use std::sync::Arc;
 
 // New ones
 use backup_repository::BackupRepository;
+use certificate_repository::CertificateRepository;
 use claim_repository::ClaimRepository;
 use claim_schema_repository::ClaimSchemaRepository;
 use credential_repository::CredentialRepository;
@@ -45,6 +47,7 @@ use self::trust_entity_repository::TrustEntityRepository;
 pub trait DataRepository: Send + Sync {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
     fn get_did_repository(&self) -> Arc<dyn DidRepository>;
+    fn get_certificate_repository(&self) -> Arc<dyn CertificateRepository>;
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository>;
     fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository>;
     fn get_credential_repository(&self) -> Arc<dyn CredentialRepository>;

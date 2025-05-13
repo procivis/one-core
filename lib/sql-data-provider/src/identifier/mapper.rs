@@ -52,6 +52,7 @@ impl From<entity::identifier::Model> for Identifier {
             }),
             did: None,
             key: None,
+            certificates: None,
         }
     }
 }

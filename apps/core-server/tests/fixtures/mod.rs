@@ -3,6 +3,7 @@ use std::str::FromStr;
 use core_server::ServerConfig;
 use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig};
+use one_core::model::certificate::Certificate;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -334,6 +335,7 @@ pub struct TestingIdentifierParams {
     pub status: Option<IdentifierStatus>,
     pub did: Option<Did>,
     pub key: Option<Key>,
+    pub certificates: Option<Vec<Certificate>>,
     pub is_remote: Option<bool>,
     pub deleted_at: Option<OffsetDateTime>,
 }
@@ -356,6 +358,7 @@ pub async fn create_identifier(
         organisation: Some(organisation.to_owned()),
         did: params.did,
         key: params.key,
+        certificates: params.certificates,
         status: params.status.unwrap_or(IdentifierStatus::Active),
         r#type: params.r#type.unwrap_or(IdentifierType::Did),
         is_remote: params.is_remote.unwrap_or_default(),

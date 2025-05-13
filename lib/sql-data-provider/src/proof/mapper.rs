@@ -99,6 +99,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                     .ok_or(DataLayerError::MappingError)?,
                 did: verifier_did,
                 key: None,
+                certificates: None,
                 organisation: None,
                 r#type: value
                     .verifier_identifier_type

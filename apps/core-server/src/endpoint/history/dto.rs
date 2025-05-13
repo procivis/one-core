@@ -126,6 +126,7 @@ pub enum HistoryAction {
     Retracted,
     Updated,
     Reactivated,
+    Expired,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
@@ -135,6 +136,7 @@ pub enum HistoryAction {
 pub enum HistoryEntityType {
     Key,
     Did,
+    Certificate,
     Identifier,
     Credential,
     CredentialSchema,

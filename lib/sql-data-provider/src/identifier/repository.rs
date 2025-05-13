@@ -10,12 +10,12 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
 };
-use shared_types::{DidId, IdentifierId};
+use shared_types::{CertificateId, DidId, IdentifierId};
 use time::OffsetDateTime;
 
 use super::IdentifierProvider;
 use crate::common::calculate_pages_count;
-use crate::entity::identifier;
+use crate::entity::{certificate, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -41,31 +41,64 @@ impl IdentifierProvider {
             }
         }
 
-        if let Some(did_relations) = &relations.did {
-            if let Some(did_id) = &model.did_id {
-                result.did = Some(
-                    self.did_repository
-                        .get_did(did_id, did_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "identifier-did",
-                            id: did_id.to_string(),
-                        })?,
-                );
+        if model.r#type == identifier::IdentifierType::Did {
+            if let Some(did_relations) = &relations.did {
+                if let Some(did_id) = &model.did_id {
+                    result.did = Some(
+                        self.did_repository
+                            .get_did(did_id, did_relations)
+                            .await?
+                            .ok_or(DataLayerError::MissingRequiredRelation {
+                                relation: "identifier-did",
+                                id: did_id.to_string(),
+                            })?,
+                    );
+                }
             }
         }
 
-        if let Some(key_relations) = &relations.key {
-            if let Some(key_id) = &model.key_id {
-                result.key = Some(
-                    self.key_repository
-                        .get_key(key_id, key_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "identifier-key",
-                            id: key_id.to_string(),
-                        })?,
-                );
+        if model.r#type == identifier::IdentifierType::Key {
+            if let Some(key_relations) = &relations.key {
+                if let Some(key_id) = &model.key_id {
+                    result.key = Some(
+                        self.key_repository
+                            .get_key(key_id, key_relations)
+                            .await?
+                            .ok_or(DataLayerError::MissingRequiredRelation {
+                                relation: "identifier-key",
+                                id: key_id.to_string(),
+                            })?,
+                    );
+                }
+            }
+        }
+
+        if model.r#type == identifier::IdentifierType::Certificate {
+            if let Some(certificate_relations) = &relations.certificates {
+                let certificate_ids: Vec<CertificateId> = certificate::Entity::find()
+                    .select_only()
+                    .column(certificate::Column::Id)
+                    .filter(certificate::Column::IdentifierId.eq(model.id))
+                    .order_by_desc(certificate::Column::ExpiryDate)
+                    .order_by_asc(certificate::Column::Name)
+                    .into_tuple()
+                    .all(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
+
+                let mut certs = vec![];
+                for certificate_id in certificate_ids {
+                    certs.push(
+                        self.certificate_repository
+                            .get(certificate_id, certificate_relations)
+                            .await?
+                            .ok_or(DataLayerError::MissingRequiredRelation {
+                                relation: "identifier-certificate",
+                                id: certificate_id.to_string(),
+                            })?,
+                    );
+                }
+                result.certificates = Some(certs);
             }
         }
 

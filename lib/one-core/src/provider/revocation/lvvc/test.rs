@@ -73,6 +73,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         organisation: None,
         did: Some(did.to_owned()),
         key: None,
+        certificates: None,
     };
 
     let credential = Credential {

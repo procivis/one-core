@@ -3,6 +3,7 @@ use sea_orm_migration::prelude::*;
 pub trait ColumnDefExt {
     fn large_blob(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
     fn datetime_millisecond_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
+    fn datetime_second_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
 }
 
 impl ColumnDefExt for ColumnDef {
@@ -24,6 +25,18 @@ impl ColumnDefExt for ColumnDef {
         let dt = match manager.get_database_backend() {
             sea_orm::DatabaseBackend::MySql => "datetime(3)",
             sea_orm::DatabaseBackend::Postgres => "timestamp(3)",
+            sea_orm::DatabaseBackend::Sqlite => "datetime",
+        };
+
+        self.custom(Alias::new(dt));
+
+        self
+    }
+
+    fn datetime_second_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef {
+        let dt = match manager.get_database_backend() {
+            sea_orm::DatabaseBackend::MySql => "datetime(0)",
+            sea_orm::DatabaseBackend::Postgres => "timestamp(0)",
             sea_orm::DatabaseBackend::Sqlite => "datetime",
         };
 

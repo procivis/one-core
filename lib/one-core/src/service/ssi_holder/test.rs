@@ -912,6 +912,7 @@ fn dummy_credential() -> Credential {
                 log: None,
             }),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(crate::model::credential_schema::CredentialSchema {

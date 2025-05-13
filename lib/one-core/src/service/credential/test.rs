@@ -178,6 +178,7 @@ fn generic_credential() -> Credential {
             organisation: None,
             did: Some(issuer_did),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(CredentialSchema {
@@ -248,6 +249,7 @@ fn generic_credential_list_entity() -> Credential {
                 log: None,
             }),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(CredentialSchema {
@@ -3928,6 +3930,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                 log: None,
             }),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(CredentialSchema {
@@ -4492,6 +4495,7 @@ async fn test_get_credential_success_array_index_sorting() {
                 log: None,
             }),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(CredentialSchema {
@@ -4805,6 +4809,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                 log: None,
             }),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(CredentialSchema {
@@ -5021,6 +5026,7 @@ async fn test_get_credential_success_array_single_element() {
                 log: None,
             }),
             key: None,
+            certificates: None,
         }),
         holder_identifier: None,
         schema: Some(CredentialSchema {

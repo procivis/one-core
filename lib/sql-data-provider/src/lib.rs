@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use backup::BackupProvider;
+use certificate::CertificateProvider;
+use certificate::history::CertificateHistoryDecorator;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use credential::history::CredentialHistoryDecorator;
@@ -14,6 +16,7 @@ use key::history::KeyHistoryDecorator;
 use migration::runner::run_migrations;
 use one_core::repository::DataRepository;
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::credential_repository::CredentialRepository;
@@ -58,6 +61,7 @@ mod list_query_generic;
 
 // New implementations
 pub mod backup;
+pub mod certificate;
 pub mod claim;
 pub mod claim_schema;
 pub mod credential;
@@ -92,6 +96,7 @@ pub struct DataLayer {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
+    certificate_repository: Arc<dyn CertificateRepository>,
     key_repository: Arc<dyn KeyRepository>,
     json_ld_context_repository: Arc<dyn RemoteEntityCacheRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
@@ -160,11 +165,23 @@ impl DataLayer {
             history_repository: history_repository.clone(),
         });
 
+        let certificate_repository = Arc::new(CertificateProvider {
+            db: db.clone(),
+            key_repository: key_repository.clone(),
+        });
+
+        let certificate_repository = Arc::new(CertificateHistoryDecorator {
+            inner: certificate_repository,
+            history_repository: history_repository.clone(),
+            db: db.clone(),
+        });
+
         let identifier_repository = Arc::new(IdentifierProvider {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
             did_repository: did_repository.clone(),
             key_repository: key_repository.clone(),
+            certificate_repository: certificate_repository.clone(),
         });
 
         let identifier_repository = Arc::new(IdentifierHistoryDecorator {
@@ -254,6 +271,7 @@ impl DataLayer {
             trust_anchor_repository,
             trust_entity_repository,
             identifier_repository,
+            certificate_repository,
         }
     }
 }
@@ -265,6 +283,9 @@ impl DataRepository for DataLayer {
     }
     fn get_did_repository(&self) -> Arc<dyn DidRepository> {
         self.did_repository.clone()
+    }
+    fn get_certificate_repository(&self) -> Arc<dyn CertificateRepository> {
+        self.certificate_repository.clone()
     }
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository> {
         self.claim_repository.clone()

@@ -34,6 +34,7 @@ impl IdentifiersDB {
             organisation: Some(organisation.clone()),
             did: params.did,
             key: params.key,
+            certificates: params.certificates,
             status: params.status.unwrap_or(IdentifierStatus::Active),
             r#type: params.r#type.unwrap_or(IdentifierType::Did),
             is_remote: params.is_remote.unwrap_or_default(),

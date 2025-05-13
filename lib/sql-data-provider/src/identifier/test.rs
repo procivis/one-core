@@ -11,6 +11,7 @@ use one_core::model::identifier::{
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
+use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::MockHistoryRepository;
@@ -83,6 +84,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
                 organisation_repository: Arc::new(repositories.organisation_repository),
                 did_repository: Arc::new(MockDidRepository::default()),
                 key_repository: Arc::new(MockKeyRepository::default()),
+                certificate_repository: Arc::new(MockCertificateRepository::default()),
             }),
         },
         organisation,
@@ -141,6 +143,7 @@ async fn test_create_and_delete_identifier() {
         organisation: Some(setup.organisation),
         did: Some(setup.did),
         key: None,
+        certificates: None,
         deleted_at: None,
     };
 
@@ -196,6 +199,7 @@ async fn test_get_identifier() {
         organisation: Some(setup.organisation.clone()),
         did: Some(setup.did.clone()),
         key: None,
+        certificates: None,
         deleted_at: None,
     };
 
@@ -273,6 +277,7 @@ async fn test_get_identifier_list() {
         organisation: Some(setup.organisation.clone()),
         did: Some(setup.did.clone()),
         key: None,
+        certificates: None,
         deleted_at: None,
     };
 
@@ -312,6 +317,7 @@ async fn test_get_identifier_list() {
         organisation: Some(setup.organisation.clone()),
         did: Some(did2),
         key: None,
+        certificates: None,
         deleted_at: None,
     };
 

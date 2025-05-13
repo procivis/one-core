@@ -108,6 +108,8 @@ pub enum HistoryAction {
     Updated,
     #[sea_orm(string_value = "REACTIVATED")]
     Reactivated,
+    #[sea_orm(string_value = "EXPIRED")]
+    Expired,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
@@ -119,6 +121,8 @@ pub enum HistoryEntityType {
     Key,
     #[sea_orm(string_value = "DID")]
     Did,
+    #[sea_orm(string_value = "CERTIFICATE")]
+    Certificate,
     #[sea_orm(string_value = "IDENTIFIER")]
     Identifier,
     #[sea_orm(string_value = "CREDENTIAL")]

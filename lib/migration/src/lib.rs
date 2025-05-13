@@ -105,6 +105,7 @@ mod m20250508_143325_remove_credential_did_relation;
 mod m20250509_092249_reapply_not_null_constraint_on_enum_columns;
 mod m20250509_113851_change_enum_to_varchar_history_entity_type;
 mod m20250512_075017_remove_proof_did_relation;
+mod m20250512_110852_certificate;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -212,6 +213,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250508_143325_remove_credential_did_relation::Migration),
             Box::new(m20250509_113851_change_enum_to_varchar_history_entity_type::Migration),
             Box::new(m20250512_075017_remove_proof_did_relation::Migration),
+            Box::new(m20250512_110852_certificate::Migration),
         ]
     }
 }

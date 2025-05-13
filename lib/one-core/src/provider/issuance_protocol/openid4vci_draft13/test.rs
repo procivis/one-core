@@ -137,6 +137,7 @@ fn generic_credential() -> Credential {
         organisation: None,
         did: Some(issuer_did),
         key: None,
+        certificates: None,
     };
     Credential {
         id: credential_id,
@@ -322,6 +323,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
                     deleted_at: None,
                     organisation: did.organisation,
                     key: None,
+                    certificates: None,
                 },
             ))
         });

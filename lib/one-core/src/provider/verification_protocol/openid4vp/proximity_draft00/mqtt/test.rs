@@ -213,6 +213,7 @@ async fn test_handle_invitation_success() {
                 organisation: None,
                 did: None,
                 key: None,
+                certificates: None,
                 r#type: IdentifierType::Did,
                 is_remote: true,
                 status: IdentifierStatus::Active,

@@ -173,6 +173,7 @@ async fn setup_empty() -> TestSetup {
         organisation: Some(dummy_organisation(Some(organisation_id))),
         did: Some(did.clone()),
         key: None,
+        certificates: None,
     };
 
     TestSetup {

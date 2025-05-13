@@ -642,6 +642,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                         last_modified: now,
                         did: Some(did),
                         key: None,
+                        certificates: None,
                         is_remote: true,
                         deleted_at: None,
                         r#type: IdentifierType::Did,

@@ -1,3 +1,4 @@
+mod certificate_id;
 mod claim_id;
 mod claim_schema_id;
 mod credential_id;
@@ -16,6 +17,7 @@ mod remote_entity_cache_entry_id;
 mod trust_anchor_id;
 mod trust_entity_id;
 
+pub use certificate_id::CertificateId;
 pub use claim_id::ClaimId;
 pub use claim_schema_id::ClaimSchemaId;
 pub use credential_id::CredentialId;

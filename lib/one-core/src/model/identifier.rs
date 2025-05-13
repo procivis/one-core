@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
+use super::certificate::{Certificate, CertificateRelations};
 use super::common::GetListResponse;
 use super::did::{Did, DidRelations, KeyRole};
 use super::key::{Key, KeyRelations};
@@ -24,6 +25,7 @@ pub struct Identifier {
     pub organisation: Option<Organisation>,
     pub did: Option<Did>,
     pub key: Option<Key>,
+    pub certificates: Option<Vec<Certificate>>,
 }
 
 #[derive(Clone, Debug)]
@@ -54,6 +56,7 @@ pub struct IdentifierRelations {
     pub organisation: Option<OrganisationRelations>,
     pub did: Option<DidRelations>,
     pub key: Option<KeyRelations>,
+    pub certificates: Option<CertificateRelations>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

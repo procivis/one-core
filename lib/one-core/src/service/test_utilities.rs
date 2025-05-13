@@ -306,6 +306,7 @@ pub fn dummy_identifier() -> Identifier {
         organisation: None,
         did: None,
         key: None,
+        certificates: None,
     }
 }
 

@@ -129,6 +129,7 @@ pub(super) fn identifier_from_did(did: Did, now: OffsetDateTime) -> Identifier {
         status: IdentifierStatus::Active,
         deleted_at: None,
         key: None,
+        certificates: None,
     }
 }
 

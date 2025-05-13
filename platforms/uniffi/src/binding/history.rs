@@ -152,6 +152,7 @@ pub enum HistoryActionBindingEnum {
     Retracted,
     Updated,
     Reactivated,
+    Expired,
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]
@@ -161,6 +162,7 @@ pub enum HistoryEntityTypeBindingEnum {
     Key,
     Did,
     Identifier,
+    Certificate,
     Credential,
     CredentialSchema,
     Proof,

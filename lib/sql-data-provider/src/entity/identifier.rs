@@ -1,6 +1,6 @@
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{DidId, EntityId, IdentifierId, KeyId, OrganisationId};
+use shared_types::{CertificateId, DidId, EntityId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -42,6 +42,8 @@ pub enum Relation {
         to = "super::key::Column::Id"
     )]
     Key,
+    #[sea_orm(has_many = "super::certificate::Entity")]
+    Certificate,
 }
 
 impl Related<super::organisation::Entity> for Entity {

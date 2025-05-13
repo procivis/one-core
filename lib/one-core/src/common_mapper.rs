@@ -161,6 +161,7 @@ pub(crate) async fn get_or_create_did_and_identifier(
                 organisation: organisation.to_owned(),
                 did: Some(did.to_owned()),
                 key: None,
+                certificates: None,
             };
             identifier_repository.create(identifier.clone()).await?;
             identifier
@@ -671,6 +672,7 @@ mod tests {
                     log: None,
                 }),
                 key: None,
+                certificates: None,
             },
             None,
             "ISO_MDL".to_string(),

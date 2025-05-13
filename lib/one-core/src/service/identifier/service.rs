@@ -6,6 +6,7 @@ use super::IdentifierService;
 use super::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
+use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
 use crate::model::identifier::{
     Identifier, IdentifierListQuery, IdentifierRelations, IdentifierStatus, IdentifierType,
@@ -38,6 +39,9 @@ impl IdentifierService {
                     key: Some(KeyRelations {
                         organisation: Some(OrganisationRelations::default()),
                     }),
+                    certificates: Some(CertificateRelations {
+                        key: Some(KeyRelations::default()),
+                    }),
                     organisation: Some(Default::default()),
                 },
             )
@@ -68,8 +72,8 @@ impl IdentifierService {
                         organisation: Some(OrganisationRelations::default()),
                         keys: Some(KeyRelations::default()),
                     }),
-                    key: None,
                     organisation: Some(Default::default()),
+                    ..Default::default()
                 },
             )
             .await?;
@@ -143,6 +147,7 @@ impl IdentifierService {
                     deleted_at: None,
                     did: None,
                     key: Some(key),
+                    certificates: None,
                 };
 
                 self.identifier_repository.create(identifier).await?;
