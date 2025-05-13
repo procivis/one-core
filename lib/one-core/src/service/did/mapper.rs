@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{DidId, DidValue, IdentifierId, KeyId};
+use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -117,10 +117,9 @@ pub(super) fn did_from_did_request(
 }
 
 pub(super) fn identifier_from_did(did: Did, now: OffsetDateTime) -> Identifier {
-    let id: Uuid = did.id.into();
     Identifier {
         did: Some(did.to_owned()),
-        id: IdentifierId::from(id),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         name: did.name,

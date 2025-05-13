@@ -13,7 +13,7 @@ use secrecy::ExposeSecret;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use shared_types::CredentialId;
+use shared_types::{CredentialId, IdentifierId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -610,15 +610,15 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 (identifier.id, None, None)
             }
             None => {
-                let id = Uuid::new_v4();
                 let did_method = self
                     .did_method_provider
                     .get_did_method_id(&issuer_did_value)
                     .ok_or(IssuanceProtocolError::Failed(format!(
                         "unsupported issuer did method: {issuer_did_value}"
                     )))?;
+                let id = Uuid::new_v4().into();
                 let did = Did {
-                    id: id.into(),
+                    id,
                     name: format!("issuer {id}"),
                     created_date: now,
                     last_modified: now,
@@ -631,12 +631,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     log: None,
                 };
 
+                let id: IdentifierId = Uuid::new_v4().into();
                 (
-                    id.into(),
+                    id,
                     Some(did.to_owned()),
                     Some(Identifier {
-                        id: id.into(),
-                        name: format!("issuer {id}"),
+                        id,
+                        name: did.name.to_owned(),
                         created_date: now,
                         last_modified: now,
                         did: Some(did),
