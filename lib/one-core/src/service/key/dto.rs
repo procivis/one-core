@@ -57,13 +57,14 @@ pub struct KeyGenerateCSRRequestDTO {
 
 #[derive(Debug)]
 pub enum KeyGenerateCSRRequestProfile {
+    Generic,
     Mdl,
 }
 
 #[derive(Debug)]
 pub struct KeyGenerateCSRRequestSubjectDTO {
-    pub country_name: String,
-    pub common_name: String,
+    pub country_name: Option<String>,
+    pub common_name: Option<String>,
 
     pub state_or_province_name: Option<String>,
     pub organisation_name: Option<String>,

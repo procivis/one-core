@@ -140,6 +140,7 @@ pub struct KeyGenerateCSRRequestRestDTO {
 #[into(KeyGenerateCSRRequestProfile)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum KeyGenerateCSRRequestProfileRest {
+    Generic,
     Mdl,
 }
 
@@ -148,9 +149,9 @@ pub enum KeyGenerateCSRRequestProfileRest {
 #[serde(rename_all = "camelCase")]
 pub struct KeyGenerateCSRRequestSubjectRestDTO {
     /// Common name to include in the CSR, typically the domain name of the organization.
-    pub country_name: String,
+    pub country_name: Option<String>,
     /// Two-letter country code.
-    pub common_name: String,
+    pub common_name: Option<String>,
 
     pub state_or_province_name: Option<String>,
     pub organisation_name: Option<String>,

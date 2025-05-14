@@ -217,8 +217,8 @@ fn generic_csr_request() -> KeyGenerateCSRRequestDTO {
     KeyGenerateCSRRequestDTO {
         profile: KeyGenerateCSRRequestProfile::Mdl,
         subject: KeyGenerateCSRRequestSubjectDTO {
-            country_name: "CH".to_string(),
-            common_name: "name".to_string(),
+            country_name: Some("CH".to_string()),
+            common_name: Some("name".to_string()),
             state_or_province_name: None,
             organisation_name: None,
             locality_name: None,
