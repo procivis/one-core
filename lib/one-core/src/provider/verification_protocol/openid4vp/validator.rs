@@ -153,19 +153,13 @@ pub(super) async fn validate_credential(
                 "Credential at index {credential_index} not found",
             )))?;
 
-    let oidc_format = match &presentation_submitted
-        .path_nested
+    let format = proof_schema_input
+        .credential_schema
         .as_ref()
-        .map(|p| p.format.as_str())
-    {
-        Some(format) => format,
-        None => presentation_submitted.format.as_str(),
-    };
-
-    let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential_token))
-        .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
+        .map(|schema| schema.format.as_str())
+        .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
     let formatter = formatter_provider
-        .get_formatter(&format)
+        .get_formatter(format)
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
     let credential = formatter

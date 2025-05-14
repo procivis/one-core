@@ -300,6 +300,7 @@ pub(super) async fn extract_credentials_internal(
             verification,
             holder_binding_ctx,
             leeway,
+            false,
         )
         .await?;
     let credential_subject = jwt

@@ -211,6 +211,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         verification: Option<&VerificationFn>,
         key_binding_context: Option<HolderBindingCtx>,
         leeway: Duration,
+        skip_holder_binding_aud_check: bool,
     ) -> Result<(Jwt<Payload>, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
         let DecomposedTokenWithDisclosures {
             jwt,
@@ -242,6 +243,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                     verification,
                     key_binding_context,
                     leeway,
+                    skip_holder_binding_aud_check,
                 )
                 .await?
             } else {
@@ -341,6 +343,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn verify_holder_binding(
         cnf: &ProofOfPossessionKey,
         token: &str,
@@ -349,6 +352,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         verification: Option<&VerificationFn>,
         holder_binding_context: Option<HolderBindingCtx>,
         leeway: Duration,
+        skip_holder_binding_aud_check: bool,
     ) -> Result<Option<JWTPayload<KeyBindingPayload>>, FormatterError> {
         let decomposed_kb_token = key_binding_token.map(Jwt::<KeyBindingPayload>::decompose_token);
 
@@ -415,20 +419,22 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             ));
         }
 
-        let Some(ref audience) = kb_payload.audience else {
-            return Err(FormatterError::CouldNotExtractCredentials(
-                "Missing aud claim in key binding token".to_string(),
-            ));
-        };
+        if !skip_holder_binding_aud_check {
+            let Some(ref audience) = kb_payload.audience else {
+                return Err(FormatterError::CouldNotExtractCredentials(
+                    "Missing aud claim in key binding token".to_string(),
+                ));
+            };
 
-        if !audience
-            .iter()
-            .any(|aud| *aud == holder_binding_context.audience)
-        {
-            return Err(FormatterError::CouldNotExtractCredentials(format!(
-                "Invalid key binding token aud: expected '{}' to be listed, got '{:?}'",
-                holder_binding_context.audience, kb_payload.audience
-            )));
+            if !audience
+                .iter()
+                .any(|aud| *aud == holder_binding_context.audience)
+            {
+                return Err(FormatterError::CouldNotExtractCredentials(format!(
+                    "Invalid key binding token aud: expected '{}' to be listed, got '{:?}'",
+                    holder_binding_context.audience, kb_payload.audience
+                )));
+            }
         }
 
         if kb_payload.custom.nonce != holder_binding_context.nonce {

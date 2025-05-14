@@ -406,6 +406,7 @@ impl SDJWTVCFormatter {
                 verification.as_ref(),
                 holder_binding_ctx,
                 leeway,
+                self.params.swiyu_mode, // skip holder binding aud check for SWIYU as aud is randomly populated
             )
             .await?;
 
