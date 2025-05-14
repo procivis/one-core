@@ -85,8 +85,8 @@ verificationProtocol:
         urlScheme: https
         useRequestUri: true
         verifier:
-          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
-          defaultClientIdScheme: verifier_attestation
+          supportedClientIdSchemes: [did]
+          defaultClientIdScheme: did
         holder:
           supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
         redirectUri:
