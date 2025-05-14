@@ -32,13 +32,13 @@ pub struct JWTHeader {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct JWTPayload<CustomPayload> {
-    #[serde(rename = "iat", default, with = "time::serde::timestamp::option")]
+    #[serde(rename = "iat", default, with = "crate::util::timestamp::option")]
     pub issued_at: Option<OffsetDateTime>,
 
-    #[serde(rename = "exp", default, with = "time::serde::timestamp::option")]
+    #[serde(rename = "exp", default, with = "crate::util::timestamp::option")]
     pub expires_at: Option<OffsetDateTime>,
 
-    #[serde(rename = "nbf", default, with = "time::serde::timestamp::option")]
+    #[serde(rename = "nbf", default, with = "crate::util::timestamp::option")]
     pub invalid_before: Option<OffsetDateTime>,
 
     #[serde(rename = "iss", default)]
