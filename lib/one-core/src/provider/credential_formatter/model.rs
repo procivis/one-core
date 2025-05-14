@@ -264,6 +264,9 @@ pub struct FormatterCapabilities {
     pub forbidden_claim_names: Vec<String>,
     pub issuance_identifier_types: Vec<IdentifierType>,
     pub verification_identifier_types: Vec<IdentifierType>,
+    pub holder_identifier_types: Vec<IdentifierType>,
+    pub holder_key_algorithms: Vec<KeyAlgorithmType>,
+    pub holder_did_methods: Vec<DidType>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]

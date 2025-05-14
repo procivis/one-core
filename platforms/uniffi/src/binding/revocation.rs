@@ -20,7 +20,7 @@ impl OneCoreBinding {
                 .check_revocation(
                     credential_ids
                         .iter()
-                        .map(|id| into_id(id))
+                        .map(into_id)
                         .collect::<Result<Vec<_>, _>>()?,
                     force_refresh.unwrap_or_default(),
                 )

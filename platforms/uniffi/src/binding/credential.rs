@@ -111,10 +111,7 @@ impl OneCoreBinding {
 
             let ids = match query.ids {
                 Some(ids) => {
-                    let ids = ids
-                        .iter()
-                        .map(|id| into_id(id))
-                        .collect::<Result<Vec<_>, _>>()?;
+                    let ids = ids.iter().map(into_id).collect::<Result<Vec<_>, _>>()?;
                     Some(CredentialFilterValue::CredentialIds(ids))
                 }
                 None => None,

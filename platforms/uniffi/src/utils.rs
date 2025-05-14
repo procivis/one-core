@@ -26,8 +26,10 @@ pub fn from_id_opt<T: Into<Uuid>>(input: Option<T>) -> Option<String> {
     input.map(|f| f.into().to_string())
 }
 
-pub fn into_id<T: From<Uuid>>(input: &str) -> Result<T, ServiceError> {
-    Uuid::parse_str(input).map_err(Into::into).map(Into::into)
+pub fn into_id<T: From<Uuid>>(input: impl AsRef<str>) -> Result<T, ServiceError> {
+    Uuid::parse_str(input.as_ref())
+        .map_err(Into::into)
+        .map(Into::into)
 }
 
 pub fn into_id_opt<T: From<Uuid>>(input: Option<String>) -> Result<Option<T>, ServiceError> {

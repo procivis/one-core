@@ -35,7 +35,8 @@ impl OneCoreBinding {
     pub async fn holder_accept_credential(
         &self,
         interaction_id: String,
-        did_id: String,
+        did_id: Option<String>,
+        identifier_id: Option<String>,
         key_id: Option<String>,
         tx_code: Option<String>,
     ) -> Result<(), BindingError> {
@@ -44,8 +45,9 @@ impl OneCoreBinding {
             .ssi_holder_service
             .accept_credential(
                 &into_id(&interaction_id)?,
-                into_id(&did_id)?,
-                key_id.map(|key_id| into_id(&key_id)).transpose()?,
+                did_id.map(into_id).transpose()?,
+                identifier_id.map(into_id).transpose()?,
+                key_id.map(into_id).transpose()?,
                 tx_code,
             )
             .await?)

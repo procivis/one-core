@@ -25,6 +25,7 @@ pub mod service;
 pub mod verification;
 
 mod mapper;
+mod validator;
 
 #[cfg(test)]
 mod test;

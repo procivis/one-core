@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -30,8 +30,9 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::{
-    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_credential;
 use crate::util::oidc::map_to_openid4vp_format;
@@ -40,7 +41,8 @@ impl SSIHolderService {
     pub async fn accept_credential(
         &self,
         interaction_id: &InteractionId,
-        did_id: DidId,
+        did_id: Option<DidId>,
+        identifier_id: Option<IdentifierId>,
         key_id: Option<KeyId>,
         tx_code: Option<String>,
     ) -> Result<(), ServiceError> {
@@ -72,27 +74,45 @@ impl SSIHolderService {
             .into());
         }
 
-        let Some(did) = self
-            .did_repository
-            .get_did(
-                &did_id,
-                &DidRelations {
-                    keys: Some(Default::default()),
-                    organisation: None,
-                },
-            )
-            .await?
-        else {
-            return Err(ValidationError::DidNotFound.into());
+        let identifier = match (did_id, identifier_id) {
+            (Some(did_id), None) => self
+                .identifier_repository
+                .get_from_did_id(
+                    did_id,
+                    &IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::from(ValidationError::DidNotFound))?,
+            (None, Some(identifier_id)) => self
+                .identifier_repository
+                .get(
+                    identifier_id,
+                    &IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                    identifier_id,
+                )))?,
+            (Some(_), Some(_)) | (None, None) => {
+                return Err(BusinessLogicError::OverlappingHolderDidWithIdentifier.into());
+            }
         };
 
-        let Some(identifier) = self
-            .identifier_repository
-            .get_from_did_id(did.id, &Default::default())
-            .await?
-        else {
-            return Err(ValidationError::DidNotFound.into());
-        };
+        let did = identifier.did.to_owned().ok_or(ServiceError::MappingError(
+            "missing identifier did".to_string(),
+        ))?;
 
         let selected_key = match key_id {
             Some(key_id) => did
@@ -200,6 +220,23 @@ impl SSIHolderService {
             .schema
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+
+        let format = &schema.format;
+        let formatter =
+            self.formatter_provider
+                .get_formatter(format)
+                .ok_or(ServiceError::MissingProvider(
+                    MissingProviderError::Formatter(format.to_owned()),
+                ))?;
+
+        validate_holder_capabilities(
+            &self.config,
+            holder_did,
+            holder_identifer,
+            selected_key,
+            &formatter.get_capabilities(),
+            self.key_algorithm_provider.as_ref(),
+        )?;
 
         let format_type = self
             .config

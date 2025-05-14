@@ -74,10 +74,7 @@ impl OneCoreBinding {
             let key_ids = match query.key_ids {
                 None => None,
                 Some(key_ids) => {
-                    let ids = key_ids
-                        .iter()
-                        .map(|id| into_id(id))
-                        .collect::<Result<_, _>>()?;
+                    let ids = key_ids.iter().map(into_id).collect::<Result<_, _>>()?;
                     Some(DidFilterValue::KeyIds(ids))
                 }
             };

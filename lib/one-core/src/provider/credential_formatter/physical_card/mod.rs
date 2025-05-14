@@ -9,7 +9,8 @@ use shared_types::{CredentialSchemaId, DidValue};
 use super::json_ld_classic::verify_credential_signature;
 use super::model::{CredentialData, HolderBindingCtx};
 use crate::config::core_config::{
-    IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
+    DidType, IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType,
+    VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
@@ -165,6 +166,13 @@ impl CredentialFormatter for PhysicalCardFormatter {
             forbidden_claim_names: vec![],
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did],
+            holder_identifier_types: vec![IdentifierType::Did],
+            holder_key_algorithms: vec![
+                KeyAlgorithmType::Ecdsa,
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Dilithium,
+            ],
+            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
     }
 

@@ -268,7 +268,7 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
     type Error = ServiceError;
     fn try_from(request: DidRequestKeysBindingDTO) -> Result<Self, Self::Error> {
         let convert = |ids: Vec<String>| -> Result<Vec<KeyId>, Self::Error> {
-            ids.iter().map(|id| into_id(id)).collect()
+            ids.iter().map(into_id).collect()
         };
 
         Ok(Self {

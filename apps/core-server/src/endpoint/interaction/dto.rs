@@ -10,7 +10,7 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
+use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
 use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
@@ -78,7 +78,8 @@ pub enum OpenID4VCITxCodeInputModeRestDTO {
 pub struct IssuanceAcceptRequestRestDTO {
     /// The identifier associated with the particular issuance.
     pub interaction_id: Uuid,
-    pub did_id: DidId,
+    pub did_id: Option<DidId>,
+    pub identifier_id: Option<IdentifierId>,
     /// If the associated DID supports multiple keys for authentication,
     /// specify which key to use. If no key is specified the first suitable key listed
     /// will be used.
@@ -107,7 +108,8 @@ pub struct PresentationSubmitRequestRestDTO {
     pub interaction_id: Uuid,
     #[into(with_fn = convert_inner)]
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
-    pub did_id: DidId,
+    pub did_id: Option<DidId>,
+    pub identifier_id: Option<IdentifierId>,
     /// If the associated DID supports multiple keys for authentication,
     /// specify which key to use. If no key is specified the first suitable key listed
     /// will be used.

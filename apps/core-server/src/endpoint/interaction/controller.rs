@@ -70,6 +70,7 @@ pub(crate) async fn issuance_accept(
         .accept_credential(
             &request.interaction_id,
             request.did_id,
+            request.identifier_id,
             request.key_id,
             request.tx_code,
         )

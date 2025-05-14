@@ -34,6 +34,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
     ValidationError,
 };
+use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_proof;
 use crate::util::oidc::detect_format_with_crypto_suite;
@@ -123,27 +124,48 @@ impl SSIHolderService {
             );
         };
 
-        let Some(holder_did) = self
-            .did_repository
-            .get_did(
-                &submission.did_id,
-                &DidRelations {
-                    organisation: Some(Default::default()),
-                    keys: Some(Default::default()),
-                },
-            )
-            .await?
-        else {
-            return Err(ValidationError::DidNotFound.into());
+        let holder_identifier = match (submission.did_id, submission.identifier_id) {
+            (Some(did_id), None) => self
+                .identifier_repository
+                .get_from_did_id(
+                    did_id,
+                    &IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::from(ValidationError::DidNotFound))?,
+            (None, Some(identifier_id)) => self
+                .identifier_repository
+                .get(
+                    identifier_id,
+                    &IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                    identifier_id,
+                )))?,
+            (Some(_), Some(_)) | (None, None) => {
+                return Err(BusinessLogicError::OverlappingHolderDidWithIdentifier.into());
+            }
         };
 
-        let Some(holder_identifier) = self
-            .identifier_repository
-            .get_from_did_id(holder_did.id, &Default::default())
-            .await?
-        else {
-            return Err(ValidationError::DidNotFound.into());
-        };
+        let holder_did = holder_identifier
+            .did
+            .to_owned()
+            .ok_or(ServiceError::MappingError(
+                "missing identifier did".to_string(),
+            ))?;
 
         let selected_key = match submission.key_id {
             Some(key_id) => holder_did
@@ -294,6 +316,15 @@ impl SSIHolderService {
                 .formatter_provider
                 .get_formatter(&format)
                 .ok_or(MissingProviderError::Formatter(format.to_string()))?;
+
+            validate_holder_capabilities(
+                self.config.as_ref(),
+                &holder_did,
+                &holder_identifier,
+                selected_key,
+                &formatter.get_capabilities(),
+                self.key_algorithm_provider.as_ref(),
+            )?;
 
             let credential_presentation = CredentialPresentation {
                 token: credential_content.to_owned(),

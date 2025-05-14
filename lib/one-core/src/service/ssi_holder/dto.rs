@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use shared_types::{CredentialId, DidId, KeyId, ProofId};
+use shared_types::{CredentialId, DidId, IdentifierId, KeyId, ProofId};
 
 use crate::model::interaction::InteractionId;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCITxCode;
@@ -9,7 +9,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCITxC
 pub struct PresentationSubmitRequestDTO {
     pub interaction_id: InteractionId,
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestDTO>,
-    pub did_id: DidId,
+    pub did_id: Option<DidId>,
+    pub identifier_id: Option<IdentifierId>,
     pub key_id: Option<KeyId>,
 }
 

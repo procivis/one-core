@@ -446,6 +446,18 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         forbidden_claim_names: vec![],
         issuance_identifier_types: vec![ConfigIdentifierType::Did],
         verification_identifier_types: vec![ConfigIdentifierType::Did],
+        holder_identifier_types: vec![ConfigIdentifierType::Did],
+        holder_key_algorithms: vec![
+            KeyAlgorithmType::Ecdsa,
+            KeyAlgorithmType::Eddsa,
+            KeyAlgorithmType::Dilithium,
+        ],
+        holder_did_methods: vec![
+            crate::config::core_config::DidType::Web,
+            crate::config::core_config::DidType::Key,
+            crate::config::core_config::DidType::Jwk,
+            crate::config::core_config::DidType::WebVh,
+        ],
     }
 }
 

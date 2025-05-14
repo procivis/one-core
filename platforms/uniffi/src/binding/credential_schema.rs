@@ -69,7 +69,7 @@ impl OneCoreBinding {
         }
 
         if let Some(ids) = query.ids {
-            let ids = ids.iter().map(|id| into_id(id)).collect::<Result<_, _>>()?;
+            let ids = ids.iter().map(into_id).collect::<Result<_, _>>()?;
             conditions.push(CredentialSchemaFilterValue::CredentialSchemaIds(ids).condition());
         }
 
