@@ -6,12 +6,11 @@ use uuid::Uuid;
 use x509_parser::pem::Pem;
 use x509_parser::prelude::X509Certificate;
 
-use super::CertificateService;
 use super::dto::{
-    CertificateResponseDTO, CertificateX509AttributesDTO, CertificateX509ExtensionDTO,
-    CreateCertificateRequestDTO,
+    CertificateResponseDTO, CertificateX509AttributesDTO, CreateCertificateRequestDTO,
 };
 use super::mapper::create_response_dto;
+use super::{CertificateService, x509_extension};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::key::Key;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
@@ -171,11 +170,7 @@ fn parse_x509_attributes(
     let extensions = certificate
         .extensions()
         .iter()
-        .map(|extension| CertificateX509ExtensionDTO {
-            oid: extension.oid.to_id_string(),
-            value: hex::encode(extension.value),
-            critical: extension.critical,
-        })
+        .map(x509_extension::parse)
         .collect();
 
     Ok(CertificateX509AttributesDTO {

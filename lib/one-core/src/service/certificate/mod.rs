@@ -7,6 +7,7 @@ use crate::repository::key_repository::KeyRepository;
 pub mod dto;
 pub(crate) mod mapper;
 pub mod service;
+mod x509_extension;
 
 #[derive(Clone)]
 pub struct CertificateService {

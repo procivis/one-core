@@ -55,7 +55,7 @@ async fn test_certificate_identifier() {
         .keys
         .create(&organisation, eddsa_testing_params())
         .await;
-    const CERTIFICATE_PEM: &str = "-----BEGIN CERTIFICATE-----
+    const CERTIFICATE_CHAIN_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDRjCCAuygAwIBAgIUcD+tZOWr65vnTr0OWGIVIzWOPscwCgYIKoZIzj0EAwIw
 YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
 aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
@@ -75,12 +75,31 @@ cy5jb20wHQYDVR0OBBYEFBe08Q4Q6zU6zYq2bTwW5BCiIuYEMAoGCCqGSM49BAMC
 A0gAMEUCIEQ8701fOGH/pskm/9G4EdzWRGY6jGOfHgoZc5nTBaCeAiEAsWoDCLnm
 gEudfmbqXoiDCBYUmNabrVJo6GiBeczXVoU=
 -----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmgwCgYIKoZIzj0EAwQw
+YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
+aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
+Y29tMB4XDTIyMDExMjEyMDAwMFoXDTMyMDExMDEyMDAwMFowYjELMAkGA1UEBhMC
+Q0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsM
+CFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMFkwEwYHKoZI
+zj0CAQYIKoZIzj0DAQcDQgAEaRFtZbpYHFlPgGyZCt6bGKS0hEekPVxiBHRXImo8
+/NUR+czg+DI2KTE3ikRVNgq2rICatkvkV2jaM2frPEOl1qNmMGQwEgYDVR0TAQH/
+BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFO0asJ3iYEVQADva
+WjQyGpi+LbfFMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi+LbfFMAoGCCqG
+SM49BAMEA0gAMEUCIQD9kfI800DOj76YsiW4lUNRZowH07j152M3UKHKEaIjUAIg
+ZNINukb4SFKEC4A0qEKgpPEZM7/Vh5aNro+PQn3/rgA=
+-----END CERTIFICATE-----
 ";
 
     let result = context
         .api
         .identifiers
-        .create_certificate_identifier("test-identifier", key.id, organisation.id, CERTIFICATE_PEM)
+        .create_certificate_identifier(
+            "test-identifier",
+            key.id,
+            organisation.id,
+            CERTIFICATE_CHAIN_PEM,
+        )
         .await;
 
     assert_eq!(result.status(), 201);
