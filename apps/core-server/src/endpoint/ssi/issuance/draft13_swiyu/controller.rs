@@ -15,7 +15,7 @@ use super::dto::{
     OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::extractor::Qs;
+use crate::extractor::QsOrForm;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -200,8 +200,8 @@ pub(crate) async fn oid4vci_draft13_swiyu_get_credential_offer(
 pub(crate) async fn oid4vci_draft13_swiyu_create_token(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
-    WithRejection(Qs(request), _): WithRejection<
-        Qs<OpenID4VCITokenRequestRestDTO>,
+    WithRejection(QsOrForm(request), _): WithRejection<
+        QsOrForm<OpenID4VCITokenRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
@@ -283,10 +283,13 @@ pub(crate) async fn oid4vci_draft13_swiyu_create_credential(
     >,
 ) -> Response {
     let access_token = token.token();
+    let Ok(request) = request.try_into() else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
     let result = state
         .core
         .oid4vci_draft13_swiyu_service
-        .create_credential(&credential_schema_id, access_token, request.into())
+        .create_credential(&credential_schema_id, access_token, request)
         .await;
 
     match result {

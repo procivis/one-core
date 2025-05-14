@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use indexmap::IndexMap;
+use regex::Regex;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -29,6 +30,9 @@ use crate::provider::issuance_protocol::{
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::util::oidc::map_from_openid4vp_format;
+
+static SCHEMA_URL_REPLACEMENT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"/ssi/openid4vci/[\w-]+/").unwrap());
 
 pub(crate) struct HandleInvitationOperationsImpl {
     pub organisation: Organisation,
@@ -118,9 +122,9 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         // correct on HOLDER side as well, however the HOLDER will not use it therefore we might
         // remove it when we fix the workaround for mDOC.
         // MDOC doesn't have any information about schema url. It's replaced by doctype, hence we need to figure something out for now
-        let schema_url = issuer_metadata
-            .credential_issuer
-            .replace("/ssi/openid4vci/draft-13/", "/ssi/schema/v1/");
+        let schema_url = SCHEMA_URL_REPLACEMENT_REGEX
+            .replace_all(&issuer_metadata.credential_issuer, "/ssi/schema/v1/")
+            .into_owned();
 
         let credential_display_name = credential_config.display.as_ref().and_then(|display_info| {
             let display = display_info.first()?;

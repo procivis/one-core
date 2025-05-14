@@ -30,7 +30,8 @@ use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
+    UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
@@ -470,7 +471,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let body = OpenID4VCICredential {
             format: format.to_owned(),
-            vct: (schema.format == "SD_JWT_VC").then_some(schema.schema_id.to_owned()),
+            vct: (schema.schema_type == CredentialSchemaType::SdJwtVc)
+                .then_some(schema.schema_id.to_owned()),
             doctype,
             proof: OpenID4VCIProof {
                 proof_type: "jwt".to_string(),
@@ -1242,20 +1244,13 @@ async fn handle_credential_invitation(
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
 
-            let claims_with_values =
-                claims_with_opt_values.and_then(|(claim_keys, missing_claim_values)| {
-                    if missing_claim_values {
-                        return Err(IssuanceProtocolError::Failed(
-                            "Missing claim values".to_string(),
-                        ));
-                    }
-
-                    map_offered_claims_to_credential_schema(
-                        &credential_schema,
-                        credential_id,
-                        &claim_keys,
-                    )
-                });
+            let claims_with_values = claims_with_opt_values.and_then(|claim_keys| {
+                map_offered_claims_to_credential_schema(
+                    &credential_schema,
+                    credential_id,
+                    &claim_keys,
+                )
+            });
 
             let claims = match (claims_with_values, credential_schema.external_schema) {
                 (Ok(claims_with_values), _) => claims_with_values,
@@ -1306,7 +1301,7 @@ async fn handle_credential_invitation(
             let response = handle_invitation_operations
                 .create_new_schema(
                     schema_data,
-                    &claims_with_opt_values.map(|(claims, _)| claims)?,
+                    &claims_with_opt_values?,
                     &credential_id,
                     credential_config,
                     &issuer_metadata,
@@ -1444,7 +1439,7 @@ async fn create_and_store_interaction(
 fn build_claim_keys(
     credential_configuration: &OpenID4VCICredentialConfigurationData,
     credential_subject: &Option<ExtendedSubjectDTO>,
-) -> Result<(IndexMap<String, OpenID4VCICredentialValueDetails>, bool), IssuanceProtocolError> {
+) -> Result<IndexMap<String, OpenID4VCICredentialValueDetails>, IssuanceProtocolError> {
     let claim_object = match (
         &credential_configuration.credential_definition,
         &credential_configuration.claims,
@@ -1468,33 +1463,27 @@ fn build_claim_keys(
         .and_then(|cs| cs.keys.clone())
         .unwrap_or_default();
 
-    if keys.claims.is_empty() {
-        // WORKAROUND
-        // Logic somewhere later expects values to be provided at this point. We don't have them for e.g. external credentials
-        // hence we fulfill mandatory fields with empty values. The logic wil later be reworked to provide no claims in case
-        // there is no credential definition
-
-        let missing_keys = collect_mandatory_keys(claim_object, None);
-        Ok((
-            missing_keys
-                .into_iter()
-                .map(|(missing_claim_path, value_type)| {
-                    (
-                        missing_claim_path,
-                        OpenID4VCICredentialValueDetails {
-                            value: "".to_owned(),
-                            value_type,
-                        },
-                    )
-                })
-                .collect(),
-            true,
-        ))
-
-        //END OF WORKAROUND
-    } else {
-        Ok((keys.claims, false))
+    if !keys.claims.is_empty() {
+        return Ok(keys.claims);
     }
+    // WORKAROUND
+    // Logic somewhere later expects values to be provided at this point. We don't have them for e.g. external credentials
+    // hence we fulfill mandatory fields with empty values. The logic will later be reworked to provide no claims in case
+    // there is no credential definition
+    let missing_keys = collect_mandatory_keys(claim_object, None);
+    Ok(missing_keys
+        .into_iter()
+        .map(|(missing_claim_path, value_type)| {
+            (
+                missing_claim_path,
+                OpenID4VCICredentialValueDetails {
+                    value: "".to_owned(),
+                    value_type,
+                },
+            )
+        })
+        .collect())
+    //END OF WORKAROUND
 }
 
 fn collect_mandatory_keys(

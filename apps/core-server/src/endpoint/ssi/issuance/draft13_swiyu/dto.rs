@@ -2,8 +2,7 @@ use indexmap::IndexMap;
 use one_core::common_mapper::{opt_secret_string, secret_string};
 use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectDTO, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
+    ExtendedSubjectDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
     OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
@@ -11,8 +10,11 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIProofRequestDTO,
     OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
+use one_core::service::error::ServiceError;
 use one_core::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
-use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{
+    From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
+};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -118,13 +120,11 @@ pub(crate) struct OpenID4VCITokenRequestRestDTO {
     pub refresh_token: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From)]
-#[into(OpenID4VCICredentialDefinitionRequestDTO)]
-#[from(OpenID4VCICredentialDefinitionRequestDTO)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
-    #[serde(rename = "types")]
-    pub r#type: Vec<String>,
+    pub r#type: Option<Vec<String>>,
+    pub types: Option<Vec<String>>,
 
     #[serde(rename = "credentialSubject")]
     #[schema(value_type = Object,
@@ -140,15 +140,18 @@ pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(OpenID4VCICredentialRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = OpenID4VCICredentialRequestDTO, Error = ServiceError)]
 pub(crate) struct OpenID4VCICredentialRequestRestDTO {
+    #[try_into(infallible)]
     pub format: String,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestRestDTO>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(infallible)]
     pub doctype: Option<String>,
+    #[try_into(infallible)]
     pub vct: Option<String>,
+    #[try_into(infallible)]
     pub proof: OpenID4VCIProofRequestRestDTO,
 }
 

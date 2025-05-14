@@ -1,14 +1,15 @@
 use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectClaimsDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-    Timestamp,
+    ExtendedSubjectClaimsDTO, OpenID4VCICredentialDefinitionRequestDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, Timestamp,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::convert_inner_of_inner;
 
 use super::dto::{
-    ExtendedSubjectClaimsRestDTO, OpenID4VCIErrorResponseRestDTO,
-    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO, TimestampRest,
+    ExtendedSubjectClaimsRestDTO, OpenID4VCICredentialDefinitionRequestRestDTO,
+    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCITokenRequestRestDTO, TimestampRest,
 };
 
 impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
@@ -83,6 +84,36 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for OpenID4VCITokenRequestDTO {
             _ => Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidRequest,
             )),
+        }
+    }
+}
+
+impl TryFrom<OpenID4VCICredentialDefinitionRequestRestDTO>
+    for OpenID4VCICredentialDefinitionRequestDTO
+{
+    type Error = ServiceError;
+
+    fn try_from(value: OpenID4VCICredentialDefinitionRequestRestDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            r#type: value
+                .r#type
+                .or(value.types)
+                .ok_or(ServiceError::MappingError(
+                    "Missing type / types".to_string(),
+                ))?,
+            credential_subject: value.credential_subject,
+        })
+    }
+}
+
+impl From<OpenID4VCICredentialDefinitionRequestDTO>
+    for OpenID4VCICredentialDefinitionRequestRestDTO
+{
+    fn from(value: OpenID4VCICredentialDefinitionRequestDTO) -> Self {
+        Self {
+            r#type: Some(value.r#type.clone()),
+            types: Some(value.r#type.clone()),
+            credential_subject: value.credential_subject,
         }
     }
 }
