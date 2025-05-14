@@ -43,6 +43,7 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
             state: value.state,
             did: value.did.map(TryInto::try_into).transpose()?,
             key: value.key.map(TryInto::try_into).transpose()?,
+            certificates: None,
         })
     }
 }

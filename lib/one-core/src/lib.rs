@@ -20,6 +20,7 @@ use provider::verification_protocol::provider::VerificationProtocolProviderImpl;
 use provider::verification_protocol::verification_protocol_providers_from_config;
 use repository::DataRepository;
 use service::backup::BackupService;
+use service::certificate::CertificateService;
 use service::config::ConfigService;
 use service::credential::CredentialService;
 use service::did::DidService;
@@ -106,6 +107,7 @@ pub struct OneCore {
     pub trust_anchor_service: TrustAnchorService,
     pub trust_entity_service: TrustEntityService,
     pub did_service: DidService,
+    pub certificate_service: CertificateService,
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
     pub history_service: HistoryService,
@@ -441,6 +443,12 @@ impl OneCore {
             verification_protocols,
         ));
 
+        let certificate_service = CertificateService::new(
+            data_provider.get_certificate_repository(),
+            data_provider.get_key_repository(),
+            key_algorithm_provider.clone(),
+        );
+
         let did_service = DidService::new(
             data_provider.get_did_repository(),
             data_provider.get_key_repository(),
@@ -498,6 +506,7 @@ impl OneCore {
                 client.clone(),
             ),
             did_service: did_service.clone(),
+            certificate_service: certificate_service.clone(),
             revocation_list_service: RevocationListService::new(
                 providers.core_base_url.clone(),
                 data_provider.get_credential_repository(),
@@ -661,8 +670,10 @@ impl OneCore {
             identifier_service: IdentifierService::new(
                 data_provider.get_identifier_repository(),
                 data_provider.get_key_repository(),
+                data_provider.get_certificate_repository(),
                 data_provider.get_organisation_repository(),
                 did_service,
+                certificate_service,
             ),
         })
     }

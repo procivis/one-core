@@ -1,8 +1,8 @@
 use one_crypto::CryptoProviderError;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, IdentifierId,
-    KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
+    CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
+    IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
 };
 use strum::Display;
 use thiserror::Error;
@@ -161,6 +161,9 @@ pub enum EntityNotFoundError {
 
     #[error("Key `{0}` not found")]
     Key(KeyId),
+
+    #[error("Certificate `{0}` not found")]
+    Certificate(CertificateId),
 
     #[error("Credential schema `{0}` not found")]
     CredentialSchema(CredentialSchemaId),
@@ -532,6 +535,24 @@ pub enum ValidationError {
 
     #[error("Missing key with role `{0}`")]
     NoKeyWithRole(KeyRole),
+
+    #[error("DID, Key or Certificate must be specified when creating identifier")]
+    InvalidIdentifierInput,
+
+    #[error("Certificate signature invalid")]
+    CertificateSignatureInvalid,
+
+    #[error("Certificate revoked")]
+    CertificateRevoked,
+
+    #[error("Certificate is expired or not yet valid")]
+    CertificateNotValid,
+
+    #[error("Key does not match public key of certificate")]
+    CertificateKeyNotMatching,
+
+    #[error("Certificate parsing failure: `{0}`")]
+    CertificateParsingFailed(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1056,13 +1077,35 @@ pub enum ErrorCode {
     #[strum(to_string = "Empty value not allowed")]
     BR_0204,
 
+    #[strum(to_string = "DID, Key or Certificate must be specified when creating identifier")]
+    BR_0206,
+
     #[strum(to_string = "Identifier not found")]
     BR_0207,
 
+    #[strum(to_string = "Certificate signature invalid")]
+    BR_0211,
+
+    #[strum(to_string = "Certificate revoked")]
+    BR_0212,
+
+    #[strum(to_string = "Certificate is expired or not yet valid")]
+    BR_0213,
+
+    #[strum(to_string = "Key does not match public key of certificate")]
+    BR_0214,
+
     #[strum(to_string = "Identifier not compatible with format")]
     BR_0218,
+
     #[strum(to_string = "No key with required role available")]
     BR_0222,
+
+    #[strum(to_string = "Certificate not found")]
+    BR_0223,
+
+    #[strum(to_string = "Certificate parsing failure")]
+    BR_0224,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1143,6 +1186,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::TrustEntity(_) => ErrorCode::BR_0121,
             Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
+            Self::Certificate(_) => ErrorCode::BR_0223,
         }
     }
 }
@@ -1266,6 +1310,12 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidImage(_) => ErrorCode::BR_0193,
             Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
             Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
+            Self::InvalidIdentifierInput => ErrorCode::BR_0206,
+            Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
+            Self::CertificateRevoked => ErrorCode::BR_0212,
+            Self::CertificateNotValid => ErrorCode::BR_0213,
+            Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
+            Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
         }
     }
 }

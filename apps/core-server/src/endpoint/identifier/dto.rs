@@ -1,9 +1,13 @@
 use one_core::model::identifier::{IdentifierState, IdentifierType, SortableIdentifierColumn};
+use one_core::service::certificate::dto::CreateCertificateRequestDTO;
 use one_core::service::identifier::dto::{
     CreateIdentifierDidRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
-use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use one_dto_mapper::{
+    From, Into, TryFrom, convert_inner, convert_inner_of_inner, try_convert_inner,
+    try_convert_inner_of_inner,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{IdentifierId, KeyId, OrganisationId};
@@ -12,6 +16,7 @@ use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
 use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
 use crate::endpoint::key::dto::KeyResponseRestDTO;
 use crate::mapper::MapperError;
@@ -26,6 +31,8 @@ pub struct CreateIdentifierRequestRestDTO {
     #[into(with_fn = "convert_inner")]
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
     pub key_id: Option<KeyId>,
+    #[into(with_fn = "convert_inner_of_inner")]
+    pub certificates: Option<Vec<CreateCertificateRequestRestDTO>>,
     pub organisation_id: OrganisationId,
 }
 
@@ -38,6 +45,16 @@ pub struct CreateIdentifierDidRequestRestDTO {
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     pub params: Option<serde_json::Value>,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(CreateCertificateRequestDTO)]
+pub struct CreateCertificateRequestRestDTO {
+    pub name: Option<String>,
+    pub chain: String,
+    pub key_id: KeyId,
 }
 
 #[skip_serializing_none]
@@ -80,6 +97,8 @@ pub struct GetIdentifierResponseRestDTO {
     pub did: Option<DidResponseRestDTO>,
     #[try_from(with_fn = "try_convert_inner")]
     pub key: Option<KeyResponseRestDTO>,
+    #[try_from(with_fn = "try_convert_inner_of_inner")]
+    pub certificates: Option<Vec<CertificateResponseRestDTO>>,
     #[try_from(infallible, with_fn = "convert_inner")]
     pub organisation_id: Option<OrganisationId>,
     #[try_from(infallible)]

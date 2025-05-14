@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::identifier::{IdentifierState, IdentifierType};
+use crate::service::certificate::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
 use crate::service::key::dto::KeyResponseDTO;
 
@@ -20,6 +21,7 @@ pub struct GetIdentifierResponseDTO {
     pub state: IdentifierState,
     pub did: Option<DidResponseDTO>,
     pub key: Option<KeyResponseDTO>,
+    pub certificates: Option<Vec<CertificateResponseDTO>>,
 }
 
 #[skip_serializing_none]
@@ -43,6 +45,7 @@ pub struct CreateIdentifierRequestDTO {
     pub name: String,
     pub did: Option<CreateIdentifierDidRequestDTO>,
     pub key_id: Option<KeyId>,
+    pub certificates: Option<Vec<CreateCertificateRequestDTO>>,
     pub organisation_id: OrganisationId,
 }
 

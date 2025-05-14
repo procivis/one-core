@@ -204,6 +204,17 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
+                       .name("certificate_management")
+                       .description(Some(indoc::formatdoc! {"
+                Manage certificates
+            "}))
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Certificates")
+                               .build(),
+                       ))
+                       .build(),
+                        Tag::builder()
                        .name("identifier_management")
                        .description(Some(indoc::formatdoc! {"
                 Create and manage identifiers

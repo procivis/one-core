@@ -20,9 +20,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::ServerConfig;
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
-    cache, config, credential, credential_schema, did, did_resolver, history, identifier,
-    interaction, jsonld, key, misc, organisation, proof, proof_schema, ssi, task, trust_anchor,
-    trust_entity, vc_api,
+    cache, certificate, config, credential, credential_schema, did, did_resolver, history,
+    identifier, interaction, jsonld, key, misc, organisation, proof, proof_schema, ssi, task,
+    trust_anchor, trust_entity, vc_api,
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
@@ -200,6 +200,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             .route("/api/did/v1/{id}", patch(did::controller::update_did))
             .route("/api/did/v1", get(did::controller::get_did_list))
             .route("/api/did/v1", post(did::controller::post_did))
+            .route(
+                "/api/certificate/v1/{id}",
+                get(certificate::controller::get_certificate),
+            )
             .route(
                 "/api/identifier/v1",
                 get(identifier::controller::get_identifier_list)

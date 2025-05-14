@@ -30,6 +30,28 @@ impl IdentifiersApi {
             .await
     }
 
+    pub async fn create_certificate_identifier(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+        chain: &str,
+    ) -> Response {
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!( {
+                    "name": name,
+                    "organisationId": organisation_id,
+                    "certificates": [{
+                        "chain": chain,
+                        "keyId": key_id
+                    }]
+                }),
+            )
+            .await
+    }
+
     pub async fn get(&self, id: &IdentifierId) -> Response {
         self.client.get(&format!("/api/identifier/v1/{}", id)).await
     }

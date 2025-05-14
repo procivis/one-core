@@ -6,10 +6,13 @@ use one_core::model::identifier::{
 };
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::service::certificate::dto::CreateCertificateRequestDTO;
 use one_core::service::identifier::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use one_dto_mapper::{
+    From, Into, TryInto, convert_inner, try_convert_inner, try_convert_inner_of_inner,
+};
 
 use super::common::SortDirection;
 use super::did::KeyRoleBindingEnum;
@@ -210,6 +213,8 @@ pub struct CreateIdentifierRequestBindingDTO {
     pub key_id: Option<String>,
     #[try_into(with_fn = "try_convert_inner")]
     pub did: Option<CreateIdentifierDidRequestBindingDTO>,
+    #[try_into(with_fn = "try_convert_inner_of_inner")]
+    pub certificates: Option<Vec<CreateCertificateRequestBindingDTO>>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -218,4 +223,15 @@ pub struct CreateIdentifierDidRequestBindingDTO {
     pub method: String,
     pub keys: super::did::DidRequestKeysBindingDTO,
     pub params: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = CreateCertificateRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct CreateCertificateRequestBindingDTO {
+    #[try_into(infallible)]
+    pub name: Option<String>,
+    #[try_into(infallible)]
+    pub chain: String,
+    #[try_into(with_fn_ref = "into_id")]
+    pub key_id: String,
 }

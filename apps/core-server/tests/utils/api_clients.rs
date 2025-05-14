@@ -5,6 +5,7 @@ use jsonld::JsonLdApi;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+use self::certificates::CertificatesApi;
 use self::config::ConfigApi;
 use self::credential_schemas::CredentialSchemasApi;
 use self::credentials::CredentialsApi;
@@ -26,6 +27,7 @@ use super::field_match::FieldHelpers;
 use crate::utils::api_clients::cache::CacheApi;
 
 mod cache;
+pub mod certificates;
 pub mod config;
 pub mod credential_schemas;
 pub mod credentials;
@@ -191,6 +193,7 @@ pub struct Client {
     pub jsonld: JsonLdApi,
     pub other: OtherApi,
     pub identifiers: IdentifiersApi,
+    pub certificates: CertificatesApi,
 }
 
 impl Client {
@@ -216,7 +219,8 @@ impl Client {
             trust_entities: TrustEntitiesApi::new(client.clone()),
             jsonld: JsonLdApi::new(client.clone()),
             other: OtherApi::new(client.clone()),
-            identifiers: IdentifiersApi::new(client),
+            identifiers: IdentifiersApi::new(client.clone()),
+            certificates: CertificatesApi::new(client),
         }
     }
 }

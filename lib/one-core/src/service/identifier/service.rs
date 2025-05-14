@@ -14,7 +14,7 @@ use crate::model::identifier::{
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
-use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 use crate::service::identifier::mapper::to_create_did_request;
 
 impl IdentifierService {
@@ -51,7 +51,29 @@ impl IdentifierService {
             return Err(EntityNotFoundError::Identifier(*id).into());
         };
 
-        identifier.try_into()
+        let mut certificates = None;
+        if identifier.r#type == IdentifierType::Certificate {
+            let mut certs = vec![];
+            for certificate in
+                identifier
+                    .certificates
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "Certificates required for identifier type Certificate".to_string(),
+                    ))?
+            {
+                certs.push(
+                    self.certificate_service
+                        .get_certificate(certificate.id)
+                        .await?,
+                );
+            }
+            certificates = Some(certs);
+        }
+
+        let mut result: GetIdentifierResponseDTO = identifier.try_into()?;
+        result.certificates = certificates;
+        Ok(result)
     }
 
     /// Returns an identifier by its DID ID
@@ -59,7 +81,7 @@ impl IdentifierService {
     /// # Arguments
     ///
     /// * `did_id` - DID uuid
-    pub async fn get_identifier_by_did_id(
+    async fn get_identifier_by_did_id(
         &self,
         did_id: &DidId,
     ) -> Result<GetIdentifierResponseDTO, ServiceError> {
@@ -116,9 +138,10 @@ impl IdentifierService {
             .await?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
-        match (request.did, request.key_id) {
+        let now = OffsetDateTime::now_utc();
+        match (request.did, request.key_id, request.certificates) {
             // IdentifierType::Did
-            (Some(did), None) => {
+            (Some(did), None, None) => {
                 let did_id = self
                     .did_service
                     .create_did(to_create_did_request(&request.name, did, organisation.id))
@@ -126,7 +149,7 @@ impl IdentifierService {
                 self.get_identifier_by_did_id(&did_id).await.map(|i| i.id)
             }
             // IdentifierType::Key
-            (None, Some(key_id)) => {
+            (None, Some(key_id), None) => {
                 let key = self
                     .key_repository
                     .get_key(&key_id, &Default::default())
@@ -134,29 +157,63 @@ impl IdentifierService {
                     .ok_or(EntityNotFoundError::Key(key_id))?;
 
                 let id = Uuid::new_v4().into();
-                let now = OffsetDateTime::now_utc();
-                let identifier = Identifier {
-                    id,
-                    created_date: now,
-                    last_modified: now,
-                    name: request.name,
-                    organisation: Some(organisation),
-                    r#type: IdentifierType::Key,
-                    is_remote: false,
-                    state: IdentifierState::Active,
-                    deleted_at: None,
-                    did: None,
-                    key: Some(key),
-                    certificates: None,
-                };
-
-                self.identifier_repository.create(identifier).await?;
+                self.identifier_repository
+                    .create(Identifier {
+                        id,
+                        created_date: now,
+                        last_modified: now,
+                        name: request.name,
+                        organisation: Some(organisation),
+                        r#type: IdentifierType::Key,
+                        is_remote: false,
+                        state: IdentifierState::Active,
+                        deleted_at: None,
+                        did: None,
+                        key: Some(key),
+                        certificates: None,
+                    })
+                    .await?;
 
                 Ok(id)
             }
-            _ => Err(ServiceError::ValidationError(
-                "Invalid request, specify either did or keyId".to_string(),
-            )),
+            // IdentifierType::Certificate
+            (None, None, Some(certificate_requests)) => {
+                let id = Uuid::new_v4().into();
+
+                let mut certificates = vec![];
+                for request in certificate_requests {
+                    certificates.push(
+                        self.certificate_service
+                            .validate_and_prepare_certificate(id, request)
+                            .await?,
+                    );
+                }
+
+                self.identifier_repository
+                    .create(Identifier {
+                        id,
+                        created_date: now,
+                        last_modified: now,
+                        name: request.name,
+                        organisation: Some(organisation),
+                        r#type: IdentifierType::Certificate,
+                        is_remote: false,
+                        state: IdentifierState::Active,
+                        deleted_at: None,
+                        did: None,
+                        key: None,
+                        certificates: None,
+                    })
+                    .await?;
+
+                for certificate in certificates {
+                    self.certificate_repository.create(certificate).await?;
+                }
+
+                Ok(id)
+            }
+            // invalid input combinations
+            _ => Err(ValidationError::InvalidIdentifierInput.into()),
         }
     }
 
