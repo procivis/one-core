@@ -18,7 +18,7 @@ use time::OffsetDateTime;
 use time::macros::format_description;
 use uuid::Uuid;
 
-use crate::api_oidc_tests::full_flow_common::proof_jwt;
+use crate::api_oidc_tests::common::proof_jwt;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
