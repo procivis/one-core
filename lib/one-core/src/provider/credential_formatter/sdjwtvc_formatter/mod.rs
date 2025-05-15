@@ -287,11 +287,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let mut signing_key_algorithms = vec![KeyAlgorithmType::Ecdsa];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];
-        let mut proof_exchange_protocols = vec![
-            VerificationProtocolType::OpenId4VpDraft20,
-            VerificationProtocolType::OpenId4VpDraft25,
-            VerificationProtocolType::OpenId4VpProximityDraft00,
-        ];
+        let mut proof_exchange_protocols =
+            vec![VerificationProtocolType::OpenId4VpProximityDraft00];
 
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
@@ -299,13 +296,19 @@ impl CredentialFormatter for SDJWTVCFormatter {
             proof_exchange_protocols.push(VerificationProtocolType::OpenId4VpDraft20Swiyu)
         } else {
             datatypes.push("PICTURE".to_string());
-            signing_key_algorithms.push(KeyAlgorithmType::Eddsa);
-            signing_key_algorithms.push(KeyAlgorithmType::Dilithium);
-            issuance_did_methods.push(DidType::Key);
-            issuance_did_methods.push(DidType::Web);
-            issuance_did_methods.push(DidType::Jwk);
-            issuance_did_methods.push(DidType::X509);
+            signing_key_algorithms
+                .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::Dilithium]);
+            issuance_did_methods.extend_from_slice(&[
+                DidType::Key,
+                DidType::Web,
+                DidType::Jwk,
+                DidType::X509,
+            ]);
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13);
+            proof_exchange_protocols.extend_from_slice(&[
+                VerificationProtocolType::OpenId4VpDraft20,
+                VerificationProtocolType::OpenId4VpDraft25,
+            ]);
         }
 
         FormatterCapabilities {
