@@ -122,6 +122,7 @@ impl ProofService {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -130,7 +131,9 @@ impl ProofService {
                         ..Default::default()
                     }),
                     verifier_key: None,
-                    interaction: Some(Default::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                 },
             )
             .await?;

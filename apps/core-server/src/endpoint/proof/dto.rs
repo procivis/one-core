@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::{DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
-use uuid::Uuid;
 
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
@@ -335,8 +334,7 @@ pub struct ProofDetailResponseRestDTO {
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub role: ProofRoleRestEnum,
-    #[from(with_fn = convert_inner)]
-    pub organisation_id: Option<Uuid>,
+    pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
     pub redirect_uri: Option<String>,

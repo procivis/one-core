@@ -496,6 +496,7 @@ async fn test_get_proof_exists() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -503,7 +504,9 @@ async fn test_get_proof_exists() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )
@@ -648,6 +651,7 @@ async fn test_get_proof_with_array_holder() {
                 deactivated: false,
                 log: None,
             }),
+            organisation: Some(organisation),
             ..dummy_identifier()
         }),
         holder_identifier: Some(Identifier {
@@ -700,6 +704,7 @@ async fn test_get_proof_with_array_holder() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -707,7 +712,9 @@ async fn test_get_proof_with_array_holder() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )
@@ -879,6 +886,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 deactivated: false,
                 log: None,
             }),
+            organisation: Some(organisation),
             ..dummy_identifier()
         }),
         holder_identifier: Some(Identifier {
@@ -931,6 +939,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -938,7 +947,9 @@ async fn test_get_proof_with_array_in_object_holder() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )
@@ -1115,6 +1126,7 @@ async fn test_get_proof_with_object_array_holder() {
                 deactivated: false,
                 log: None,
             }),
+            organisation: Some(organisation),
             ..dummy_identifier()
         }),
         holder_identifier: Some(Identifier {
@@ -1167,6 +1179,7 @@ async fn test_get_proof_with_object_array_holder() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -1174,7 +1187,9 @@ async fn test_get_proof_with_object_array_holder() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )
@@ -1401,6 +1416,7 @@ async fn test_get_proof_with_array() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -1408,7 +1424,9 @@ async fn test_get_proof_with_array() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )
@@ -1647,6 +1665,7 @@ async fn test_get_proof_with_array_in_object() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -1654,7 +1673,9 @@ async fn test_get_proof_with_array_in_object() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )
@@ -1899,6 +1920,7 @@ async fn test_get_proof_with_object_array() {
                     }),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -1906,7 +1928,9 @@ async fn test_get_proof_with_object_array() {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 }),
             )

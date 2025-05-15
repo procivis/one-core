@@ -427,7 +427,7 @@ pub(super) async fn get_verifier_proof_detail(
         exchange: list_item_response.exchange,
         state: list_item_response.state,
         role: list_item_response.role,
-        organisation_id: Some(organisation_id),
+        organisation_id,
         schema: list_item_response.schema,
         redirect_uri,
         proof_inputs,
@@ -515,10 +515,27 @@ pub(super) async fn get_holder_proof_detail(
     claims_removed_event: Option<History>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let organisation_id = value
-        .holder_identifier
-        .as_ref()
-        .and_then(|identifier| identifier.organisation.as_ref().map(|o| o.id));
+    let organisation_id = [
+        value
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.organisation.as_ref()),
+        value
+            .verifier_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.organisation.as_ref()),
+        value
+            .interaction
+            .as_ref()
+            .and_then(|identifier| identifier.organisation.as_ref()),
+    ]
+    .into_iter()
+    .find(|org| org.is_some())
+    .flatten()
+    .ok_or(ServiceError::MappingError(
+        "Missing organisation".to_string(),
+    ))?
+    .id;
 
     let redirect_uri = value.redirect_uri.to_owned();
 
