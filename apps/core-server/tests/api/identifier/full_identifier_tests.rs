@@ -1,5 +1,7 @@
+use shared_types::IdentifierId;
 use validator::ValidateLength;
 
+use crate::api_oidc_tests::common::eddsa_key_2;
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
@@ -273,4 +275,58 @@ qzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
     assert_eq!(result.status(), 400);
     let resp = result.json_value().await;
     assert_eq!(resp["code"].as_str().unwrap(), "BR_0211");
+}
+
+#[tokio::test]
+async fn test_identifier_filter_key_success() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_key_2().params)
+        .await;
+
+    let result = context
+        .api
+        .identifiers
+        .create_key_identifier("test-key-identifier", key.id, organisation.id)
+        .await;
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let key_identifier_id: IdentifierId = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let did_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_key_2().params)
+        .await;
+    let result = context
+        .api
+        .identifiers
+        .create_did_identifier("test-did-identifier", did_key.id, organisation.id)
+        .await;
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let did_identifier_id: IdentifierId = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let result = context
+        .api
+        .identifiers
+        .list_by_key_storage_type("INTERNAL", organisation.id)
+        .await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+    assert_eq!(2, resp["totalItems"]);
+    assert_eq!(did_identifier_id.to_string(), resp["values"][0]["id"]);
+    assert_eq!(key_identifier_id.to_string(), resp["values"][1]["id"]);
+
+    let result = context
+        .api
+        .identifiers
+        .list_by_key_storage_type("EXTERNAL", organisation.id)
+        .await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+    assert_eq!(0, resp["totalItems"]);
 }

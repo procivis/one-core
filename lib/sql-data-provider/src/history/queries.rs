@@ -384,10 +384,12 @@ impl IntoJoinRelations for HistoryFilterValue {
                     JoinRelation {
                         join_type: JoinType::LeftJoin,
                         relation_def: history::Relation::MentionedCredential.def(),
+                        alias: None,
                     },
                     JoinRelation {
                         join_type: JoinType::LeftJoin,
                         relation_def: history::Relation::MentionedProof.def(),
+                        alias: None,
                     },
                 ]
             }

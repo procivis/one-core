@@ -20,13 +20,13 @@ use uuid::Uuid;
 use crate::fixtures::TestingKeyParams;
 
 #[derive(Clone)]
-pub(super) struct TestKey {
+pub struct TestKey {
     multibase: String,
-    params: TestingKeyParams,
+    pub params: TestingKeyParams,
     jwk: PublicKeyJwk,
 }
 
-pub(super) fn eddsa_key_2() -> TestKey {
+pub fn eddsa_key_2() -> TestKey {
     let multibase = "z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5".to_string();
     let jwk = Eddsa
         .parse_multibase(&multibase)

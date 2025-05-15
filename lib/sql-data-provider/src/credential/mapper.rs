@@ -72,6 +72,7 @@ impl IntoJoinRelations for CredentialFilterValue {
                 vec![JoinRelation {
                     join_type: JoinType::LeftJoin,
                     relation_def: credential::Relation::Claim.def(),
+                    alias: None,
                 }]
             }
             _ => vec![],

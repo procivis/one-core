@@ -1,6 +1,6 @@
 use one_core::model::identifier::{Identifier, IdentifierFilterValue, SortableIdentifierColumn};
 use one_core::model::organisation::Organisation;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use time::OffsetDateTime;
 
@@ -93,9 +93,14 @@ impl IntoFilterCondition for IdentifierFilterValue {
             IdentifierFilterValue::IsRemote(is_remote) => {
                 get_equals_condition(identifier::Column::IsRemote, is_remote)
             }
-            IdentifierFilterValue::KeyAlgorithms(key_algorithms) => {
-                key::Column::KeyType.is_in(key_algorithms).into_condition()
-            }
+            IdentifierFilterValue::KeyAlgorithms(key_algorithms) => key::Column::KeyType
+                .is_in(key_algorithms.clone())
+                .or(ColumnRef::TableColumn(
+                    Alias::new("did_key").into_iden(),
+                    key::Column::KeyType.into_iden(),
+                )
+                .is_in(key_algorithms))
+                .into_condition(),
             IdentifierFilterValue::KeyRoles(key_roles) => key_did::Column::Role
                 .is_in(
                     key_roles
@@ -105,7 +110,12 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 )
                 .into_condition(),
             IdentifierFilterValue::KeyStorages(key_storages) => key::Column::StorageType
-                .is_in(key_storages)
+                .is_in(key_storages.clone())
+                .or(ColumnRef::TableColumn(
+                    Alias::new("did_key").into_iden(),
+                    key::Column::StorageType.into_iden(),
+                )
+                .is_in(key_storages))
                 .into_condition(),
         }
     }
@@ -113,8 +123,6 @@ impl IntoFilterCondition for IdentifierFilterValue {
 
 impl IntoJoinRelations for IdentifierFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
-        // TODO(CUSTODY-5750): these join relations and filtering are only correct for Identifiers
-        // of did type
         match self {
             IdentifierFilterValue::DidMethods(_)
             | IdentifierFilterValue::KeyAlgorithms(_)
@@ -122,16 +130,24 @@ impl IntoJoinRelations for IdentifierFilterValue {
             | IdentifierFilterValue::KeyRoles(_) => {
                 vec![
                     JoinRelation {
-                        join_type: JoinType::InnerJoin,
+                        join_type: JoinType::LeftJoin,
                         relation_def: identifier::Relation::Did.def(),
+                        alias: None,
                     },
                     JoinRelation {
-                        join_type: JoinType::InnerJoin,
+                        join_type: JoinType::LeftJoin,
                         relation_def: did::Relation::KeyDid.def(),
+                        alias: None,
                     },
                     JoinRelation {
-                        join_type: JoinType::InnerJoin,
+                        join_type: JoinType::LeftJoin,
                         relation_def: key_did::Relation::Key.def(),
+                        alias: Some(Alias::new("did_key").into_iden()),
+                    },
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: identifier::Relation::Key.def(),
+                        alias: None,
                     },
                 ]
             }

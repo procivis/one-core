@@ -12,6 +12,46 @@ impl IdentifiersApi {
         Self { client }
     }
 
+    pub async fn create_did_identifier(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+    ) -> Response {
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!( {
+                    "name": name,
+                    "did": {
+                      "keys": {
+                        "assertionMethod": [
+                          key_id
+                        ],
+                        "authentication": [
+                          key_id
+                        ],
+                        "capabilityDelegation": [
+                          key_id
+                        ],
+                        "capabilityInvocation": [
+                          key_id
+                        ],
+                        "keyAgreement": [
+                          key_id
+                        ]
+                      },
+                      "method": "KEY",
+                      "name": name,
+                      "organisationId": organisation_id,
+                      "params": {}
+                    },
+                    "organisationId": organisation_id
+                }),
+            )
+            .await
+    }
+
     pub async fn create_key_identifier(
         &self,
         name: &str,
@@ -60,5 +100,14 @@ impl IdentifiersApi {
         self.client
             .delete(&format!("/api/identifier/v1/{}", id))
             .await
+    }
+
+    pub async fn list_by_key_storage_type(
+        &self,
+        key_storage_type: &str,
+        organisation_id: OrganisationId,
+    ) -> Response {
+        self.client.get(
+            &format!("/api/identifier/v1?page=0&pageSize=30&keyStorages%5B%5D={key_storage_type}&organisationId={organisation_id}")).await
     }
 }

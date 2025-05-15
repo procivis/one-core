@@ -8,7 +8,7 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set, Unchanged,
+    QuerySelect, Select, Set, Unchanged,
 };
 use shared_types::{CertificateId, DidId, IdentifierId};
 use time::OffsetDateTime;
@@ -197,13 +197,7 @@ impl IdentifierRepository for IdentifierProvider {
         &self,
         query_params: IdentifierListQuery,
     ) -> Result<GetIdentifierList, DataLayerError> {
-        let query = identifier::Entity::find()
-            .distinct()
-            .filter(identifier::Column::DeletedAt.is_null())
-            .with_filter_join(&query_params)
-            .with_list_query(&query_params)
-            .order_by_desc(identifier::Column::CreatedDate)
-            .order_by_desc(identifier::Column::Id);
+        let query = get_identifier_list_query(&query_params);
 
         let limit = query_params
             .pagination
@@ -226,4 +220,39 @@ impl IdentifierRepository for IdentifierProvider {
             total_items: items_count,
         })
     }
+}
+
+fn get_identifier_list_query(query_params: &IdentifierListQuery) -> Select<identifier::Entity> {
+    identifier::Entity::find()
+        .select_only()
+        .columns([
+            identifier::Column::Id,
+            identifier::Column::CreatedDate,
+            identifier::Column::LastModified,
+            identifier::Column::Name,
+            identifier::Column::Type,
+            identifier::Column::IsRemote,
+            identifier::Column::State,
+            identifier::Column::OrganisationId,
+            identifier::Column::DidId,
+            identifier::Column::KeyId,
+            identifier::Column::DeletedAt,
+        ])
+        .filter(identifier::Column::DeletedAt.is_null())
+        .with_filter_join(query_params)
+        .with_list_query(query_params)
+        .group_by(identifier::Column::Id)
+        .group_by(identifier::Column::CreatedDate)
+        .group_by(identifier::Column::LastModified)
+        .group_by(identifier::Column::Name)
+        .group_by(identifier::Column::Type)
+        .group_by(identifier::Column::IsRemote)
+        .group_by(identifier::Column::State)
+        .group_by(identifier::Column::OrganisationId)
+        .group_by(identifier::Column::DidId)
+        .group_by(identifier::Column::KeyId)
+        .group_by(identifier::Column::DeletedAt)
+        .order_by_desc(identifier::Column::CreatedDate)
+        .order_by_desc(identifier::Column::Id)
+        .distinct()
 }

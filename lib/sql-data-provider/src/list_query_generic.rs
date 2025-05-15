@@ -26,6 +26,7 @@ pub trait IntoFilterCondition: Clone + ListFilterValue {
 pub struct JoinRelation {
     pub join_type: JoinType,
     pub relation_def: RelationDef,
+    pub alias: Option<DynIden>,
 }
 
 pub trait IntoJoinRelations: ListFilterValue {
@@ -66,9 +67,13 @@ where
             for JoinRelation {
                 join_type,
                 relation_def,
+                alias,
             } in unique_relations
             {
-                result = result.join(join_type, relation_def);
+                match alias {
+                    None => result = result.join(join_type, relation_def),
+                    Some(join_as) => result = result.join_as(join_type, relation_def, join_as),
+                }
             }
         }
 

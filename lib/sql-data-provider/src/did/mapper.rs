@@ -87,10 +87,12 @@ impl IntoJoinRelations for DidFilterValue {
                     JoinRelation {
                         join_type: JoinType::InnerJoin,
                         relation_def: did::Relation::KeyDid.def(),
+                        alias: None,
                     },
                     JoinRelation {
                         join_type: JoinType::InnerJoin,
                         relation_def: key_did::Relation::Key.def(),
+                        alias: None,
                     },
                 ]
             }
@@ -98,6 +100,7 @@ impl IntoJoinRelations for DidFilterValue {
                 vec![JoinRelation {
                     join_type: JoinType::InnerJoin,
                     relation_def: did::Relation::KeyDid.def(),
+                    alias: None,
                 }]
             }
             _ => vec![],
