@@ -56,7 +56,7 @@ async fn test_issuance_reject_openid4vc() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 500);
+    assert_eq!(resp.status(), 400);
 
     assert_eq!(CredentialStateEnum::Pending, credential.state);
 }
