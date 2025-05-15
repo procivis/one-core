@@ -5,7 +5,7 @@ use shared_types::{DidId, DidValue, OrganisationId};
 
 use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::model::claim::ClaimRelations;
-use crate::model::credential::{Credential, CredentialRelations};
+use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
 };
@@ -160,6 +160,7 @@ impl StorageProxy for StorageProxyImpl {
             .context("Error while fetching credential by credential schema id")?
             .into_iter()
             .filter(|cred| cred.deleted_at.is_none())
+            .filter(|cred| cred.role == CredentialRole::Holder)
             .filter(|cred| {
                 cred.schema.as_ref().is_some_and(|schema| {
                     schema

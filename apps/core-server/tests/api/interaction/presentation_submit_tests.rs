@@ -1,4 +1,4 @@
-use one_core::model::credential::{Credential, CredentialStateEnum};
+use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::Interaction;
@@ -371,6 +371,7 @@ async fn setup_submittable_presentation(
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier.clone()),
+            role: Some(CredentialRole::Holder),
             credential: Some("TOKEN"),
             ..Default::default()
         },
@@ -554,6 +555,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier),
             credential: Some("TOKEN"),
+            role: Some(CredentialRole::Holder),
             ..Default::default()
         },
     )

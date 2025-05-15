@@ -1,4 +1,4 @@
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{Value, json};
@@ -58,7 +58,10 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         CredentialStateEnum::Accepted,
         &identifier,
         "OPENID4VCI_DRAFT13",
-        TestingCredentialParams::default(),
+        TestingCredentialParams {
+            role: Some(CredentialRole::Holder),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -68,7 +71,10 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         CredentialStateEnum::Accepted,
         &identifier,
         "OPENID4VCI_DRAFT13",
-        TestingCredentialParams::default(),
+        TestingCredentialParams {
+            role: Some(CredentialRole::Holder),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -231,7 +237,10 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             CredentialStateEnum::Accepted,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            Default::default(),
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -303,6 +312,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -595,7 +605,10 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         CredentialStateEnum::Accepted,
         &identifier,
         "OPENID4VCI_DRAFT13",
-        TestingCredentialParams::default(),
+        TestingCredentialParams {
+            role: Some(CredentialRole::Holder),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -617,7 +630,10 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         CredentialStateEnum::Accepted,
         &identifier,
         "OPENID4VCI_DRAFT13",
-        TestingCredentialParams::default(),
+        TestingCredentialParams {
+            role: Some(CredentialRole::Holder),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -856,6 +872,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![(
                     first_claim_schema.schema.id.into(),
                     &first_claim_schema.schema.key,
@@ -874,6 +891,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
                     (
                         first_claim_schema.schema.id.into(),

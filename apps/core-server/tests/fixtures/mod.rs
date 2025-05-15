@@ -678,7 +678,7 @@ pub async fn create_credential(
         credential: params.credential.unwrap_or("").as_bytes().to_owned(),
         exchange: exchange.to_owned(),
         redirect_uri: None,
-        role: CredentialRole::Issuer,
+        role: params.role.unwrap_or(CredentialRole::Issuer),
         state,
         suspend_end_date: params.suspend_end_date,
         claims: Some(claims),
