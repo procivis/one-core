@@ -27,7 +27,7 @@ async fn main() -> Result<(), CredentialServiceError> {
 
     let key_pair = core
         .signature_service
-        .get_key_pair(&KeyAlgorithmType::Ecdsa)
+        .get_key_pair(KeyAlgorithmType::Ecdsa)
         .expect("Key pair creation failed");
 
     let issuer_key = Key {

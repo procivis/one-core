@@ -894,8 +894,8 @@ async fn test_create_credential_success() {
             move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
         });
     key_algorithm_provider
-        .expect_key_algorithm_from_id()
-        .with(eq("Ed25519"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Eddsa))
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
@@ -1090,8 +1090,8 @@ async fn test_create_credential_success_sd_jwt_vc() {
             move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
         });
     key_algorithm_provider
-        .expect_key_algorithm_from_id()
-        .with(eq("Ed25519"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Eddsa))
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
@@ -1287,8 +1287,8 @@ async fn test_create_credential_success_mdoc() {
             move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
         });
     key_algorithm_provider
-        .expect_key_algorithm_from_id()
-        .with(eq("Ed25519"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Eddsa))
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
@@ -1899,8 +1899,8 @@ async fn test_create_credential_issuer_failed() {
             move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
         });
     key_algorithm_provider
-        .expect_key_algorithm_from_id()
-        .with(eq("Ed25519"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Eddsa))
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();

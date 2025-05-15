@@ -27,6 +27,7 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
@@ -664,14 +665,16 @@ pub(super) async fn create_presentation(
         );
     }
 
+    let key_algorithm =
+        params
+            .key
+            .key_algorithm_type()
+            .ok_or(VerificationProtocolError::Failed(
+                FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
+            ))?;
+
     let vp_token = presentation_formatter
-        .format_presentation(
-            &tokens,
-            &params.holder_did.did,
-            &params.key.key_type,
-            auth_fn,
-            ctx,
-        )
+        .format_presentation(&tokens, &params.holder_did.did, key_algorithm, auth_fn, ctx)
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

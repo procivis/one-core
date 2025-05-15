@@ -3187,7 +3187,7 @@ async fn test_share_proof_created_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let mut key_provider = MockKeyProvider::new();
@@ -3315,7 +3315,7 @@ async fn test_share_proof_pending_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";

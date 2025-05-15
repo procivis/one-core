@@ -15,6 +15,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
@@ -553,7 +554,11 @@ pub async fn format_status_list_credential(
             revocation_list_url,
             issuer_did,
             encoded_list,
-            key.key_type.to_owned(),
+            key.key_algorithm_type()
+                .ok_or(FormatterError::CouldNotFormat(format!(
+                    "Unsupported algorithm: {}",
+                    key.key_type
+                )))?,
             auth_fn,
             purpose_to_bitstring_status_purpose(purpose),
             status_list_type,

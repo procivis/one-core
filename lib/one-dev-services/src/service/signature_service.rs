@@ -33,11 +33,11 @@ impl SignatureService {
 
     pub fn get_key_pair(
         &self,
-        algorithm: &KeyAlgorithmType,
+        algorithm: KeyAlgorithmType,
     ) -> Result<GeneratedKey, SignatureServiceError> {
         let selected_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&algorithm.to_string())
+            .key_algorithm_from_type(algorithm.into())
             .ok_or(SignatureServiceError::MissingAlgorithm(
                 algorithm.to_string(),
             ))?;
@@ -47,14 +47,14 @@ impl SignatureService {
 
     pub fn sign(
         &self,
-        algorithm: &KeyAlgorithmType,
+        algorithm: KeyAlgorithmType,
         public_key: &[u8],
         private_key: SecretSlice<u8>,
         data: &[u8],
     ) -> Result<Vec<u8>, SignatureServiceError> {
         let algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&algorithm.to_string())
+            .key_algorithm_from_type(algorithm.into())
             .ok_or(SignatureServiceError::MissingAlgorithm(
                 algorithm.to_string(),
             ))?;
@@ -68,14 +68,14 @@ impl SignatureService {
 
     pub fn verify(
         &self,
-        algorithm: &KeyAlgorithmType,
+        algorithm: KeyAlgorithmType,
         public_key: &[u8],
         signature: &[u8],
         data: &[u8],
     ) -> Result<(), SignatureServiceError> {
         let algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&algorithm.to_string())
+            .key_algorithm_from_type(algorithm.into())
             .ok_or(SignatureServiceError::MissingAlgorithm(
                 algorithm.to_string(),
             ))?;

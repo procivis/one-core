@@ -93,7 +93,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        if auth_fn.get_key_type() != "BBS_PLUS" {
+        if auth_fn.get_key_algorithm() != Ok(KeyAlgorithmType::BbsPlus) {
             return Err(FormatterError::BBSOnly);
         }
 
@@ -132,7 +132,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         revocation_list_url: String,
         issuer_did: &Did,
         encoded_list: String,
-        _algorithm: String,
+        _algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
@@ -143,7 +143,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                     .to_string(),
             ));
         }
-        if auth_fn.get_key_type() != "BBS_PLUS" {
+        if auth_fn.get_key_algorithm() != Ok(KeyAlgorithmType::BbsPlus) {
             return Err(FormatterError::BBSOnly);
         }
 
@@ -271,7 +271,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         _tokens: &[String],
         _holder_did: &DidValue,
-        _algorithm: &str,
+        _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {

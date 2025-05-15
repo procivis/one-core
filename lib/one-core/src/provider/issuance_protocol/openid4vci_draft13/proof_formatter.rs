@@ -84,7 +84,7 @@ impl OpenID4VCIProofJWTFormatter {
                     .verify(
                         Some(did.clone()),
                         fragment,
-                        &key_algorithm.algorithm_id(),
+                        key_algorithm.algorithm_type(),
                         unverified_jwt.as_bytes(),
                         &signature,
                     )

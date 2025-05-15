@@ -30,6 +30,7 @@ use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
@@ -207,8 +208,14 @@ impl VerificationProtocol for IsoMdl {
             .map(|credential| credential.presentation)
             .collect::<Vec<_>>();
 
+        let key_algorithm = key
+            .key_algorithm_type()
+            .ok_or(VerificationProtocolError::Failed(
+                FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
+            ))?;
+
         let device_response = formatter
-            .format_presentation(&presentaitons, &holder_did.did, &key.key_type, auth_fn, ctx)
+            .format_presentation(&presentaitons, &holder_did.did, key_algorithm, auth_fn, ctx)
             .await
             .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 

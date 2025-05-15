@@ -21,7 +21,7 @@ pub(crate) async fn build_jwe(
     let jwk = verifier_key.jwk.clone().into();
     let parsed_key = key_algorithm_provider.parse_jwk(&jwk)?;
     let algorithm = key_algorithm_provider
-        .key_algorithm_from_id(&parsed_key.algorithm_id)
+        .key_algorithm_from_type(parsed_key.algorithm_type)
         .ok_or(anyhow!("Algorithm not found"))?;
     let public_key_jwk = parsed_key
         .key

@@ -33,7 +33,7 @@ pub trait TokenVerifier: Send + Sync {
         &self,
         issuer_did_value: Option<DidValue>,
         issuer_key_id: Option<&'a str>,
-        algorithm: &'a str,
+        algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError>;
@@ -47,7 +47,7 @@ pub trait TokenVerifier: Send + Sync {
 pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
     fn get_key_id(&self) -> Option<String>;
-    fn get_key_type(&self) -> &str;
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String>;
     fn jose_alg(&self) -> Option<String>;
     fn get_public_key(&self) -> Vec<u8>;
 }

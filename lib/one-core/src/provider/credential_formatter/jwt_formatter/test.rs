@@ -434,7 +434,7 @@ async fn test_extract_credentials() {
                     "did:issuer:test",
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
@@ -449,8 +449,8 @@ async fn test_extract_credentials() {
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::default();
             key_algorithm
-                .expect_algorithm_id()
-                .return_once(|| "algorithm".to_string());
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
             Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
@@ -519,7 +519,7 @@ async fn test_extract_credentials_nested_array() {
                     "did:issuer:test",
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
@@ -534,8 +534,8 @@ async fn test_extract_credentials_nested_array() {
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::default();
             key_algorithm
-                .expect_algorithm_id()
-                .return_once(|| "algorithm".to_string());
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
             Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
@@ -654,8 +654,8 @@ async fn test_format_presentation() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
-        .with(eq("ECDSA"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let jwt_formatter = JWTFormatter {
@@ -672,7 +672,7 @@ async fn test_format_presentation() {
         .format_presentation(
             &[jwt_token.to_owned()],
             &"did:example:123".parse().unwrap(),
-            "ECDSA",
+            KeyAlgorithmType::Ecdsa,
             Box::new(auth_fn),
             Default::default(),
         )
@@ -745,7 +745,7 @@ async fn test_extract_presentation() {
                     "did:issuer:123",
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
@@ -760,8 +760,8 @@ async fn test_extract_presentation() {
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::default();
             key_algorithm
-                .expect_algorithm_id()
-                .return_once(|| "algorithm".to_string());
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
             Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });

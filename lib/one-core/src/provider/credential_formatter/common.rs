@@ -81,6 +81,8 @@ pub struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
 pub use one_crypto::SignerError;
 
 #[cfg(any(test, feature = "mock"))]
+pub use crate::config::core_config::KeyAlgorithmType;
+#[cfg(any(test, feature = "mock"))]
 pub use crate::provider::credential_formatter::model::SignatureProvider;
 
 #[cfg(any(test, feature = "mock"))]
@@ -94,8 +96,8 @@ impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
         Some("#key0".to_owned())
     }
 
-    fn get_key_type(&self) -> &str {
-        "ECDSA"
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        Ok(KeyAlgorithmType::Ecdsa)
     }
 
     fn jose_alg(&self) -> Option<String> {

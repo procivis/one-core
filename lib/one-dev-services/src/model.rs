@@ -1,3 +1,4 @@
+use one_core::config;
 use strum::{Display, EnumString};
 
 #[derive(Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord)]
@@ -8,6 +9,16 @@ pub enum KeyAlgorithmType {
     BbsPlus,
     #[strum(serialize = "ECDSA")]
     Ecdsa,
+}
+
+impl From<KeyAlgorithmType> for config::core_config::KeyAlgorithmType {
+    fn from(key_algorithm_type: KeyAlgorithmType) -> Self {
+        match key_algorithm_type {
+            KeyAlgorithmType::Eddsa => config::core_config::KeyAlgorithmType::Eddsa,
+            KeyAlgorithmType::BbsPlus => config::core_config::KeyAlgorithmType::BbsPlus,
+            KeyAlgorithmType::Ecdsa => config::core_config::KeyAlgorithmType::Ecdsa,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord)]

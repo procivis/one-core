@@ -8,6 +8,7 @@ use x509_parser::oid_registry::{
 };
 use x509_parser::prelude::{GeneralName, ParsedExtension};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::mdl::parse_x509_from_der;
@@ -110,7 +111,7 @@ pub fn extract_jwk_from_der(
 
     let key_algorithm = match &x509.subject_pki.algorithm.algorithm {
         alg if alg == &OID_SIG_ED25519 => key_algorithm_provider
-            .key_algorithm_from_name("EDDSA")
+            .key_algorithm_from_type(KeyAlgorithmType::Eddsa)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?,
 
         alg if alg == &OID_KEY_TYPE_EC_PUBLIC_KEY => {
@@ -127,7 +128,7 @@ pub fn extract_jwk_from_der(
             }
 
             key_algorithm_provider
-                .key_algorithm_from_name("ECDSA")
+                .key_algorithm_from_type(KeyAlgorithmType::Ecdsa)
                 .ok_or(DidMethodError::KeyAlgorithmNotFound)?
         }
         other => {

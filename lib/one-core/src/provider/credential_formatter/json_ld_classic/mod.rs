@@ -85,13 +85,15 @@ impl CredentialFormatter for JsonLdClassic {
             cs.id = credential_data.holder_did.map(|did| did.into_url());
         }
 
-        let algorithm = auth_fn.get_key_type().to_string();
+        let key_algorithm = auth_fn.get_key_algorithm().map_err(|key_type| {
+            FormatterError::CouldNotFormat(format!("Unsupported algorithm: {key_type}"))
+        })?;
 
         if !self.params.embed_layout_properties {
             vcdm.remove_layout_properties();
         }
 
-        let vcdm = self.add_proof(vcdm, &algorithm, auth_fn).await?;
+        let vcdm = self.add_proof(vcdm, key_algorithm, auth_fn).await?;
 
         serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
     }
@@ -101,7 +103,7 @@ impl CredentialFormatter for JsonLdClassic {
         revocation_list_url: String,
         issuer_did: &Did,
         encoded_list: String,
-        algorithm: String,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
@@ -141,7 +143,7 @@ impl CredentialFormatter for JsonLdClassic {
             .add_type("BitstringStatusListCredential".to_string())
             .with_valid_from(OffsetDateTime::now_utc());
 
-        let credential = self.add_proof(credential, &algorithm, auth_fn).await?;
+        let credential = self.add_proof(credential, algorithm, auth_fn).await?;
 
         serde_json::to_string(&credential).map_err(|err| {
             FormatterError::Failed(format!(
@@ -182,7 +184,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         tokens: &[String],
         holder_did: &DidValue,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
@@ -238,8 +240,8 @@ impl CredentialFormatter for JsonLdClassic {
         };
 
         let cryptosuite = match algorithm {
-            "EDDSA" => "eddsa-rdfc-2022",
-            "ECDSA" => "ecdsa-rdfc-2019",
+            KeyAlgorithmType::Eddsa => "eddsa-rdfc-2022",
+            KeyAlgorithmType::Ecdsa => "ecdsa-rdfc-2019",
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported algorithm: {algorithm}"
@@ -498,12 +500,12 @@ impl JsonLdClassic {
     async fn add_proof(
         &self,
         mut vcdm: VcdmCredential,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
     ) -> Result<VcdmCredential, FormatterError> {
         let cryptosuite = match algorithm {
-            "EDDSA" => "eddsa-rdfc-2022",
-            "ECDSA" => "ecdsa-rdfc-2019",
+            KeyAlgorithmType::Eddsa => "eddsa-rdfc-2022",
+            KeyAlgorithmType::Ecdsa => "ecdsa-rdfc-2019",
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported algorithm: {algorithm}"
@@ -661,9 +663,8 @@ pub(super) async fn verify_proof_signature(
 
     let algorithm = match cryptosuite {
         // todo: check if `eddsa-2022` is correct as the VCDM test suite is sending this
-        "eddsa-rdfc-2022" | "eddsa-2022" => "Ed25519",
-        "ecdsa-rdfc-2019" => "ECDSA",
-        "ecdsa-xi-2023" => "ECDSA",
+        "eddsa-rdfc-2022" | "eddsa-2022" => KeyAlgorithmType::Eddsa,
+        "ecdsa-rdfc-2019" | "ecdsa-xi-2023" => KeyAlgorithmType::Ecdsa,
         _ => {
             return Err(FormatterError::CouldNotVerify(format!(
                 "Unsupported cryptosuite: {cryptosuite}"

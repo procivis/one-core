@@ -12,7 +12,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 
 #[derive(Clone)]
 pub struct ParsedKey {
-    pub algorithm_id: String,
+    pub algorithm_type: KeyAlgorithmType,
     pub key: KeyHandle,
 }
 
@@ -22,11 +22,11 @@ pub trait KeyAlgorithmProvider: Send + Sync {
     -> Option<Arc<dyn KeyAlgorithm>>;
 
     /// This method returns KeyAlgorithm using key_type value (as it's stored in database)
-    fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
-
-    /// This method returns KeyAlgorithm using algorithm id (algorithm_id() method from KeyAlgorithm)
-    /// Algorithm id is specified inside tokens which are sent/received when processing VCs
-    fn key_algorithm_from_id(&self, algorithm_id: &str) -> Option<Arc<dyn KeyAlgorithm>>;
+    fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
+        KeyAlgorithmType::from_str(algorithm)
+            .ok()
+            .and_then(|key_type| self.key_algorithm_from_type(key_type))
+    }
 
     fn key_algorithm_from_jose_alg(
         &self,
@@ -70,22 +70,6 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         self.algorithms.get(&algorithm).cloned()
     }
 
-    fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
-        KeyAlgorithmType::from_str(algorithm)
-            .ok()
-            .and_then(|key_type| self.key_algorithm_from_type(key_type))
-    }
-
-    fn key_algorithm_from_id(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
-        self.algorithms.iter().find_map(|(_, alg)| {
-            if alg.algorithm_id() == algorithm {
-                Some(alg.clone())
-            } else {
-                None
-            }
-        })
-    }
-
     fn key_algorithm_from_jose_alg(
         &self,
         jose_alg: &str,
@@ -114,7 +98,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_jwk(key) {
                 return Ok(ParsedKey {
-                    algorithm_id: algorithm.algorithm_id(),
+                    algorithm_type: algorithm.algorithm_type(),
                     key: public_key,
                 });
             }
@@ -129,7 +113,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_multibase(multibase) {
                 return Ok(ParsedKey {
-                    algorithm_id: algorithm.algorithm_id(),
+                    algorithm_type: algorithm.algorithm_type(),
                     key: public_key,
                 });
             }
@@ -144,7 +128,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_raw(public_key_der) {
                 return Ok(ParsedKey {
-                    algorithm_id: algorithm.algorithm_id(),
+                    algorithm_type: algorithm.algorithm_type(),
                     key: public_key,
                 });
             }

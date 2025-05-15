@@ -116,7 +116,7 @@ impl CredentialFormatter for JWTFormatter {
         revocation_list_url: String,
         issuer_did: &Did,
         encoded_list: String,
-        algorithm: String,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
@@ -131,7 +131,7 @@ impl CredentialFormatter for JWTFormatter {
 
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&algorithm)
+            .key_algorithm_from_type(algorithm)
             .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
 
         let jose_alg = key_algorithm
@@ -242,7 +242,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         tokens: &[String],
         holder_did: &DidValue,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
@@ -263,10 +263,9 @@ impl CredentialFormatter for JWTFormatter {
         };
 
         let key_id = auth_fn.get_key_id();
-
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(algorithm)
+            .key_algorithm_from_type(algorithm)
             .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
 
         let jose_alg = key_algorithm

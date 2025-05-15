@@ -16,6 +16,7 @@ pub mod error;
 mod common;
 pub use common::nest_claims;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::model::HolderBindingCtx;
 
@@ -57,7 +58,7 @@ pub trait CredentialFormatter: Send + Sync {
         revocation_list_url: String,
         issuer_did: &Did,
         encoded_list: String,
-        algorithm: String,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
@@ -96,7 +97,7 @@ pub trait CredentialFormatter: Send + Sync {
         &self,
         tokens: &[String],
         holder_did: &DidValue,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError>;

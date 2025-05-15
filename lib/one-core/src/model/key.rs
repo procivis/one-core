@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::Organisation;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::common::GetListResponse;
 use crate::model::organisation::OrganisationRelations;
 
@@ -20,6 +23,12 @@ pub struct Key {
 
     // Relations:
     pub organisation: Option<Organisation>,
+}
+
+impl Key {
+    pub fn key_algorithm_type(&self) -> Option<KeyAlgorithmType> {
+        KeyAlgorithmType::from_str(&self.key_type).ok()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

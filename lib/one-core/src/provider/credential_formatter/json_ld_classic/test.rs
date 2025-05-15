@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
@@ -185,8 +186,8 @@ async fn create_token(include_layout: bool) -> Value {
         .expect_get_key_id()
         .returning(|| Some("keyid".to_string()));
     auth_fn
-        .expect_get_key_type()
-        .return_const("ECDSA".to_string());
+        .expect_get_key_algorithm()
+        .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -289,7 +290,7 @@ async fn test_format_presentation_multi_tokens() {
         embed_layout_properties: true,
         allowed_contexts: None,
     };
-    let algorithm = "ECDSA";
+    let algorithm = KeyAlgorithmType::Ecdsa;
 
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();

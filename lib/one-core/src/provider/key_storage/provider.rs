@@ -7,6 +7,7 @@ use one_crypto::SignerError;
 
 use super::KeyStorage;
 use super::error::{KeyStorageError, KeyStorageProviderError};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -72,8 +73,10 @@ impl SignatureProvider for SignatureProviderImpl {
         self.jwk_key_id.to_owned()
     }
 
-    fn get_key_type(&self) -> &str {
-        &self.key.key_type
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        self.key
+            .key_algorithm_type()
+            .ok_or(self.key.key_type.to_owned())
     }
 
     fn jose_alg(&self) -> Option<String> {

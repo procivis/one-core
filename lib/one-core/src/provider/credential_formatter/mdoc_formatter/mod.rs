@@ -257,7 +257,11 @@ impl CredentialFormatter for MdocFormatter {
             })?
             .into_bytes();
 
-        let algorithm_header = try_build_algorithm_header(auth_fn.get_key_type())?;
+        let key_algorithm = auth_fn
+            .get_key_algorithm()
+            .map_err(|key_type| FormatterError::Failed(format!("Failed mapping algorithm `{key_type}` to name compatible with allowed COSE Algorithms")))?;
+
+        let algorithm_header = try_build_algorithm_header(key_algorithm)?;
 
         let x5chain_header = build_x5chain_header(vcdm.issuer.to_did_value()?)?;
 
@@ -283,7 +287,7 @@ impl CredentialFormatter for MdocFormatter {
         _revocation_list_url: String,
         _issuer_did: &Did,
         _encoded_list: String,
-        _algorithm: String,
+        _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
         _status_list_type: StatusListType,
@@ -325,7 +329,7 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         tokens: &[String],
         _holder_did: &DidValue,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
@@ -745,7 +749,7 @@ async fn try_verify_issuer_auth(
         .verify(
             Some(issuer_did.to_owned()),
             None,
-            &algorithm,
+            algorithm,
             &token,
             signature,
         )
@@ -840,7 +844,7 @@ fn extract_credentials_internal(
 
 async fn try_build_device_signed(
     auth_fn: &dyn SignatureProvider,
-    algorithm: &str,
+    algorithm: KeyAlgorithmType,
     doctype: &str,
     session_transcript_bytes: &[u8],
 ) -> Result<DeviceSigned, FormatterError> {
@@ -948,7 +952,7 @@ pub async fn try_verify_detached_signature_with_provider(
         .verify(
             Some(issuer_did_value.to_owned()),
             None, /* take the first one */
-            &algorithm,
+            algorithm,
             &sig_data,
             signature,
         )
@@ -1170,10 +1174,12 @@ fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> 
         .build())
 }
 
-fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, FormatterError> {
+fn try_build_algorithm_header(
+    algorithm: KeyAlgorithmType,
+) -> Result<ProtectedHeader, FormatterError> {
     let algorithm = match algorithm {
-        "ECDSA" => iana::Algorithm::ES256,
-        "EDDSA" => iana::Algorithm::EdDSA,
+        KeyAlgorithmType::Ecdsa => iana::Algorithm::ES256,
+        KeyAlgorithmType::Eddsa => iana::Algorithm::EdDSA,
         _ => {
             return Err(FormatterError::Failed(format!(
                 "Failed mapping algorithm `{algorithm}` to name compatible with allowed COSE Algorithms"
@@ -1226,13 +1232,13 @@ fn extract_did_from_x5chain_header(
         .map_err(|err| FormatterError::Failed(format!("Failed extracting x5chain header {err}")))
 }
 
-fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<String> {
+fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<KeyAlgorithmType> {
     let alg = &cose_sign1.protected.header.alg;
 
     if let Some(RegisteredLabelWithPrivate::Assigned(algorithm)) = alg {
         match algorithm {
-            iana::Algorithm::ES256 => Some("ECDSA".to_owned()),
-            iana::Algorithm::EdDSA => Some("Ed25519".to_owned()),
+            iana::Algorithm::ES256 => Some(KeyAlgorithmType::Ecdsa),
+            iana::Algorithm::EdDSA => Some(KeyAlgorithmType::Eddsa),
             _ => None,
         }
     } else {

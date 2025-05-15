@@ -10,7 +10,7 @@ fn main() {
 
     let key_pair = core
         .signature_service
-        .get_key_pair(&KeyAlgorithmType::Ecdsa)
+        .get_key_pair(KeyAlgorithmType::Ecdsa)
         .expect("Key pair creation failed");
 
     let bytes = hex!("d14ccebdae5153c916d82168c1e2a9e39ab056cfd197c64242151773ce1c61f8");
@@ -18,7 +18,7 @@ fn main() {
     let signature = core
         .signature_service
         .sign(
-            &KeyAlgorithmType::Ecdsa,
+            KeyAlgorithmType::Ecdsa,
             &key_pair.public,
             key_pair.private,
             &bytes,
@@ -26,7 +26,7 @@ fn main() {
         .expect("Signing failed");
 
     let verification = core.signature_service.verify(
-        &KeyAlgorithmType::Ecdsa,
+        KeyAlgorithmType::Ecdsa,
         &key_pair.public,
         &signature,
         &bytes,

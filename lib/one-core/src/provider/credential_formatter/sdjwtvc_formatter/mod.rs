@@ -125,7 +125,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _revocation_list_url: String,
         _issuer_did: &Did,
         _encoded_list: String,
-        _algorithm: String,
+        _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
         _status_list_type: StatusListType,
@@ -194,7 +194,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         _credentials: &[String],
         _holder_did: &DidValue,
-        _algorithm: &str,
+        _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {

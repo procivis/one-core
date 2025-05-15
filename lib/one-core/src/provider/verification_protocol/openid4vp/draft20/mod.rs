@@ -24,6 +24,7 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     DetailCredential, FormatPresentationCtx, HolderBindingCtx,
 };
@@ -377,8 +378,14 @@ impl VerificationProtocol for OpenID4VP20HTTP {
                 ..Default::default()
             }
         };
+        let key_algorithm = key
+            .key_algorithm_type()
+            .ok_or(VerificationProtocolError::Failed(
+                FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
+            ))?;
+
         let vp_token = presentation_formatter
-            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+            .format_presentation(&tokens, &holder_did.did, key_algorithm, auth_fn, ctx)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

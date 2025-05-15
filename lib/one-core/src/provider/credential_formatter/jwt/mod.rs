@@ -13,6 +13,7 @@ use shared_types::DidValue;
 
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
 use super::model::VerificationFn;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -32,7 +33,7 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
         &self,
         issuer_did_value: Option<DidValue>,
         issuer_key_id: Option<&'a str>,
-        algorithm: &'a str,
+        algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
@@ -124,7 +125,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                         .map_err(|e| FormatterError::Failed(e.to_string()))?
                         .or(issuer_did),
                     header.key_id.as_deref(),
-                    &algorithm.algorithm_id(),
+                    algorithm.algorithm_type(),
                     unverified_jwt.as_bytes(),
                     &signature,
                 )

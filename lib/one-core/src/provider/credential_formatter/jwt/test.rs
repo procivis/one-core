@@ -25,7 +25,7 @@ pub fn get_dummy_date() -> OffsetDateTime {
 
 pub struct TestVerify {
     issuer_did_value: Option<String>,
-    algorithm: String,
+    algorithm: KeyAlgorithmType,
     token: String,
     signature: Vec<u8>,
     key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -37,7 +37,7 @@ impl TokenVerifier for TestVerify {
         &self,
         issuer_did_value: Option<DidValue>,
         _issuer_key_id: Option<&'a str>,
-        algorithm: &'a str,
+        algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
@@ -126,8 +126,8 @@ async fn test_build_from_token() {
         .returning(move |_| {
             let mut key_algorithm = MockKeyAlgorithm::default();
             key_algorithm
-                .expect_algorithm_id()
-                .return_once(|| "Algorithm1".to_string());
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
             Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });
@@ -138,7 +138,7 @@ async fn test_build_from_token() {
         Some(
             &(Box::new(TestVerify {
                 issuer_did_value: Some(String::from("did:issuer:123")),
-                algorithm: String::from("Algorithm1"),
+                algorithm: KeyAlgorithmType::Eddsa,
                 token: jwt_part,
                 signature: vec![1, 2, 3],
                 key_algorithm_provider,

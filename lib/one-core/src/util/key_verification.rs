@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use one_crypto::SignerError;
 use shared_types::DidValue;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -22,7 +23,7 @@ impl TokenVerifier for KeyVerification {
         &self,
         issuer_did_value: Option<DidValue>,
         issuer_key_id: Option<&'a str>,
-        algorithm: &'a str,
+        algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
@@ -62,7 +63,7 @@ impl TokenVerifier for KeyVerification {
         tracing::debug!("Verification algorithm: {algorithm}");
         let alg = self
             .key_algorithm_provider
-            .key_algorithm_from_id(algorithm)
+            .key_algorithm_from_type(algorithm)
             .ok_or(SignerError::CouldNotVerify(format!(
                 "Invalid algorithm: {algorithm}"
             )))?;
@@ -154,10 +155,10 @@ mod test {
 
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
         key_algorithm_provider
-            .expect_key_algorithm_from_id()
+            .expect_key_algorithm_from_type()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "ECDSA");
+                assert_eq!(*alg, KeyAlgorithmType::Ecdsa);
                 true
             })
             .returning(move |_| Some(key_alg.clone()));
@@ -172,7 +173,7 @@ mod test {
             .verify(
                 Some("did:example:123".parse().unwrap()),
                 None,
-                "ECDSA",
+                KeyAlgorithmType::Ecdsa,
                 "token".as_bytes(),
                 b"signature",
             )
@@ -200,7 +201,7 @@ mod test {
             .verify(
                 Some("did:example:123".parse().unwrap()),
                 None,
-                "EDDSA",
+                KeyAlgorithmType::Eddsa,
                 "token".as_bytes(),
                 b"signature",
             )
@@ -237,10 +238,10 @@ mod test {
 
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
         key_algorithm_provider
-            .expect_key_algorithm_from_id()
+            .expect_key_algorithm_from_type()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "ECDSA");
+                assert_eq!(*alg, KeyAlgorithmType::Ecdsa);
                 true
             })
             .returning(move |_| Some(key_alg.clone()));
@@ -255,7 +256,7 @@ mod test {
             .verify(
                 Some("did:example:123".parse().unwrap()),
                 None,
-                "ECDSA",
+                KeyAlgorithmType::Ecdsa,
                 "token".as_bytes(),
                 b"signature",
             )

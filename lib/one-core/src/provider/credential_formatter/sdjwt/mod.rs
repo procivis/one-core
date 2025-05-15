@@ -462,7 +462,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                         .map_err(|e| FormatterError::Failed(e.to_string()))?,
                 ),
                 token.header.key_id.as_deref(),
-                &algorithm.algorithm_id(),
+                algorithm.algorithm_type(),
                 token.unverified_jwt.as_bytes(),
                 &token.signature,
             )

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use serde_json::json;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
@@ -287,8 +288,8 @@ async fn test_resolve_with_certificate() {
         });
 
     mock_key_algorithm_provider
-        .expect_key_algorithm_from_name()
-        .with(eq("ECDSA"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(move |_| Some(Arc::new(mock_key_algorithm)));
 
     let provider = SdJwtVcIssuerMetadataDidMethod::new(

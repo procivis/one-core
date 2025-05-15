@@ -3,6 +3,7 @@ use one_crypto::Hasher;
 use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 
 use super::parse_base_proof_value;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::canonicalize::{
     create_label_map_function, label_replacement_canonicalize_json_ld,
@@ -64,7 +65,7 @@ pub async fn verify_base_proof(
         .verify(
             Some(vcdm.issuer.to_did_value()?),
             Some(&proof.verification_method),
-            "BBS",
+            KeyAlgorithmType::BbsPlus,
             &signature_input.message,
             &proof_components.bbs_signature,
         )

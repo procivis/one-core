@@ -411,7 +411,8 @@ async fn test_extract_credentials() {
         .expect_key_algorithm_from_jose_alg()
         .returning(|_| {
             let mut alg = MockKeyAlgorithm::new();
-            alg.expect_algorithm_id().return_const("algorithm");
+            alg.expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
             Some((KeyAlgorithmType::Eddsa, Arc::new(alg)))
         });
     verify_mock
@@ -426,7 +427,7 @@ async fn test_extract_credentials() {
                     "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW",
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
@@ -538,7 +539,8 @@ async fn test_extract_credentials_swiyu() {
         .expect_key_algorithm_from_jose_alg()
         .returning(|_| {
             let mut alg = MockKeyAlgorithm::new();
-            alg.expect_algorithm_id().return_const("algorithm");
+            alg.expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
             Some((KeyAlgorithmType::Eddsa, Arc::new(alg)))
         });
     verify_mock
@@ -553,7 +555,7 @@ async fn test_extract_credentials_swiyu() {
                     "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527",
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
@@ -686,8 +688,8 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::default();
             key_algorithm
-                .expect_algorithm_id()
-                .return_once(|| "algorithm".to_string());
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Ecdsa);
 
             Some((KeyAlgorithmType::Ecdsa, Arc::new(key_algorithm)))
         });
@@ -706,7 +708,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
                     expected_issuer_did,
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Ecdsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(
                     received_signature,
@@ -772,7 +774,7 @@ async fn test_extract_presentation() {
                     expected_issuer_did,
                     issuer_did_value.as_ref().unwrap().as_str()
                 );
-                assert_eq!("algorithm", algorithm);
+                assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(
                     Base64UrlSafeNoPadding::decode_to_vec(token_signature, None).unwrap(),
@@ -791,8 +793,8 @@ async fn test_extract_presentation() {
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::default();
             key_algorithm
-                .expect_algorithm_id()
-                .return_once(|| "algorithm".to_string());
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
             Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
         });

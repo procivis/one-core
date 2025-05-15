@@ -12,6 +12,7 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
 use crate::provider::credential_formatter::model::{CredentialStatus, TokenVerifier};
@@ -428,12 +429,19 @@ pub async fn format_status_list_credential(
     let auth_fn =
         key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;
 
+    let algorithm = key
+        .key_algorithm_type()
+        .ok_or(FormatterError::CouldNotFormat(format!(
+            "Unsupported algorithm: {}",
+            key.key_type
+        )))?;
+
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
             issuer_did,
             encoded_list,
-            key.key_type.to_owned(),
+            algorithm,
             auth_fn,
             StatusPurpose::Revocation,
             StatusListType::TokenStatusList,

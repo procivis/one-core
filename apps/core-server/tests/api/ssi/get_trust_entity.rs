@@ -98,8 +98,8 @@ impl SignatureProvider for FakeEcdsaSigner {
         Some(self.key_id.clone())
     }
 
-    fn get_key_type(&self) -> &str {
-        "ECDSA"
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        Ok(KeyAlgorithmType::Ecdsa)
     }
 
     fn jose_alg(&self) -> Option<String> {

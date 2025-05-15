@@ -284,8 +284,8 @@ async fn test_credential_formatting_ok_for_ecdsa() {
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
-        .expect_get_key_type()
-        .return_const("ECDSA".to_string());
+        .expect_get_key_algorithm()
+        .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -482,8 +482,8 @@ async fn test_unverified_credential_extraction() {
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
-        .expect_get_key_type()
-        .return_const("ECDSA".to_string());
+        .expect_get_key_algorithm()
+        .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -678,8 +678,8 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
-        .expect_get_key_type()
-        .return_const("ECDSA".to_string());
+        .expect_get_key_algorithm()
+        .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
