@@ -1,15 +1,18 @@
 use std::ops::Sub;
 
+use one_core::model::certificate::CertificateState;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
-use one_core::model::identifier::IdentifierType;
+use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::proof::ProofStateEnum;
+use one_core::provider::task::certificate_check::dto::CertificateCheckResultDTO;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::{Duration, OffsetDateTime};
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
@@ -222,4 +225,111 @@ async fn test_run_retain_proof_check_with_update() {
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert!(credential.claims.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_run_task_certificate_check_with_update() {
+    // GIVEN
+    let (context, organisation, _, _, key) = TestContext::new_with_did(None).await;
+
+    let ok_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                state: Some(IdentifierState::Active),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let _ok_certificate = context
+        .db
+        .certificates
+        .create(
+            ok_identifier.id,
+            TestingCertificateParams {
+                state: Some(CertificateState::Active),
+                expiry_date: Some(
+                    OffsetDateTime::now_utc()
+                        .checked_add(Duration::hours(1))
+                        .unwrap(),
+                ),
+                key: Some(key.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                state: Some(IdentifierState::Active),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let expired_certificate = context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                state: Some(CertificateState::Active),
+                expiry_date: Some(OffsetDateTime::now_utc().sub(Duration::hours(1))),
+                key: Some(key),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("CERTIFICATE_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let result: CertificateCheckResultDTO = serde_json::from_value(resp).unwrap();
+
+    assert_eq!(result.expired_certificate_ids.len(), 1);
+    assert_eq!(result.expired_certificate_ids[0], expired_certificate.id);
+    assert_eq!(result.deactivated_identifier_ids.len(), 1);
+    assert_eq!(result.deactivated_identifier_ids[0], identifier.id);
+
+    let expired_certificate = context.db.certificates.get(expired_certificate.id).await;
+    assert_eq!(expired_certificate.state, CertificateState::Expired);
+
+    let identifier = context.db.identifiers.get(identifier.id).await;
+    assert_eq!(identifier.state, IdentifierState::Deactivated);
+
+    let certificate_history = context
+        .db
+        .histories
+        .get_by_entity_id(&expired_certificate.id.into())
+        .await;
+    assert!(
+        certificate_history
+            .values
+            .iter()
+            .any(|history| history.action == HistoryAction::Expired)
+    );
+
+    let identifier_history = context
+        .db
+        .histories
+        .get_by_entity_id(&identifier.id.into())
+        .await;
+    assert!(
+        identifier_history
+            .values
+            .iter()
+            .any(|history| history.action == HistoryAction::Deactivated)
+    );
 }

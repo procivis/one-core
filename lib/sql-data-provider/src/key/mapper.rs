@@ -58,7 +58,7 @@ impl IntoFilterCondition for KeyFilterValue {
     }
 }
 
-pub(crate) fn create_list_response(
+pub(super) fn create_list_response(
     keys: Vec<entity::key::Model>,
     limit: Option<u64>,
     items_count: u64,

@@ -108,7 +108,7 @@ impl IntoJoinRelations for DidFilterValue {
     }
 }
 
-pub(crate) fn create_list_response(
+pub(super) fn create_list_response(
     dids: Vec<did::Model>,
     limit: Option<u64>,
     items_count: u64,

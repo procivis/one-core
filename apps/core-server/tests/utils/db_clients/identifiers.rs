@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
+use one_core::model::identifier::{
+    Identifier, IdentifierRelations, IdentifierState, IdentifierType,
+};
 use one_core::model::organisation::Organisation;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use shared_types::IdentifierId;
@@ -44,5 +46,21 @@ impl IdentifiersDB {
         let _ = self.repository.create(identifier.clone()).await.unwrap();
 
         identifier
+    }
+
+    pub async fn get(&self, identifier_id: IdentifierId) -> Identifier {
+        self.repository
+            .get(
+                identifier_id,
+                &IdentifierRelations {
+                    key: Some(Default::default()),
+                    organisation: Some(Default::default()),
+                    did: Some(Default::default()),
+                    certificates: Some(Default::default()),
+                },
+            )
+            .await
+            .unwrap()
+            .unwrap()
     }
 }

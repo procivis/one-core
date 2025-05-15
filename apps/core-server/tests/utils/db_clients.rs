@@ -2,6 +2,7 @@ use identifiers::IdentifiersDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
 
+use self::certificates::CertificatesDB;
 use self::credential_schemas::CredentialSchemasDB;
 use self::credentials::CredentialsDB;
 use self::dids::DidsDB;
@@ -17,6 +18,7 @@ use self::trust_entities::TrustEntityDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 
+pub mod certificates;
 pub mod credential_schemas;
 pub mod credentials;
 pub mod dids;
@@ -36,6 +38,7 @@ pub mod validity_credentials;
 pub struct DbClient {
     pub organisations: OrganisationsDB,
     pub dids: DidsDB,
+    pub certificates: CertificatesDB,
     pub identifiers: IdentifiersDB,
     pub credential_schemas: CredentialSchemasDB,
     pub credentials: CredentialsDB,
@@ -59,6 +62,7 @@ impl DbClient {
             db_conn: db,
             organisations: OrganisationsDB::new(layer.get_organisation_repository()),
             dids: DidsDB::new(layer.get_did_repository()),
+            certificates: CertificatesDB::new(layer.get_certificate_repository()),
             identifiers: IdentifiersDB::new(layer.get_identifier_repository()),
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
             credentials: CredentialsDB::new(layer.get_credential_repository()),

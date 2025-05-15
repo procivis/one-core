@@ -1,13 +1,18 @@
 use async_trait::async_trait;
-use one_core::model::certificate::{Certificate, CertificateRelations, UpdateCertificateRequest};
+use one_core::model::certificate::{
+    Certificate, CertificateListQuery, CertificateRelations, GetCertificateList,
+    UpdateCertificateRequest,
+};
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder, Set, Unchanged};
 use shared_types::CertificateId;
 use time::OffsetDateTime;
 
 use super::CertificateProvider;
+use super::mapper::create_list_response;
 use crate::entity::certificate;
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 impl CertificateProvider {
@@ -61,6 +66,33 @@ impl CertificateRepository for CertificateProvider {
             None => Ok(None),
             Some(certificate) => Ok(Some(self.resolve_relations(certificate, relations).await?)),
         }
+    }
+
+    async fn list(
+        &self,
+        query_params: CertificateListQuery,
+    ) -> Result<GetCertificateList, DataLayerError> {
+        let query = certificate::Entity::find()
+            .with_list_query(&query_params)
+            .order_by_desc(certificate::Column::CreatedDate)
+            .order_by_desc(certificate::Column::Id);
+
+        let limit = query_params
+            .pagination
+            .map(|pagination| pagination.page_size as u64);
+
+        let items_count = query
+            .to_owned()
+            .count(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let certificates: Vec<certificate::Model> = query
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        Ok(create_list_response(certificates, limit, items_count))
     }
 
     async fn update(

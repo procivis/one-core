@@ -376,12 +376,14 @@ task:
     type: "SUSPEND_CHECK"
     display: "task.suspendCheck"
     order: 0
-    params: null
   RETAIN_PROOF_CHECK:
     type: "RETAIN_PROOF_CHECK"
     display: "task.retainProofCheck"
     order: 1
-    params: null
+  CERTIFICATE_CHECK:
+    type: "CERTIFICATE_CHECK"
+    display: "task.certificateCheck"
+    order: 2
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB

@@ -56,7 +56,7 @@ impl TryFrom<History> for history::ActiveModel {
     }
 }
 
-pub(crate) fn create_list_response(
+pub(super) fn create_list_response(
     history_list: Vec<history::Model>,
     limit: Option<u64>,
     items_count: u64,

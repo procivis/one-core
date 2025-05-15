@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use one_core::model::certificate::{
-    Certificate, CertificateRelations, CertificateState, UpdateCertificateRequest,
+    Certificate, CertificateListQuery, CertificateRelations, CertificateState, GetCertificateList,
+    UpdateCertificateRequest,
 };
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::repository::certificate_repository::CertificateRepository;
@@ -70,6 +71,13 @@ impl CertificateRepository for CertificateHistoryDecorator {
         relations: &CertificateRelations,
     ) -> Result<Option<Certificate>, DataLayerError> {
         self.inner.get(id, relations).await
+    }
+
+    async fn list(
+        &self,
+        query_params: CertificateListQuery,
+    ) -> Result<GetCertificateList, DataLayerError> {
+        self.inner.list(query_params).await
     }
 
     async fn create(&self, request: Certificate) -> Result<CertificateId, DataLayerError> {

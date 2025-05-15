@@ -513,6 +513,9 @@ pub enum TaskType {
     #[serde(rename = "RETAIN_PROOF_CHECK")]
     #[strum(serialize = "RETAIN_PROOF_CHECK")]
     RetainProofCheck,
+    #[serde(rename = "CERTIFICATE_CHECK")]
+    #[strum(serialize = "CERTIFICATE_CHECK")]
+    CertificateCheck,
 }
 
 pub type TrustManagementConfig = ConfigBlock<TrustManagementType>;

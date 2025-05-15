@@ -392,6 +392,8 @@ impl OneCore {
             key_provider.to_owned(),
             key_algorithm_provider.to_owned(),
             data_provider.get_proof_repository(),
+            data_provider.get_certificate_repository(),
+            data_provider.get_identifier_repository(),
             providers.core_base_url.clone(),
         )
         .map_err(OneCoreBuildError::Config)?;

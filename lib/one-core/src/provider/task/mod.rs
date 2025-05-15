@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use certificate_check::CertificateCheck;
 use retain_proof_check::RetainProofCheck;
 use serde_json::Value;
 
@@ -12,14 +13,17 @@ use crate::config::ConfigError;
 use crate::config::core_config::{TaskConfig, TaskType};
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::ServiceError;
 
+pub mod certificate_check;
 pub mod provider;
 pub mod retain_proof_check;
 pub mod suspend_check;
@@ -44,6 +48,8 @@ pub(crate) fn tasks_from_config(
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     proof_repository: Arc<dyn ProofRepository>,
+    certificate_repository: Arc<dyn CertificateRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     core_base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
@@ -70,6 +76,10 @@ pub(crate) fn tasks_from_config(
                 credential_repository.clone(),
                 proof_repository.clone(),
                 history_repository.clone(),
+            )) as _,
+            TaskType::CertificateCheck => Arc::new(CertificateCheck::new(
+                certificate_repository.clone(),
+                identifier_repository.clone(),
             )) as _,
         };
         providers.insert(name.to_owned(), provider);
