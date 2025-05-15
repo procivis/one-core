@@ -23,8 +23,9 @@ use crate::router::AppState;
     ),
     summary = "Handle invitation",
     description = indoc::formatdoc! {"
-        For a wallet, handles the interaction once the wallet connects to a share endpoint url
-        (for example, scans the QR code of an offered credential or request for proof).
+        For a wallet, handles the interaction once the wallet connects to a share
+        endpoint URL (for example, scans the QR code of an offered credential or
+        request for proof).
     "},
 )]
 pub(crate) async fn handle_invitation(
@@ -53,8 +54,8 @@ pub(crate) async fn handle_invitation(
     ),
     summary = "Accept issuance",
     description = indoc::formatdoc! {"
-        Accepts an offered credential. The associated DID will be listed as the
-        subject of the issued credential.
+        Accepts an offered credential. The chosen identifier will be listed
+        as the subject of the issued credential.
     "},
 )]
 pub(crate) async fn issuance_accept(
@@ -115,7 +116,7 @@ pub(crate) async fn issuance_reject(
         ("bearer" = [])
     ),
     summary = "Reject presentation",
-    description = "For a wallet, rejects a request to submit credentials to a verifier.",
+    description = "Rejects a request to submit credentials.",
 )]
 pub(crate) async fn presentation_reject(
     state: State<AppState>,
@@ -142,7 +143,7 @@ pub(crate) async fn presentation_reject(
         ("bearer" = [])
     ),
     summary = "Submit presentation",
-    description = "Submits a presentation to a verifier.",
+    description = "Submits a presentation in response to a request.",
 )]
 pub(crate) async fn presentation_submit(
     state: State<AppState>,

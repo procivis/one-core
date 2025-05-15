@@ -80,7 +80,7 @@ pub struct IssuanceAcceptRequestRestDTO {
     pub interaction_id: Uuid,
     pub did_id: Option<DidId>,
     pub identifier_id: Option<IdentifierId>,
-    /// If the associated DID supports multiple keys for authentication,
+    /// If you are using a DID and it supports multiple keys for authentication,
     /// specify which key to use. If no key is specified the first suitable key listed
     /// will be used.
     pub key_id: Option<KeyId>,

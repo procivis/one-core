@@ -147,7 +147,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
         tags.append(& mut vec![Tag::builder()
                        .name("organisation_management")
                        .description(Some(indoc::formatdoc! {"
-                The **Organization** is the fundamental unit of _Procivis One_. All actions
+                The organization is the fundamental unit of _Procivis One_. All actions
                 related to issuing, holding and verifying are taken _by_ an organization. This
                 means that keys, DIDs, credentials and proofs belong to the organization used
                 to create them and to no other.
@@ -168,11 +168,11 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 credentials. The private key is stored in the system and used to sign credentials,
                 but cannot be exported and is not visible through the API.
 
-                At least one key pair is needed to create a DID, and a DID is required to issue,
-                hold, or verify credentials.
+                Keys form the basis of identifiers: a key pair can be used as an identifier,
+                or it can be used to create a DID or a certificate.
 
-                This resource also generates Certificate Signing Requests, a necessary component
-                of ISO mdoc issuance and verification.
+                This resource also generates Certificate Signing Requests (CSRs), a necessary
+                component of certificate creation.
 
                 Related guide: [Keys](/keys)
             "}))
@@ -183,30 +183,10 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
-                       .name("did_management")
-                       .description(Some(indoc::formatdoc! {"
-                Create and manage DIDs (Decentralized Identifiers), a type of globally unique
-                identifier for an entity. The DID is a URI that can be resolved to
-                a DID document which offers metadata about the identified entity.
-
-                Because a DID is created in association with a public/private key pair, the
-                controller of the private key is able to prove control of the DID and thus
-                authenticate themselves.
-
-                A DID is needed to issue credentials, request a proof, and verify credentials.
-
-                Related guide: [DIDs](/dids)
-            "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "DIDs")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
                        .name("certificate_management")
                        .description(Some(indoc::formatdoc! {"
-                Manage certificates
+                Manage certificates in the system. To add a certificate as an identifier,
+                see the [identifiers](/core/identifier-management) endpoints.
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -214,14 +194,35 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                                .build(),
                        ))
                        .build(),
-                        Tag::builder()
-                       .name("identifier_management")
+                   Tag::builder()
+                      .name("identifier_management")
+                      .description(Some(indoc::formatdoc! {"
+               Create and manage identifiers of different types for different
+               identity ecosystems.
+
+               An identifier is needed to issue, hold, or verify.
+
+               Related guide: [Identifiers](/identifiers)
+           "}))
+                      .extensions(Some(
+                          Extensions::builder()
+                              .add("x-displayName", "Identifiers")
+                              .build(),
+                      ))
+                      .build(),
+                   Tag::builder()
+                       .name("did_management")
                        .description(Some(indoc::formatdoc! {"
-                Create and manage identifiers
+                These endpoints are being phased out, but they can be used to create and
+                manage DIDs (Decentralized Identifiers). Use the
+                [identifiers](/core/identifier-management) endpoints to create and manage
+                DIDs.
+
+                Related guide: [DIDs](/dids)
             "}))
                        .extensions(Some(
                            Extensions::builder()
-                               .add("x-displayName", "Identifiers")
+                               .add("x-displayName", "DIDs")
                                .build(),
                        ))
                        .build(),
@@ -316,7 +317,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
 
                 The holder then makes the choice to accept or reject the exchange.
 
-                Related guide: [Wallet interaction](/hold/wallet-interaction)
+                Related guide: [Wallets](/hold)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -435,7 +436,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "(Advanced) SSI")
+                        .add("x-displayName", "(Advanced) OID4VCI Draft 13")
                         .build(),
                 ))
                 .build(),
@@ -453,7 +454,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "(Advanced) SSI")
+                        .add("x-displayName", "(Advanced) OID4VP Draft 20")
                         .build(),
                 ))
                 .build(),
@@ -471,7 +472,43 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "(Advanced) SSI")
+                        .add("x-displayName", "(Advanced) OID4VP Draft 25")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("openid4vci-draft13-swiyu")
+                .description(Some(indoc::formatdoc! {"
+
+                :::warning
+
+                These endpoints handle low-level mechanisms in interactions between agents.
+                Deep understanding of the involved protocols is recommended.
+
+                :::
+
+            "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "(Advanced) OID4VCI Draft 13 - swiyu")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("openid4vp-draft20-swiyu")
+                .description(Some(indoc::formatdoc! {"
+
+                :::warning
+
+                These endpoints handle low-level mechanisms in interactions between agents.
+                Deep understanding of the involved protocols is recommended.
+
+                :::
+
+            "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "(Advanced) OID4VP Draft 20 - swiyu")
                         .build(),
                 ))
                 .build(),

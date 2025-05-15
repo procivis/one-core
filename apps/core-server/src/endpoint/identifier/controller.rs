@@ -24,7 +24,7 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Create an identifier",
-    description = "Creates a new identifier with either a DID or a key reference.",
+    description = "Creates a new identifier of the specified type.",
 )]
 pub(crate) async fn post_identifier(
     state: State<AppState>,
