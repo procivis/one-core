@@ -289,6 +289,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let mut issuance_did_methods = vec![DidType::WebVh];
         let mut proof_exchange_protocols =
             vec![VerificationProtocolType::OpenId4VpProximityDraft00];
+        let mut holder_key_algorithms = vec![KeyAlgorithmType::Ecdsa];
 
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
@@ -309,6 +310,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,
             ]);
+            holder_key_algorithms
+                .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::Dilithium]);
         }
 
         FormatterCapabilities {
@@ -339,11 +342,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did],
             holder_identifier_types: vec![IdentifierType::Did],
-            holder_key_algorithms: vec![
-                KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Dilithium,
-            ],
+            holder_key_algorithms,
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
     }
