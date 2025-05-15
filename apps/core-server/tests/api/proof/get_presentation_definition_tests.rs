@@ -1,12 +1,15 @@
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::did::DidType;
+use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingIdentifierParams,
+    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
+    TestingIdentifierParams,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -229,6 +232,36 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Local),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -239,6 +272,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                holder_identifier: Some(holder_identifier.clone()),
                 ..Default::default()
             },
         )
@@ -279,6 +313,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
 
     resp["requestGroups"][0]["id"].assert_eq(&proof.id);
     resp["credentials"][0]["id"].assert_eq(&credential.id);
+    resp["credentials"][0]["holder"]["id"].assert_eq(&holder_identifier.id);
     resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
         .assert_eq(&credential.id);
 

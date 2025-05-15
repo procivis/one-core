@@ -142,6 +142,9 @@ impl StorageProxy for StorageProxyImpl {
             .get_credentials_by_credential_schema_id(
                 schema_id.to_owned(),
                 &CredentialRelations {
+                    holder_identifier: Some(IdentifierRelations {
+                        ..Default::default()
+                    }),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         ..Default::default()
