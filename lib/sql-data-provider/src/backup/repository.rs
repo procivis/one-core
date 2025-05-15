@@ -8,11 +8,11 @@ use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::{Into, convert_inner, try_convert_inner};
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{Alias, Func, Query};
+use sea_orm::sea_query::{Alias, Func, Query, SelectStatement, SimpleExpr};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait,
     FromQueryResult, Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait,
-    RelationTrait, Statement, Values,
+    RelationTrait, Statement, UpdateResult, Values,
 };
 use time::OffsetDateTime;
 
@@ -22,8 +22,8 @@ use crate::backup::helpers::{
 };
 use crate::backup::models::UnexportableCredentialModel;
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
-    history, key, key_did, organisation,
+    certificate, claim, claim_schema, credential, credential_schema,
+    credential_schema_claim_schema, did, history, identifier, key, key_did, organisation,
 };
 use crate::mapper::to_data_layer_error;
 
@@ -33,6 +33,92 @@ impl BackupProvider {
             db,
             exportable_storages,
         }
+    }
+
+    fn non_exportable_keys_filter(&self) -> SimpleExpr {
+        key::Column::StorageType
+            .is_not_in(&self.exportable_storages)
+            .and(key::Column::DeletedAt.is_null())
+    }
+
+    fn select_non_exportable_did_ids(&self) -> SelectStatement {
+        Query::select()
+            .distinct()
+            .column(key_did::Column::DidId)
+            .from(key_did::Entity)
+            .join(
+                JoinType::LeftJoin,
+                key::Entity,
+                Expr::col((key_did::Entity, key_did::Column::KeyId))
+                    .equals((key::Entity, key::Column::Id)),
+            )
+            .and_where(
+                key::Column::StorageType
+                    .is_not_in(&self.exportable_storages)
+                    .and(key::Column::DeletedAt.is_null()),
+            )
+            .to_owned()
+    }
+
+    fn identifiers_with_non_exportable_keys(&self) -> SelectStatement {
+        Query::select()
+            .column((identifier::Entity, identifier::Column::Id))
+            .from(identifier::Entity)
+            .join(
+                JoinType::LeftJoin,
+                key::Entity,
+                Expr::col((identifier::Entity, identifier::Column::KeyId))
+                    .equals((key::Entity, key::Column::Id)),
+            )
+            .and_where(
+                identifier::Column::Type
+                    .eq(identifier::IdentifierType::Key)
+                    .and(self.non_exportable_keys_filter()),
+            )
+            .to_owned()
+    }
+
+    fn identifiers_with_non_exportable_certs(&self) -> SelectStatement {
+        Query::select()
+            .column((identifier::Entity, identifier::Column::Id))
+            .distinct()
+            .from(identifier::Entity)
+            .join(
+                JoinType::LeftJoin,
+                certificate::Entity,
+                Expr::col((identifier::Entity, identifier::Column::Id))
+                    .equals((certificate::Entity, certificate::Column::IdentifierId)),
+            )
+            .join(
+                JoinType::LeftJoin,
+                key::Entity,
+                Expr::col((certificate::Entity, certificate::Column::KeyId))
+                    .equals((key::Entity, key::Column::Id)),
+            )
+            .and_where(
+                identifier::Column::Type
+                    .eq(identifier::IdentifierType::Certificate)
+                    .and(self.non_exportable_keys_filter()),
+            )
+            .to_owned()
+    }
+
+    fn identifiers_with_non_exportable_dids(&self) -> SelectStatement {
+        Query::select()
+            .column((identifier::Entity, identifier::Column::Id))
+            .from(identifier::Entity)
+            .join(
+                JoinType::LeftJoin,
+                did::Entity,
+                Expr::col((identifier::Entity, identifier::Column::DidId))
+                    .equals((did::Entity, did::Column::Id)),
+            )
+            .and_where(
+                identifier::Column::Type
+                    .eq(identifier::IdentifierType::Did)
+                    .and(did::Column::Id.in_subquery(self.select_non_exportable_did_ids())),
+            )
+            .to_owned()
     }
 }
 
@@ -233,7 +319,7 @@ impl BackupRepository for BackupProvider {
                             .column(key_did::Column::DidId)
                             .from(key_did::Entity)
                             .join(
-                                sea_orm::JoinType::LeftJoin,
+                                JoinType::LeftJoin,
                                 key::Entity,
                                 Expr::col((key_did::Entity, key_did::Column::KeyId))
                                     .equals((key::Entity, key::Column::Id)),
@@ -249,30 +335,57 @@ impl BackupRepository for BackupProvider {
             )
             .all(&db);
 
-        let (total_keys, keys, total_credentials, credentials, total_dids, dids) =
-            tokio::try_join!(
-                key::Entity::find()
-                    .filter(key::Column::DeletedAt.is_null())
-                    .count(&db),
-                select_keys,
-                credential::Entity::find()
-                    .filter(credential::Column::DeletedAt.is_null())
-                    .count(&db),
-                select_credentials,
-                did::Entity::find()
-                    .filter(did::Column::DeletedAt.is_null())
-                    .count(&db),
-                select_dids,
+        let select_identifiers = identifier::Entity::find()
+            .filter(
+                identifier::Column::DeletedAt.is_null().and(
+                    identifier::Column::Id
+                        .in_subquery(self.identifiers_with_non_exportable_certs())
+                        .or(identifier::Column::Id
+                            .in_subquery(self.identifiers_with_non_exportable_dids()))
+                        .or(identifier::Column::Id
+                            .in_subquery(self.identifiers_with_non_exportable_keys())),
+                ),
             )
-            .map_err(to_data_layer_error)?;
+            .all(&db);
+
+        let (
+            total_keys,
+            keys,
+            total_credentials,
+            credentials,
+            total_dids,
+            dids,
+            total_identifiers,
+            identifiers,
+        ) = tokio::try_join!(
+            key::Entity::find()
+                .filter(key::Column::DeletedAt.is_null())
+                .count(&db),
+            select_keys,
+            credential::Entity::find()
+                .filter(credential::Column::DeletedAt.is_null())
+                .count(&db),
+            select_credentials,
+            did::Entity::find()
+                .filter(did::Column::DeletedAt.is_null())
+                .count(&db),
+            select_dids,
+            identifier::Entity::find()
+                .filter(identifier::Column::DeletedAt.is_null())
+                .count(&db),
+            select_identifiers
+        )
+        .map_err(to_data_layer_error)?;
 
         Ok(UnexportableEntities {
             credentials: try_convert_inner(credentials)?,
             keys: convert_inner(keys),
             dids: convert_inner(dids),
+            identifiers: convert_inner(identifiers),
             total_credentials,
             total_keys,
             total_dids,
+            total_identifiers,
         })
     }
 
@@ -296,6 +409,7 @@ impl BackupRepository for BackupProvider {
                             )
                             .to_owned(),
                     )
+                    .and(credential::Column::Role.eq(credential::CredentialRole::Holder))
                     .and(credential::Column::DeletedAt.is_null()),
             )
             .exec(&db);
@@ -304,28 +418,31 @@ impl BackupRepository for BackupProvider {
             .col_expr(did::Column::DeletedAt, now.into())
             .filter(
                 did::Column::Id
-                    .in_subquery(
-                        Query::select()
-                            .column(key_did::Column::DidId)
-                            .from(key_did::Entity)
-                            .join(
-                                sea_orm::JoinType::LeftJoin,
-                                key::Entity,
-                                Expr::col((key_did::Entity, key_did::Column::KeyId))
-                                    .equals((key::Entity, key::Column::Id)),
-                            )
-                            .and_where(
-                                key::Column::StorageType
-                                    .is_not_in(&self.exportable_storages)
-                                    .and(key::Column::DeletedAt.is_null()),
-                            )
-                            .to_owned(),
-                    )
+                    .in_subquery(self.select_non_exportable_did_ids())
                     .and(did::Column::DeletedAt.is_null()),
             )
             .exec(&db);
 
-        tokio::try_join!(update_credentials, update_dids).map_err(to_data_layer_error)?;
+        tokio::try_join!(
+            update_credentials,
+            update_dids,
+            update_identifiers_matching_subquery(
+                &db,
+                now,
+                self.identifiers_with_non_exportable_dids()
+            ),
+            update_identifiers_matching_subquery(
+                &db,
+                now,
+                self.identifiers_with_non_exportable_certs()
+            ),
+            update_identifiers_matching_subquery(
+                &db,
+                now,
+                self.identifiers_with_non_exportable_keys()
+            )
+        )
+        .map_err(to_data_layer_error)?;
 
         key::Entity::update_many()
             .col_expr(key::Column::DeletedAt, now.into())
@@ -351,6 +468,22 @@ impl BackupRepository for BackupProvider {
 
         Ok(())
     }
+}
+
+fn update_identifiers_matching_subquery(
+    db: &DatabaseConnection,
+    now: OffsetDateTime,
+    subquery: SelectStatement,
+) -> impl Future<Output = Result<UpdateResult, sea_orm::DbErr>> {
+    identifier::Entity::update_many()
+        .col_expr(identifier::Column::DeletedAt, now.into())
+        .filter(
+            identifier::Column::Id
+                .in_subquery(subquery)
+                .and(identifier::Column::IsRemote.eq(false))
+                .and(identifier::Column::DeletedAt.is_null()),
+        )
+        .exec(db)
 }
 
 #[derive(Debug, FromQueryResult, Into)]

@@ -11,6 +11,7 @@ use secrecy::SecretString;
 use super::OneCoreBinding;
 use super::credential::CredentialDetailBindingDTO;
 use super::did::DidListItemBindingDTO;
+use crate::binding::identifier::GetIdentifierListItemBindingDTO;
 use crate::error::BindingError;
 use crate::utils::TimestampFormat;
 
@@ -124,9 +125,12 @@ pub struct UnexportableEntitiesBindingDTO {
     pub keys: Vec<KeyListItemBindingDTO>,
     #[from(with_fn = convert_inner)]
     pub dids: Vec<DidListItemBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub identifiers: Vec<GetIdentifierListItemBindingDTO>,
     pub total_credentials: u64,
     pub total_keys: u64,
     pub total_dids: u64,
+    pub total_identifiers: u64,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

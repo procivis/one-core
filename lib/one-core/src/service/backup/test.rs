@@ -18,7 +18,9 @@ use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation, generic_config};
+use crate::service::test_utilities::{
+    dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+};
 
 #[derive(Default)]
 struct Repositories {
@@ -105,9 +107,11 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
         }],
         keys: vec![dummy_key()],
         dids: vec![dummy_did()],
+        identifiers: vec![dummy_identifier()],
         total_credentials: 5,
         total_keys: 5,
         total_dids: 5,
+        total_identifiers: 5,
     }
 }
 

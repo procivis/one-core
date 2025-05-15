@@ -43,9 +43,11 @@ async fn test_get_history_entry_with_unexportable_metadata() {
                         credentials: vec![],
                         keys: vec![],
                         dids: vec![],
+                        identifiers: vec![],
                         total_credentials: 3,
                         total_keys: 1,
                         total_dids: 2,
+                        total_identifiers: 0,
                     },
                 )),
                 ..Default::default()

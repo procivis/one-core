@@ -18,8 +18,10 @@ pub(super) fn unexportable_entities_to_response_dto(
             .collect::<Result<Vec<_>, _>>()?,
         keys: convert_inner(entities.keys),
         dids: convert_inner(entities.dids),
+        identifiers: convert_inner(entities.identifiers),
         total_credentials: entities.total_credentials,
         total_keys: entities.total_keys,
         total_dids: entities.total_dids,
+        total_identifiers: entities.total_identifiers,
     })
 }

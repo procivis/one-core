@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
+use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::key::dto::KeyListItemResponseDTO;
 
 #[derive(Debug, Clone)]
@@ -18,9 +19,11 @@ pub struct UnexportableEntitiesResponseDTO {
     pub credentials: Vec<CredentialDetailResponseDTO>,
     pub keys: Vec<KeyListItemResponseDTO>,
     pub dids: Vec<DidListItemResponseDTO>,
+    pub identifiers: Vec<GetIdentifierListItemResponseDTO>,
     pub total_credentials: u64,
     pub total_keys: u64,
     pub total_dids: u64,
+    pub total_identifiers: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
