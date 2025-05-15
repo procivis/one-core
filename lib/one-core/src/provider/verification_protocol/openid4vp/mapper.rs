@@ -429,12 +429,6 @@ where
     }
 }
 
-pub(super) fn parse_interaction_content(
-    data: &[u8],
-) -> Result<OpenID4VPVerifierInteractionContent, OpenID4VCError> {
-    serde_json::from_slice(data).map_err(|e| OpenID4VCError::MappingError(e.to_string()))
-}
-
 pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, OpenID4VCError> {
     // Find the position of '[' and ']'
     if let Some(open_bracket) = path.rfind('[') {

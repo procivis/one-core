@@ -2,16 +2,19 @@ use std::str::FromStr;
 
 use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use one_core::config::core_config::VerificationProtocolType;
+use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
+use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::Value;
+use shared_types::DidValue;
 use url::Url;
 use uuid::Uuid;
 
-use crate::fixtures;
-use crate::fixtures::assert_history_count;
+use crate::fixtures::{self, TestingDidParams, TestingIdentifierParams, assert_history_count};
 use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
@@ -67,6 +70,124 @@ async fn test_share_proof_success() {
     let url = resp["url"].as_str().unwrap();
     assert!(url.starts_with("openid4vp"));
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_success_with_separate_encryption_key() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let signing_key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let encryption_key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![
+                    RelatedKey {
+                        key: signing_key.clone(),
+                        role: KeyRole::AssertionMethod,
+                    },
+                    RelatedKey {
+                        key: signing_key.clone(),
+                        role: KeyRole::Authentication,
+                    },
+                    RelatedKey {
+                        key: encryption_key.clone(),
+                        role: KeyRole::KeyAgreement,
+                    },
+                ]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
+        Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c42").unwrap(),
+        "location_x",
+        true,
+        "STRING",
+        false,
+    )];
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "test",
+            &organisation,
+            "NONE",
+            &claim_schemas,
+            "JSON_LD_CLASSIC",
+            "test",
+        )
+        .await;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema::from((
+                &claim_schemas[..],
+                &credential_schema,
+            ))],
+        )
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(false),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VP_DRAFT20",
+            None,
+            signing_key,
+        )
+        .await;
+
+    assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
+
+    let proof = context.db.proofs.get(&proof.id).await;
+    let interaction = proof.interaction.unwrap();
+    let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+
+    assert_eq!(data["encryption_key_id"], encryption_key.id.to_string());
 }
 
 #[tokio::test]

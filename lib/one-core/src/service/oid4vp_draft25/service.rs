@@ -259,19 +259,20 @@ impl OID4VPDraft25Service {
                 "missing interaction".to_string(),
             ))?;
 
-        let interaction_data = interaction.data.as_ref().ok_or(ServiceError::MappingError(
-            "missing interaction data".to_string(),
-        ))?;
+        let interaction_data: OpenID4VPVerifierInteractionContent =
+            parse_interaction_content(interaction.data.as_ref())
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
-            let verifier_key = proof
-                .verifier_key
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "missing verifier_key".to_string(),
-                ))?;
+            let encryption_key_id =
+                interaction_data
+                    .encryption_key_id
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "missing encryption key".to_string(),
+                    ))?;
 
-            if used_key_id != verifier_key.id {
+            if used_key_id != *encryption_key_id {
                 tracing::info!("Proof encrypted with an incorrect key");
                 return Err(OpenID4VCError::ValidationError(
                     "Proof encrypted with an incorrect key".to_string(),

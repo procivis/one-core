@@ -512,6 +512,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             nonce: nonce.to_owned(),
             presentation_definition,
             client_id: client_id.to_owned(),
+            encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
         };

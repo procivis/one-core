@@ -26,7 +26,7 @@ use crate::model::validity_credential::Mdoc;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::credential_from_proved;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPDirectPostResponseDTO, SubmissionRequestData,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, SubmissionRequestData,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
@@ -161,9 +161,9 @@ impl ProofService {
                 "missing interaction".to_string(),
             ))?;
 
-        let interaction_data = interaction.data.as_ref().ok_or(ServiceError::MappingError(
-            "missing interaction data".to_string(),
-        ))?;
+        let interaction_data: OpenID4VPVerifierInteractionContent =
+            serde_json::from_slice(interaction.data.as_ref().unwrap())
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
             let verifier_key = proof

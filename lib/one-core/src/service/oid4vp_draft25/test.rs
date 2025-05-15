@@ -97,6 +97,7 @@ async fn test_presentation_definition_success() {
 
     let interaction_data = serde_json::to_vec(&OpenID4VPVerifierInteractionContent {
         nonce: "nonce".to_string(),
+        encryption_key_id: None,
         presentation_definition: OpenID4VPPresentationDefinition {
             id: Uuid::new_v4().to_string(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
@@ -235,6 +236,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let credential_schema = dummy_credential_schema();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
+        encryption_key_id: None,
         presentation_definition: OpenID4VPPresentationDefinition {
             id: interaction_id.to_string(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {

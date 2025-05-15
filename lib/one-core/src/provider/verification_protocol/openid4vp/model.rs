@@ -152,6 +152,7 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
+    pub encryption_key_id: Option<KeyId>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]

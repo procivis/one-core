@@ -10,7 +10,8 @@ use super::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO,
-    OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
+    PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -31,7 +32,7 @@ use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     extract_presentation_ctx_from_interaction_content, extracted_credential_to_model,
-    parse_interaction_content, vec_last_position_from_token_path,
+    vec_last_position_from_token_path,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     AcceptProofResult, OpenID4VPPresentationDefinition, SubmissionRequestData,
@@ -109,7 +110,7 @@ pub(crate) fn oidc_verifier_presentation_definition(
 pub(crate) async fn oid4vp_verifier_process_submission(
     request: SubmissionRequestData,
     proof: Proof,
-    interaction_data: &[u8],
+    interaction_data: OpenID4VPVerifierInteractionContent,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
@@ -149,15 +150,13 @@ pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String
 async fn process_proof_submission(
     submission: SubmissionRequestData,
     proof: &Proof,
-    interaction_data: &[u8],
+    interaction_data: OpenID4VPVerifierInteractionContent,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     config: &CoreConfig,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
-    let interaction_data = parse_interaction_content(interaction_data)?;
-
     let presentation_submission = &submission.presentation_submission;
 
     let definition_id = presentation_submission.definition_id.clone();

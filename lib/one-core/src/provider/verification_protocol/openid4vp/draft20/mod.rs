@@ -513,6 +513,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             presentation_definition,
             client_id: client_id.to_owned(),
             client_id_scheme: Some(client_id_scheme),
+            encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
             response_uri: Some(response_uri),
         };
 
