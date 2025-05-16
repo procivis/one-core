@@ -1,21 +1,29 @@
 use std::collections::HashMap;
 
+use one_core::model::certificate::CertificateState;
 use one_core::model::identifier::{
     IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
     SortableIdentifierColumn,
 };
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::service::certificate::dto::CreateCertificateRequestDTO;
+use one_core::service::certificate::dto::{
+    CertificateResponseDTO, CertificateX509AttributesDTO, CertificateX509ExtensionDTO,
+    CreateCertificateRequestDTO,
+};
+use one_core::service::did::dto::{DidResponseDTO, DidResponseKeysDTO};
 use one_core::service::identifier::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO,
+    GetIdentifierResponseDTO,
 };
+use one_core::service::key::dto::{KeyListItemResponseDTO, KeyResponseDTO};
 use one_dto_mapper::{
-    From, Into, TryInto, convert_inner, try_convert_inner, try_convert_inner_of_inner,
+    From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
+    try_convert_inner_of_inner,
 };
 
 use super::common::SortDirection;
-use super::did::KeyRoleBindingEnum;
+use super::did::{DidTypeBindingEnum, KeyRoleBindingEnum};
 use crate::OneCoreBinding;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
@@ -123,6 +131,16 @@ impl OneCoreBinding {
         let id = into_id(&id)?;
         Ok(core.identifier_service.delete_identifier(&id).await?)
     }
+
+    #[uniffi::method]
+    pub async fn get_identifier(
+        &self,
+        id: String,
+    ) -> Result<GetIdentifierBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        let id = into_id(&id)?;
+        Ok(core.identifier_service.get_identifier(&id).await?.into())
+    }
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -132,6 +150,145 @@ pub struct GetIdentifierListBindingDTO {
     pub values: Vec<GetIdentifierListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(GetIdentifierResponseDTO)]
+pub struct GetIdentifierBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn = "from_id_opt")]
+    pub organisation_id: Option<String>,
+    pub r#type: IdentifierTypeBindingEnum,
+    pub is_remote: bool,
+    pub state: IdentifierStateBindingEnum,
+    #[from(with_fn = convert_inner)]
+    pub did: Option<DidResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub key: Option<KeyResponseBindingDTO>,
+    #[from(with_fn = convert_inner_of_inner )]
+    pub certificates: Option<Vec<CertificateResponseBindingDTO>>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(DidResponseDTO)]
+pub struct DidResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn = "from_id_opt")]
+    pub organisation_id: Option<String>,
+    pub did: String,
+    pub did_type: DidTypeBindingEnum,
+    pub did_method: String,
+    pub keys: DidResponseKeysBindingDTO,
+    pub deactivated: bool,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(DidResponseKeysDTO)]
+pub struct DidResponseKeysBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub authentication: Vec<KeyListItemResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub assertion_method: Vec<KeyListItemResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub key_agreement: Vec<KeyListItemResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub capability_invocation: Vec<KeyListItemResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub capability_delegation: Vec<KeyListItemResponseBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(KeyListItemResponseDTO)]
+pub struct KeyListItemResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    pub public_key: Vec<u8>,
+    pub key_type: String,
+    pub storage_type: String,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(KeyResponseDTO)]
+pub struct KeyResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
+    pub name: String,
+    pub public_key: Vec<u8>,
+    pub key_type: String,
+    pub storage_type: String,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CertificateResponseDTO)]
+pub struct CertificateResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub state: CertificateStateBindingEnum,
+    pub name: String,
+    pub chain: String,
+    #[from(with_fn = convert_inner)]
+    pub key: Option<KeyListItemResponseBindingDTO>,
+    pub x509_attributes: CertificateX509AttributesBindingDTO,
+}
+
+#[derive(Clone, Debug, Into, From, uniffi::Enum)]
+#[into(CertificateState)]
+#[from(CertificateState)]
+pub enum CertificateStateBindingEnum {
+    NotYetActive,
+    Active,
+    Revoked,
+    Expired,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CertificateX509AttributesDTO)]
+pub struct CertificateX509AttributesBindingDTO {
+    pub serial_number: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub not_before: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub not_after: String,
+    pub issuer: String,
+    pub subject: String,
+    pub fingerprint: String,
+    #[from(with_fn = convert_inner)]
+    pub extensions: Vec<CertificateX509ExtensionBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CertificateX509ExtensionDTO)]
+pub struct CertificateX509ExtensionBindingDTO {
+    pub oid: String,
+    pub value: String,
+    pub critical: bool,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
