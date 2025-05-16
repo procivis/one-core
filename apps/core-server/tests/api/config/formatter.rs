@@ -28,7 +28,7 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
         (
             "SD_JWT_VC",
             "verificationKeyAlgorithms",
-            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+            json!(["ECDSA", "EDDSA", "DILITHIUM"]),
         ),
         (
             "JSON_LD_CLASSIC",

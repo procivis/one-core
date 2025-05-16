@@ -284,12 +284,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "OBJECT".to_string(),
             "ARRAY".to_string(),
         ];
-        let mut signing_key_algorithms = vec![KeyAlgorithmType::Ecdsa];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];
         let mut proof_exchange_protocols =
             vec![VerificationProtocolType::OpenId4VpProximityDraft00];
-        let mut holder_key_algorithms = vec![KeyAlgorithmType::Ecdsa];
+        let mut signing_algorithms = vec![KeyAlgorithmType::Ecdsa];
 
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
@@ -297,8 +296,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
             proof_exchange_protocols.push(VerificationProtocolType::OpenId4VpDraft20Swiyu)
         } else {
             datatypes.push("PICTURE".to_string());
-            signing_key_algorithms
-                .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::Dilithium]);
             issuance_did_methods.extend_from_slice(&[
                 DidType::Key,
                 DidType::Web,
@@ -310,12 +307,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,
             ]);
-            holder_key_algorithms
+            signing_algorithms
                 .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::Dilithium]);
         }
 
         FormatterCapabilities {
-            signing_key_algorithms,
+            signing_key_algorithms: signing_algorithms.clone(),
             allowed_schema_ids: vec![],
             datatypes,
             features: vec![
@@ -328,11 +325,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_exchange_protocols,
             proof_exchange_protocols,
             revocation_methods: vec![RevocationType::None, RevocationType::TokenStatusList],
-            verification_key_algorithms: vec![
-                KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Dilithium,
-            ],
+            verification_key_algorithms: signing_algorithms.clone(),
             verification_key_storages: vec![
                 KeyStorageType::Internal,
                 KeyStorageType::AzureVault,
@@ -342,7 +335,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did],
             holder_identifier_types: vec![IdentifierType::Did],
-            holder_key_algorithms,
+            holder_key_algorithms: signing_algorithms,
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
     }
