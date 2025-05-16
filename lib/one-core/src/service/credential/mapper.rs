@@ -242,21 +242,21 @@ fn claim_to_dto(
         DatatypeType::Number => {
             if let Ok(number) = claim.value.parse::<i64>() {
                 DetailCredentialClaimValueResponseDTO::Integer(number)
+            } else if let Ok(float) = claim.value.parse::<f64>() {
+                DetailCredentialClaimValueResponseDTO::Float(float)
             } else {
-                DetailCredentialClaimValueResponseDTO::Float(
-                    claim
-                        .value
-                        .parse::<f64>()
-                        .map_err(|e| ServiceError::MappingError(e.to_string()))?,
-                )
+                // Fallback to empty string
+                DetailCredentialClaimValueResponseDTO::String(String::new())
             }
         }
-        DatatypeType::Boolean => DetailCredentialClaimValueResponseDTO::Boolean(
-            claim
-                .value
-                .parse::<bool>()
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?,
-        ),
+        DatatypeType::Boolean => {
+            if let Ok(bool) = claim.value.parse::<bool>() {
+                DetailCredentialClaimValueResponseDTO::Boolean(bool)
+            } else {
+                // Fallback to empty string
+                DetailCredentialClaimValueResponseDTO::String(String::new())
+            }
+        }
         _ => DetailCredentialClaimValueResponseDTO::String(claim.value.to_owned()),
     };
 
