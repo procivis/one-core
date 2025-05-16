@@ -139,6 +139,7 @@ ZNINukb4SFKEC4A0qEKgpPEZM7/Vh5aNro+PQn3/rgA=
     assert_eq!(result.status(), 200);
     let resp = result.json_value().await;
     resp["id"].assert_eq(&certificate_id);
+    resp["organisationId"].assert_eq(&organisation.id);
 }
 
 #[tokio::test]

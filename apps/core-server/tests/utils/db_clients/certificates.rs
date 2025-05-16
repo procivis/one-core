@@ -47,6 +47,7 @@ impl CertificatesDB {
             chain: unwrap_or_random(params.chain),
             state: params.state.unwrap_or(CertificateState::Active),
             key: params.key,
+            organisation: None,
         };
 
         self.repository.create(certificate.clone()).await.unwrap();
@@ -60,6 +61,7 @@ impl CertificatesDB {
                 certificate_id,
                 &CertificateRelations {
                     key: Some(Default::default()),
+                    organisation: Some(Default::default()),
                 },
             )
             .await

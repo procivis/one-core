@@ -41,6 +41,7 @@ impl IdentifierService {
                     }),
                     certificates: Some(CertificateRelations {
                         key: Some(KeyRelations::default()),
+                        ..Default::default()
                     }),
                     organisation: Some(Default::default()),
                 },

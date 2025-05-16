@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 
 use super::CertificateProvider;
 use super::mapper::create_list_response;
-use crate::entity::certificate;
+use crate::entity::{certificate, identifier};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -32,6 +32,29 @@ impl CertificateProvider {
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "certificate-key",
                             id: key_id.to_string(),
+                        })?,
+                );
+            }
+        }
+
+        if let Some(organisation_relations) = &relations.organisation {
+            let identifier = identifier::Entity::find_by_id(model.identifier_id)
+                .one(&self.db)
+                .await
+                .map_err(to_data_layer_error)?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "certificate-identifier",
+                    id: model.identifier_id.to_string(),
+                })?;
+
+            if let Some(organisation_id) = identifier.organisation_id {
+                result.organisation = Some(
+                    self.organisation_repository
+                        .get_organisation(&organisation_id, organisation_relations)
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "certificate-organisation",
+                            id: organisation_id.to_string(),
                         })?,
                 );
             }

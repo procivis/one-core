@@ -5,6 +5,7 @@ use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::key_repository::MockKeyRepository;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use shared_types::IdentifierId;
 use uuid::Uuid;
 
@@ -50,6 +51,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
             inner: Arc::new(CertificateProvider {
                 db: db.clone(),
                 key_repository: Arc::new(MockKeyRepository::default()),
+                organisation_repository: Arc::new(MockOrganisationRepository::default()),
             }),
             db,
         },
@@ -82,6 +84,7 @@ async fn test_create_certificate() {
         chain: "chain".to_string(),
         state: CertificateState::Active,
         key: None,
+        organisation: None,
     };
 
     assert_eq!(id, setup.provider.create(certificate).await.unwrap());
@@ -111,6 +114,7 @@ async fn test_get_certificate() {
         chain: "chain".to_string(),
         state: CertificateState::Active,
         key: None,
+        organisation: None,
     };
 
     setup.provider.create(certificate.clone()).await.unwrap();
@@ -172,6 +176,7 @@ async fn test_update_certificate() {
         chain: "chain".to_string(),
         state: CertificateState::Active,
         key: None,
+        organisation: None,
     };
 
     setup.provider.create(certificate.clone()).await.unwrap();

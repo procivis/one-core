@@ -42,6 +42,7 @@ impl From<certificate::Model> for Certificate {
             chain: value.chain,
             state: value.state.into(),
             key: None,
+            organisation: None,
         }
     }
 }

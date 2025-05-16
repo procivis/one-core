@@ -1,4 +1,4 @@
-use shared_types::{CertificateId, KeyId};
+use shared_types::{CertificateId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::certificate::CertificateState;
@@ -39,4 +39,5 @@ pub struct CertificateResponseDTO {
     pub chain: String,
     pub key: Option<KeyListItemResponseDTO>,
     pub x509_attributes: CertificateX509AttributesDTO,
+    pub organisation_id: Option<OrganisationId>,
 }

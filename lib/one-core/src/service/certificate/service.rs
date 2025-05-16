@@ -28,7 +28,8 @@ impl CertificateService {
             .get(
                 id,
                 &CertificateRelations {
-                    key: Default::default(),
+                    key: Some(Default::default()),
+                    organisation: Some(Default::default()),
                 },
             )
             .await?
@@ -69,6 +70,7 @@ impl CertificateService {
             chain: request.chain,
             state: CertificateState::Active,
             key: Some(key),
+            organisation: None,
         })
     }
 

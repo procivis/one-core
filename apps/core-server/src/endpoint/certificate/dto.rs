@@ -5,7 +5,7 @@ use one_core::service::certificate::dto::{
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::CertificateId;
+use shared_types::{CertificateId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
@@ -38,6 +38,8 @@ pub struct CertificateResponseRestDTO {
     pub key: Option<KeyListItemResponseRestDTO>,
     #[try_from(infallible)]
     pub x509_attributes: CertificateX509AttributesRestDTO,
+    #[try_from(infallible)]
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]

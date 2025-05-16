@@ -168,6 +168,7 @@ impl DataLayer {
         let certificate_repository = Arc::new(CertificateProvider {
             db: db.clone(),
             key_repository: key_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
 
         let certificate_repository = Arc::new(CertificateHistoryDecorator {

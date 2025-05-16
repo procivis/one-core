@@ -6,6 +6,7 @@ use super::common::GetListResponse;
 use super::key::{Key, KeyRelations};
 use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
+use super::organisation::{Organisation, OrganisationRelations};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Certificate {
@@ -20,6 +21,7 @@ pub struct Certificate {
 
     // Relations:
     pub key: Option<Key>,
+    pub organisation: Option<Organisation>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -34,6 +36,7 @@ pub enum CertificateState {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct CertificateRelations {
     pub key: Option<KeyRelations>,
+    pub organisation: Option<OrganisationRelations>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

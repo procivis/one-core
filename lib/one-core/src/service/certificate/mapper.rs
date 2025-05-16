@@ -16,5 +16,6 @@ pub(super) fn create_response_dto(
         chain: certificate.chain,
         key: convert_inner(certificate.key),
         x509_attributes,
+        organisation_id: certificate.organisation.map(|organisation| organisation.id),
     }
 }
