@@ -3751,7 +3751,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         "BLE".to_string(),
         Fields {
             r#type: TransportType::Ble,
-            display: serde_json::json!(""),
+            display: "".into(),
             order: None,
             enabled: None,
             capabilities: None,

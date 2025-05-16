@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
 use secrecy::SecretSlice;
-use serde_json::{Value, json};
+use serde_json::json;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -563,7 +563,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         "MDOC".to_string(),
         Fields {
             r#type: FormatType::Mdoc,
-            display: Value::String("display".to_string()),
+            display: "display".into(),
             order: None,
             enabled: None,
             capabilities: None,
@@ -658,7 +658,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         format.to_string(),
         Fields {
             r#type: FormatType::Mdoc,
-            display: Value::String("display".to_string()),
+            display: "display".into(),
             order: None,
             enabled: None,
             capabilities: None,
@@ -717,7 +717,7 @@ fn dummy_config() -> CoreConfig {
         "STRING".to_string(),
         Fields {
             r#type: DatatypeType::String,
-            display: Value::String("display".to_string()),
+            display: "display".into(),
             order: None,
             enabled: None,
             capabilities: None,

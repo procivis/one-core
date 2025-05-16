@@ -409,7 +409,7 @@ pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyAlgorithmFields {
-    pub display: Value,
+    pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
     pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
@@ -638,12 +638,25 @@ impl<T> Default for ConfigBlock<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ConfigEntryDisplay {
+    TranslationId(String),
+    Translated(HashMap<String, String>),
+}
+
+impl<T: Into<String>> From<T> for ConfigEntryDisplay {
+    fn from(value: T) -> Self {
+        Self::TranslationId(value.into())
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Fields<T> {
     pub r#type: T,
-    pub display: Value,
+    pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
     pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
@@ -780,7 +793,7 @@ mod tests {
     fn test_merge_fields_with_public_and_private_params() {
         let fields = Fields {
             r#type: "JWT".to_string(),
-            display: Value::String("jwt".to_string()),
+            display: "jwt".into(),
             order: Some(0),
             enabled: None,
             capabilities: None,

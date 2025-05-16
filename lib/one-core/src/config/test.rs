@@ -179,7 +179,7 @@ rusty_fork_test! {
 
         assert_eq!(bbs_plus.order, Some(15));
 
-        assert_eq!(bbs_plus.display, "NewDisplay"); // via env 2
+        assert_eq!(bbs_plus.display, ConfigEntryDisplay::from("NewDisplay")); // via env 2
 
         assert_eq!(config.app.server_ip, Some("192.168.1.1".into())); // via env 3
     }

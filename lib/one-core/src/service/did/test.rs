@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use mockall::predicate::*;
-use serde_json::Value;
 use shared_types::DidId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -82,7 +81,7 @@ fn get_did_config() -> DidConfig {
         "KEY".to_string(),
         Fields {
             r#type: core_config::DidType::Key,
-            display: Value::String("translation".to_string()),
+            display: "translation".into(),
             order: None,
             enabled: None,
             capabilities: None,

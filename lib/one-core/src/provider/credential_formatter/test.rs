@@ -187,7 +187,7 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
         "OBJECT".to_owned(),
         core_config::Fields {
             r#type: DatatypeType::Object,
-            display: serde_json::Value::default(),
+            display: "".into(),
             order: Some(1),
             enabled: Some(true),
             capabilities: None,
