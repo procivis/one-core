@@ -76,10 +76,14 @@ impl IntoFilterCondition for IdentifierFilterValue {
             IdentifierFilterValue::Name(string_match) => {
                 get_string_match_condition(identifier::Column::Name, string_match)
             }
-            IdentifierFilterValue::Type(r#type) => get_equals_condition(
-                identifier::Column::Type,
-                identifier::IdentifierType::from(r#type),
-            ),
+            IdentifierFilterValue::Types(types) => identifier::Column::Type
+                .is_in(
+                    types
+                        .into_iter()
+                        .map(identifier::IdentifierType::from)
+                        .collect::<Vec<_>>(),
+                )
+                .into_condition(),
             IdentifierFilterValue::State(state) => get_equals_condition(
                 identifier::Column::State,
                 identifier::IdentifierState::from(state),

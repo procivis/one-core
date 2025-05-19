@@ -69,7 +69,7 @@ pub struct UpdateIdentifierRequest {
 pub enum IdentifierFilterValue {
     Ids(Vec<IdentifierId>),
     Name(StringMatch),
-    Type(IdentifierType),
+    Types(Vec<IdentifierType>),
     State(IdentifierState),
     OrganisationId(OrganisationId),
     DidMethods(Vec<String>),

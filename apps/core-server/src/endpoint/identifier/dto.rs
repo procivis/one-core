@@ -146,8 +146,8 @@ pub struct IdentifierFilterQueryParamsRestDTO {
     pub ids: Option<Vec<IdentifierId>>,
     #[param(nullable = false)]
     pub name: Option<String>,
-    #[param(nullable = false)]
-    pub r#type: Option<IdentifierTypeRest>,
+    #[param(rename = "types[]", nullable = false)]
+    pub types: Option<Vec<IdentifierTypeRest>>,
     #[param(nullable = false)]
     pub state: Option<IdentifierStateRest>,
     #[param(rename = "didMethods[]", nullable = false)]

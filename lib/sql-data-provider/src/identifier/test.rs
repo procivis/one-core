@@ -353,8 +353,8 @@ async fn test_get_identifier_list() {
             column: SortableIdentifierColumn::Name,
             direction: Some(SortDirection::Ascending),
         }),
-        filtering: Some(ListFilterCondition::Value(IdentifierFilterValue::Type(
-            IdentifierType::Did,
+        filtering: Some(ListFilterCondition::Value(IdentifierFilterValue::Types(
+            vec![IdentifierType::Did],
         ))),
         include: None,
     };

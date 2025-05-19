@@ -28,9 +28,9 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
         });
 
         let ids = value.ids.map(IdentifierFilterValue::Ids);
-        let r#type = value
-            .r#type
-            .map(|r#type| IdentifierFilterValue::Type(r#type.into()));
+        let types = value
+            .types
+            .map(|types| IdentifierFilterValue::Types(convert_inner(types)));
         let state = value
             .state
             .map(|state| IdentifierFilterValue::State(state.into()));
@@ -47,7 +47,7 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
         organisation_id
             & name
             & ids
-            & r#type
+            & types
             & state
             & did_methods
             & is_remote
