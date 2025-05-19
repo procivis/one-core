@@ -4,6 +4,7 @@ use mockall::predicate::eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -195,8 +196,8 @@ async fn test_create_did_jwk_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
-        .with(eq("key_type"))
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
         .once()
         .return_once(move |_| Some(Arc::new(key_algorithm)));
 
@@ -210,7 +211,7 @@ async fn test_create_did_jwk_success() {
         name: "name".to_owned(),
         key_reference: vec![],
         storage_type: "test".to_owned(),
-        key_type: "key_type".to_owned(),
+        key_type: "ECDSA".to_owned(),
         organisation: None,
     }];
     let result = provider

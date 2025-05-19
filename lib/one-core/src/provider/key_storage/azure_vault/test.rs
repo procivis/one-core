@@ -14,6 +14,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::dto::AzureHsmGetTokenResponse;
 use super::{AzureVaultKeyProvider, Params};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::KeyStorage;
@@ -127,11 +128,11 @@ async fn test_azure_vault_generate() {
         Arc::new(ReqwestClient::default()),
     );
     vault
-        .generate(Uuid::new_v4().into(), "ECDSA")
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
         .await
         .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), "ECDSA")
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
         .await
         .unwrap();
 }
@@ -149,11 +150,11 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
         Arc::new(ReqwestClient::default()),
     );
     vault
-        .generate(Uuid::new_v4().into(), "ECDSA")
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
         .await
         .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), "ECDSA")
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
         .await
         .unwrap();
 }
@@ -165,7 +166,9 @@ async fn test_azure_vault_generate_failed_unsupported_key_type() {
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     );
-    let result = vault.generate(Uuid::new_v4().into(), "UNKNOWN").await;
+    let result = vault
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Dilithium)
+        .await;
     assert!(matches!(
         result,
         Err(KeyStorageError::UnsupportedKeyType { .. })

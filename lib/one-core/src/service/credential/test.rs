@@ -724,7 +724,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -831,7 +831,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -1228,7 +1228,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -2017,7 +2017,7 @@ async fn test_create_credential_key_with_issuer_key() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -2168,7 +2168,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -2289,7 +2289,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -2401,7 +2401,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -2523,7 +2523,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -2645,7 +2645,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -5235,7 +5235,7 @@ async fn test_create_credential_array(
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm

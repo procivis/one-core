@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::model::Features;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -34,12 +35,14 @@ pub(super) fn validate_generate_request(
 }
 
 pub(super) fn validate_key_algorithm_for_csr(
-    key_type: &str,
+    key: &Key,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
-    let key_algorithm = &key_algorithm_provider
-        .key_algorithm_from_name(key_type)
-        .ok_or(KeyAlgorithmError::NotSupported(key_type.to_owned()))?;
+    let key_algorithm = key
+        .key_algorithm_type()
+        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
+        .ok_or(KeyAlgorithmError::NotSupported(key.key_type.to_owned()))?;
+
     if !key_algorithm
         .get_capabilities()
         .features

@@ -267,7 +267,7 @@ async fn test_create_did_success() {
             name: "".to_string(),
             key_reference: b"private".to_vec(),
             storage_type: "INTERNAL".to_string(),
-            key_type: "".to_string(),
+            key_type: "EDDSA".to_string(),
             organisation: None,
         }])
     });
@@ -298,7 +298,7 @@ async fn test_create_did_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
@@ -368,7 +368,7 @@ async fn test_create_did_value_already_exists() {
             name: "".to_string(),
             key_reference: b"private".to_vec(),
             storage_type: "INTERNAL".to_string(),
-            key_type: "".to_string(),
+            key_type: "EDDSA".to_string(),
             organisation: None,
         }])
     });
@@ -396,7 +396,7 @@ async fn test_create_did_value_already_exists() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm

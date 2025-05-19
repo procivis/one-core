@@ -617,8 +617,8 @@ fn try_extract_holder_did_mdl_public_key(
 ) -> Result<DidValue, FormatterError> {
     let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
     let algorithm = match &holder_public_key {
-        PublicKeyJwk::Ec(_) => "ECDSA",
-        PublicKeyJwk::Okp(_) => "EDDSA",
+        PublicKeyJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
+        PublicKeyJwk::Okp(_) => KeyAlgorithmType::Eddsa,
         key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
             return Err(FormatterError::Failed(format!(
                 "Key `{key:?}` should not be available for mdoc",
@@ -627,7 +627,7 @@ fn try_extract_holder_did_mdl_public_key(
     };
 
     let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_name(algorithm)
+        .key_algorithm_from_type(algorithm)
         .ok_or(FormatterError::CouldNotVerify(format!(
             "Key algorithm `{algorithm}` not configured"
         )))?;

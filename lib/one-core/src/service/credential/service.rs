@@ -182,9 +182,10 @@ impl CredentialService {
         )?;
 
         let valid_keys_filter = |entry: &&RelatedKey| {
-            if let Some(key_algorithm) = self
-                .key_algorithm_provider
-                .key_algorithm_from_name(&entry.key.key_type)
+            if let Some(key_algorithm) = entry
+                .key
+                .key_algorithm_type()
+                .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
             {
                 entry.role == KeyRole::AssertionMethod
                     && formatter_capabilities

@@ -28,8 +28,9 @@ pub(super) fn validate_holder_capabilities(
         return Err(BusinessLogicError::IncompatibleHolderDidMethod.into());
     }
 
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_name(&selected_key.key_type)
+    let key_algorithm = selected_key
+        .key_algorithm_type()
+        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
         .ok_or(KeyAlgorithmError::NotSupported(
             selected_key.key_type.to_owned(),
         ))?;

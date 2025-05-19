@@ -424,8 +424,9 @@ fn get_jwt_signer<'a>(
         .get_signature_provider(verifier_key, None, key_algorithm_provider.to_owned())
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_name(&verifier_key.key_type)
+    let key_algorithm = verifier_key
+        .key_algorithm_type()
+        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
         .ok_or(VerificationProtocolError::Failed(
             "algorithm not found".to_string(),
         ))?;

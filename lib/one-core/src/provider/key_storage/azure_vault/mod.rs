@@ -73,16 +73,16 @@ impl KeyStorage for AzureVaultKeyProvider {
     async fn generate(
         &self,
         key_id: KeyId,
-        key_type: &str,
+        key_type: KeyAlgorithmType,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
             .get_capabilities()
             .algorithms
             .iter()
-            .any(|alg| alg.to_string() == *key_type)
+            .any(|alg| *alg == key_type)
         {
             return Err(KeyStorageError::UnsupportedKeyType {
-                key_type: key_type.to_owned(),
+                key_type: key_type.to_string(),
             });
         }
 

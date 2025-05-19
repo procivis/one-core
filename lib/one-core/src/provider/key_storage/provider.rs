@@ -80,8 +80,9 @@ impl SignatureProvider for SignatureProviderImpl {
     }
 
     fn jose_alg(&self) -> Option<String> {
-        self.key_algorithm_provider
-            .key_algorithm_from_name(&self.key.key_type)
+        self.key
+            .key_algorithm_type()
+            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
             .and_then(|key_algorithm| key_algorithm.issuance_jose_alg_id())
     }
 

@@ -263,7 +263,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
@@ -461,7 +461,7 @@ async fn test_unverified_credential_extraction() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .once()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
@@ -651,7 +651,7 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .once()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);

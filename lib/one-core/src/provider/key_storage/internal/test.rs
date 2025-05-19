@@ -7,6 +7,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{InternalKeyProvider, decrypt_data};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
@@ -35,7 +36,7 @@ async fn test_internal_generate_with_encryption() {
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .times(1)
         .returning(move |_| Some(arc.clone()));
 
@@ -46,7 +47,10 @@ async fn test_internal_generate_with_encryption() {
         },
     );
 
-    let result = provider.generate(Uuid::new_v4().into(), "").await.unwrap();
+    let result = provider
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
+        .await
+        .unwrap();
     assert_eq!(result.key_reference.len(), 39);
     let decrypted = decrypt_data(&result.key_reference, &SecretSlice::from(vec![0; 32])).unwrap();
     assert_eq!(decrypted.expose_secret(), vec![1, 2, 3]);
@@ -96,9 +100,15 @@ async fn test_internal_sign_with_encryption() {
     let arc_key_algorithm = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let arc_key_algorithm_clone = arc_key_algorithm.clone();
     mock_key_algorithm_provider
-        .expect_key_algorithm_from_name()
-        .times(2)
+        .expect_key_algorithm_from_type()
+        .once()
+        .returning(move |_| Some(arc_key_algorithm_clone.clone()));
+
+    mock_key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .once()
         .returning(move |_| Some(arc_key_algorithm.clone()));
 
     let provider = InternalKeyProvider::new(
@@ -108,7 +118,10 @@ async fn test_internal_sign_with_encryption() {
         },
     );
 
-    let generated_key = provider.generate(Uuid::new_v4().into(), "").await.unwrap();
+    let generated_key = provider
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
+        .await
+        .unwrap();
 
     let key = Key {
         id: Uuid::new_v4().into(),
@@ -118,7 +131,7 @@ async fn test_internal_sign_with_encryption() {
         name: "".to_string(),
         key_reference: generated_key.key_reference,
         storage_type: "".to_string(),
-        key_type: "".to_string(),
+        key_type: "EDDSA".to_string(),
         organisation: None,
     };
 

@@ -26,8 +26,9 @@ pub(crate) async fn prepare_bearer_token(
         .find_first_key_by_role(KeyRole::Authentication)?
         .ok_or(ValidationError::KeyNotFound)?;
 
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_name(&authentication_key.key_type)
+    let key_algorithm = authentication_key
+        .key_algorithm_type()
+        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
         .ok_or(ServiceError::MissingProvider(
             MissingProviderError::KeyAlgorithmProvider(
                 KeyAlgorithmProviderError::MissingAlgorithmImplementation(

@@ -135,9 +135,9 @@ impl CertificateService {
         certificate: &X509Certificate,
         key: &Key,
     ) -> Result<(), ServiceError> {
-        let key_algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_name(&key.key_type)
+        let key_algorithm = key
+            .key_algorithm_type()
+            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
             .ok_or_else(|| {
                 MissingProviderError::KeyAlgorithmProvider(
                     KeyAlgorithmProviderError::MissingAlgorithmImplementation(

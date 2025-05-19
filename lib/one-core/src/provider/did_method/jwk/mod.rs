@@ -45,9 +45,13 @@ impl DidMethod for JWKDidMethod {
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
+        let key_algorithm_type = key
+            .key_algorithm_type()
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&key.key_type)
+            .key_algorithm_from_type(key_algorithm_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
         let jwk = key_algorithm
             .reconstruct_key(&key.public_key, None, None)

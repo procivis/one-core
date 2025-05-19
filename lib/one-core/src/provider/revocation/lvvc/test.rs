@@ -53,7 +53,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
                 name: "".to_string(),
                 key_reference: vec![],
                 storage_type: "".to_string(),
-                key_type: "".to_string(),
+                key_type: "EDDSA".to_string(),
                 organisation: None,
             },
         }]),
@@ -385,7 +385,7 @@ fn common_mock_providers() -> (
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm

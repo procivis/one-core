@@ -60,9 +60,15 @@ impl DidMdlValidator for DidMdl {
     ) -> Result<(), DidMdlValidationError> {
         check_is_valid_now(certificate)?;
 
+        let key_type =
+            key.key_algorithm_type()
+                .ok_or(DidMdlValidationError::KeyTypeNotSupported(
+                    key.key_type.to_string(),
+                ))?;
+
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&key.key_type)
+            .key_algorithm_from_type(key_type)
             .ok_or(DidMdlValidationError::KeyTypeNotSupported(
                 key.key_type.to_string(),
             ))?;

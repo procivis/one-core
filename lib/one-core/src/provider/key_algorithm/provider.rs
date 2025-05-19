@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use secrecy::SecretSlice;
@@ -21,13 +20,6 @@ pub trait KeyAlgorithmProvider: Send + Sync {
     fn key_algorithm_from_type(&self, algorithm: KeyAlgorithmType)
     -> Option<Arc<dyn KeyAlgorithm>>;
 
-    /// This method returns KeyAlgorithm using key_type value (as it's stored in database)
-    fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
-        KeyAlgorithmType::from_str(algorithm)
-            .ok()
-            .and_then(|key_type| self.key_algorithm_from_type(key_type))
-    }
-
     fn key_algorithm_from_jose_alg(
         &self,
         jose_alg: &str,
@@ -43,7 +35,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
 
     fn reconstruct_key(
         &self,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
@@ -141,12 +133,12 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
 
     fn reconstruct_key(
         &self,
-        algorithm: &str,
+        algorithm: KeyAlgorithmType,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
         r#use: Option<String>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
-        let algorithm = self.key_algorithm_from_name(algorithm).ok_or(
+        let algorithm = self.key_algorithm_from_type(algorithm).ok_or(
             KeyAlgorithmProviderError::MissingAlgorithmImplementation(algorithm.to_string()),
         )?;
         algorithm

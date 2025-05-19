@@ -50,11 +50,11 @@ impl KeyStorage for SecureElementKeyProvider {
     async fn generate(
         &self,
         key_id: KeyId,
-        key_type: &str,
+        key_type: KeyAlgorithmType,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if key_type != "ECDSA" {
+        if key_type != KeyAlgorithmType::Ecdsa {
             return Err(KeyStorageError::UnsupportedKeyType {
-                key_type: key_type.to_owned(),
+                key_type: key_type.to_string(),
             });
         }
 

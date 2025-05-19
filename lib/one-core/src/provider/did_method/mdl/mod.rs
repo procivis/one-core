@@ -146,9 +146,9 @@ impl DidMethod for DidMdl {
 
             let decoded_did_key = decode_did(&did_key)?;
             let algorithm = if decoded_did_key.type_ == DidKeyType::Ecdsa {
-                "ECDSA"
+                KeyAlgorithmType::Ecdsa
             } else if decoded_did_key.type_ == DidKeyType::Eddsa {
-                "EDDSA"
+                KeyAlgorithmType::Eddsa
             } else {
                 return Err(DidMethodError::ResolutionError(format!(
                     "Unsupported algorithm for mdl public key: {:?}",
@@ -158,7 +158,7 @@ impl DidMethod for DidMdl {
 
             let key_algorithm = self
                 .key_algorithm_provider
-                .key_algorithm_from_name(algorithm)
+                .key_algorithm_from_type(algorithm)
                 .ok_or(DidMethodError::ResolutionError(format!(
                     "Missing algorithm for mdl public key: {algorithm}",
                 )))?;

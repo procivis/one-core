@@ -21,6 +21,7 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::did_method::DidCreateKeys;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{
@@ -78,8 +79,14 @@ impl DidService {
             &grouped_key
                 .iter()
                 .map(|(key, value)| {
+                    let key_type = value.key_algorithm_type().ok_or(
+                        KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                            value.key_type.to_string(),
+                        ),
+                    )?;
+
                     let public_key = self.key_algorithm_provider.reconstruct_key(
-                        &value.key_type,
+                        key_type,
                         &value.public_key,
                         None,
                         None,
@@ -208,9 +215,9 @@ impl DidService {
 
         let capabilities = did_method.get_capabilities();
         for key in &keys {
-            let key_algorithm = self
-                .key_algorithm_provider
-                .key_algorithm_from_name(&key.key_type)
+            let key_algorithm = key
+                .key_algorithm_type()
+                .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
                 .ok_or(ValidationError::InvalidKeyAlgorithm(
                     key.key_type.to_owned(),
                 ))?;
@@ -234,7 +241,7 @@ impl DidService {
                 &request.name,
                 new_did_id,
                 organisation.clone(),
-                update_key_type,
+                *update_key_type,
                 &*self.key_provider,
             )
             .await?;
@@ -403,7 +410,7 @@ async fn generate_update_key(
     did_name: &str,
     did_id: DidId,
     organisation: Organisation,
-    update_key_type: &KeyAlgorithmType,
+    update_key_type: KeyAlgorithmType,
     key_provider: &dyn KeyProvider,
 ) -> Result<Key, ServiceError> {
     let key_storage_type = KeyStorageType::Internal;
@@ -417,7 +424,7 @@ async fn generate_update_key(
 
     let key_id = Uuid::new_v4().into();
     let key = key_storage
-        .generate(key_id, update_key_type.as_ref())
+        .generate(key_id, update_key_type)
         .await
         .map_err(|err| {
             DidMethodError::CouldNotCreate(format!("Failed generating update keys: {err}"))

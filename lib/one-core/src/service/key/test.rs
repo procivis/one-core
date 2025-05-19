@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
@@ -254,10 +255,10 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
             .returning(move |_, _| Ok(Some(key.clone())));
 
         key_algorithm_provider
-            .expect_key_algorithm_from_name()
+            .expect_key_algorithm_from_type()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "BBS_PLUS");
+                assert_eq!(*alg, KeyAlgorithmType::BbsPlus);
                 true
             })
             .returning(move |_| Some(key_alg.clone()));

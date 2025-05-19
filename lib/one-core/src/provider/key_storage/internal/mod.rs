@@ -61,12 +61,12 @@ impl KeyStorage for InternalKeyProvider {
     async fn generate(
         &self,
         _key_id: KeyId,
-        key_type: &str,
+        key_type: KeyAlgorithmType,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let key_pair = self
             .key_algorithm_provider
-            .key_algorithm_from_name(key_type)
-            .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_owned()))?
+            .key_algorithm_from_type(key_type)
+            .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
             .generate_key()
             .map_err(KeyStorageError::KeyAlgorithmError)?;
 
@@ -78,9 +78,9 @@ impl KeyStorage for InternalKeyProvider {
     }
 
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
-        let algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_name(&key.key_type)
+        let algorithm = key
+            .key_algorithm_type()
+            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
             .ok_or(SignerError::MissingAlgorithm(key.key_type.clone()))?;
 
         let private_key = decrypt_data(&key.key_reference, &self.encryption_key)

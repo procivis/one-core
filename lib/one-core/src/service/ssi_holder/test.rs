@@ -416,7 +416,7 @@ async fn test_submit_proof_succeeds() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
@@ -614,7 +614,7 @@ async fn test_submit_proof_succeeds_with_did() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
@@ -852,7 +852,7 @@ async fn test_submit_proof_repeating_claims() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .times(2)
         .returning(|_| Some(Arc::new(Ecdsa)));
 
@@ -934,7 +934,7 @@ async fn test_accept_credential() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
@@ -1076,7 +1076,7 @@ async fn test_accept_credential_with_did() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 

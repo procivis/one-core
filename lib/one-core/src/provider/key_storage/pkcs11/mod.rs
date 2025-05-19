@@ -1,6 +1,7 @@
 use one_crypto::SignerError;
 use shared_types::KeyId;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::KeyStorage;
@@ -19,7 +20,7 @@ impl KeyStorage for PKCS11KeyProvider {
     async fn generate(
         &self,
         _key_id: KeyId,
-        _key_type: &str,
+        _key_type: KeyAlgorithmType,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         todo!()
     }

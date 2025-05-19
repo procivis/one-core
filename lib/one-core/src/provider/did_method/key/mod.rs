@@ -40,9 +40,13 @@ impl DidMethod for KeyDidMethod {
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
+        let key_algorithm_type = key
+            .key_algorithm_type()
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_name(&key.key_type)
+            .key_algorithm_from_type(key_algorithm_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
         let multibase = key_algorithm
             .reconstruct_key(&key.public_key, None, None)
@@ -59,14 +63,14 @@ impl DidMethod for KeyDidMethod {
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {
         let decoded = decode_did(did_value)?;
         let key_type = match decoded.type_ {
-            key_helpers::DidKeyType::Eddsa => "EDDSA",
-            key_helpers::DidKeyType::Ecdsa => "ECDSA",
-            key_helpers::DidKeyType::Bbs => "BBS_PLUS",
+            key_helpers::DidKeyType::Eddsa => KeyAlgorithmType::Eddsa,
+            key_helpers::DidKeyType::Ecdsa => KeyAlgorithmType::Ecdsa,
+            key_helpers::DidKeyType::Bbs => KeyAlgorithmType::BbsPlus,
         };
 
         let jwk = self
             .key_algorithm_provider
-            .key_algorithm_from_name(key_type)
+            .key_algorithm_from_type(key_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?
             .reconstruct_key(&decoded.decoded_multibase, None, None)
             .map_err(|err| {

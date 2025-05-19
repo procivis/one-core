@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, bail};
@@ -10,11 +11,13 @@ use uuid::Uuid;
 use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyCheckCertificateRequestDTO};
 use super::mapper::request_to_certificate_params;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
 use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -73,8 +76,11 @@ impl KeyService {
                 request.storage_type.clone(),
             ))?;
 
+        let key_type = KeyAlgorithmType::from_str(&request.key_type)
+            .map_err(|_| KeyStorageError::InvalidKeyAlgorithm(request.key_type.clone()))?;
+
         let key_id = Uuid::new_v4().into();
-        let key = provider.generate(key_id, &request.key_type).await?;
+        let key = provider.generate(key_id, key_type).await?;
 
         let key_entity = from_create_request(key_id, request, organisation, key);
 
@@ -172,7 +178,7 @@ impl KeyService {
             return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
         };
 
-        validate_key_algorithm_for_csr(&key.key_type, &*self.key_algorithm_provider)?;
+        validate_key_algorithm_for_csr(&key, &*self.key_algorithm_provider)?;
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
             ServiceError::MissingProvider(MissingProviderError::KeyStorage(

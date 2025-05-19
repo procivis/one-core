@@ -10,6 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{DidMdl, Params};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::{DidCreateKeys, DidMethod};
@@ -39,18 +40,23 @@ fn test_new_did_mdl_instance() {
 async fn test_create_mdl_did_for_e256_key() {
     let key_algorithm: Arc<dyn KeyAlgorithm> = Arc::new(Ecdsa) as _;
 
-    test_create_mdl_did_for("ECDSA", key_algorithm, &PKCS_ECDSA_P256_SHA256).await
+    test_create_mdl_did_for(
+        KeyAlgorithmType::Ecdsa,
+        key_algorithm,
+        &PKCS_ECDSA_P256_SHA256,
+    )
+    .await
 }
 
 #[tokio::test]
 async fn test_create_mdl_did_for_ed25519_key() {
     let key_algorithm: Arc<dyn KeyAlgorithm> = Arc::new(Eddsa) as _;
 
-    test_create_mdl_did_for("EDDSA", key_algorithm, &PKCS_ED25519).await
+    test_create_mdl_did_for(KeyAlgorithmType::Eddsa, key_algorithm, &PKCS_ED25519).await
 }
 
 async fn test_create_mdl_did_for(
-    key_type: &str,
+    key_type: KeyAlgorithmType,
     key_algorithm: Arc<dyn KeyAlgorithm>,
     signature_algorithm: &'static SignatureAlgorithm,
 ) {
@@ -67,7 +73,7 @@ async fn test_create_mdl_did_for(
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
 
     key_algorithm_provider
-        .expect_key_algorithm_from_name()
+        .expect_key_algorithm_from_type()
         .returning(move |_| Some(key_algorithm.clone()));
 
     let service = DidMdl::new(

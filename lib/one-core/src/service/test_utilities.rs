@@ -355,7 +355,7 @@ pub fn dummy_key() -> Key {
         name: "dummy".into(),
         key_reference: vec![],
         storage_type: "foo".into(),
-        key_type: "bar".into(),
+        key_type: "EDDSA".into(),
         organisation: None,
     }
 }

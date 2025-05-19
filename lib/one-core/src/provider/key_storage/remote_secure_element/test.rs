@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::RemoteSecureElementKeyProvider;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -29,7 +30,10 @@ async fn test_generate_success() {
 
     let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
 
-    let result = provider.generate(key_id.into(), "EDDSA").await.unwrap();
+    let result = provider
+        .generate(key_id.into(), KeyAlgorithmType::Eddsa)
+        .await
+        .unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, b"key_reference");
 }
@@ -38,7 +42,9 @@ async fn test_generate_success() {
 async fn test_generate_invalid_key_type() {
     let provider = RemoteSecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()));
 
-    let result = provider.generate(Uuid::new_v4().into(), "invalid").await;
+    let result = provider
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Dilithium)
+        .await;
     assert!(matches!(
         result,
         Err(KeyStorageError::UnsupportedKeyType { .. })
