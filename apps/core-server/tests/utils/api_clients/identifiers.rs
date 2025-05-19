@@ -18,6 +18,7 @@ impl IdentifiersApi {
         key_id: KeyId,
         organisation_id: OrganisationId,
     ) -> Response {
+        let did_name = format!("did-{}", name);
         self.client
             .post(
                 "/api/identifier/v1",
@@ -42,7 +43,7 @@ impl IdentifiersApi {
                         ]
                       },
                       "method": "KEY",
-                      "name": name,
+                      "name": did_name,
                       "organisationId": organisation_id,
                       "params": {}
                     },

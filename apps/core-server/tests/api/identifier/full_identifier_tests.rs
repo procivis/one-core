@@ -288,10 +288,11 @@ async fn test_identifier_filter_key_success() {
         .create(&organisation, eddsa_key_2().params)
         .await;
 
+    let key_identifier_name = "test-key-identifier";
     let result = context
         .api
         .identifiers
-        .create_key_identifier("test-key-identifier", key.id, organisation.id)
+        .create_key_identifier(key_identifier_name, key.id, organisation.id)
         .await;
     assert_eq!(result.status(), 201);
     let resp = result.json_value().await;
@@ -302,10 +303,11 @@ async fn test_identifier_filter_key_success() {
         .keys
         .create(&organisation, eddsa_key_2().params)
         .await;
+    let did_identifier_name = "test-did-identifier";
     let result = context
         .api
         .identifiers
-        .create_did_identifier("test-did-identifier", did_key.id, organisation.id)
+        .create_did_identifier(did_identifier_name, did_key.id, organisation.id)
         .await;
     assert_eq!(result.status(), 201);
     let resp = result.json_value().await;
@@ -320,7 +322,16 @@ async fn test_identifier_filter_key_success() {
     let resp = result.json_value().await;
     assert_eq!(2, resp["totalItems"]);
     assert_eq!(did_identifier_id.to_string(), resp["values"][0]["id"]);
+    assert_eq!(did_identifier_name.to_string(), resp["values"][0]["name"]);
     assert_eq!(key_identifier_id.to_string(), resp["values"][1]["id"]);
+    assert_eq!(key_identifier_name.to_string(), resp["values"][1]["name"]);
+
+    let result = context.api.identifiers.get(&did_identifier_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+    assert_eq!(did_identifier_id.to_string(), resp["id"]);
+    assert_eq!(did_identifier_name.to_string(), resp["name"]);
+    assert_eq!(format!("did-{}", did_identifier_name), resp["did"]["name"]);
 
     let result = context
         .api

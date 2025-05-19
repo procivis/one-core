@@ -14,7 +14,7 @@ use super::mapper::{did_from_did_request, identifier_from_did};
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
-use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
+use crate::model::did::{Did, DidListQuery, DidRelations, UpdateDidRequest};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -176,6 +176,19 @@ impl DidService {
     ///
     /// * `request` - did data
     pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
+        let (did, now) = self.create_did_without_identifier(request).await?;
+        let did_id = did.id;
+        self.identifier_repository
+            .create(identifier_from_did(did, now))
+            .await?;
+
+        Ok(did_id)
+    }
+
+    pub async fn create_did_without_identifier(
+        &self,
+        request: CreateDidRequestDTO,
+    ) -> Result<(Did, OffsetDateTime), ServiceError> {
         validate_did_method(&request.did_method, &self.config.did)?;
 
         let did_method_key = &request.did_method;
@@ -264,8 +277,7 @@ impl DidService {
         let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now);
         let did_value = did.did.clone();
 
-        let did_id = self
-            .did_repository
+        self.did_repository
             .create_did(did.to_owned())
             .await
             .map_err(|err| match err {
@@ -275,12 +287,7 @@ impl DidService {
                 err => ServiceError::from(err),
             })?;
 
-        let _ = self
-            .identifier_repository
-            .create(identifier_from_did(did, now))
-            .await?;
-
-        Ok(did_id)
+        Ok((did, now))
     }
 
     pub async fn update_did(

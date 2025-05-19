@@ -1,4 +1,4 @@
-use shared_types::{DidId, IdentifierId};
+use shared_types::IdentifierId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -77,37 +77,6 @@ impl IdentifierService {
         Ok(result)
     }
 
-    /// Returns an identifier by its DID ID
-    ///
-    /// # Arguments
-    ///
-    /// * `did_id` - DID uuid
-    async fn get_identifier_by_did_id(
-        &self,
-        did_id: &DidId,
-    ) -> Result<GetIdentifierResponseDTO, ServiceError> {
-        let identifier = self
-            .identifier_repository
-            .get_from_did_id(
-                *did_id,
-                &IdentifierRelations {
-                    did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        keys: Some(KeyRelations::default()),
-                    }),
-                    organisation: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-        let Some(identifier) = identifier else {
-            return Err(EntityNotFoundError::IdentifierByDidId(*did_id).into());
-        };
-
-        identifier.try_into()
-    }
-
     /// Returns list of identifiers according to query
     ///
     /// # Arguments
@@ -143,11 +112,32 @@ impl IdentifierService {
         match (request.did, request.key_id, request.certificates) {
             // IdentifierType::Did
             (Some(did), None, None) => {
-                let did_id = self
+                let (did, now) = self
                     .did_service
-                    .create_did(to_create_did_request(&request.name, did, organisation.id))
+                    .create_did_without_identifier(to_create_did_request(
+                        &request.name,
+                        did,
+                        organisation.id,
+                    ))
                     .await?;
-                self.get_identifier_by_did_id(&did_id).await.map(|i| i.id)
+                let id = Uuid::new_v4().into();
+                self.identifier_repository
+                    .create(Identifier {
+                        id,
+                        created_date: now,
+                        last_modified: now,
+                        name: request.name,
+                        organisation: Some(organisation),
+                        r#type: IdentifierType::Did,
+                        is_remote: false,
+                        state: IdentifierState::Active,
+                        deleted_at: None,
+                        did: Some(did),
+                        key: None,
+                        certificates: None,
+                    })
+                    .await?;
+                Ok(id)
             }
             // IdentifierType::Key
             (None, Some(key_id), None) => {
