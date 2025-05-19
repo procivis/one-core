@@ -3,16 +3,18 @@ use std::sync::Arc;
 
 use certificate_check::CertificateCheck;
 use retain_proof_check::RetainProofCheck;
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use self::suspend_check::SuspendCheckProvider;
 use super::credential_formatter::provider::CredentialFormatterProvider;
 use super::did_method::provider::DidMethodProvider;
 use super::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::config::ConfigError;
-use crate::config::core_config::{TaskConfig, TaskType};
+use crate::config::core_config::{Fields, TaskConfig, TaskType};
+use crate::config::{ConfigError, ConfigParsingError};
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::task::holder_check_credential_status::HolderCheckCredentialStatus;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -21,9 +23,11 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
 
 pub mod certificate_check;
+pub mod holder_check_credential_status;
 pub mod provider;
 pub mod retain_proof_check;
 pub mod suspend_check;
@@ -51,6 +55,7 @@ pub(crate) fn tasks_from_config(
     certificate_repository: Arc<dyn CertificateRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     core_base_url: Option<String>,
+    credential_service: CredentialService,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
@@ -81,9 +86,24 @@ pub(crate) fn tasks_from_config(
                 certificate_repository.clone(),
                 identifier_repository.clone(),
             )) as _,
+            TaskType::HolderCheckCredentialStatus => Arc::new(HolderCheckCredentialStatus::new(
+                parse_params(field)?,
+                credential_repository.clone(),
+                credential_service.clone(),
+            )) as _,
         };
         providers.insert(name.to_owned(), provider);
     }
 
     Ok(providers)
+}
+
+fn parse_params<P: DeserializeOwned>(field: &Fields<TaskType>) -> Result<Option<P>, ConfigError> {
+    field
+        .params
+        .as_ref()
+        .and_then(|p| p.merge())
+        .map(|v| serde_json::from_value::<P>(v))
+        .transpose()
+        .map_err(|e| ConfigError::Parsing(ConfigParsingError::GeneralParsingError(e.to_string())))
 }

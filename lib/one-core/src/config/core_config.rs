@@ -516,6 +516,9 @@ pub enum TaskType {
     #[serde(rename = "CERTIFICATE_CHECK")]
     #[strum(serialize = "CERTIFICATE_CHECK")]
     CertificateCheck,
+    #[serde(rename = "HOLDER_CHECK_CREDENTIAL_STATUS")]
+    #[strum(serialize = "HOLDER_CHECK_CREDENTIAL_STATUS")]
+    HolderCheckCredentialStatus,
 }
 
 pub type TrustManagementConfig = ConfigBlock<TrustManagementType>;
@@ -719,7 +722,7 @@ pub struct Params {
 impl Params {
     // Merge public and private params.
     // Public params will override private ones if there have the same keys
-    fn merge(&self) -> Option<Value> {
+    pub(crate) fn merge(&self) -> Option<Value> {
         let mut map = serde_json::map::Map::new();
 
         if let Some(private) = &self.private {

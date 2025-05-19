@@ -1,19 +1,33 @@
 use std::ops::Sub;
 
+use axum::http::Method;
 use one_core::model::certificate::CertificateState;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::proof::ProofStateEnum;
+use one_core::model::revocation_list::RevocationListPurpose;
+use one_core::provider::credential_formatter::jwt::mapper::{
+    bin_to_b64url_string, string_to_b64url_string,
+};
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::task::certificate_check::dto::CertificateCheckResultDTO;
+use one_crypto::Signer;
+use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
+use serde_json::json;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
@@ -332,4 +346,446 @@ async fn test_run_task_certificate_check_with_update() {
             .iter()
             .any(|history| history.action == HistoryAction::Deactivated)
     );
+}
+
+#[tokio::test]
+async fn test_run_task_holder_check_credential_status_with_no_params() {
+    // GIVEN
+    let key_pair = EDDSASigner::generate_key_pair();
+    let issuer_did = format!(
+        "did:key:{}",
+        Eddsa
+            .reconstruct_key(&key_pair.public, None, None)
+            .unwrap()
+            .signature()
+            .unwrap()
+            .public()
+            .as_multibase()
+            .unwrap()
+    );
+
+    let mock_server = MockServer::builder().start().await;
+    let base_url = mock_server.uri();
+    let jwt_header = json!({
+      "alg": "EDDSA",
+      "typ": "JWT"
+    });
+    let credential_payload = json!({
+      "iat": 1707409689,
+      "exp": 1770481689,
+      "nbf": 1707409629,
+      "iss": issuer_did,
+      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
+      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": [
+          "VerifiableCredential"
+        ],
+        "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+        "credentialSubject": {
+          "age": "55"
+        },
+        "credentialStatus": {
+          "id":  format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+          "type": "LVVC"
+        }
+      }
+    });
+
+    let lvvc_payload = json!({
+      "iat": 1707409689,
+      "exp": 1770481689,
+      "nbf": 1707409629,
+      "iss": issuer_did,
+      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
+      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": [
+          "VerifiableCredential"
+        ],
+        "id": format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+        "credentialSubject": {
+          "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+          "status": "ACCEPTED"
+        }
+      }
+    });
+
+    let credential_jwt = sign_jwt_helper(
+        &jwt_header.to_string(),
+        &credential_payload.to_string(),
+        &key_pair,
+    );
+    let lvvc_credential_jwt = sign_jwt_helper(
+        &jwt_header.to_string(),
+        &lvvc_payload.to_string(),
+        &key_pair,
+    );
+
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let holder_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
+                        .parse()
+                        .unwrap(),
+                ),
+                did_type: Some(DidType::Local),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: holder_key,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe"
+                        .parse()
+                        .unwrap(),
+                ),
+                did_type: Some(DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "LVVC", Default::default())
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &issuer_identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                credential: Some(&credential_jwt),
+                holder_identifier: Some(holder_identifier),
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(
+            "/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credential": lvvc_credential_jwt,
+            "format": "JWT"
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let history_previous = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .tasks
+        .run("HOLDER_CHECK_CREDENTIAL_STATUS")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(json!(1), resp["totalChecks"]);
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    // unsuspend added two new history entries
+    assert_eq!(history.values.len(), history_previous.values.len() + 2);
+    // Within the first two entries there needs to be one Reactivated and one Accepted
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Accepted)
+    );
+    assert!(
+        history
+            .values
+            .iter()
+            .take(2)
+            .any(|x| x.action == HistoryAction::Reactivated)
+    );
+}
+
+#[tokio::test]
+async fn test_run_task_holder_check_credential_status_with_params_none_existing_organisation() {
+    // GIVEN
+    let key_pair = EDDSASigner::generate_key_pair();
+    let issuer_did = format!(
+        "did:key:{}",
+        Eddsa
+            .reconstruct_key(&key_pair.public, None, None)
+            .unwrap()
+            .signature()
+            .unwrap()
+            .public()
+            .as_multibase()
+            .unwrap()
+    );
+
+    let mock_server = MockServer::builder().start().await;
+    let base_url = mock_server.uri();
+    let jwt_header = json!({
+      "alg": "EDDSA",
+      "typ": "JWT"
+    });
+    let credential_payload = json!({
+      "iat": 1707409689,
+      "exp": 1770481689,
+      "nbf": 1707409629,
+      "iss": issuer_did,
+      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
+      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": [
+          "VerifiableCredential"
+        ],
+        "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+        "credentialSubject": {
+          "age": "55"
+        },
+        "credentialStatus": {
+          "id":  format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
+          "type": "LVVC"
+        }
+      }
+    });
+
+    let credential_jwt = sign_jwt_helper(
+        &jwt_header.to_string(),
+        &credential_payload.to_string(),
+        &key_pair,
+    );
+
+    let non_existing_organisation_id = Uuid::new_v4();
+    let additional_config = indoc::formatdoc! {"
+        task:
+            HOLDER_CHECK_CREDENTIAL_STATUS:
+                params:
+                    public:
+                        organisationId: {non_existing_organisation_id}
+    "};
+
+    let (context, organisation) = TestContext::new_with_organisation(Some(additional_config)).await;
+    let holder_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
+                        .parse()
+                        .unwrap(),
+                ),
+                did_type: Some(DidType::Local),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: holder_key,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe"
+                        .parse()
+                        .unwrap(),
+                ),
+                did_type: Some(DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "LVVC", Default::default())
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &issuer_identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                credential: Some(&credential_jwt),
+                holder_identifier: Some(holder_identifier),
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .await;
+
+    let history_previous = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .tasks
+        .run("HOLDER_CHECK_CREDENTIAL_STATUS")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(json!(0), resp["totalChecks"]);
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    // no new history entry should be added
+    assert_eq!(history.values.len(), history_previous.values.len());
+}
+
+fn sign_jwt_helper(jwt_header_json: &str, payload_json: &str, key_pair: &KeyPair) -> String {
+    let mut token = format!(
+        "{}.{}",
+        string_to_b64url_string(jwt_header_json).unwrap(),
+        string_to_b64url_string(payload_json).unwrap(),
+    );
+
+    let signature = EDDSASigner {}
+        .sign(token.as_bytes(), &key_pair.public, &key_pair.private)
+        .unwrap();
+    let signature_encoded = bin_to_b64url_string(&signature).unwrap();
+
+    token.push('.');
+    token.push_str(&signature_encoded);
+    token
 }

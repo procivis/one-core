@@ -379,26 +379,6 @@ impl OneCore {
             ))?
             .clone();
 
-        let task_providers = tasks_from_config(
-            &core_config.task,
-            data_provider.get_claim_repository(),
-            data_provider.get_credential_repository(),
-            data_provider.get_history_repository(),
-            revocation_method_provider.to_owned(),
-            data_provider.get_revocation_list_repository(),
-            data_provider.get_validity_credential_repository(),
-            formatter_provider.to_owned(),
-            did_method_provider.to_owned(),
-            key_provider.to_owned(),
-            key_algorithm_provider.to_owned(),
-            data_provider.get_proof_repository(),
-            data_provider.get_certificate_repository(),
-            data_provider.get_identifier_repository(),
-            providers.core_base_url.clone(),
-        )
-        .map_err(OneCoreBuildError::Config)?;
-        let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
-
         let trust_managers = crate::provider::trust_management::provider::from_config(
             client.clone(),
             &mut core_config.trust_management,
@@ -462,6 +442,46 @@ impl OneCore {
             config.clone(),
         );
 
+        let credential_service = CredentialService::new(
+            data_provider.get_credential_repository(),
+            data_provider.get_credential_schema_repository(),
+            data_provider.get_identifier_repository(),
+            data_provider.get_history_repository(),
+            data_provider.get_interaction_repository(),
+            data_provider.get_revocation_list_repository(),
+            revocation_method_provider.clone(),
+            formatter_provider.clone(),
+            issuance_provider.clone(),
+            did_method_provider.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            config.clone(),
+            data_provider.get_validity_credential_repository(),
+            providers.core_base_url.clone(),
+            client.clone(),
+        );
+
+        let task_providers = tasks_from_config(
+            &config.task,
+            data_provider.get_claim_repository(),
+            data_provider.get_credential_repository(),
+            data_provider.get_history_repository(),
+            revocation_method_provider.to_owned(),
+            data_provider.get_revocation_list_repository(),
+            data_provider.get_validity_credential_repository(),
+            formatter_provider.to_owned(),
+            did_method_provider.to_owned(),
+            key_provider.to_owned(),
+            key_algorithm_provider.to_owned(),
+            data_provider.get_proof_repository(),
+            data_provider.get_certificate_repository(),
+            data_provider.get_identifier_repository(),
+            providers.core_base_url.clone(),
+            credential_service.clone(),
+        )
+        .map_err(OneCoreBuildError::Config)?;
+        let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
+
         Ok(OneCore {
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
@@ -489,24 +509,7 @@ impl OneCore {
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
             ),
-            credential_service: CredentialService::new(
-                data_provider.get_credential_repository(),
-                data_provider.get_credential_schema_repository(),
-                data_provider.get_identifier_repository(),
-                data_provider.get_history_repository(),
-                data_provider.get_interaction_repository(),
-                data_provider.get_revocation_list_repository(),
-                revocation_method_provider.clone(),
-                formatter_provider.clone(),
-                issuance_provider.clone(),
-                did_method_provider.clone(),
-                key_provider.clone(),
-                key_algorithm_provider.clone(),
-                config.clone(),
-                data_provider.get_validity_credential_repository(),
-                providers.core_base_url.clone(),
-                client.clone(),
-            ),
+            credential_service,
             did_service: did_service.clone(),
             certificate_service: certificate_service.clone(),
             revocation_list_service: RevocationListService::new(

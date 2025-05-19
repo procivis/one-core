@@ -384,6 +384,10 @@ task:
     type: "CERTIFICATE_CHECK"
     display: "task.certificateCheck"
     order: 2
+  HOLDER_CHECK_CREDENTIAL_STATUS:
+    type: "HOLDER_CHECK_CREDENTIAL_STATUS"
+    display: "task.holderCheckCredentialStatus"
+    order: 3
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB
