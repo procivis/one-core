@@ -17,7 +17,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{HistoryAction, HistoryErrorMetadata};
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
@@ -36,7 +36,6 @@ use crate::service::error::{
 };
 use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::log_history_event_proof;
 use crate::util::oidc::detect_format_with_crypto_suite;
 
 impl SSIHolderService {
@@ -502,13 +501,9 @@ impl SSIHolderService {
 
         proof.exchange = verification_exchange;
 
-        log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Requested).await;
-
         self.fill_verifier_did_in_proof(&mut proof).await?;
 
         self.proof_repository.create_proof(proof.to_owned()).await?;
-
-        log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Pending).await;
 
         Ok(HandleInvitationResultDTO::ProofRequest {
             interaction_id,
