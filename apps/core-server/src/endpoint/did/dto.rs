@@ -179,7 +179,7 @@ pub struct DidFilterQueryParamsRest {
     /// issued or proofs requested.
     #[param(nullable = false)]
     pub r#type: Option<DidType>,
-    /// Set which filters apply in an exact wayh.
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
     pub organisation_id: OrganisationId,

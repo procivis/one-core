@@ -53,8 +53,8 @@ pub(crate) async fn post_identifier(
     security(
         ("bearer" = [])
     ),
-    summary = "Get an identifier",
-    description = "Retrieves detailed information about an identifier.",
+    summary = "Retrieve an identifier",
+    description = "Returns detailed information about an identifier.",
 )]
 pub(crate) async fn get_identifier(
     state: State<AppState>,

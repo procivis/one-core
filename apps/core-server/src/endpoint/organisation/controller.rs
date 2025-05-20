@@ -26,7 +26,7 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Retrieve organization",
-    description = "Returns information on an organization.",
+    description = "Returns information about an organization.",
 )]
 pub(crate) async fn get_organisation(
     state: State<AppState>,

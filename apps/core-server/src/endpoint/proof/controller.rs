@@ -58,7 +58,7 @@ pub(crate) async fn get_proof_presentation_definition(
         ("bearer" = [])
     ),
     summary = "Retrieve a proof request",
-    description = "Returns detailed information on a proof request.",
+    description = "Returns detailed information about a proof request.",
 )]
 pub(crate) async fn get_proof_details(
     state: State<AppState>,

@@ -80,7 +80,7 @@ pub(crate) async fn get_proof_schemas(
         ("bearer" = [])
     ),
     summary = "Retrieve proof schema",
-    description = "Returns detailed information on a proof schema.",
+    description = "Returns detailed information about a proof schema.",
 )]
 pub(crate) async fn get_proof_schema_detail(
     state: State<AppState>,

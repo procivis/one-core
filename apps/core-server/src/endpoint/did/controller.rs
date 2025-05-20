@@ -26,7 +26,7 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Retrieve a DID",
-    description = "Returns detailed information on a DID.",
+    description = "Returns detailed information about a DID.",
 )]
 pub(crate) async fn get_did(
     state: State<AppState>,

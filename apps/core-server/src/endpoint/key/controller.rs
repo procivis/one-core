@@ -29,7 +29,7 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Retrieve key",
-    description = "Returns detailed information on a key.",
+    description = "Returns detailed information about a key.",
 )]
 pub(crate) async fn get_key(
     state: State<AppState>,

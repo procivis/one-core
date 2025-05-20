@@ -52,7 +52,7 @@ pub(crate) async fn delete_credential_schema(
         ("bearer" = [])
     ),
     summary = "Retrieve credential schema",
-    description = "Retrieves detailed information on a credential schema.",
+    description = "Retrieves detailed information about a credential schema.",
 )]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,

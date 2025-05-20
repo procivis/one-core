@@ -42,6 +42,8 @@ pub struct CreateIdentifierRequestRestDTO {
 #[into(CreateIdentifierDidRequestDTO)]
 pub struct CreateIdentifierDidRequestRestDTO {
     pub name: Option<String>,
+    /// Specify the DID method. Check the `did` object of your configuration
+    /// for supported options.
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     pub params: Option<serde_json::Value>,
@@ -72,6 +74,8 @@ pub struct GetIdentifierListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub state: IdentifierStateRest,
     pub r#type: IdentifierTypeRest,
+    /// Whether the identifier belongs to the system or comes from an interaction
+    /// with an external actor.
     pub is_remote: bool,
     pub organisation_id: Option<OrganisationId>,
 }
@@ -142,26 +146,38 @@ pub enum SortableIdentifierColumnRest {
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentifierFilterQueryParamsRestDTO {
+    /// Specify identifiers to be returned by their UUID.
     #[param(rename = "ids[]", nullable = false)]
     pub ids: Option<Vec<IdentifierId>>,
+    /// Return only identifiers with a name starting with this string.
+    /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return only identifiers of a certain type.
     #[param(rename = "types[]", nullable = false)]
     pub types: Option<Vec<IdentifierTypeRest>>,
+    /// Return only active or deactivated identifiers.
     #[param(nullable = false)]
     pub state: Option<IdentifierStateRest>,
     #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
+    /// If true, return only identifiers from interactions with external
+    /// actors. If false, return only identifiers local to the system.
     #[param(nullable = false)]
     #[serde(default, deserialize_with = "deserialize_bool_from_string")]
     pub is_remote: Option<bool>,
+    /// Return keys or DIDs whose keys use the specified algorithm. Check the
+    /// `keyAlgorithm` object of the configuration for supported options.
     #[param(rename = "keyAlgorithms[]", nullable = false)]
     pub key_algorithms: Option<Vec<String>>,
     #[param(rename = "keyRoles[]", inline, nullable = false)]
     pub key_roles: Option<Vec<KeyRoleRestEnum>>,
+    /// Return keys or DIDs whose keys use the specified storage type. Check the
+    /// `keyStorage` object of the configuration for supported options.
     #[param(rename = "keyStorages[]", nullable = false)]
     pub key_storages: Option<Vec<String>>,
 
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactIdentifierFilterColumnRestEnum>>,
     pub organisation_id: OrganisationId,
