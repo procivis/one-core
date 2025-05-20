@@ -3,10 +3,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use mockall::predicate;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
 use shared_types::DidValue;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -24,6 +25,10 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::credential_formatter::model::{
+    CredentialSubject, DetailCredential, MockSignatureProvider,
+};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -31,7 +36,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     get_parent_claim_paths, map_offered_claims_to_credential_schema,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    OpenID4VCICredentialValueDetails, OpenID4VCIParams, OpenID4VCRedirectUriParams,
+    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
+    OpenID4VCIParams, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
@@ -47,7 +53,7 @@ use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::service::storage_proxy::MockStorageProxy;
-use crate::service::test_utilities::{dummy_organisation, get_dummy_date};
+use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation, get_dummy_date};
 
 #[derive(Default)]
 struct TestInputs {
@@ -334,6 +340,149 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
         Some("did:example:123".to_string()),
     )
     .await;
+}
+
+#[tokio::test]
+async fn test_holder_accept_expired_credential_fails() {
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut storage_access = MockStorageProxy::default();
+    let mut key_provider = MockKeyProvider::default();
+
+    let credential = {
+        let mut credential = generic_credential();
+
+        let interaction_data = HolderInteractionData {
+            issuer_url: mock_server.uri(),
+            credential_endpoint: format!("{}/credential", mock_server.uri()),
+            token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            grants: Some(OpenID4VCIGrants {
+                code: OpenID4VCIGrant {
+                    pre_authorized_code: "code".to_string(),
+                    tx_code: None,
+                },
+            }),
+            access_token: None,
+            access_token_expires_at: None,
+            refresh_token: None,
+            refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
+        };
+
+        credential.interaction = Some(Interaction {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            host: Some(mock_server.uri().parse().unwrap()),
+            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+            organisation: None,
+        });
+
+        credential
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                   "access_token": "321",
+                   "token_type": "bearer",
+                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                   "refresh_token": "321",
+                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential": "credential"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    formatter_provider
+        .expect_get_formatter()
+        .with(predicate::eq("JWT"))
+        .returning(move |_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_get_leeway().returning(|| 1000);
+
+            formatter
+                .expect_extract_credentials()
+                .returning(move |_, _, _, _| {
+                    Ok(DetailCredential {
+                        id: None,
+                        valid_from: Some(get_dummy_date() - Duration::weeks(2)),
+                        valid_until: Some(get_dummy_date() - Duration::weeks(1)),
+                        update_at: None,
+                        invalid_before: None,
+                        issuer_did: None,
+                        subject: None,
+                        claims: CredentialSubject {
+                            id: None,
+                            claims: HashMap::new(),
+                        },
+                        status: vec![],
+                        credential_schema: None,
+                    })
+                });
+
+            Some(Arc::new(formatter))
+        });
+
+    storage_access
+        .expect_update_interaction()
+        .returning(|_| Ok(()));
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        ..Default::default()
+    });
+
+    let result = openid_provider
+        .holder_accept_credential(
+            &credential,
+            &dummy_did(),
+            &dummy_key(),
+            None,
+            "vc+sd-jwt",
+            &storage_access,
+            None,
+        )
+        .await;
+
+    assert!(result.is_err());
+    assert!(
+        result
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("Validation error: `Expired`")
+    );
 }
 
 #[tokio::test]

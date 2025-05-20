@@ -23,6 +23,7 @@ use super::{
     HandleInvitationOperationsAccess, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
 };
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
+use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{CoreConfig, DatatypeType, DidType as ConfigDidType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -540,6 +541,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
             )
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
+
+        validate_issuance_time(&response_credential.valid_from, formatter.get_leeway())
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        validate_expiration_time(&response_credential.valid_until, formatter.get_leeway())
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let layout = schema.layout_properties.clone();
 
