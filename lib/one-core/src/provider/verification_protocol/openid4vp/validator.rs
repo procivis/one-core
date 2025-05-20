@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,6 +8,7 @@ use time::OffsetDateTime;
 
 use super::model::PresentationSubmissionDescriptorDTO;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::DidType;
 use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
@@ -246,34 +248,40 @@ pub(super) async fn validate_credential(
 
     // If did documents / DIDs are different, validate that holder has matching key in claim subject
     if !same_did_document {
-        match holder_did.method() {
-            // Only JWK and Key DID methods are supported for key matching
-            "jwk" | "key" => {
-                // Get the holder's verification key
-                let holder_key = holder_did_document
-                    .find_verification_method(None, None)
-                    .ok_or(OpenID4VCError::ValidationError(
-                        "Presentation signer DID document contains no verification methods"
-                            .to_owned(),
-                    ))?;
+        let did_method =
+            DidType::from_str(holder_did.method().to_uppercase().as_str()).map_err(|_| {
+                OpenID4VCError::ValidationError(format!(
+                    "Unsupported holder DID method: {}",
+                    holder_did.method()
+                ))
+            })?;
+        if formatter
+            .get_capabilities()
+            .holder_did_methods
+            .contains(&did_method)
+        {
+            // Get the holder's verification key
+            let holder_key = holder_did_document
+                .find_verification_method(None, None)
+                .ok_or(OpenID4VCError::ValidationError(
+                    "Presentation signer DID document contains no verification methods".to_owned(),
+                ))?;
 
-                // Find matching key in claim subject's verification methods
-                claim_subject_did_document
-                    .verification_method
-                    .iter()
-                    .find(|vm| vm.public_key_jwk == holder_key.public_key_jwk)
-                    .ok_or(OpenID4VCError::ValidationError(
-                        "Presentation signer key not found in claim subject DID document"
-                            .to_owned(),
-                    ))?;
-            }
-            unsupported_method => {
-                // We restrict this key matching logic to DID methods with one verification method
-                return Err(OpenID4VCError::ValidationError(format!(
-                    "Unsupported holder DID method: {unsupported_method}"
-                )));
-            }
-        };
+            // Find matching key in claim subject's verification methods
+            claim_subject_did_document
+                .verification_method
+                .iter()
+                .find(|vm| vm.public_key_jwk == holder_key.public_key_jwk)
+                .ok_or(OpenID4VCError::ValidationError(
+                    "Presentation signer key not found in claim subject DID document".to_owned(),
+                ))?;
+        } else {
+            // We restrict this key matching logic to DID methods with one verification method
+            return Err(OpenID4VCError::ValidationError(format!(
+                "Unsupported holder DID method: {}",
+                holder_did.method()
+            )));
+        }
     }
 
     let mut mso = None;
