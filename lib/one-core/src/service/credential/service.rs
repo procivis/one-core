@@ -793,6 +793,31 @@ impl CredentialService {
             .into());
         }
 
+        let current_state = credential.state;
+        match current_state {
+            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended => {
+                // continue flow
+            }
+            CredentialStateEnum::Revoked => {
+                // credential already revoked, no need to check further
+                return Ok(CredentialRevocationCheckResponseDTO {
+                    credential_id,
+                    status: CredentialStateEnum::Revoked.into(),
+                    success: true,
+                    reason: None,
+                });
+            }
+            _ => {
+                // cannot check pending/offered credentials etc
+                return Ok(CredentialRevocationCheckResponseDTO {
+                    credential_id,
+                    success: false,
+                    reason: Some(format!("Invalid credential state: {current_state}")),
+                    status: current_state.into(),
+                });
+            }
+        };
+
         let credential_schema = credential
             .schema
             .as_ref()
@@ -804,8 +829,6 @@ impl CredentialService {
 
         // Workaround credential format detection
         let format = detect_format_with_crypto_suite(&credential_schema.format, &credential_str)?;
-
-        let current_state = credential.state;
 
         let Some(formatter) = self.formatter_provider.get_formatter(&format) else {
             return Err(MissingProviderError::Formatter(credential_schema.format).into());
@@ -851,38 +874,16 @@ impl CredentialService {
             });
         }
 
-        let credential_status = match current_state {
-            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended => {
-                if !detail_credential.status.is_empty() {
-                    detail_credential.status
-                } else {
-                    // no credential status -> credential is irrevocable
-                    return Ok(CredentialRevocationCheckResponseDTO {
-                        credential_id,
-                        status: CredentialStateEnum::Accepted.into(),
-                        success: true,
-                        reason: None,
-                    });
-                }
-            }
-            CredentialStateEnum::Revoked => {
-                // credential already revoked, no need to check further
-                return Ok(CredentialRevocationCheckResponseDTO {
-                    credential_id,
-                    status: CredentialStateEnum::Revoked.into(),
-                    success: true,
-                    reason: None,
-                });
-            }
-            _ => {
-                // cannot check pending credentials etc
-                return Ok(CredentialRevocationCheckResponseDTO {
-                    credential_id,
-                    success: false,
-                    reason: Some(format!("Invalid credential state: {current_state}")),
-                    status: current_state.into(),
-                });
-            }
+        let credential_status = if !detail_credential.status.is_empty() {
+            detail_credential.status
+        } else {
+            // no credential status -> credential is irrevocable
+            return Ok(CredentialRevocationCheckResponseDTO {
+                credential_id,
+                status: CredentialStateEnum::Accepted.into(),
+                success: true,
+                reason: None,
+            });
         };
 
         let revocation_method = self

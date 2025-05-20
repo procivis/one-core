@@ -122,6 +122,54 @@ async fn test_revoke_check_failed_if_not_holder_role() {
 }
 
 #[tokio::test]
+async fn test_revoke_check_failed_if_only_offered() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("JWT".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id, None)
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("OFFERED", resp[0]["status"]);
+    assert_eq!(false, resp[0]["success"]);
+}
+
+#[tokio::test]
 async fn test_revoke_check_success_statuslist2021() {
     // GIVEN
     // contains statusListCredential=http://0.0.0.0:3000/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b

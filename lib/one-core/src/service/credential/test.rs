@@ -1590,7 +1590,6 @@ async fn test_check_revocation_invalid_role() {
 #[tokio::test]
 async fn test_check_revocation_invalid_state() {
     let mut credential_repository = MockCredentialRepository::default();
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let credential = generic_credential();
     {
@@ -1600,59 +1599,9 @@ async fn test_check_revocation_invalid_state() {
             .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
 
-    let mut credential_formatter = MockCredentialFormatter::default();
-
-    {
-        let credential_clone = credential.clone();
-        credential_formatter
-            .expect_extract_credentials_unverified()
-            .once()
-            .withf(|cred, _| cred.is_empty())
-            .returning(move |_, _| {
-                Ok(DetailCredential {
-                    id: Some(credential_clone.id.to_string()),
-                    valid_from: Some(credential_clone.issuance_date),
-                    valid_until: None,
-                    update_at: None,
-                    invalid_before: None,
-                    issuer_did: Some(
-                        credential_clone
-                            .issuer_identifier
-                            .as_ref()
-                            .unwrap()
-                            .did
-                            .as_ref()
-                            .unwrap()
-                            .did
-                            .clone(),
-                    ),
-                    subject: None,
-                    claims: CredentialSubject {
-                        claims: HashMap::new(),
-                        id: None,
-                    },
-                    status: vec![CredentialStatus {
-                        id: Some("did:status:test".parse().unwrap()),
-                        r#type: "type".to_string(),
-                        status_purpose: Some("purpose".to_string()),
-                        additional_fields: HashMap::default(),
-                    }],
-                    credential_schema: None,
-                })
-            });
-    }
-
-    let formatter = Arc::new(credential_formatter);
-    formatter_provider
-        .expect_get_formatter()
-        .times(1)
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
-        .returning(move |_| Some(formatter.clone()));
-
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        formatter_provider,
         ..Default::default()
     });
 
@@ -1748,62 +1697,12 @@ async fn test_check_revocation_non_revocable() {
 #[tokio::test]
 async fn test_check_revocation_already_revoked() {
     let mut credential_repository = MockCredentialRepository::default();
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let credential = Credential {
         state: CredentialStateEnum::Revoked,
         suspend_end_date: None,
         ..generic_credential()
     };
-
-    let mut credential_formatter = MockCredentialFormatter::default();
-
-    {
-        let credential_clone = credential.clone();
-        credential_formatter
-            .expect_extract_credentials_unverified()
-            .times(2)
-            .withf(|cred, _| cred.is_empty())
-            .returning(move |_, _| {
-                Ok(DetailCredential {
-                    id: Some(credential_clone.id.to_string()),
-                    valid_from: Some(credential_clone.issuance_date),
-                    valid_until: None,
-                    update_at: None,
-                    invalid_before: None,
-                    issuer_did: Some(
-                        credential_clone
-                            .issuer_identifier
-                            .as_ref()
-                            .unwrap()
-                            .did
-                            .as_ref()
-                            .unwrap()
-                            .did
-                            .clone(),
-                    ),
-                    subject: None,
-                    claims: CredentialSubject {
-                        claims: HashMap::new(),
-                        id: None,
-                    },
-                    status: vec![CredentialStatus {
-                        id: Some("did:status:test".parse().unwrap()),
-                        r#type: "type".to_string(),
-                        status_purpose: Some("purpose".to_string()),
-                        additional_fields: HashMap::default(),
-                    }],
-                    credential_schema: None,
-                })
-            });
-    }
-
-    let formatter = Arc::new(credential_formatter);
-    formatter_provider
-        .expect_get_formatter()
-        .times(2)
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
-        .returning(move |_| Some(formatter.clone()));
 
     {
         let credential_clone = credential.clone();
@@ -1818,7 +1717,6 @@ async fn test_check_revocation_already_revoked() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        formatter_provider,
         history_repository,
         config: generic_config().core,
         ..Default::default()
