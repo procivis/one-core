@@ -7,6 +7,7 @@ use serde_json::Value;
 #[serde(rename_all = "camelCase")]
 pub struct ConfigDTO {
     pub format: HashMap<String, Value>,
+    pub identifier: HashMap<String, Value>,
     pub issuance_protocol: HashMap<String, Value>,
     pub verification_protocol: HashMap<String, Value>,
     pub transport: HashMap<String, Value>,

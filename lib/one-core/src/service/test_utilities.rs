@@ -82,6 +82,19 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                   msoExpectedUpdateIn: 86400 # 24h in seconds
                   msoMinimumRefreshTime: 300 # 5min in seconds
                   leeway: 60
+        identifier:
+          DID:
+            display: 'identifier.did'
+            enabled: true
+            order: 0
+          CERTIFICATE:
+            display: 'identifier.certificate'
+            enabled: true
+            order: 1
+          KEY:
+            display: 'identifier.key'
+            enabled: true
+            order: 2
         issuanceProtocol:
             OPENID4VCI_DRAFT13:
                 display: 'display'

@@ -6,6 +6,7 @@ use super::IdentifierService;
 use super::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
+use crate::config::core_config;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
 use crate::model::identifier::{
@@ -16,6 +17,7 @@ use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 use crate::service::identifier::mapper::to_create_did_request;
+use crate::service::identifier::validator::validate_identifier_type;
 
 impl IdentifierService {
     /// Returns details of an identifier
@@ -112,6 +114,10 @@ impl IdentifierService {
         match (request.did, request.key_id, request.certificates) {
             // IdentifierType::Did
             (Some(did), None, None) => {
+                validate_identifier_type(
+                    &core_config::IdentifierType::Did,
+                    &self.config.identifier,
+                )?;
                 let (did, now) = self
                     .did_service
                     .create_did_without_identifier(to_create_did_request(
@@ -141,6 +147,10 @@ impl IdentifierService {
             }
             // IdentifierType::Key
             (None, Some(key_id), None) => {
+                validate_identifier_type(
+                    &core_config::IdentifierType::Key,
+                    &self.config.identifier,
+                )?;
                 let key = self
                     .key_repository
                     .get_key(&key_id, &Default::default())
@@ -169,6 +179,10 @@ impl IdentifierService {
             }
             // IdentifierType::Certificate
             (None, None, Some(certificate_requests)) => {
+                validate_identifier_type(
+                    &core_config::IdentifierType::Certificate,
+                    &self.config.identifier,
+                )?;
                 let id = Uuid::new_v4().into();
 
                 let mut certificates = vec![];

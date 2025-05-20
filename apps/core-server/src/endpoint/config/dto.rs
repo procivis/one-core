@@ -8,11 +8,13 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[schema(example = json!({"format": {}, "issuanceProtocol": {}, "verificationProtocol": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}}))]
+#[schema(example = json!({"format": {}, "identifier": {}, "issuanceProtocol": {}, "verificationProtocol": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}}))]
 #[from(ConfigDTO)]
 pub struct ConfigRestDTO {
     /// Credential formats for issuing, holding and verifying.
     pub format: HashMap<String, Value>,
+    /// Identifier types to associate entities to schemas, credentials, trust lists and proofs.
+    pub identifier: HashMap<String, Value>,
     /// Protocols for the issuance of credentials.
     pub issuance_protocol: HashMap<String, Value>,
     /// Protocols for the verification of credentials.

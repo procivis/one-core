@@ -57,6 +57,19 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
+identifier:
+  DID:
+    display: "identifier.did"
+    enabled: true
+    order: 0
+  CERTIFICATE:
+    display: "identifier.certificate"
+    enabled: true
+    order: 1
+  KEY:
+    display: "identifier.key"
+    enabled: true
+    order: 2
 issuanceProtocol:
   OPENID4VCI_DRAFT13:
     display: "exchange.openid"

@@ -565,6 +565,9 @@ pub enum ValidationError {
 
     #[error("Certificate parsing failure: `{0}`")]
     CertificateParsingFailed(String),
+
+    #[error("Identifier type `{0}` is disabled")]
+    IdentifierTypeDisabled(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1121,6 +1124,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Certificate parsing failure")]
     BR_0224,
+
+    #[strum(to_string = "Identifier type disabled")]
+    BR_0227,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1335,6 +1341,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::CertificateNotValid => ErrorCode::BR_0213,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
+            Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
         }
     }
 }

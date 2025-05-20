@@ -32,6 +32,7 @@ fn convert_internal_structure_to_dto() {
     assert_eq!(
         json!({
           "format": {},
+          "identifier": {},
           "issuanceProtocol": {},
           "verificationProtocol": {},
           "revocation": {},
@@ -82,6 +83,7 @@ fn do_not_serialize_private_parameters() {
     assert_eq!(
         json!({
           "format": {},
+          "identifier": {},
           "issuanceProtocol": {},
           "verificationProtocol": {},
           "transport": {},

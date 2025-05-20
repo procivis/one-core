@@ -50,6 +50,11 @@ rusty_fork_test! {
                     enabled: true
                     order: 0
                     params: {}
+            identifier:
+              DID:
+                display: 'identifier.did'
+                enabled: true
+                order: 0
             issuanceProtocol:
                 OPENID4VCI_DRAFT13:
                     display: 'display'

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use super::error::ErrorCode;
+use crate::config::core_config;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -11,6 +12,7 @@ use crate::service::did::DidService;
 pub mod dto;
 pub(crate) mod mapper;
 pub mod service;
+mod validator;
 
 #[derive(Clone)]
 pub struct IdentifierService {
@@ -18,6 +20,7 @@ pub struct IdentifierService {
     key_repository: Arc<dyn KeyRepository>,
     certificate_repository: Arc<dyn CertificateRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
+    config: Arc<core_config::CoreConfig>,
 
     did_service: DidService,
     certificate_service: CertificateService,
@@ -31,6 +34,7 @@ impl IdentifierService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         did_service: DidService,
         certificate_service: CertificateService,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             identifier_repository,
@@ -39,6 +43,7 @@ impl IdentifierService {
             organisation_repository,
             did_service,
             certificate_service,
+            config,
         }
     }
 }

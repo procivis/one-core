@@ -1,4 +1,5 @@
 format: {}
+identifier: {}
 issuanceProtocol: {}
 verificationProtocol: {}
 revocation: {}

@@ -35,6 +35,7 @@ pub struct AppConfig<Custom> {
 #[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
     pub(crate) format: FormatConfig,
+    pub(crate) identifier: IdentifierConfig,
     pub(crate) issuance_protocol: IssuanceProtocolConfig,
     pub(crate) verification_protocol: VerificationProtocolConfig,
     pub(crate) transport: TransportConfig,
@@ -480,6 +481,8 @@ pub enum KeyStorageType {
     RemoteSecureElement,
 }
 
+pub type IdentifierConfig = Dict<IdentifierType, IdentifierFields>;
+
 #[derive(
     Debug,
     Copy,
@@ -499,6 +502,23 @@ pub enum IdentifierType {
     #[serde(rename = "DID")]
     #[strum(serialize = "DID")]
     Did,
+    #[serde(rename = "CERTIFICATE")]
+    #[strum(serialize = "CERTIFICATE")]
+    Certificate,
+    #[serde(rename = "KEY")]
+    #[strum(serialize = "KEY")]
+    Key,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentifierFields {
+    pub display: ConfigEntryDisplay,
+    pub order: Option<u64>,
+    pub enabled: Option<bool>,
+    #[serde(skip_deserializing)]
+    pub capabilities: Option<Value>,
 }
 
 pub type TaskConfig = ConfigBlock<TaskType>;

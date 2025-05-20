@@ -670,7 +670,7 @@ impl OneCore {
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
             jsonld_service: JsonLdService::new(jsonld_caching_loader, client),
-            config,
+            config: config.clone(),
             cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
             identifier_service: IdentifierService::new(
                 data_provider.get_identifier_repository(),
@@ -679,6 +679,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 did_service,
                 certificate_service,
+                config,
             ),
         })
     }

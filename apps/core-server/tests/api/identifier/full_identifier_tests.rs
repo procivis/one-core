@@ -49,6 +49,32 @@ async fn test_identifier_success() {
 }
 
 #[tokio::test]
+async fn test_identifier_did_disabled() {
+    let config_changes = indoc::indoc! {"
+    identifier:
+        KEY:
+            enabled: false
+    "}
+    .to_string();
+    let (context, organisation) = TestContext::new_with_organisation(Some(config_changes)).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, TestingKeyParams::default())
+        .await;
+
+    let result = context
+        .api
+        .identifiers
+        .create_key_identifier("test-identifier", key.id, organisation.id)
+        .await;
+
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0227");
+}
+
+#[tokio::test]
 async fn test_certificate_identifier() {
     let (context, organisation, ..) = TestContext::new_with_did(None).await;
 
