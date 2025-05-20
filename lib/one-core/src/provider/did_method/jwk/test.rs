@@ -11,7 +11,7 @@ use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::model::{
     AmountOfKeys, DidDocument, DidVerificationMethod, Operation,
 };
-use crate::provider::did_method::{DidCreateKeys, DidMethod};
+use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -218,7 +218,7 @@ async fn test_create_did_jwk_success() {
         .create(
             Some(Uuid::new_v4().into()),
             &None,
-            Some(DidCreateKeys {
+            Some(DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),

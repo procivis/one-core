@@ -12,7 +12,7 @@ use x509_parser::certificate::X509Certificate;
 use x509_parser::pem::Pem;
 
 use super::common::expect_one_key;
-use super::{DidCreateKeys, DidCreated};
+use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::common::jwk_context;
@@ -76,7 +76,7 @@ impl DidMethod for DidMdl {
         &self,
         _id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: Option<DidCreateKeys>,
+        keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
         let Some(params) = params.as_ref() else {
             return Err(DidMethodError::CouldNotCreate(
@@ -177,7 +177,12 @@ impl DidMethod for DidMdl {
         }
     }
 
-    fn update(&self) -> Result<(), DidMethodError> {
+    async fn deactivate(
+        &self,
+        _id: DidId,
+        _keys: DidKeys,
+        _log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
         Err(DidMethodError::NotSupported)
     }
 

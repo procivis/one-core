@@ -142,4 +142,5 @@ pub struct DidRelations {
 pub struct UpdateDidRequest {
     pub id: DidId,
     pub deactivated: Option<bool>,
+    pub log: Option<Option<String>>,
 }

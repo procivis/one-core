@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::provider::caching_loader::CachingLoaderError;
 use crate::provider::remote_entity_storage::RemoteEntityStorageError;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Eq, PartialEq)]
 pub enum DidMethodError {
     #[error("Key algorithm not found")]
     KeyAlgorithmNotFound,
@@ -14,12 +14,16 @@ pub enum DidMethodError {
     ResolutionError(String),
     #[error("Could not create: `{0}`")]
     CouldNotCreate(String),
+    #[error("Could not deactivate: `{0}`")]
+    CouldNotDeactivate(String),
     #[error("Not supported")]
     NotSupported,
     #[error("Did value validation error")]
     ValidationError,
     #[error("Did is deactivated")]
     Deactivated,
+    #[error("Mapping error: `{0}`")]
+    MappingError(String),
 }
 
 #[derive(Debug, Error)]

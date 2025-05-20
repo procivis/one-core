@@ -9,11 +9,11 @@ use super::dto::{
     CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
     GetDidListResponseDTO,
 };
-use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey, UpdateDidRequest};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
-use crate::provider::did_method::{DidCreateKeys, DidCreated};
+use crate::provider::did_method::{DidCreated, DidKeys, DidUpdate};
 use crate::service::error::ServiceError;
 use crate::service::key::dto::{KeyListItemResponseDTO, PublicKeyJwkDTO};
 
@@ -68,7 +68,7 @@ pub(super) fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
     did_create: DidCreated,
-    found_keys: DidCreateKeys,
+    found_keys: DidKeys,
     now: OffsetDateTime,
 ) -> Did {
     let update_keys = found_keys.update_keys.into_iter().flat_map(|keys| {
@@ -198,5 +198,35 @@ pub(super) fn map_key_to_verification_method(
 impl From<DidListItemResponseDTO> for DidValue {
     fn from(value: DidListItemResponseDTO) -> Self {
         value.did
+    }
+}
+
+pub(super) fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, ServiceError> {
+    let Some(ref related_keys) = did.keys else {
+        return Err(ServiceError::MappingError("Missing keys".to_string()));
+    };
+    let mut did_keys = DidKeys::default();
+    for related_key in related_keys {
+        let key = related_key.key.clone();
+        match related_key.role {
+            KeyRole::Authentication => did_keys.authentication.push(key),
+            KeyRole::AssertionMethod => did_keys.assertion_method.push(key),
+            KeyRole::KeyAgreement => did_keys.key_agreement.push(key),
+            KeyRole::CapabilityInvocation => did_keys.capability_invocation.push(key),
+            KeyRole::CapabilityDelegation => did_keys.capability_delegation.push(key),
+            KeyRole::UpdateKey => did_keys.update_keys.get_or_insert_default().push(key),
+        }
+    }
+    Ok(did_keys)
+}
+
+pub(super) fn did_update_to_update_request(
+    did_id: DidId,
+    did_update: DidUpdate,
+) -> UpdateDidRequest {
+    UpdateDidRequest {
+        id: did_id,
+        deactivated: did_update.deactivated,
+        log: did_update.log.map(Some),
     }
 }

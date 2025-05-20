@@ -7,14 +7,13 @@ use one_crypto::hasher::sha256::SHA256;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use super::common::{
-    DidLogEntry, DidLogParameters, DidMethodVersion, canonicalized_hash, multihash_b58_encode,
-};
+use super::common::{DidLogParameters, canonicalized_hash, multihash_b58_encode};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::webvh::Params;
+use crate::provider::did_method::webvh::deserialize::{DidLogEntry, DidMethodVersion};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::key::KeyHandle;

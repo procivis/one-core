@@ -10,7 +10,7 @@ use one_core::provider::credential_formatter::jwt::Jwt;
 use one_core::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use one_core::provider::credential_formatter::model::SignatureProvider;
 use one_core::provider::did_method::key::KeyDidMethod;
-use one_core::provider::did_method::{DidCreateKeys, DidMethod};
+use one_core::provider::did_method::{DidKeys, DidMethod};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
@@ -138,7 +138,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         .create(
             None,
             &None,
-            Some(DidCreateKeys {
+            Some(DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),

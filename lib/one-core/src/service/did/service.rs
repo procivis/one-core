@@ -10,15 +10,17 @@ use super::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO, DidResponseDTO,
     GetDidListResponseDTO,
 };
-use super::mapper::{did_from_did_request, identifier_from_did};
+use super::mapper::{
+    did_from_did_request, did_update_to_update_request, identifier_from_did, map_did_to_did_keys,
+};
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
-use crate::model::did::{Did, DidListQuery, DidRelations, UpdateDidRequest};
+use crate::model::did::{Did, DidListQuery, DidRelations};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::provider::did_method::DidCreateKeys;
+use crate::provider::did_method::DidKeys;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
@@ -125,11 +127,6 @@ impl DidService {
             }
             .into());
         };
-
-        if did.deactivated {
-            return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
-        }
-
         Ok(log)
     }
 
@@ -301,7 +298,7 @@ impl DidService {
                 id,
                 &DidRelations {
                     organisation: Some(Default::default()),
-                    ..Default::default()
+                    keys: Some(Default::default()),
                 },
             )
             .await?;
@@ -318,16 +315,12 @@ impl DidService {
 
         if let Some(deactivated) = request.deactivated {
             validate_deactivation_request(&did, did_method.as_ref(), deactivated)?;
-        }
+            let keys = map_did_to_did_keys(&did)?;
+            let update = did_method.deactivate(did.id, keys, did.log).await?;
+            self.did_repository
+                .update_did(did_update_to_update_request(did.id, update))
+                .await?;
 
-        let update_did = UpdateDidRequest {
-            id: did.id,
-            deactivated: request.deactivated,
-        };
-
-        self.did_repository.update_did(update_did).await?;
-
-        if let Some(deactivated) = request.deactivated {
             let identifier = self
                 .identifier_repository
                 .get_from_did_id(did.id, &Default::default())
@@ -365,8 +358,8 @@ impl DidService {
 fn build_keys_request(
     request: &CreateDidRequestKeysDTO,
     keys: Vec<Key>,
-) -> Result<DidCreateKeys, ServiceError> {
-    let mut create_keys = DidCreateKeys {
+) -> Result<DidKeys, ServiceError> {
+    let mut create_keys = DidKeys {
         authentication: vec![],
         assertion_method: vec![],
         key_agreement: vec![],

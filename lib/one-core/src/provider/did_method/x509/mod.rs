@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
-use super::{DidCreateKeys, DidCreated};
+use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
@@ -26,7 +26,7 @@ impl DidMethod for X509Method {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _keys: Option<DidCreateKeys>,
+        _keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
         todo!()
     }
@@ -35,7 +35,12 @@ impl DidMethod for X509Method {
         todo!()
     }
 
-    fn update(&self) -> Result<(), DidMethodError> {
+    async fn deactivate(
+        &self,
+        _id: DidId,
+        _keys: DidKeys,
+        _log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
         Err(DidMethodError::NotSupported)
     }
 

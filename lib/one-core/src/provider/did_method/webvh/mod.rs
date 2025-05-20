@@ -9,12 +9,16 @@ use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
-use super::error::DidMethodError;
 use super::keys::Keys;
 use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Feature, Operation};
-use super::{DidCreateKeys, DidCreated, DidMethod};
+use super::{DidCreated, DidKeys, DidMethod, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::did_method::webvh::common::{
+    build_proof, canonicalize_multihash_encode, make_keyref, now_utc, update_version,
+};
+use crate::provider::did_method::webvh::deserialize::DidLogEntry;
 use crate::provider::did_method::webvh::mapper::url_to_did;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -22,8 +26,10 @@ use crate::provider::key_storage::provider::KeyProvider;
 mod common;
 mod create;
 mod resolver;
+mod serialize;
 mod verification;
 
+mod deserialize;
 mod mapper;
 #[cfg(test)]
 mod test;
@@ -98,7 +104,7 @@ impl DidMethod for DidWebVh {
         &self,
         id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: Option<DidCreateKeys>,
+        keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
         let Some(key_provider) = self.key_provider.as_ref() else {
             return Err(DidMethodError::CouldNotCreate(
@@ -166,8 +172,60 @@ impl DidMethod for DidWebVh {
         .await
     }
 
-    fn update(&self) -> Result<(), DidMethodError> {
-        Err(DidMethodError::NotSupported)
+    async fn deactivate(
+        &self,
+        _id: DidId,
+        keys: DidKeys,
+        log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
+        let Some(key_provider) = self.key_provider.as_ref() else {
+            return Err(DidMethodError::CouldNotCreate(
+                "Missing key provider for did:webvh creation".to_string(),
+            ));
+        };
+        let Some(ref update_keys) = keys.update_keys else {
+            return Err(DidMethodError::CouldNotCreate(
+                "missing update keys".to_string(),
+            ));
+        };
+        let Some(update_key) = update_keys.first() else {
+            return Err(DidMethodError::CouldNotCreate(
+                "empty update keys".to_string(),
+            ));
+        };
+        let Some(log) = log else {
+            return Err(DidMethodError::CouldNotDeactivate(
+                "missing log".to_string(),
+            ));
+        };
+        let Some(last_line) = log.lines().last() else {
+            return Err(DidMethodError::CouldNotDeactivate("empty log".to_string()));
+        };
+
+        let last_entry: DidLogEntry = serde_json::from_str(last_line).map_err(|err| {
+            DidMethodError::CouldNotDeactivate(format!("failed to parse last log entry: {err}"))
+        })?;
+        let mut new_entry = serialize::DidLogEntry::try_from(last_entry)?;
+
+        let now = now_utc();
+        new_entry.version_time = now;
+        new_entry.parameters.deactivated = Some(true);
+        new_entry.parameters.update_keys = Some(vec![]);
+        new_entry.proof = vec![]; // clear proof, otherwise the entry hash will be wrong
+        let entry_hash = canonicalize_multihash_encode(&new_entry)?;
+        let next_index = log.lines().count() + 1;
+        update_version(&mut new_entry, next_index, &entry_hash);
+
+        let key_ref = make_keyref(update_key, key_provider.as_ref())?;
+        new_entry.proof = vec![build_proof(&new_entry, &key_ref, now).await?];
+
+        let line = serde_json::to_string(&new_entry).map_err(|err| {
+            DidMethodError::CouldNotDeactivate(format!("Failed serializing log line: {err}"))
+        })?;
+        Ok(DidUpdate {
+            deactivated: Some(true),
+            log: Some(format!("{log}\n{line}")),
+        })
     }
 
     fn can_be_deactivated(&self) -> bool {
@@ -176,7 +234,7 @@ impl DidMethod for DidWebVh {
 
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
-            operations: vec![Operation::CREATE, Operation::RESOLVE],
+            operations: vec![Operation::CREATE, Operation::RESOLVE, Operation::DEACTIVATE],
             key_algorithms: vec![KeyAlgorithmType::Ecdsa],
             method_names: vec!["tdw".to_string()],
             features: vec![Feature::SupportsExternalHosting],

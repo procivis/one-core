@@ -40,7 +40,7 @@ use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::resolver::DidCachingLoader;
-use crate::provider::did_method::{DidCreateKeys, DidMethod};
+use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
@@ -916,7 +916,7 @@ async fn test_format_extract_round_trip() {
         .create(
             None,
             &None,
-            Some(DidCreateKeys {
+            Some(DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),

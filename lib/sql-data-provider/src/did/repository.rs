@@ -184,11 +184,16 @@ impl DidRepository for DidProvider {
     }
 
     async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError> {
-        let UpdateDidRequest { id, deactivated } = request;
+        let UpdateDidRequest {
+            id,
+            deactivated,
+            log,
+        } = request;
 
         let did: did::ActiveModel = did::ActiveModel {
             id: Unchanged(id),
             deactivated: deactivated.map(Set).unwrap_or_default(),
+            log: log.map(Set).unwrap_or_default(),
             ..Default::default()
         };
 

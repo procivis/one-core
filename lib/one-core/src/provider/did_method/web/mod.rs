@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
-use super::{DidCreateKeys, DidCreated};
+use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
@@ -69,7 +69,7 @@ impl DidMethod for WebDidMethod {
         &self,
         id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _keys: Option<DidCreateKeys>,
+        _keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
         let did_base_string =
             self.did_base_string
@@ -97,8 +97,16 @@ impl DidMethod for WebDidMethod {
         Ok(fetch_did_web_document(url, &self.client).await?.into())
     }
 
-    fn update(&self) -> Result<(), DidMethodError> {
-        Err(DidMethodError::NotSupported)
+    async fn deactivate(
+        &self,
+        _id: DidId,
+        _keys: DidKeys,
+        _log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
+        Ok(DidUpdate {
+            deactivated: Some(true),
+            log: None,
+        })
     }
 
     fn can_be_deactivated(&self) -> bool {

@@ -192,7 +192,7 @@ async fn test_webvh_did_method_config() {
         resp["did"]["WEBVH"]["capabilities"]["operations"]
             .as_array()
             .unwrap(),
-        &["CREATE", "RESOLVE"]
+        &["CREATE", "RESOLVE", "DEACTIVATE"]
     );
     assert_eq!(
         resp["did"]["WEBVH"]["capabilities"]["supportedUpdateKeyTypes"]

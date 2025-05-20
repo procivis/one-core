@@ -4,11 +4,11 @@ use itertools::Itertools;
 use shared_types::DidValue;
 use url::Url;
 
-use super::common::DidLogEntry;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::webvh::Params;
+use crate::provider::did_method::webvh::deserialize::DidLogEntry;
 use crate::provider::did_method::webvh::verification::verify_did_log;
 use crate::provider::http_client::HttpClient;
 
@@ -138,14 +138,15 @@ mod test {
     use crate::provider::credential_formatter::vcdm::VcdmProof;
     use crate::provider::did_method::DidMethod;
     use crate::provider::did_method::dto::DidDocumentDTO;
-    use crate::provider::did_method::error::DidMethodError::ResolutionError;
+    use crate::provider::did_method::error::DidMethodError::{Deactivated, ResolutionError};
     use crate::provider::did_method::jwk::JWKDidMethod;
     use crate::provider::did_method::key::KeyDidMethod;
     use crate::provider::did_method::keys::Keys;
     use crate::provider::did_method::model::DidVerificationMethod;
     use crate::provider::did_method::provider::DidMethodProviderImpl;
     use crate::provider::did_method::resolver::DidCachingLoader;
-    use crate::provider::did_method::webvh::common::{DidLogParameters, DidMethodVersion};
+    use crate::provider::did_method::webvh::common::DidLogParameters;
+    use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
     use crate::provider::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::eddsa::Eddsa;
@@ -441,26 +442,27 @@ mod test {
 
     #[tokio::test]
     async fn test_didwebvh_failure() {
-        let expected_error_messages = hashmap! {
-            "entry_hash_mismatch.jsonl" => "Entry hash mismatch, expected QmQikVGn3cLzaQ8PwqS4KNXtrfCr9Rbf5kTz9ayWXDAZZo, got QmVdZgk73vwTHX7wbNd7bd6jcMZeae88gxCuNqwMTT6PCQ.",
-            "invalid_proof_verification_method_key.jsonl" => "Proof verification failed: verification method did:key:z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH#z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH is not allowed update_key",
-            "wrong_index.jsonl" => "Unexpected versionId '1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW', expected index 2, got 1.",
-            "invalid_sig.jsonl" => "Failed to verify integrity proof for log entry 1-QmQ5sMLi5vKyHhdaL1LaD3b2C1JY2rCckr2uyGN9KyxMy2: Invalid signature",
-            "invalid_scid.jsonl" => "Invalid SCID: expected QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zY, got QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW",
-            "proof_too_old.jsonl" => "Invalid proof: created time is before entry time.",
-            "portable_true_after_first_entry.jsonl" => "portable flag can only be set to true in first entry",
-            "entry_timestamp_too_old.jsonl" => "Invalid log entry 2-QmaidiuDMxyJc8rXAVv8QEY3k4yj96rTW1mzJjxagpNMTF: version time 2025-03-24 16:27:36.0 +00:00:00 is before version time of the previous entry",
-            "challenge_mismatch.jsonl" => "Proof challenge mismatch, expected 2-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW, got 1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW.",
-            "invalid_update_key_for_prerotation.jsonl" => "Update key z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV not found in nextKeyHashes",
+        let expected_errors = hashmap! {
+            "entry_hash_mismatch.jsonl" => ResolutionError("Entry hash mismatch, expected QmQikVGn3cLzaQ8PwqS4KNXtrfCr9Rbf5kTz9ayWXDAZZo, got QmVdZgk73vwTHX7wbNd7bd6jcMZeae88gxCuNqwMTT6PCQ.".to_owned()),
+            "invalid_proof_verification_method_key.jsonl" => ResolutionError("Proof verification failed: verification method did:key:z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH#z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH is not allowed update_key".to_owned()),
+            "wrong_index.jsonl" => ResolutionError("Unexpected versionId '1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW', expected index 2, got 1.".to_owned()),
+            "invalid_sig.jsonl" => ResolutionError("Failed to verify integrity proof for log entry 1-QmQ5sMLi5vKyHhdaL1LaD3b2C1JY2rCckr2uyGN9KyxMy2: Invalid signature".to_owned()),
+            "invalid_scid.jsonl" => ResolutionError("Invalid SCID: expected QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zY, got QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW".to_owned()),
+            "proof_too_old.jsonl" => ResolutionError("Invalid proof: created time is before entry time.".to_owned()),
+            "portable_true_after_first_entry.jsonl" => ResolutionError("portable flag can only be set to true in first entry".to_owned()),
+            "entry_timestamp_too_old.jsonl" => ResolutionError("Invalid log entry 2-QmaidiuDMxyJc8rXAVv8QEY3k4yj96rTW1mzJjxagpNMTF: version time 2025-03-24 16:27:36.0 +00:00:00 is before version time of the previous entry".to_owned()),
+            "challenge_mismatch.jsonl" => ResolutionError("Proof challenge mismatch, expected 2-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW, got 1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW.".to_owned()),
+            "invalid_update_key_for_prerotation.jsonl" => ResolutionError("Update key z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV not found in nextKeyHashes".to_owned()),
+            "deactivated.jsonl" => Deactivated,
         };
         let folder = fs::read_dir("src/provider/did_method/webvh/test_data/failure").unwrap();
         resolve_log_files(folder, |result, file_name| {
             assert2::let_assert!(
-                Err(ResolutionError(msg)) = result,
+                Err(error) = result,
                 "Failed resolving did! Did log file: {file_name}"
             );
-            let expected_msg = *expected_error_messages.get(&file_name as &str).unwrap();
-            assert_eq!(msg, expected_msg, "Failed for file: {file_name}");
+            let expected_error = *expected_errors.get(&file_name as &str).as_ref().unwrap();
+            assert_eq!(&error, expected_error, "Failed for file: {file_name}");
         })
         .await;
     }

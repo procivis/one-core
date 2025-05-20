@@ -1,26 +1,23 @@
+use common::update_version;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use serde::Serialize;
-use serde::ser::SerializeSeq;
 use shared_types::DidValue;
 use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 
-use super::common::multihash_b58_encode;
+use super::common::{
+    CRYPTOSUITE, DidLogParameters, canonicalize_multihash_encode, multihash_b58_encode, now_utc,
+};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
-use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::dto::DidVerificationMethodDTO;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::webvh::common::{
-    DidLogParameters, DidMethodVersion, canonicalized_hash,
-};
+use crate::provider::did_method::webvh::common;
+use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
+use crate::provider::did_method::webvh::serialize::{DidDocState, DidDocument, DidLogEntry};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::provider::KeyProvider;
 
 const SCID_PLACEHOLDER: &str = "{SCID}";
-const CRYPTOSUITE: &str = "eddsa-jcs-2022";
-
 pub struct DidDocKeys {
     pub authentication: Vec<Key>,
     pub assertion_method: Vec<Key>,
@@ -65,14 +62,14 @@ async fn create_with_options(
 ) -> Result<(DidValue, String), DidMethodError> {
     check_keys(&update_keys)?;
     let did_placeholder = format!("did:tdw:{SCID_PLACEHOLDER}:{domain}");
-    let active_key = make_keyref(update_keys.active, key_provider)?;
+    let active_key = common::make_keyref(update_keys.active, key_provider)?;
 
     let prerotation = !update_keys.next.is_empty();
     let next_key_hashes = update_keys
         .next
         .iter()
         .map(|key| {
-            let key_ref = make_keyref(key, key_provider)?;
+            let key_ref = common::make_keyref(key, key_provider)?;
             let hash = SHA256.hash(key_ref.multibase.as_bytes()).map_err(|err| {
                 DidMethodError::CouldNotCreate(format!("Failed to hash next key: {err}"))
             })?;
@@ -105,12 +102,12 @@ async fn create_with_options(
     };
     // replace {SCID} with it's value
     let scid = canonicalize_multihash_encode(&log)?;
-    let log = replace_scid(log, scid)?;
+    let mut log = replace_scid(log, scid)?;
     // update version field
     let entry_hash = canonicalize_multihash_encode(&log)?;
-    let mut log = update_version(log, &entry_hash);
+    update_version(&mut log, 1, &entry_hash);
 
-    let proof = build_proof(
+    let proof = common::build_proof(
         &log,
         &active_key,
         options.proof_created.unwrap_or(now_utc()),
@@ -141,36 +138,6 @@ fn check_keys(keys: &UpdateKeys<'_>) -> Result<(), DidMethodError> {
     Ok(())
 }
 
-fn make_keyref(key: &Key, key_provider: &dyn KeyProvider) -> Result<KeyRef, DidMethodError> {
-    let Some(storage) = key_provider.get_key_storage(&key.storage_type) else {
-        return Err(DidMethodError::CouldNotCreate(format!(
-            "missing key storage for storage type: {}",
-            key.storage_type
-        )));
-    };
-
-    let key_handle = storage.key_handle(key).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed getting key handle for key: {err}"))
-    })?;
-
-    let multibase = key_handle.public_key_as_multibase().map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed converting key to multibase: {err}"))
-    })?;
-
-    Ok(KeyRef {
-        multibase,
-        handle: key_handle,
-    })
-}
-
-fn canonicalize_multihash_encode(log: impl Serialize) -> Result<String, DidMethodError> {
-    let json = json_syntax::to_value(log)
-        .map_err(|err| DidMethodError::CouldNotCreate(format!("failed serializing log: {err}")))?;
-    let hash = canonicalized_hash(json)?;
-
-    multihash_b58_encode(&hash).map_err(|err| DidMethodError::CouldNotCreate(format!("{err:#}")))
-}
-
 fn create_did_doc(
     did: String,
     did_doc_keys: DidDocKeys,
@@ -184,7 +151,7 @@ fn create_did_doc(
     ) -> Result<Vec<String>, DidMethodError> {
         let mut purpose = vec![];
         for key in keys {
-            let key_ref = make_keyref(&key, key_provider)?;
+            let key_ref = common::make_keyref(&key, key_provider)?;
             let verification_method_id = format!("{did}#key-{}", key.id);
             if !verification_methods
                 .iter()
@@ -268,46 +235,6 @@ fn create_verification_method(
     })
 }
 
-async fn build_proof(
-    log: &DidLogEntry,
-    active_key: &KeyRef,
-    created: OffsetDateTime,
-) -> Result<VcdmProof, DidMethodError> {
-    let verification_method = format!("did:key:{}#{}", active_key.multibase, active_key.multibase);
-    let mut proof = VcdmProof::builder()
-        .proof_purpose("authentication")
-        .cryptosuite(CRYPTOSUITE)
-        .created(created)
-        .challenge(log.version_id.clone())
-        .verification_method(verification_method)
-        .build();
-
-    let json = json_syntax::to_value(&proof).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed serializing proof: {err}"))
-    })?;
-    let mut proof_hash = canonicalized_hash(json)?;
-
-    let json = json_syntax::to_value(&log.state.value).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed serializing did doc: {err}"))
-    })?;
-    let did_doc_hash = canonicalized_hash(json)?;
-    proof_hash.extend(did_doc_hash);
-
-    let proof_value = active_key
-        .handle
-        .sign(&proof_hash)
-        .await
-        .map(|s| {
-            let encoded = bs58::encode(s).into_string();
-            format!("z{encoded}")
-        })
-        .map_err(|err| DidMethodError::CouldNotCreate(format!("failed signing did log: {err}")))?;
-
-    proof.proof_value = Some(proof_value);
-
-    Ok(proof)
-}
-
 fn replace_scid(mut entry: DidLogEntry, scid: String) -> Result<DidLogEntry, DidMethodError> {
     // replace {SCID} with it's value
     entry.version_id = scid.clone();
@@ -350,79 +277,6 @@ fn replace_scid(mut entry: DidLogEntry, scid: String) -> Result<DidLogEntry, Did
     Ok(entry)
 }
 
-fn update_version(mut entry: DidLogEntry, entry_hash: &str) -> DidLogEntry {
-    entry.version_id = format!("1-{entry_hash}");
-    entry
-}
-
-fn now_utc() -> OffsetDateTime {
-    OffsetDateTime::now_utc().replace_nanosecond(0).unwrap()
-}
-
-struct KeyRef {
-    multibase: String,
-    handle: KeyHandle,
-}
-
-#[derive(Debug, Serialize)]
-struct DidDocState {
-    value: DidDocument,
-}
-
-#[derive(Debug)]
-struct DidLogEntry {
-    version_id: String,
-    version_time: OffsetDateTime,
-    parameters: DidLogParameters,
-    state: DidDocState,
-    proof: Vec<VcdmProof>,
-}
-
-impl Serialize for DidLogEntry {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(5))?;
-        seq.serialize_element(&self.version_id)?;
-
-        let version_time = self
-            .version_time
-            .format(&Rfc3339)
-            .map_err(serde::ser::Error::custom)?;
-        seq.serialize_element(&version_time)?;
-
-        seq.serialize_element(&self.parameters)?;
-        seq.serialize_element(&self.state)?;
-
-        if !self.proof.is_empty() {
-            seq.serialize_element(&self.proof)?;
-        }
-
-        seq.end()
-    }
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct DidDocument {
-    #[serde(rename = "@context")]
-    pub context: Vec<String>,
-    pub id: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub verification_method: Vec<DidVerificationMethodDTO>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub authentication: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub assertion_method: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub key_agreement: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub capability_invocation: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub capability_delegation: Vec<String>,
-}
-
 #[cfg(test)]
 mod test {
     use std::sync::Arc;
@@ -435,7 +289,7 @@ mod test {
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::did_method::webvh::verification::verify_did_log;
-    use crate::provider::did_method::webvh::{Params, common};
+    use crate::provider::did_method::webvh::{Params, deserialize};
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::eddsa::Eddsa;
@@ -640,7 +494,7 @@ mod test {
         let (_did, log) = create("test-domain.ch", did_doc_keys, update_keys, &key_provider)
             .await
             .unwrap();
-        let entry: common::DidLogEntry = serde_json::from_str(&log).unwrap();
+        let entry: deserialize::DidLogEntry = serde_json::from_str(&log).unwrap();
 
         let mut did_method_provider = MockDidMethodProvider::new();
         let public_key_jwk = active_key_handle.public_key_as_jwk().unwrap();

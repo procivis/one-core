@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
 use super::common::expect_one_key;
-use super::{DidCreateKeys, DidCreated};
+use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
@@ -35,7 +35,7 @@ impl DidMethod for KeyDidMethod {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        keys: Option<DidCreateKeys>,
+        keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
@@ -88,7 +88,12 @@ impl DidMethod for KeyDidMethod {
         generate_document(decoded, did_value, jwk)
     }
 
-    fn update(&self) -> Result<(), DidMethodError> {
+    async fn deactivate(
+        &self,
+        _id: DidId,
+        _keys: DidKeys,
+        _log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
         Err(DidMethodError::NotSupported)
     }
 

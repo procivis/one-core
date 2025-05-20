@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use serde_json::json;
 use shared_types::DidValue;
 
-use super::DidCreateKeys;
+use super::DidKeys;
 use super::error::DidMethodError;
 use super::model::DidVerificationMethod;
 use crate::model::key::{Key, PublicKeyJwk};
@@ -31,8 +31,8 @@ pub fn jwk_verification_method(
     }
 }
 
-pub fn expect_one_key(keys: &DidCreateKeys) -> Result<&Key, DidMethodError> {
-    let DidCreateKeys {
+pub fn expect_one_key(keys: &DidKeys) -> Result<&Key, DidMethodError> {
+    let DidKeys {
         authentication,
         assertion_method,
         key_agreement,

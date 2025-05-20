@@ -42,14 +42,19 @@ pub trait DidMethod: Send + Sync {
         &self,
         id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: Option<DidCreateKeys>,
+        keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError>;
 
     /// Resolve a DID to its DID document.
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError>;
 
     /// Deactivates a DID. Note that DID deactivation is permanent.
-    fn update(&self) -> Result<(), DidMethodError>;
+    async fn deactivate(
+        &self,
+        did_id: DidId,
+        keys: DidKeys,
+        log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError>;
 
     /// Informs whether a DID can be deactivated or not.
     ///
@@ -77,7 +82,13 @@ pub struct DidCreated {
 }
 
 #[derive(Debug, Clone)]
-pub struct DidCreateKeys {
+pub struct DidUpdate {
+    pub deactivated: Option<bool>,
+    pub log: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DidKeys {
     pub authentication: Vec<Key>,
     pub assertion_method: Vec<Key>,
     pub key_agreement: Vec<Key>,

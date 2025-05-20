@@ -13,7 +13,7 @@ use super::{DidMdl, Params};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::keys::Keys;
-use crate::provider::did_method::{DidCreateKeys, DidMethod};
+use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::eddsa::Eddsa;
@@ -116,7 +116,7 @@ async fn test_create_mdl_did_for(
         .create(
             Some(did_id),
             &Some(params),
-            Some(DidCreateKeys {
+            Some(DidKeys {
                 authentication: keys.to_vec(),
                 assertion_method: keys.to_vec(),
                 key_agreement: keys.to_vec(),
