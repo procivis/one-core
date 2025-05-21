@@ -83,6 +83,8 @@ async fn test_certificate_identifier() {
         .keys
         .create(&organisation, eddsa_testing_params())
         .await;
+
+    // https://ca.dev.mdl-plus.com/admin/django_ca/certificate/11
     const CERTIFICATE_CHAIN_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDRjCCAuygAwIBAgIUcD+tZOWr65vnTr0OWGIVIzWOPscwCgYIKoZIzj0EAwIw
 YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
@@ -178,6 +180,7 @@ async fn test_certificate_identifier_expired() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
+    // https://ca.dev.mdl-plus.com/admin/django_ca/certificate/79584
     // expired on May 15, 2025
     const CERTIFICATE_CHAIN_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDojCCA0egAwIBAgIUSBZZcT3ULQjGxYIrAngVPtVqpEcwCgYIKoZIzj0EAwIw
@@ -302,6 +305,75 @@ qzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
     assert_eq!(result.status(), 400);
     let resp = result.json_value().await;
     assert_eq!(resp["code"].as_str().unwrap(), "BR_0211");
+}
+
+#[tokio::test]
+async fn test_certificate_identifier_revoked() {
+    let (context, organisation, ..) = TestContext::new_with_did(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // https://ca.dev.mdl-plus.com/admin/django_ca/certificate/79443
+    const CERTIFICATE_CHAIN_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIDmTCCAz+gAwIBAgIUN48OzSyWM1PD5ppt+sF/P/2X+Y0wCgYIKoZIzj0EAwIw
+gZYxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20xCzAJBgNVBAYTAkNIMQ8w
+DQYDVQQHDAZadXJpY2gxFDASBgNVBAoMC1Byb2NpdmlzIEFHMR4wHAYDVQQLDBVD
+ZXJ0aWZpY2F0ZSBBdXRob3JpdHkxIjAgBgkqhkiG9w0BCQEWE3N1cHBvcnRAcHJv
+Y2l2aXMuY2gwHhcNMjUwNTE0MTEzNTAwWhcNMzAxMjMxMDAwMDAwWjA0MQswCQYD
+VQQGEwJDSDERMA8GA1UECgwIUHJvY2l2aXMxEjAQBgNVBAMMCXRlc3QtY2VydDBZ
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABHHfy07QkJ2rdl5wxJbpr4EADOWXJ1DF
+U5D4oOOfAtcniaQmPUgir80I2XCFqn2/KPqdWH0PxMzCCP8W3uPxlUCjggHKMIIB
+xjAfBgNVHSMEGDAWgBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAMBgNVHRMBAf8EAjAA
+MB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFemFp40RTCBygYIKwYBBQUHAQEEgb0w
+gbowWwYIKwYBBQUHMAGGT2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbS9vY3Nw
+LzJDRTlEM0Y0OUI1MjhGMENEMjkzOTVENDBCMkUyNUNDMDVFMENFQzMvY2VydC8w
+WwYIKwYBBQUHMAKGT2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbS9pc3N1ZXIv
+MkNFOUQzRjQ5QjUyOEYwQ0QyOTM5NUQ0MEIyRTI1Q0MwNUUwQ0VDMy5kZXIwWgYD
+VR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8y
+Q0U5RDNGNDlCNTI4RjBDRDI5Mzk1RDQwQjJFMjVDQzA1RTBDRUMzLzAVBgNVHSUB
+Af8ECzAJBgcogYxdBQECMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1w
+bHVzLmNvbTAOBgNVHQ8BAf8EBAMCB4AwCgYIKoZIzj0EAwIDSAAwRQIgZc614ivG
+/aldArzZmRzJZYTG+s4O6cC3Z/BfvLhiQpcCIQDx195avIBvJWG07Z8Ii6GneKma
+eahdVpa4G62K4PBmfA==
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIC6jCCApCgAwIBAgIULOnT9JtSjwzSk5XUCy4lzAXgzsMwCgYIKoZIzj0EAwQw
+gZYxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20xCzAJBgNVBAYTAkNIMQ8w
+DQYDVQQHDAZadXJpY2gxFDASBgNVBAoMC1Byb2NpdmlzIEFHMR4wHAYDVQQLDBVD
+ZXJ0aWZpY2F0ZSBBdXRob3JpdHkxIjAgBgkqhkiG9w0BCQEWE3N1cHBvcnRAcHJv
+Y2l2aXMuY2gwHhcNMjUwMzEzMTQzNzAwWhcNMzUwMzExMTQzNzAwWjCBljEcMBoG
+A1UEAwwTY2EuZGV2Lm1kbC1wbHVzLmNvbTELMAkGA1UEBhMCQ0gxDzANBgNVBAcM
+Blp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmlj
+YXRlIEF1dGhvcml0eTEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5j
+aDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABC8hfYMdzhP87J1EnaaIInDNqGeb
+PugTdzANq8kd2no4Xav/cyHsOVCe6FL7yYHButVR7xrmCbQip/0ctE0cdrejgbkw
+gbYwDgYDVR0PAQH/BAQDAgEGMDAGA1UdHwQpMCcwJaAjoCGGH2h0dHA6Ly9jYS5k
+ZXYubWRsLXBsdXMuY29tL2NybC8wHgYDVR0SBBcwFYITY2EuZGV2Lm1kbC1wbHVz
+LmNvbTASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBTlL0m2S8gpkPlLfxPs
+QM9qwqL4cDAfBgNVHSMEGDAWgBTlL0m2S8gpkPlLfxPsQM9qwqL4cDAKBggqhkjO
+PQQDBANIADBFAiAwMs/rQEDwt0HbrAt4lvAwT3jrtqqR4BzZDQhqqh8zyAIhAKTY
+qzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
+-----END CERTIFICATE-----
+";
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier(
+            "test-identifier",
+            key.id,
+            organisation.id,
+            CERTIFICATE_CHAIN_PEM,
+        )
+        .await;
+
+    assert_eq!(result.status(), 400);
+    let resp = result.json_value().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0212");
 }
 
 #[tokio::test]

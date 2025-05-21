@@ -35,7 +35,9 @@ impl CertificateService {
             .await?
             .ok_or(EntityNotFoundError::Certificate(id))?;
 
-        let (attributes, ..) = self.parse_pem_chain(certificate.chain.as_bytes(), None)?;
+        let (attributes, ..) = self
+            .parse_pem_chain(certificate.chain.as_bytes(), false, None)
+            .await?;
 
         Ok(create_response_dto(certificate, attributes))
     }
@@ -51,8 +53,9 @@ impl CertificateService {
             .await?
             .ok_or(EntityNotFoundError::Key(request.key_id))?;
 
-        let (attributes, subject_common_name) =
-            self.parse_pem_chain(request.chain.as_bytes(), Some(&key))?;
+        let (attributes, subject_common_name) = self
+            .parse_pem_chain(request.chain.as_bytes(), true, Some(&key))
+            .await?;
 
         let name = match request.name {
             Some(name) => name,
@@ -74,23 +77,40 @@ impl CertificateService {
         })
     }
 
-    fn parse_pem_chain(
+    async fn parse_pem_chain(
         &self,
         pem_chain: &[u8],
-        validate_with_expected_pub_key: Option<&Key>,
+        validate: bool,
+        expected_pub_key: Option<&Key>,
     ) -> Result<(CertificateX509AttributesDTO, Option<String>), ServiceError> {
         let mut result: Option<(CertificateX509AttributesDTO, Option<String>)> = None;
-        let mut previous: Option<Pem> = None;
-        for item in Pem::iter_from_buffer(pem_chain) {
-            let pem =
-                item.map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
-            let current = pem
-                .parse_x509()
-                .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+        let items = Pem::iter_from_buffer(pem_chain)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
+        let certs = items
+            .iter()
+            .map(|pem| match pem.parse_x509() {
+                Ok(parsed) => Ok((parsed, pem)),
+                Err(err) => Err(err),
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+
+        for ((current, current_pem), (next, _)) in certs.iter().zip(
+            certs
+                .iter()
+                .skip(1)
+                .map(|(cert, pem)| (Some(cert), Some(pem)))
+                .chain(std::iter::once((None, None))),
+        ) {
             if result.is_none() {
-                let attributes = parse_x509_attributes(&current, &pem.contents)?;
+                if let Some(expected_pub_key) = expected_pub_key {
+                    self.validate_subject_public_key(current, expected_pub_key)?;
+                }
+
+                let attributes = parse_x509_attributes(current, &current_pem.contents)?;
                 let subject_common_name = current
                     .subject
                     .iter_common_name()
@@ -99,8 +119,7 @@ impl CertificateService {
                     .map(ToString::to_string);
 
                 let res = (attributes, subject_common_name);
-                if let Some(expected_pub_key) = validate_with_expected_pub_key {
-                    self.validate_subject_public_key(&current, expected_pub_key)?;
+                if validate {
                     result = Some(res);
                 } else {
                     return Ok(res);
@@ -111,17 +130,17 @@ impl CertificateService {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
-            if let Some(previous) = previous {
+            if let Some(next) = next {
                 // parent entry in the chain, validate signature
-                let previous = previous
-                    .parse_x509()
-                    .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-                previous
-                    .verify_signature(Some(current.public_key()))
+                current
+                    .verify_signature(Some(next.public_key()))
                     .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
             }
 
-            previous = Some(pem);
+            let revoked = self.check_revocation(current, next).await?;
+            if revoked {
+                return Err(ValidationError::CertificateRevoked.into());
+            }
         }
 
         result.ok_or(

@@ -429,6 +429,7 @@ impl OneCore {
             data_provider.get_certificate_repository(),
             data_provider.get_key_repository(),
             key_algorithm_provider.clone(),
+            client.clone(),
         );
 
         let did_service = DidService::new(
