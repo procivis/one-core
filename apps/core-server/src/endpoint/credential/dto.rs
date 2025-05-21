@@ -263,11 +263,12 @@ pub enum SortableCredentialColumnRestEnum {
 #[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialRequestRestDTO {
-    /// ID of the credential schema used to issue the credential.
+    /// Choose a credential schema to use.
     pub credential_schema_id: CredentialSchemaId,
-    /// ID of the issuer identifier used to issue the credential.
+    /// Choose an identifier to use to issue the credential.
     pub issuer: Option<IdentifierId>,
-    /// ID of the issuer DID used to issue the credential.
+    #[schema(deprecated = true)]
+    /// Choose a DID to use as an identifier.
     pub issuer_did: Option<DidId>,
     /// If multiple keys are specified for the assertion method of the DID,
     /// use this value to specify which key should be used as the assertion

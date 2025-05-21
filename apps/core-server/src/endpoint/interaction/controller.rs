@@ -56,6 +56,8 @@ pub(crate) async fn handle_invitation(
     description = indoc::formatdoc! {"
         Accepts an offered credential. The chosen identifier will be listed
         as the subject of the issued credential.
+
+        `didId` is deprecated.
     "},
 )]
 pub(crate) async fn issuance_accept(
@@ -143,7 +145,12 @@ pub(crate) async fn presentation_reject(
         ("bearer" = [])
     ),
     summary = "Submit presentation",
-    description = "Submits a presentation in response to a request.",
+    description = indoc::formatdoc! {"
+        Submits a presentation in response to a request. Choose the
+        identifier used to accept the credentials.
+
+        `didId` is deprecated.
+    "},
 )]
 pub(crate) async fn presentation_submit(
     state: State<AppState>,

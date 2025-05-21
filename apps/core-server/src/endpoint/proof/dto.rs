@@ -58,13 +58,19 @@ pub enum ProofRoleRestEnum {
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestRestDTO {
-    /// ID of the proof schema used to request the proof.
+    /// Choose a proof schema to use.
     pub proof_schema_id: ProofSchemaId,
     #[into(rename = "verifier_did_id")]
-    #[schema(example = "<uuid; did identifier>", nullable = false)]
+    #[schema(
+        example = "<uuid; did identifier>",
+        nullable = false,
+        deprecated = true
+    )]
+    /// Choose a DID to use as an identifier.
     pub verifier_did: Option<DidId>,
     #[into(rename = "verifier_identifier_id")]
     #[schema(example = "<uuid; identifier id>", nullable = false)]
+    /// Choose an identifier to use when making the request.
     pub verifier: Option<IdentifierId>,
     /// Specify the exchange protocol to use for credential exchange. Check
     /// the `exchange` object of the configuration for supported options and
