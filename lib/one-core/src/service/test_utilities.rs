@@ -7,8 +7,8 @@ use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::config::core_config::{
-    AppConfig, IdentifierType as ConfigIdentifierType, IssuanceProtocolType, KeyAlgorithmType,
-    KeyStorageType, RevocationType, VerificationProtocolType,
+    AppConfig, IdentifierType as ConfigIdentifierType, InputFormat, IssuanceProtocolType,
+    KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -200,7 +200,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         cacheEntities: {}
     "};
 
-    AppConfig::from_yaml(vec![config]).unwrap()
+    AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()
 }
 
 pub fn dummy_credential() -> Credential {

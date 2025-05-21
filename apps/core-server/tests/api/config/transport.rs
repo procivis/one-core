@@ -1,5 +1,5 @@
 use core_server::ServerConfig;
-use one_core::config::core_config::AppConfig;
+use one_core::config::core_config::{AppConfig, InputFormat};
 use serde_json::json;
 
 use crate::fixtures;
@@ -40,14 +40,13 @@ async fn test_server_starts_with_base_config() {
     "}.to_string(),
     );
     let configs = [
-        format!("{}/../../config/config.yml", root),
-        format!("{}/../../config/config-procivis-base.yml", root),
+        InputFormat::yaml_file(format!("{}/../../config/config.yml", root)),
+        InputFormat::yaml_file(format!("{}/../../config/config-procivis-base.yml", root)),
     ]
-    .map(|path| std::fs::read_to_string(path).unwrap())
     .into_iter()
-    .chain(set_encryption_key);
+    .chain(set_encryption_key.map(InputFormat::yaml_str));
 
-    let mut app_config: AppConfig<ServerConfig> = AppConfig::from_yaml(configs).unwrap();
+    let mut app_config: AppConfig<ServerConfig> = AppConfig::parse(configs).unwrap();
     let database_url = app_config.app.database_url;
     app_config.app = ServerConfig {
         database_url: if database_url.is_empty() {

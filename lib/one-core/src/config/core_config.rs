@@ -1,14 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
+use std::path::Path;
 
 use figment::Figment;
 #[cfg(feature = "config_env")]
 use figment::providers::Env;
-use figment::providers::Format;
 #[cfg(feature = "config_json")]
 use figment::providers::Json;
 #[cfg(feature = "config_yaml")]
 use figment::providers::Yaml;
+use figment::providers::{Data, Format};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
@@ -24,8 +25,14 @@ pub struct NoCustomConfig;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct AppCustomConfigSerdeDTO<Custom> {
+    #[serde(default)]
+    pub(super) app: Custom,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppConfig<Custom> {
-    #[serde(flatten)]
     pub core: CoreConfig,
     #[serde(default)]
     pub app: Custom,
@@ -91,22 +98,32 @@ pub struct CacheEntityConfig {
     pub refresh_after: time::Duration,
 }
 
-#[derive(Debug)]
 pub enum InputFormat {
     #[cfg(feature = "config_yaml")]
-    Yaml(String),
+    Yaml(Data<Yaml>),
     #[cfg(feature = "config_json")]
-    Json(String),
+    Json(Data<Json>),
 }
 
 impl InputFormat {
-    pub fn yaml(s: impl Into<String>) -> Self {
-        Self::Yaml(s.into())
+    #[cfg(feature = "config_yaml")]
+    pub fn yaml_file(p: impl AsRef<Path>) -> InputFormat {
+        InputFormat::Yaml(Yaml::file(p))
+    }
+
+    #[cfg(feature = "config_yaml")]
+    pub fn yaml_str(s: impl AsRef<str>) -> InputFormat {
+        InputFormat::Yaml(Yaml::string(s.as_ref()))
     }
 
     #[cfg(feature = "config_json")]
-    pub fn json(s: impl Into<String>) -> Self {
-        Self::Json(s.into())
+    pub fn json_file(p: impl AsRef<Path>) -> InputFormat {
+        InputFormat::Json(Json::file(p))
+    }
+
+    #[cfg(feature = "config_json")]
+    pub fn json_str(s: impl AsRef<str>) -> InputFormat {
+        InputFormat::Json(Json::string(s.as_ref()))
     }
 }
 
@@ -118,22 +135,19 @@ where
         let mut inputs: Vec<InputFormat> = Vec::with_capacity(files.len());
 
         for path in files {
-            let file_content =
-                std::fs::read_to_string(path.as_ref()).map_err(ConfigParsingError::File)?;
-
             #[cfg(feature = "config_yaml")]
             if path
                 .as_ref()
                 .extension()
                 .is_some_and(|ext| ext == "yml" || ext == "yaml")
             {
-                inputs.push(InputFormat::Yaml(file_content));
+                inputs.push(InputFormat::Yaml(Yaml::file(path)));
                 continue;
             }
 
             #[cfg(feature = "config_json")]
             if path.as_ref().extension() == Some("json".as_ref()) {
-                inputs.push(InputFormat::Json(file_content));
+                inputs.push(InputFormat::Json(Json::file(path)));
                 continue;
             }
 
@@ -146,10 +160,14 @@ where
         AppConfig::parse(inputs)
     }
 
+    #[cfg(feature = "config_yaml")]
     pub fn from_yaml(
-        configs: impl IntoIterator<Item = impl Into<String>>,
+        configs: impl IntoIterator<Item = impl AsRef<str>>,
     ) -> Result<Self, ConfigParsingError> {
-        let inputs = configs.into_iter().map(InputFormat::yaml);
+        let inputs = configs
+            .into_iter()
+            .map(|s| Yaml::string(s.as_ref()))
+            .map(InputFormat::Yaml);
 
         AppConfig::parse(inputs)
     }
@@ -162,9 +180,9 @@ where
         for data in inputs {
             figment = match data {
                 #[cfg(feature = "config_yaml")]
-                InputFormat::Yaml(content) => figment.merge(Yaml::string(&content)),
+                InputFormat::Yaml(content) => figment.merge(content),
                 #[cfg(feature = "config_json")]
-                InputFormat::Json(content) => figment.merge(Json::string(&content)),
+                InputFormat::Json(content) => figment.merge(content),
             };
         }
 
@@ -173,9 +191,16 @@ where
             figment = figment.merge(Env::prefixed("ONE_").split("__").lowercase(false));
         }
 
-        figment
-            .extract()
-            .map_err(|e| ConfigParsingError::GeneralParsingError(e.to_string()))
+        let core = figment
+            .extract::<CoreConfig>()
+            .map_err(|e| ConfigParsingError::GeneralParsingError(e.to_string()))?;
+        let custom = figment
+            .extract::<AppCustomConfigSerdeDTO<Custom>>()
+            .map_err(|e| ConfigParsingError::GeneralParsingError(e.to_string()))?;
+        Ok(Self {
+            core,
+            app: custom.app,
+        })
     }
 }
 

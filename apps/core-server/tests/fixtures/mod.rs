@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use core_server::ServerConfig;
 use hex_literal::hex;
-use one_core::config::core_config::{self, AppConfig};
+use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::model::certificate::Certificate;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -90,18 +90,16 @@ pub fn create_config(
     let root = std::env!("CARGO_MANIFEST_DIR");
 
     let configs = [
-        format!("{}/../../config/config.yml", root),
-        format!("{}/../../config/config-procivis-base.yml", root),
-        format!("{}/../../config/config-local.yml", root),
+        InputFormat::yaml_file(format!("{}/../../config/config.yml", root)),
+        InputFormat::yaml_file(format!("{}/../../config/config-procivis-base.yml", root)),
+        InputFormat::yaml_file(format!("{}/../../config/config-local.yml", root)),
     ]
     .into_iter()
-    .map(|path| std::fs::read_to_string(path).unwrap())
-    .chain(ion_config)
-    .chain(params.additional_config)
-    .chain(allow_insecure_http);
+    .chain(ion_config.map(InputFormat::yaml_str))
+    .chain(params.additional_config.map(InputFormat::yaml_str))
+    .chain(allow_insecure_http.map(InputFormat::yaml_str));
 
-    let mut app_config: AppConfig<ServerConfig> =
-        core_config::AppConfig::from_yaml(configs).unwrap();
+    let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::parse(configs).unwrap();
 
     app_config.app = ServerConfig {
         database_url: std::env::var("ONE_app__databaseUrl").unwrap_or("sqlite::memory:".into()),

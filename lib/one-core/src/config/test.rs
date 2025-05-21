@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use super::core_config::*;
+use crate::config::ConfigParsingError::GeneralParsingError;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -143,15 +144,15 @@ rusty_fork_test! {
         // SAFETY: `rusty_fork` spawns each test as separate subprocess so that should be safe
         unsafe {
             env::set_var("ONE_keyAlgorithm__BBS_PLUS__display", "NewDisplay");
-            env::set_var("ONE_app__serverIp", "192.168.1.1") ;
+            env::set_var("ONE_app__serverIp", "192.168.1.1");
         };
 
         let config = AppConfig::<SystemConfig>::parse(vec![
-            InputFormat::yaml(config1),
-            InputFormat::yaml(config2),
-            InputFormat::yaml(config3),
-            InputFormat::yaml(config4),
-            InputFormat::yaml(config5),
+            InputFormat::yaml_str(config1),
+            InputFormat::yaml_str(config2),
+            InputFormat::yaml_str(config3),
+            InputFormat::yaml_str(config4),
+            InputFormat::yaml_str(config5),
         ])
         .unwrap();
 
@@ -187,5 +188,45 @@ rusty_fork_test! {
         assert_eq!(bbs_plus.display, ConfigEntryDisplay::from("NewDisplay")); // via env 2
 
         assert_eq!(config.app.server_ip, Some("192.168.1.1".into())); // via env 3
+    }
+}
+
+rusty_fork_test! {
+    #[test]
+    #[cfg(all(
+        feature = "config_yaml",
+        feature = "config_json",
+        feature = "config_env"
+    ))]
+    fn test_parse_config_missing_field() {
+        // given
+        let config1 = indoc::indoc! {"
+            app:
+                databaseUrl: 'test'
+            format:
+                JWT:
+                    type: 'JWT'
+                    display: 'display'
+                    order: 0
+                    params:
+                        public:
+                            leeway: 60
+            identifier:
+              DID:
+                enabled: true
+                order: 0
+        "};
+
+        // when
+        let config = AppConfig::<SystemConfig>::parse(vec![
+            InputFormat::yaml_str(config1),
+        ]);
+
+        // then
+        assert!(
+            matches!(
+                config,
+                Err(GeneralParsingError(m)) if m == "missing field `display` for key \"default.identifier.DID\" in YAML source string")
+        )
     }
 }

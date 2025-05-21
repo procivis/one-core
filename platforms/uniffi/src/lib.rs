@@ -960,10 +960,10 @@ async fn initialize_trust_list_cache(
 
 fn build_config(config: &str) -> Result<AppConfig<MobileConfig>, SDKError> {
     core_config::AppConfig::parse([
-        InputFormat::yaml(include_str!("../../../config/config.yml")),
-        InputFormat::yaml(include_str!("../../../config/config-procivis-base.yml")),
-        InputFormat::yaml(include_str!("../../../config/config-procivis-mobile.yml")),
-        InputFormat::json(config),
+        InputFormat::yaml_str(include_str!("../../../config/config.yml")),
+        InputFormat::yaml_str(include_str!("../../../config/config-procivis-base.yml")),
+        InputFormat::yaml_str(include_str!("../../../config/config-procivis-mobile.yml")),
+        InputFormat::json_str(config),
     ])
     .map_err(|err| SDKError::InitializationFailure(err.to_string()))
 }
