@@ -259,7 +259,7 @@ async fn test_run_task_certificate_check_with_update() {
         )
         .await;
 
-    let _ok_certificate = context
+    let ok_certificate = context
         .db
         .certificates
         .create(
@@ -316,6 +316,9 @@ async fn test_run_task_certificate_check_with_update() {
     assert_eq!(result.expired_certificate_ids[0], expired_certificate.id);
     assert_eq!(result.deactivated_identifier_ids.len(), 1);
     assert_eq!(result.deactivated_identifier_ids[0], identifier.id);
+    assert_eq!(result.revoked_certificate_ids.len(), 0);
+    assert_eq!(result.check_failures.len(), 1);
+    assert_eq!(result.check_failures[0].certificate_id, ok_certificate.id);
 
     let expired_certificate = context.db.certificates.get(expired_certificate.id).await;
     assert_eq!(expired_certificate.state, CertificateState::Expired);

@@ -23,6 +23,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::CertificateService;
 use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
 
@@ -56,6 +57,7 @@ pub(crate) fn tasks_from_config(
     identifier_repository: Arc<dyn IdentifierRepository>,
     core_base_url: Option<String>,
     credential_service: CredentialService,
+    certificate_service: CertificateService,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
@@ -85,6 +87,7 @@ pub(crate) fn tasks_from_config(
             TaskType::CertificateCheck => Arc::new(CertificateCheck::new(
                 certificate_repository.clone(),
                 identifier_repository.clone(),
+                certificate_service.clone(),
             )) as _,
             TaskType::HolderCheckCredentialStatus => Arc::new(HolderCheckCredentialStatus::new(
                 parse_params(field)?,

@@ -479,6 +479,7 @@ impl OneCore {
             data_provider.get_identifier_repository(),
             providers.core_base_url.clone(),
             credential_service.clone(),
+            certificate_service.clone(),
         )
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));

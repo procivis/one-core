@@ -77,7 +77,7 @@ impl CertificateService {
         })
     }
 
-    async fn parse_pem_chain(
+    pub(crate) async fn parse_pem_chain(
         &self,
         pem_chain: &[u8],
         validate: bool,
