@@ -75,6 +75,7 @@ async fn test_identifier_did_disabled() {
 }
 
 #[tokio::test]
+#[ignore] // disabled for now, the CA is producing outdated CRLs
 async fn test_certificate_identifier() {
     let (context, organisation, ..) = TestContext::new_with_did(None).await;
 
