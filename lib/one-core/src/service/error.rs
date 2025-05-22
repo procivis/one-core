@@ -568,6 +568,15 @@ pub enum ValidationError {
 
     #[error("Identifier type `{0}` is disabled")]
     IdentifierTypeDisabled(String),
+
+    #[error("CRL check failure: `{0}`")]
+    CRLCheckFailed(String),
+
+    #[error("CRL is not up to date")]
+    CRLOutdated,
+
+    #[error("CRL signature invalid")]
+    CRLSignatureInvalid,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1127,6 +1136,15 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Identifier type disabled")]
     BR_0227,
+
+    #[strum(to_string = "CRL check failure")]
+    BR_0233,
+
+    #[strum(to_string = "CRL outdated")]
+    BR_0234,
+
+    #[strum(to_string = "CRL signature invalid")]
+    BR_0235,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1342,6 +1360,9 @@ impl ErrorCodeMixin for ValidationError {
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
+            Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
+            Self::CRLOutdated => ErrorCode::BR_0234,
+            Self::CRLSignatureInvalid => ErrorCode::BR_0235,
         }
     }
 }

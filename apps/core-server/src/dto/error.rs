@@ -180,6 +180,9 @@ pub enum ErrorCode {
     BR_0223,
     BR_0224,
     BR_0227,
+    BR_0233,
+    BR_0234,
+    BR_0235,
 }
 
 #[skip_serializing_none]
