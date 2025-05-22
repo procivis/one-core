@@ -35,6 +35,7 @@ use crate::model::credential_schema::{
     UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
+use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, KeyRelations};
@@ -78,10 +79,12 @@ use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::token_status_list;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_draft13::service::credentials_format;
+use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 use crate::util::params::convert_params;
@@ -109,6 +112,7 @@ pub(crate) struct OpenID4VCI13 {
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -127,6 +131,7 @@ impl OpenID4VCI13 {
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -142,6 +147,7 @@ impl OpenID4VCI13 {
             credential_repository,
             validity_credential_repository,
             revocation_list_repository,
+            history_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
@@ -160,6 +166,7 @@ impl OpenID4VCI13 {
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -178,6 +185,7 @@ impl OpenID4VCI13 {
             credential_repository,
             validity_credential_repository,
             revocation_list_repository,
+            history_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
@@ -1101,6 +1109,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
             }
             ("MDOC", CredentialStateEnum::Offered) => {
+                log_history_event_credential(
+                    &*self.history_repository,
+                    &credential,
+                    HistoryAction::Issued,
+                )
+                .await;
                 self.credential_repository
                     .update_credential(
                         *credential_id,
@@ -1123,6 +1137,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
             }
             _ => {
+                log_history_event_credential(
+                    &*self.history_repository,
+                    &credential,
+                    HistoryAction::Issued,
+                )
+                .await;
                 self.credential_repository
                     .update_credential(
                         *credential_id,

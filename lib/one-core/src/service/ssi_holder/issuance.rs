@@ -17,7 +17,6 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, KeyRole};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
@@ -34,7 +33,6 @@ use crate::service::error::{
 };
 use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::log_history_event_credential;
 use crate::util::oidc::map_to_openid4vp_format;
 
 impl SSIHolderService {
@@ -285,8 +283,6 @@ impl SSIHolderService {
                 },
             )
             .await?;
-        log_history_event_credential(&*self.history_repository, credential, HistoryAction::Issued)
-            .await;
 
         Ok(())
     }

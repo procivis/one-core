@@ -191,7 +191,7 @@ async fn test_issuance_accept_openid4vc() {
         .histories
         .get_by_entity_id(&credential.id.into())
         .await;
-    assert_eq!(history.values.len(), 3); // one per state: Pending, Accepted, Issued
+    assert_eq!(history.values.len(), 2); // one per state: Pending, Accepted
     assert!(
         history
             .values
@@ -202,15 +202,8 @@ async fn test_issuance_accept_openid4vc() {
         history
             .values
             .iter()
-            .take(2)
+            .take(1)
             .any(|x| x.action == HistoryAction::Accepted)
-    );
-    assert!(
-        history
-            .values
-            .iter()
-            .take(2)
-            .any(|x| x.action == HistoryAction::Issued)
     );
 }
 

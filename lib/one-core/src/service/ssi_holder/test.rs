@@ -127,7 +127,6 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -248,7 +247,6 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -425,7 +423,6 @@ async fn test_submit_proof_succeeds() {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        history_repository: Arc::new(history_repository),
         identifier_repository: Arc::new(identifier_repository),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -623,7 +620,6 @@ async fn test_submit_proof_succeeds_with_did() {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        history_repository: Arc::new(history_repository),
         identifier_repository: Arc::new(identifier_repository),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -861,7 +857,6 @@ async fn test_submit_proof_repeating_claims() {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        history_repository: Arc::new(history_repository),
         identifier_repository: Arc::new(identifier_repository),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -1020,7 +1015,6 @@ async fn test_accept_credential() {
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
-        history_repository: Arc::new(history_repository),
         identifier_repository: Arc::new(identifier_repository),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -1162,7 +1156,6 @@ async fn test_accept_credential_with_did() {
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
-        history_repository: Arc::new(history_repository),
         identifier_repository: Arc::new(identifier_repository),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -1209,7 +1202,6 @@ async fn test_reject_credential() {
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
-        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -1235,7 +1227,6 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         validity_credential_repository: Arc::new(MockValidityCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
-        history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),

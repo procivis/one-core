@@ -49,6 +49,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_draft13::service::credentials_format;
@@ -60,6 +61,7 @@ struct TestInputs {
     pub credential_repository: MockCredentialRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub revocation_list_repository: MockRevocationListRepository,
+    pub history_repository: MockHistoryRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -75,6 +77,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.revocation_list_repository),
+        Arc::new(inputs.history_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.did_method_provider),
