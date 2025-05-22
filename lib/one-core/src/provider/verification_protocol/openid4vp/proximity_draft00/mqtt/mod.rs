@@ -2,35 +2,32 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
+use async_trait::async_trait;
 use dto::OpenID4VPMqttQueryParams;
 use futures::future::{BoxFuture, Shared};
 use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessionKeys};
 use oidc_mqtt_verifier::{Topics, mqtt_verifier_flow};
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
-use shared_types::{DidValue, KeyId, ProofId};
+use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::Instrument;
 use url::Url;
+use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
 use super::{
     CreatePresentationParams, OpenID4VPProximityDraft00Params, ProofShareParams,
-    create_interaction_and_proof, create_presentation, prepare_proof_share,
+    create_presentation, prepare_proof_share,
 };
-use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
-use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
-use crate::model::did::{Did, KeyRole};
+use crate::config::core_config::{CoreConfig, TransportType};
+use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
-use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, HolderBindingCtx, TokenVerifier,
-};
+use crate::provider::credential_formatter::model::{AuthenticationFn, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -40,20 +37,18 @@ use crate::provider::verification_protocol::dto::PresentationDefinitionResponseD
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::ProximityHolderTransport;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::provider::verification_protocol::openid4vp::{
-    InvitationResponseDTO, OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
+    OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
     get_presentation_definition_with_local_credentials,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, deserialize_interaction_data,
 };
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::key_verification::KeyVerification;
 
 pub mod dto;
 pub mod model;
@@ -71,13 +66,163 @@ pub(crate) struct OpenId4VcMqtt {
 
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
 
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+}
+
+pub(crate) struct MqttHolderTransport {
+    url_scheme: String,
+    mqtt_client: Arc<dyn MqttClient>,
+}
+
+impl MqttHolderTransport {
+    pub(crate) fn new(url_scheme: String, mqtt_client: Arc<dyn MqttClient>) -> Self {
+        Self {
+            url_scheme,
+            mqtt_client,
+        }
+    }
+}
+
+pub(crate) struct MqttHolderContext {
+    presentation_definition_topic: Box<dyn MqttTopic>,
+    identity_request_nonce: String,
+    session_keys: MQTTSessionKeys,
+    encryption: PeerEncryption,
+    topic_id: Uuid,
+    broker_url: Url,
+}
+
+#[async_trait]
+impl ProximityHolderTransport for MqttHolderTransport {
+    type Context = MqttHolderContext;
+
+    fn can_handle(&self, url: &Url) -> bool {
+        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
+
+        self.url_scheme == url.scheme()
+            && query_has_key("brokerUrl")
+            && query_has_key("key")
+            && query_has_key("topicId")
+    }
+
+    fn transport_type(&self) -> TransportType {
+        TransportType::Mqtt
+    }
+
+    async fn setup(
+        &self,
+        url: Url,
+        _: InteractionId,
+    ) -> Result<Self::Context, VerificationProtocolError> {
+        let query = url
+            .query()
+            .ok_or(VerificationProtocolError::InvalidRequest(
+                "Query cannot be empty".to_string(),
+            ))?;
+        let OpenID4VPMqttQueryParams {
+            broker_url,
+            key,
+            topic_id,
+        } = serde_qs::from_str(query)
+            .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+        let (host, port) = extract_host_and_port(&broker_url)?;
+
+        let verifier_public_key = hex::decode(&key)
+            .context("Failed to decode verifier public key")
+            .map_err(VerificationProtocolError::Transport)?
+            .as_slice()
+            .try_into()
+            .context("Invalid verifier public key length")
+            .map_err(VerificationProtocolError::Transport)?;
+
+        let session_keys = generate_session_keys(verifier_public_key)?;
+        let encryption = PeerEncryption::new(
+            session_keys.sender_key.clone(),
+            session_keys.receiver_key.clone(),
+            session_keys.nonce,
+        );
+        let identity_request = IdentityRequest {
+            key: session_keys.public_key.to_owned(),
+            nonce: session_keys.nonce.to_owned(),
+        };
+        let identity_request_nonce = hex::encode(identity_request.nonce);
+
+        let identify_topic = self
+            .mqtt_client
+            .subscribe(
+                host.to_string(),
+                port,
+                format!("/proof/{}/presentation-submission/identify", topic_id),
+            )
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        identify_topic
+            .send(identity_request.encode())
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        let presentation_definition_topic = self
+            .mqtt_client
+            .subscribe(
+                host.to_string(),
+                port,
+                format!("/proof/{}/presentation-definition", topic_id),
+            )
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        Ok(MqttHolderContext {
+            presentation_definition_topic,
+            identity_request_nonce,
+            session_keys,
+            encryption,
+            topic_id,
+            broker_url,
+        })
+    }
+
+    async fn receive_authorization_request_token(
+        &self,
+        context: &mut Self::Context,
+    ) -> Result<String, VerificationProtocolError> {
+        let presentation_request_bytes = context
+            .presentation_definition_topic
+            .recv()
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        context
+            .encryption
+            .decrypt(&presentation_request_bytes)
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+    }
+
+    fn interaction_data(
+        &self,
+        authz_request: OpenID4VP20AuthorizationRequest,
+        context: Self::Context,
+    ) -> Result<Vec<u8>, VerificationProtocolError> {
+        let (host, port) = extract_host_and_port(&context.broker_url)?;
+        let mqtt_interaction_data = MQTTOpenID4VPInteractionDataHolder {
+            broker_url: host,
+            broker_port: port,
+            client_id: authz_request.client_id,
+            nonce: authz_request
+                .nonce
+                .ok_or(VerificationProtocolError::Failed(
+                    "missing nonce".to_string(),
+                ))?,
+            session_keys: context.session_keys,
+            presentation_definition: authz_request.presentation_definition,
+            identity_request_nonce: context.identity_request_nonce,
+            topic_id: context.topic_id,
+        };
+        serde_json::to_vec(&mqtt_interaction_data)
+            .map_err(|err| VerificationProtocolError::Failed(format!("Interaction data: {err}")))
+    }
 }
 
 #[derive(Deserialize)]
@@ -99,8 +244,6 @@ impl OpenId4VcMqtt {
         openid_params: OpenID4VPProximityDraft00Params,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -113,8 +256,6 @@ impl OpenId4VcMqtt {
             openid_params,
             handle: Mutex::new(HashMap::new()),
             interaction_repository,
-            did_repository,
-            identifier_repository,
             key_algorithm_provider,
             proof_repository,
             formatter_provider,
@@ -241,182 +382,6 @@ impl OpenId4VcMqtt {
             &self.config,
         )
         .await
-    }
-
-    pub(crate) fn holder_can_handle(&self, url: &Url) -> bool {
-        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
-
-        self.openid_params.url_scheme == url.scheme()
-            && query_has_key("brokerUrl")
-            && query_has_key("key")
-            && query_has_key("topicId")
-    }
-
-    pub(crate) async fn holder_handle_invitation(
-        &self,
-        url: Url,
-        organisation: Organisation,
-        _storage_access: &StorageAccess,
-        _transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
-        tracing::debug!("MQTT Handle invitation: {url}");
-
-        if !self.holder_can_handle(&url) {
-            return Err(VerificationProtocolError::Failed(
-                "No OpenID4VC over MQTT query params detected".to_string(),
-            ));
-        }
-
-        let query = url
-            .query()
-            .ok_or(VerificationProtocolError::InvalidRequest(
-                "Query cannot be empty".to_string(),
-            ))?;
-
-        let OpenID4VPMqttQueryParams {
-            broker_url,
-            key,
-            topic_id,
-        } = serde_qs::from_str(query)
-            .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
-
-        let (host, port) = extract_host_and_port(&broker_url)?;
-
-        let verifier_public_key = hex::decode(&key)
-            .context("Failed to decode verifier public key")
-            .map_err(VerificationProtocolError::Transport)?
-            .as_slice()
-            .try_into()
-            .context("Invalid verifier public key length")
-            .map_err(VerificationProtocolError::Transport)?;
-
-        let session_keys = generate_session_keys(verifier_public_key)?;
-        let encryption = PeerEncryption::new(
-            session_keys.sender_key.clone(),
-            session_keys.receiver_key.clone(),
-            session_keys.nonce,
-        );
-
-        let identity_request = IdentityRequest {
-            key: session_keys.public_key.to_owned(),
-            nonce: session_keys.nonce.to_owned(),
-        };
-        let identity_request_nonce = hex::encode(identity_request.nonce);
-
-        tracing::debug!("Identity request");
-
-        let identify_topic = self
-            .mqtt_client
-            .subscribe(
-                host.to_string(),
-                port,
-                format!("/proof/{topic_id}/presentation-submission/identify"),
-            )
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        identify_topic
-            .send(identity_request.encode())
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        tracing::debug!("Presentation request");
-
-        let mut presentation_definition_topic = self
-            .mqtt_client
-            .subscribe(
-                host.to_string(),
-                port,
-                format!("/proof/{topic_id}/presentation-definition"),
-            )
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_request_bytes = presentation_definition_topic
-            .recv()
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        tracing::debug!("Presentation request received");
-
-        let verification_fn = Box::new(KeyVerification {
-            did_method_provider: self.did_method_provider.clone(),
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-        });
-
-        let presentation_request: String = encryption
-            .decrypt(&presentation_request_bytes)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let verification_fn: Box<dyn TokenVerifier> = verification_fn;
-        let presentation_request = Jwt::<OpenID4VP20AuthorizationRequest>::build_from_token(
-            &presentation_request,
-            Some(&verification_fn),
-            None,
-        )
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let organisation_as_option = Some(organisation.clone());
-        let (_, verifier_identifier) = {
-            let did_value =
-                DidValue::from_did_url(presentation_request.payload.custom.client_id.as_str())
-                    .map_err(|_| {
-                        VerificationProtocolError::InvalidRequest(format!(
-                            "invalid client_id: {}",
-                            presentation_request.payload.custom.client_id
-                        ))
-                    })?;
-
-            get_or_create_did_and_identifier(
-                &*self.did_method_provider,
-                &*self.did_repository,
-                &*self.identifier_repository,
-                &organisation_as_option,
-                &did_value,
-                DidRole::Verifier,
-            )
-            .await
-            .map_err(|_| {
-                VerificationProtocolError::Failed(format!(
-                    "failed to resolve or create did: {}",
-                    presentation_request.payload.custom.client_id
-                ))
-            })?
-        };
-
-        let mqtt_interaction_data = MQTTOpenID4VPInteractionDataHolder {
-            broker_url: host.to_string(),
-            broker_port: port,
-            client_id: presentation_request.payload.custom.client_id,
-            nonce: presentation_request.payload.custom.nonce.ok_or(
-                VerificationProtocolError::Failed("missing nonce".to_string()),
-            )?,
-            session_keys,
-            presentation_definition: presentation_request.payload.custom.presentation_definition,
-            identity_request_nonce,
-            topic_id,
-        };
-
-        let interaction_data = Some(serde_json::to_vec(&mqtt_interaction_data).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Interaction data: {err}"))
-        })?);
-
-        let (interaction_id, proof) = create_interaction_and_proof(
-            interaction_data,
-            organisation,
-            Some(verifier_identifier),
-            VerificationProtocolType::OpenId4VpDraft20,
-            TransportType::Mqtt,
-            &*self.interaction_repository,
-        )
-        .await?;
-
-        Ok(InvitationResponseDTO {
-            interaction_id,
-            proof,
-        })
     }
 
     pub(crate) async fn holder_reject_proof(

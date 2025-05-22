@@ -4,7 +4,6 @@
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{Result, anyhow};
-use dto::OpenID4VPBleData;
 use futures::future::{BoxFuture, Shared};
 use futures::{Stream, TryStreamExt};
 use model::BLEOpenID4VPInteractionData;
@@ -22,13 +21,12 @@ use super::dto::MessageSize;
 use super::peer_encryption::PeerEncryption;
 use super::{
     CreatePresentationParams, KeyAgreementKey, OpenID4VPProximityDraft00Params, ProofShareParams,
-    create_interaction_and_proof, create_presentation, prepare_proof_share,
+    create_presentation, prepare_proof_share,
 };
-use crate::config::core_config::{self, TransportType, VerificationProtocolType};
-use crate::model::did::{Did, KeyRole};
+use crate::config::core_config::{self, TransportType};
+use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
-use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
@@ -38,7 +36,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, UpdateResponse,
+    PresentationDefinitionResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, get_presentation_definition_with_local_credentials,
@@ -46,13 +44,10 @@ use crate::provider::verification_protocol::openid4vp::{
 use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
 };
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::{Abort, BleWaiter};
-use crate::util::key_verification::KeyVerification;
 
 pub mod dto;
 pub mod mappers;
@@ -174,14 +169,9 @@ impl BLEPeer {
     }
 }
 
-const PRESENTATION_DEFINITION_BLE_NAME: &str = "name";
-const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
-
 pub(crate) struct OpenID4VCBLE {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -196,8 +186,6 @@ impl OpenID4VCBLE {
     pub(crate) fn new(
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -209,8 +197,6 @@ impl OpenID4VCBLE {
         Self {
             proof_repository,
             interaction_repository,
-            did_repository,
-            identifier_repository,
             formatter_provider,
             did_method_provider,
             key_algorithm_provider,
@@ -219,14 +205,6 @@ impl OpenID4VCBLE {
             config,
             params,
         }
-    }
-
-    pub(crate) fn holder_can_handle(&self, url: &Url) -> bool {
-        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
-
-        self.params.url_scheme == url.scheme()
-            && query_has_key(PRESENTATION_DEFINITION_BLE_NAME)
-            && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
     }
 
     pub(crate) async fn holder_get_presentation_definition(
@@ -269,107 +247,13 @@ impl OpenID4VCBLE {
         }))
     }
 
-    pub(crate) async fn holder_handle_invitation(
-        &self,
-        url: Url,
-        organisation: Organisation,
-        _storage_access: &StorageAccess,
-        _transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
-        if !self.holder_can_handle(&url) {
-            return Err(VerificationProtocolError::Failed(
-                "No OpenID4VC over BLE query params detected".to_string(),
-            ));
-        }
-
-        if !self
-            .config
-            .transport
-            .ble_enabled_for(TransportType::Ble.as_ref())
-        {
-            return Err(VerificationProtocolError::Disabled(
-                "BLE transport is disabled".to_string(),
-            ));
-        }
-
-        let ble = self.ble.clone().ok_or_else(|| {
-            VerificationProtocolError::Failed("BLE central not available".to_string())
-        })?;
-
-        let query = url
-            .query()
-            .ok_or(VerificationProtocolError::InvalidRequest(
-                "Query cannot be empty".to_string(),
-            ))?;
-
-        let OpenID4VPBleData { name, key } = serde_qs::from_str(query)
-            .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
-
-        let mut ble_holder = OpenID4VCBLEHolder::new(
-            self.proof_repository.clone(),
-            self.interaction_repository.clone(),
-            self.did_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            ble,
-        );
-
-        if !ble_holder.enabled().await? {
-            return Err(VerificationProtocolError::Disabled(
-                "BLE adapter not enabled".into(),
-            ));
-        }
-
-        let (interaction_id, mut proof) = create_interaction_and_proof(
-            None,
-            organisation.clone(),
-            None,
-            VerificationProtocolType::OpenId4VpProximityDraft00,
-            TransportType::Ble,
-            &*self.interaction_repository,
-        )
-        .await?;
-
-        let verification_fn = Box::new(KeyVerification {
-            did_method_provider: self.did_method_provider.clone(),
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-        });
-
-        let verifier_identifier = ble_holder
-            .handle_invitation(
-                name,
-                key,
-                proof.id,
-                verification_fn,
-                interaction_id,
-                organisation,
-            )
-            .await?;
-
-        proof.verifier_identifier = Some(verifier_identifier);
-        Ok(InvitationResponseDTO {
-            interaction_id,
-            proof,
-        })
-    }
-
     pub(crate) async fn holder_reject_proof(
         &self,
         _proof: &Proof,
     ) -> Result<(), VerificationProtocolError> {
-        let ble_holder = OpenID4VCBLEHolder::new(
-            self.proof_repository.clone(),
-            self.interaction_repository.clone(),
-            self.did_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            self.ble.clone().ok_or_else(|| {
-                VerificationProtocolError::Failed(
-                    "Missing BLE central for reject proof".to_string(),
-                )
-            })?,
-        );
+        let ble_holder = OpenID4VCBLEHolder::new(self.ble.clone().ok_or_else(|| {
+            VerificationProtocolError::Failed("Missing BLE central for reject proof".to_string())
+        })?);
 
         ble_holder.disconnect_from_verifier().await;
         Ok(())
@@ -401,14 +285,7 @@ impl OpenID4VCBLE {
             ..
         } = &interaction_data;
 
-        let ble_holder = OpenID4VCBLEHolder::new(
-            self.proof_repository.clone(),
-            self.interaction_repository.clone(),
-            self.did_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            ble,
-        );
+        let ble_holder = OpenID4VCBLEHolder::new(ble);
 
         if !ble_holder.enabled().await? {
             return Err(VerificationProtocolError::Failed(

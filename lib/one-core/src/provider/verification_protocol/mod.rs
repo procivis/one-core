@@ -211,8 +211,6 @@ pub(crate) fn verification_protocol_providers_from_config(
                     params.clone(),
                     data_provider.get_interaction_repository(),
                     data_provider.get_proof_repository(),
-                    data_provider.get_did_repository(),
-                    data_provider.get_identifier_repository(),
                     key_algorithm_provider.clone(),
                     formatter_provider.clone(),
                     did_method_provider.clone(),

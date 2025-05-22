@@ -50,20 +50,25 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
     map_credential_formats_to_presentation_format,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
+    ProximityHolderTransport, handle_invitation_with_transport,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
+use crate::util::key_verification::KeyVerification;
 
 mod async_verifier_flow;
 pub mod ble;
 mod dto;
+mod holder_flow;
 mod key_agreement_key;
 pub mod mqtt;
 mod peer_encryption;
@@ -74,8 +79,13 @@ pub(crate) struct OpenID4VPProximityDraft00Params {
     pub url_scheme: String,
 }
 pub struct OpenID4VPProximityDraft00 {
+    ble_holder_transport: Option<BleHolderTransport>,
+    mqtt_holder_transport: Option<MqttHolderTransport>,
     openid_ble: OpenID4VCBLE,
     openid_mqtt: Option<OpenId4VcMqtt>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    config: Arc<CoreConfig>,
 }
 
 impl OpenID4VPProximityDraft00 {
@@ -86,8 +96,6 @@ impl OpenID4VPProximityDraft00 {
         params: OpenID4VPProximityDraft00Params,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -97,54 +105,91 @@ impl OpenID4VPProximityDraft00 {
         let openid_ble = OpenID4VCBLE::new(
             proof_repository.clone(),
             interaction_repository.clone(),
-            did_repository.clone(),
-            identifier_repository.clone(),
             did_method_provider.clone(),
             formatter_provider.clone(),
             key_algorithm_provider.clone(),
             key_provider.clone(),
-            ble,
+            ble.clone(),
             config.clone(),
             params.clone(),
         );
-        let openid_mqtt = if let Some(mqtt_client) = mqtt_client {
+        let url_scheme = params.url_scheme.clone();
+        let ble_holder_transport = ble.map(|ble| {
+            BleHolderTransport::new(url_scheme.clone(), ble, interaction_repository.clone())
+        });
+        let (openid_mqtt, mqtt_holder_transport) = if let Some(mqtt_client) = mqtt_client {
             if let Ok(transport_params) = config.transport.get(TransportType::Mqtt.as_ref()) {
-                Some(OpenId4VcMqtt::new(
-                    mqtt_client,
-                    config,
-                    transport_params,
-                    params,
-                    interaction_repository,
-                    proof_repository,
-                    did_repository,
-                    identifier_repository,
-                    key_algorithm_provider,
-                    formatter_provider,
-                    did_method_provider,
-                    key_provider,
-                ))
+                (
+                    Some(OpenId4VcMqtt::new(
+                        mqtt_client.clone(),
+                        config.clone(),
+                        transport_params,
+                        params,
+                        interaction_repository,
+                        proof_repository,
+                        key_algorithm_provider.clone(),
+                        formatter_provider,
+                        did_method_provider.clone(),
+                        key_provider,
+                    )),
+                    Some(MqttHolderTransport::new(url_scheme, mqtt_client)),
+                )
             } else {
-                None
+                (None, None)
             }
         } else {
-            None
+            (None, None)
         };
 
         Self {
             openid_ble,
             openid_mqtt,
+            mqtt_holder_transport,
+            ble_holder_transport,
+            did_method_provider,
+            key_algorithm_provider,
+            config,
         }
+    }
+
+    async fn holder_handle_invitation_inner<T: Send + Sync + 'static>(
+        &self,
+        url: Url,
+        organisation: Organisation,
+        storage_access: &StorageAccess,
+        holder_transport: &dyn ProximityHolderTransport<Context = T>,
+    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+        if !holder_transport.can_handle(&url) {
+            return Err(VerificationProtocolError::Failed(
+                "No OpenID4VC query params detected".to_string(),
+            ));
+        };
+        let verification_fn = Box::new(KeyVerification {
+            did_method_provider: self.did_method_provider.clone(),
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+        });
+        handle_invitation_with_transport(
+            url,
+            organisation,
+            storage_access,
+            holder_transport,
+            verification_fn,
+        )
+        .await
     }
 }
 
 #[async_trait::async_trait]
 impl VerificationProtocol for OpenID4VPProximityDraft00 {
     fn holder_can_handle(&self, url: &Url) -> bool {
-        self.openid_ble.holder_can_handle(url)
+        self.ble_holder_transport
+            .as_ref()
+            .is_some_and(|transport| transport.can_handle(url))
             || self
-                .openid_mqtt
+                .mqtt_holder_transport
                 .as_ref()
-                .is_some_and(|mqtt| mqtt.holder_can_handle(url))
+                .is_some_and(|mqtt| mqtt.can_handle(url))
     }
 
     async fn holder_handle_invitation(
@@ -160,44 +205,52 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
         match transport {
             TransportType::Ble => {
-                if self.openid_ble.holder_can_handle(&url) {
-                    return self
-                        .openid_ble
-                        .holder_handle_invitation(
-                            url,
-                            organisation,
-                            storage_access,
-                            transport.to_string(),
-                        )
-                        .await;
+                if !self
+                    .config
+                    .transport
+                    .ble_enabled_for(TransportType::Ble.as_ref())
+                {
+                    return Err(VerificationProtocolError::Disabled(
+                        "BLE transport is disabled".to_string(),
+                    ));
                 }
+
+                let holder_transport = self.ble_holder_transport.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("BLE not available".to_string())
+                })?;
+                self.holder_handle_invitation_inner(
+                    url,
+                    organisation,
+                    storage_access,
+                    holder_transport,
+                )
+                .await
             }
             TransportType::Mqtt => {
-                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                if !self
+                    .config
+                    .transport
+                    .mqtt_enabled_for(TransportType::Mqtt.as_ref())
+                {
+                    return Err(VerificationProtocolError::Disabled(
+                        "MQTT transport is disabled".to_string(),
+                    ));
+                }
+                let holder_transport = self.mqtt_holder_transport.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
-
-                if client.holder_can_handle(&url) {
-                    return client
-                        .holder_handle_invitation(
-                            url,
-                            organisation,
-                            storage_access,
-                            transport.to_string(),
-                        )
-                        .await;
-                }
+                self.holder_handle_invitation_inner(
+                    url,
+                    organisation,
+                    storage_access,
+                    holder_transport,
+                )
+                .await
             }
-            _ => {
-                return Err(VerificationProtocolError::Failed(
-                    "Unsupported transport type".to_string(),
-                ));
-            }
+            _ => Err(VerificationProtocolError::Failed(
+                "Unsupported transport type".to_string(),
+            )),
         }
-
-        Err(VerificationProtocolError::Failed(
-            "No OpenID4VC query params detected".to_string(),
-        ))
     }
 
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
@@ -545,7 +598,7 @@ pub(super) async fn create_interaction_and_proof(
     verifier_identifier: Option<Identifier>,
     verification_protocol_type: VerificationProtocolType,
     transport_type: TransportType,
-    interaction_repository: &dyn InteractionRepository,
+    storage_access: &StorageAccess,
 ) -> Result<(InteractionId, Proof), VerificationProtocolError> {
     let now = OffsetDateTime::now_utc();
     let interaction = Interaction {
@@ -557,7 +610,7 @@ pub(super) async fn create_interaction_and_proof(
         organisation: Some(organisation),
     };
 
-    let interaction_id = interaction_repository
+    let interaction_id = storage_access
         .create_interaction(interaction.clone())
         .await
         .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?;

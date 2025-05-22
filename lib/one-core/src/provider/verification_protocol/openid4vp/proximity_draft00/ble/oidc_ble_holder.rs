@@ -3,11 +3,11 @@ use std::time::Duration;
 use std::vec;
 
 use anyhow::Context;
+use async_trait::async_trait;
 use futures::{Stream, StreamExt, TryFutureExt, stream};
 use one_crypto::utilities::generate_random_bytes;
-use shared_types::{DidValue, ProofId};
-use time::OffsetDateTime;
 use tokio::select;
+use url::Url;
 use uuid::Uuid;
 
 use super::{
@@ -15,24 +15,19 @@ use super::{
     OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
     TransferSummaryReport,
 };
-use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
-use crate::model::history::HistoryErrorMetadata;
-use crate::model::identifier::Identifier;
-use crate::model::interaction::Interaction;
-use crate::model::organisation::Organisation;
-use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
+use crate::config::core_config::TransportType;
+use crate::model::interaction::InteractionId;
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, DeviceInfo,
 };
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::model::VerificationFn;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::BleOpenId4VpResponse;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::{
+    BleOpenId4VpResponse, OpenID4VPBleData,
+};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
@@ -40,196 +35,168 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
     Chunk, ChunkExt, Chunks, MessageSize,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::ProximityHolderTransport;
 use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
 };
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::ErrorCodeMixin;
 use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 
 pub(crate) struct OpenID4VCBLEHolder {
-    pub proof_repository: Arc<dyn ProofRepository>,
-    pub did_repository: Arc<dyn DidRepository>,
-    pub identifier_repository: Arc<dyn IdentifierRepository>,
-    pub did_method_provider: Arc<dyn DidMethodProvider>,
-    pub interaction_repository: Arc<dyn InteractionRepository>,
     pub ble: BleWaiter,
 }
 
-impl OpenID4VCBLEHolder {
+pub(crate) struct BleHolderTransport {
+    interaction_repository: Arc<dyn InteractionRepository>,
+    ble: BleWaiter,
+    url_scheme: String,
+}
+
+impl BleHolderTransport {
     pub(crate) fn new(
-        proof_repository: Arc<dyn ProofRepository>,
-        interaction_repository: Arc<dyn InteractionRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
+        url_scheme: String,
         ble: BleWaiter,
+        interaction_repository: Arc<dyn InteractionRepository>,
     ) -> Self {
         Self {
-            proof_repository,
+            url_scheme,
             interaction_repository,
-            did_repository,
-            identifier_repository,
-            did_method_provider,
             ble,
         }
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
-    pub(crate) async fn enabled(&self) -> Result<bool, VerificationProtocolError> {
+    async fn enabled(&self) -> Result<bool, VerificationProtocolError> {
         self.ble
             .is_enabled()
             .await
             .map(|s| s.central)
             .map_err(|err| VerificationProtocolError::Transport(err.into()))
     }
+}
 
-    #[tracing::instrument(level = "debug", skip(self, verification_fn), err(Debug))]
-    pub(crate) async fn handle_invitation(
-        &mut self,
-        name: String,
-        x25519_public_key_hex: String,
-        proof_id: ProofId,
-        verification_fn: VerificationFn,
-        interaction_id: Uuid,
-        organisation: Organisation,
-    ) -> Result<Identifier, VerificationProtocolError> {
+pub(crate) struct BleHolderContext {
+    task_id: Uuid,
+    interaction_id: InteractionId,
+    identity_request_nonce: [u8; 12],
+    ble_peer: BLEPeer,
+}
+
+#[async_trait]
+impl ProximityHolderTransport for BleHolderTransport {
+    type Context = BleHolderContext;
+
+    fn can_handle(&self, url: &Url) -> bool {
+        const PRESENTATION_DEFINITION_BLE_NAME: &str = "name";
+        const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
+        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
+
+        self.url_scheme == url.scheme()
+            && query_has_key(PRESENTATION_DEFINITION_BLE_NAME)
+            && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
+    }
+
+    fn transport_type(&self) -> TransportType {
+        TransportType::Ble
+    }
+
+    async fn setup(
+        &self,
+        url: Url,
+        interaction_id: InteractionId,
+    ) -> Result<Self::Context, VerificationProtocolError> {
+        if !self.enabled().await? {
+            return Err(VerificationProtocolError::Disabled(
+                "BLE adapter not enabled".into(),
+            ));
+        }
+
+        let query = url
+            .query()
+            .ok_or(VerificationProtocolError::InvalidRequest(
+                "Query cannot be empty".to_string(),
+            ))?;
+
+        let OpenID4VPBleData { name, key } = serde_qs::from_str(query)
+            .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+
         let interaction_repository = self.interaction_repository.clone();
-        let did_repository = self.did_repository.clone();
-        let identifier_repository = self.identifier_repository.clone();
-        let did_method_provider = self.did_method_provider.clone();
-
         let result = self
             .ble
-            .schedule(
-                *OIDC_BLE_FLOW,
-                |task_id, central, _| async move {
-                    let verifier_public_key: [u8; 32] = hex::decode(&x25519_public_key_hex)
-                        .context("Failed to decode verifier public key")
-                        .map_err(VerificationProtocolError::Transport)?
-                        .as_slice()
-                        .try_into()
-                        .context("Invalid verifier public key length")
-                        .map_err(VerificationProtocolError::Transport)?;
+            .schedule(*OIDC_BLE_FLOW, |task_id, central, _| async move {
+                // setup
+                let verifier_public_key: [u8; 32] = hex::decode(&key)
+                    .context("Failed to decode verifier public key")
+                    .map_err(VerificationProtocolError::Transport)?
+                    .as_slice()
+                    .try_into()
+                    .context("Invalid verifier public key length")
+                    .map_err(VerificationProtocolError::Transport)?;
 
-                    tracing::debug!("Connecting to verifier: {name}");
-                    let device_info = connect_to_verifier(&name, &verifier_public_key, &*central)
-                        .await
-                        .context("failed to connect to verifier")
-                        .map_err(VerificationProtocolError::Transport)?;
+                tracing::debug!("Connecting to verifier: {name}");
+                let device_info = connect_to_verifier(&name, &*central)
+                    .await
+                    .context("failed to connect to verifier")
+                    .map_err(VerificationProtocolError::Transport)?;
 
-                    subscribe_to_notifications(&*central, &device_info.address).await?;
+                subscribe_to_notifications(&*central, &device_info.address).await?;
+                let (ble_peer,identity_request_nonce)  = select! {
+                    biased;
 
-                    let interaction = select! {
-                        biased;
+                    // disconnect
+                    _ = verifier_disconnect_event(central.clone(), device_info.address.clone()) => {
+                        Err(VerificationProtocolError::Failed("Verifier disconnected".into()))
+                    },
+                    result = async {
+                        tracing::debug!("session_key_and_identity_request");
+                        let (identity_request, ble_peer) =
+                            session_key_and_identity_request(device_info.clone(), verifier_public_key)?;
 
-                        _ = verifier_disconnect_event(central.clone(), device_info.address.clone()) => {
-                            Err(VerificationProtocolError::Failed("Verifier disconnected".into()))
-                        },
-                        interaction_data = async {
-                            tracing::debug!("session_key_and_identity_request");
-                            let (identity_request, ble_peer) =
-                                session_key_and_identity_request(device_info.clone(), verifier_public_key)?;
-
-                            send(
-                                IDENTITY_UUID,
-                                identity_request.clone().encode().as_ref(),
-                                &ble_peer,
-                                &*central,
-                                CharacteristicWriteType::WithResponse,
-                            )
+                        send(
+                            IDENTITY_UUID,
+                            identity_request.clone().encode().as_ref(),
+                            &ble_peer,
+                            &*central,
+                            CharacteristicWriteType::WithResponse,
+                        )
                             .await?;
 
-                            // Wait to ensure the verifier processed the identity request and updated
-                            // the relevant characteristics
-                            tokio::time::sleep(Duration::from_millis(200)).await;
+                        // Wait to ensure the verifier processed the identity request and updated
+                        // the relevant characteristics
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+                        Ok((ble_peer, identity_request.nonce))
+                    } => result
+                }?;
+                Ok(BleHolderContext { task_id, ble_peer, identity_request_nonce, interaction_id })
+            },
+  move |central, _| cancel(central, interaction_id, interaction_repository),
+              OnConflict::ReplaceIfSameFlow,
+              true
+            ).await;
 
-                            tracing::debug!("read_presentation_definition");
-                            let request =
-                                read_presentation_request(&ble_peer, verification_fn, central.clone())
-                                    .await?;
+        result
+            .value_or(VerificationProtocolError::Failed(
+                "ble is busy with other flow".into(),
+            ))
+            .await
+            .and_then(|(_, join_result)| {
+                join_result.ok_or(VerificationProtocolError::Failed("task aborted".into()))
+            })
+            .and_then(std::convert::identity)
+    }
 
-                            let now = OffsetDateTime::now_utc();
-                            let organisation = Some(organisation);
-                            let (_, verifier_identifier) = {
-                                let did_value = DidValue::from_did_url(request.client_id.as_str())
-                                    .map_err(|_| {
-                                        VerificationProtocolError::InvalidRequest(format!(
-                                            "invalid client_id: {}",
-                                            request.client_id
-                                        ))
-                                    })?;
-
-                                    get_or_create_did_and_identifier(&*did_method_provider, &*did_repository, &*identifier_repository, &organisation, &did_value, DidRole::Verifier)
-                                    .await
-                                    .map_err(|_| {
-                                        VerificationProtocolError::Failed(format!(
-                                            "failed to resolve or create did: {}",
-                                            request.client_id
-                                        ))
-                                    })?
-                            };
-
-                            Ok((verifier_identifier, Interaction {
-                                id: interaction_id,
-                                created_date: now,
-                                last_modified: now,
-                                host: None,
-                                organisation,
-                                data: Some(
-                                    serde_json::to_vec(&BLEOpenID4VPInteractionData {
-                                        client_id: request.client_id.to_owned(),
-                                        nonce: request.nonce.clone().ok_or(
-                                            VerificationProtocolError::InvalidRequest(
-                                                "nonce missing".to_string(),
-                                            ),
-                                        )?,
-                                        task_id,
-                                        peer: ble_peer,
-                                        presentation_definition:  request.presentation_definition.clone().ok_or(
-                                                VerificationProtocolError::InvalidRequest(
-                                                    "presentation_definition missing".to_string(),
-                                                ),
-                                            )?,
-                                        openid_request: request,
-                                        identity_request_nonce: Some(hex::encode(identity_request.nonce)),
-                                        presentation_submission: None,
-                                    })
-                                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
-                                ),
-                            }))
-                        } => interaction_data
-                    };
-
-                    if interaction.is_err() {
-                        unsubscribe_and_disconnect(device_info.address, central).await;
-                    }
-
-                    interaction
-                },
-                move |central, _| async move {
-                    let Ok(interaction) = interaction_repository
-                        .get_interaction(&interaction_id, &Default::default())
-                        .await
-                        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))
-                    else {
-                        return;
-                    };
-
-                    let Ok(interaction_data) =
-                        deserialize_interaction_data::<BLEOpenID4VPInteractionData>(
-                            interaction.as_ref().and_then(|i| i.data.as_ref()),
-                        )
-                    else {
-                        return;
-                    };
-                    let verifier_address = interaction_data.peer.device_info.address.clone();
-                    unsubscribe_and_disconnect(verifier_address, central).await;
-                },
-                OnConflict::ReplaceIfSameFlow,
+    async fn receive_authorization_request_token(
+        &self,
+        context: &mut Self::Context,
+    ) -> Result<String, VerificationProtocolError> {
+        let peer = context.ble_peer.clone();
+        let interaction_id = context.interaction_id;
+        let interaction_repository = self.interaction_repository.clone();
+        self.ble
+            .schedule_continuation(
+                context.task_id,
+                |_, central, _| async move { read_presentation_request(&peer, central).await },
+                move |central, _| cancel(central, interaction_id, interaction_repository),
                 true,
             )
             .await
@@ -240,37 +207,72 @@ impl OpenID4VCBLEHolder {
             .and_then(|(_, join_result)| {
                 join_result.ok_or(VerificationProtocolError::Failed("task aborted".into()))
             })
-            .and_then(std::convert::identity);
+            .and_then(std::convert::identity)
+    }
 
-        match result {
-            Ok((verifier_identifier, interaction)) => {
-                self.interaction_repository
-                    .update_interaction(interaction.into())
-                    .await
-                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
-                Ok(verifier_identifier)
-            }
-            Err(err) => {
-                if let Err(err) = self
-                    .proof_repository
-                    .update_proof(
-                        &proof_id,
-                        UpdateProofRequest {
-                            state: Some(ProofStateEnum::Error),
-                            ..Default::default()
-                        },
-                        Some(HistoryErrorMetadata {
-                            error_code: err.error_code(),
-                            message: err.to_string(),
-                        }),
-                    )
-                    .await
-                {
-                    tracing::warn!("failed setting proof to error: {err}");
-                }
-                Err(err)
-            }
-        }
+    fn interaction_data(
+        &self,
+        authz_request: OpenID4VP20AuthorizationRequest,
+        context: Self::Context,
+    ) -> Result<Vec<u8>, VerificationProtocolError> {
+        let identity_request_nonce = Some(hex::encode(context.identity_request_nonce));
+        serde_json::to_vec(&BLEOpenID4VPInteractionData {
+            client_id: authz_request.client_id.to_owned(),
+            nonce: authz_request
+                .nonce
+                .clone()
+                .ok_or(VerificationProtocolError::InvalidRequest(
+                    "nonce missing".to_string(),
+                ))?,
+            task_id: context.task_id,
+            peer: context.ble_peer,
+            presentation_definition: authz_request.presentation_definition.clone().ok_or(
+                VerificationProtocolError::InvalidRequest(
+                    "presentation_definition missing".to_string(),
+                ),
+            )?,
+            openid_request: authz_request,
+            identity_request_nonce,
+            presentation_submission: None,
+        })
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))
+    }
+}
+
+async fn cancel(
+    central: Arc<dyn BleCentral>,
+    interaction_id: InteractionId,
+    interaction_repository: Arc<dyn InteractionRepository>,
+) {
+    let Ok(interaction) = interaction_repository
+        .get_interaction(&interaction_id, &Default::default())
+        .await
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))
+    else {
+        return;
+    };
+
+    let Ok(interaction_data) = deserialize_interaction_data::<BLEOpenID4VPInteractionData>(
+        interaction.as_ref().and_then(|i| i.data.as_ref()),
+    ) else {
+        return;
+    };
+    let verifier_address = interaction_data.peer.device_info.address.clone();
+    unsubscribe_and_disconnect(verifier_address, central).await;
+}
+
+impl OpenID4VCBLEHolder {
+    pub(crate) fn new(ble: BleWaiter) -> Self {
+        Self { ble }
+    }
+
+    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
+    pub(crate) async fn enabled(&self) -> Result<bool, VerificationProtocolError> {
+        self.ble
+            .is_enabled()
+            .await
+            .map(|s| s.central)
+            .map_err(|err| VerificationProtocolError::Transport(err.into()))
     }
 
     pub(crate) async fn disconnect_from_verifier(&self) {
@@ -396,7 +398,6 @@ async fn unsubscribe_and_disconnect(peer_address: DeviceAddress, central: Arc<dy
 #[tracing::instrument(level = "debug", skip(ble_central), err(Debug))]
 async fn connect_to_verifier(
     name: &str,
-    public_key: &[u8],
     ble_central: &dyn BleCentral,
 ) -> Result<DeviceInfo, VerificationProtocolError> {
     if ble_central
@@ -577,12 +578,11 @@ async fn send(
         .map_err(VerificationProtocolError::Transport)
 }
 
-#[tracing::instrument(level = "debug", skip(ble_central, verification_fn), err(Debug))]
+#[tracing::instrument(level = "debug", skip(ble_central), err(Debug))]
 async fn read_presentation_request(
     connected_verifier: &BLEPeer,
-    verification_fn: VerificationFn,
     ble_central: Arc<dyn BleCentral>,
-) -> Result<OpenID4VP20AuthorizationRequest, VerificationProtocolError> {
+) -> Result<String, VerificationProtocolError> {
     let request_size: MessageSize =
         read(REQUEST_SIZE_UUID, connected_verifier, ble_central.clone())
             .parse()
@@ -607,7 +607,7 @@ async fn read_presentation_request(
     let mut received_chunks: Vec<Chunk> = vec![];
 
     loop {
-        tokio::select! {
+        select! {
            biased;
 
            Some(chunk) = message_stream.next(), if received_chunks.len() < request_size.into() => {
@@ -667,16 +667,7 @@ async fn read_presentation_request(
                 ))
             })?;
 
-    let authz_request = Jwt::<OpenID4VP20AuthorizationRequest>::build_from_token(
-        &decrypted_request_jwt,
-        Some(&verification_fn),
-        None,
-    )
-    .await
-    .map_err(|e| {
-        VerificationProtocolError::Failed(format!("Failed to parse presentation request: {e}"))
-    })?;
-    Ok(authz_request.payload.custom)
+    Ok(decrypted_request_jwt)
 }
 
 pub(crate) fn read(
