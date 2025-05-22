@@ -8,7 +8,7 @@ use futures::future::BoxFuture;
 use key_agreement_key::KeyAgreementKey;
 use mqtt::OpenId4VcMqtt;
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{Value, json};
 use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
 use tokio_util::sync::CancellationToken;
@@ -46,13 +46,15 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
+use crate::provider::verification_protocol::openid4vp::get_presentation_definition_with_local_credentials;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
     map_credential_formats_to_presentation_format,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
-    ProximityHolderTransport, handle_invitation_with_transport,
+    HolderCommonVPInteractionData, ProximityHolderTransport, handle_invitation_with_transport,
+    submit_proof_with_transport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::provider::verification_protocol::{
@@ -85,6 +87,8 @@ pub struct OpenID4VPProximityDraft00 {
     openid_mqtt: Option<OpenId4VcMqtt>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_provider: Arc<dyn KeyProvider>,
     config: Arc<CoreConfig>,
 }
 
@@ -128,9 +132,9 @@ impl OpenID4VPProximityDraft00 {
                         interaction_repository,
                         proof_repository,
                         key_algorithm_provider.clone(),
-                        formatter_provider,
+                        formatter_provider.clone(),
                         did_method_provider.clone(),
-                        key_provider,
+                        key_provider.clone(),
                     )),
                     Some(MqttHolderTransport::new(url_scheme, mqtt_client)),
                 )
@@ -148,6 +152,8 @@ impl OpenID4VPProximityDraft00 {
             ble_holder_transport,
             did_method_provider,
             key_algorithm_provider,
+            key_provider,
+            formatter_provider,
             config,
         }
     }
@@ -177,6 +183,32 @@ impl OpenID4VPProximityDraft00 {
             verification_fn,
         )
         .await
+    }
+
+    fn parse_interaction_data(
+        &self,
+        context: Value,
+        transport: TransportType,
+    ) -> Result<HolderCommonVPInteractionData, VerificationProtocolError> {
+        match transport {
+            TransportType::Ble => self
+                .ble_holder_transport
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "BLE transport not configured".to_string(),
+                ))?
+                .parse_interaction_data(context),
+            TransportType::Mqtt => self
+                .mqtt_holder_transport
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "MQTT transport not configured".to_string(),
+                ))?
+                .parse_interaction_data(context),
+            _ => Err(VerificationProtocolError::Failed(
+                "Unsupported transport type".to_string(),
+            )),
+        }
     }
 }
 
@@ -258,19 +290,23 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
+        let interaction_data = interaction_data_from_proof(proof)?;
         match transport {
-            TransportType::Ble => self.openid_ble.holder_reject_proof(proof).await,
-            TransportType::Mqtt => {
-                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
-                    VerificationProtocolError::Failed("MQTT client not configured".to_string())
+            TransportType::Ble => {
+                let ble = self.ble_holder_transport.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("BLE transport not configured".to_string())
                 })?;
-                client.holder_reject_proof(proof).await
+                ble.reject_proof(interaction_data).await
             }
-            _ => {
-                return Err(VerificationProtocolError::Failed(
-                    "Unsupported transport type".to_string(),
-                ));
+            TransportType::Mqtt => {
+                let mqtt_transport = self.mqtt_holder_transport.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("MQTT transport not configured".to_string())
+                })?;
+                mqtt_transport.reject_proof(interaction_data).await
             }
+            _ => Err(VerificationProtocolError::Failed(
+                "Unsupported transport type".to_string(),
+            )),
         }
     }
 
@@ -286,37 +322,39 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
+        let interaction_data = interaction_data_from_proof(proof)?;
+
+        let params = CreatePresentationParams {
+            credential_presentations,
+            holder_did,
+            key,
+            jwk_key_id,
+            formatter_provider: &*self.formatter_provider,
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            key_provider: &*self.key_provider,
+            // Will be filled in later using holder transport
+            presentation_definition: None,
+            client_id: "",
+            identity_request_nonce: None,
+            nonce: "",
+        };
+
         match transport {
             TransportType::Ble => {
-                self.openid_ble
-                    .holder_submit_proof(
-                        proof,
-                        credential_presentations,
-                        holder_did,
-                        key,
-                        jwk_key_id,
-                    )
-                    .await
+                let ble_transport = self.ble_holder_transport.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("BLE transport not configured".to_string())
+                })?;
+                submit_proof_with_transport(ble_transport, interaction_data, params).await
             }
             TransportType::Mqtt => {
-                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
-                    VerificationProtocolError::Failed("MQTT client not configured".to_string())
+                let mqtt_transport = self.mqtt_holder_transport.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("MQTT transport not configured".to_string())
                 })?;
-                client
-                    .holder_submit_proof(
-                        proof,
-                        credential_presentations,
-                        holder_did,
-                        key,
-                        jwk_key_id,
-                    )
-                    .await
+                submit_proof_with_transport(mqtt_transport, interaction_data, params).await
             }
-            _ => {
-                return Err(VerificationProtocolError::Failed(
-                    "Unsupported transport type".to_string(),
-                ));
-            }
+            _ => Err(VerificationProtocolError::Failed(
+                "Unsupported transport type".to_string(),
+            )),
         }
     }
     async fn holder_get_presentation_definition(
@@ -329,26 +367,22 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        match transport {
-            TransportType::Ble => {
-                self.openid_ble
-                    .holder_get_presentation_definition(proof, context, storage_access)
-                    .await
-            }
-            TransportType::Mqtt => {
-                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
-                    VerificationProtocolError::Failed("MQTT client not configured".to_string())
-                })?;
-                client
-                    .holder_get_presentation_definition(proof, context, storage_access)
-                    .await
-            }
-            _ => {
-                return Err(VerificationProtocolError::Failed(
-                    "Unsupported transport type".to_string(),
-                ));
-            }
-        }
+        let interaction_data = self.parse_interaction_data(context, transport)?;
+        let presentation_definition =
+            interaction_data
+                .presentation_definition
+                .ok_or(VerificationProtocolError::Failed(
+                    "Presentation definition not found".to_string(),
+                ))?;
+
+        get_presentation_definition_with_local_credentials(
+            presentation_definition,
+            proof,
+            None,
+            storage_access,
+            &self.config,
+        )
+        .await
     }
 
     fn holder_get_holder_binding_context(
@@ -360,21 +394,12 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        match transport {
-            TransportType::Ble => self
-                .openid_ble
-                .holder_get_holder_binding_context(proof, context),
-            TransportType::Http => Err(VerificationProtocolError::Failed(
-                "HTTP transport not supported".to_string(),
-            )),
-            TransportType::Mqtt => self
-                .openid_mqtt
-                .as_ref()
-                .ok_or_else(|| {
-                    VerificationProtocolError::Failed("MQTT client not configured".to_string())
-                })?
-                .holder_get_holder_binding_context(proof, context),
-        }
+        let interaction_data = self.parse_interaction_data(context, transport)?;
+        let holder_binding_context = HolderBindingCtx {
+            nonce: interaction_data.nonce,
+            audience: interaction_data.client_id,
+        };
+        Ok(Some(holder_binding_context))
     }
 
     async fn verifier_share_proof(
@@ -550,6 +575,24 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             did_methods,
         }
     }
+}
+
+fn interaction_data_from_proof(proof: &Proof) -> Result<Value, VerificationProtocolError> {
+    let interaction_data_bytes = proof
+        .interaction
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "missing interaction".to_string(),
+        ))?
+        .data
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "missing interaction data".to_string(),
+        ))?;
+    let interaction_data = serde_json::from_slice(interaction_data_bytes).map_err(|err| {
+        VerificationProtocolError::Failed(format!("failed to parse interaction data: {}", err))
+    })?;
+    Ok(interaction_data)
 }
 
 fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {

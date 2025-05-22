@@ -11,7 +11,6 @@ use uuid::Uuid;
 use crate::config::core_config::{Fields, FormatType, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -402,39 +401,11 @@ async fn test_presentation_reject_success() {
         topic_id,
     };
 
-    let now = OffsetDateTime::now_utc();
-    let proof = Proof {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-        issuance_date: now,
-        exchange: "OPENID4VP_DRAFT20".to_string(),
-        transport: "MQTT".to_string(),
-        redirect_uri: None,
-        state: ProofStateEnum::Pending,
-        role: ProofRole::Holder,
-        requested_date: Some(now),
-        completed_date: None,
-        schema: None,
-        claims: None,
-        verifier_identifier: None,
-        holder_identifier: None,
-        verifier_key: None,
-        interaction: Some(Interaction {
-            id: Default::default(),
-            created_date: now,
-            last_modified: now,
-            host: None,
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-        }),
-    };
-
-    let protocol = setup_protocol(TestInputs {
-        mqtt_client,
-        ..Default::default()
-    });
-    protocol.holder_reject_proof(&proof).await.unwrap();
+    let transport = setup_holder_transport(None, Some(Arc::new(mqtt_client)));
+    transport
+        .reject_proof(serde_json::to_value(&interaction_data).unwrap())
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

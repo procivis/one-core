@@ -6,8 +6,6 @@ use std::sync::{Arc, LazyLock};
 use anyhow::{Result, anyhow};
 use futures::future::{BoxFuture, Shared};
 use futures::{Stream, TryStreamExt};
-use model::BLEOpenID4VPInteractionData;
-use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
 use secrecy::SecretSlice;
 use serde::de::DeserializeOwned;
@@ -20,33 +18,21 @@ use uuid::Uuid;
 use super::dto::MessageSize;
 use super::peer_encryption::PeerEncryption;
 use super::{
-    CreatePresentationParams, KeyAgreementKey, OpenID4VPProximityDraft00Params, ProofShareParams,
-    create_presentation, prepare_proof_share,
+    KeyAgreementKey, OpenID4VPProximityDraft00Params, ProofShareParams, prepare_proof_share,
 };
 use crate::config::core_config::{self, TransportType};
-use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
-use crate::model::key::Key;
 use crate::model::proof::Proof;
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
-use crate::provider::credential_formatter::model::HolderBindingCtx;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionResponseDTO, PresentedCredential, UpdateResponse,
-};
-use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, TypeToDescriptorMapper, get_presentation_definition_with_local_credentials,
-};
-use crate::provider::verification_protocol::{
-    VerificationProtocolError, deserialize_interaction_data,
-};
+use crate::provider::verification_protocol::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::{FormatMapper, TypeToDescriptorMapper};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::{Abort, BleWaiter};
 
 pub mod dto;
@@ -205,119 +191,6 @@ impl OpenID4VCBLE {
             config,
             params,
         }
-    }
-
-    pub(crate) async fn holder_get_presentation_definition(
-        &self,
-        proof: &Proof,
-        context: serde_json::Value,
-        storage_access: &StorageAccess,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: BLEOpenID4VPInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
-
-        let presentation_definition = interaction_data
-            .openid_request
-            .presentation_definition
-            .ok_or(VerificationProtocolError::Failed(
-                "Presentation definition not found".to_string(),
-            ))?;
-
-        get_presentation_definition_with_local_credentials(
-            presentation_definition,
-            proof,
-            None,
-            storage_access,
-            &self.config,
-        )
-        .await
-    }
-
-    pub(crate) fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        let interaction_data: BLEOpenID4VPInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
-
-        Ok(Some(HolderBindingCtx {
-            nonce: interaction_data.nonce,
-            audience: interaction_data.client_id,
-        }))
-    }
-
-    pub(crate) async fn holder_reject_proof(
-        &self,
-        _proof: &Proof,
-    ) -> Result<(), VerificationProtocolError> {
-        let ble_holder = OpenID4VCBLEHolder::new(self.ble.clone().ok_or_else(|| {
-            VerificationProtocolError::Failed("Missing BLE central for reject proof".to_string())
-        })?);
-
-        ble_holder.disconnect_from_verifier().await;
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn holder_submit_proof(
-        &self,
-        proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
-        let ble = self.ble.clone().ok_or_else(|| {
-            VerificationProtocolError::Failed("Missing BLE central for submit proof".to_string())
-        })?;
-
-        let interaction_data: BLEOpenID4VPInteractionData = deserialize_interaction_data(
-            proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref()),
-        )?;
-
-        let BLEOpenID4VPInteractionData {
-            openid_request,
-            identity_request_nonce,
-            ..
-        } = &interaction_data;
-
-        let ble_holder = OpenID4VCBLEHolder::new(ble);
-
-        if !ble_holder.enabled().await? {
-            return Err(VerificationProtocolError::Failed(
-                "BLE adapter not enabled".to_string(),
-            ));
-        }
-
-        let nonce = openid_request
-            .nonce
-            .as_deref()
-            .ok_or_else(|| VerificationProtocolError::Failed("nonce missing".to_string()))?;
-
-        let (vp_token, presentation_submission) = create_presentation(CreatePresentationParams {
-            credential_presentations,
-            presentation_definition: openid_request.presentation_definition.as_ref(),
-            holder_did,
-            key,
-            jwk_key_id,
-            client_id: &openid_request.client_id,
-            identity_request_nonce: identity_request_nonce.as_deref(),
-            nonce,
-            formatter_provider: &*self.formatter_provider,
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            key_provider: &*self.key_provider,
-        })
-        .await?;
-
-        ble_holder
-            .submit_presentation(vp_token, presentation_submission, &interaction_data)
-            .await?;
-
-        Ok(UpdateResponse { update_proof: None })
     }
 
     #[allow(clippy::too_many_arguments)]

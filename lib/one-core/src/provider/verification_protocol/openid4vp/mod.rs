@@ -6,10 +6,7 @@ use std::collections::{HashMap, HashSet};
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
 use one_dto_mapper::convert_inner;
 
-use super::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO, PresentedCredential,
-    UpdateResponse,
-};
+use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO};
 use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
 use crate::model::proof::Proof;

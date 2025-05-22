@@ -9,6 +9,7 @@ use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessi
 use oidc_mqtt_verifier::{Topics, mqtt_verifier_flow};
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
+use serde_json::Value;
 use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
@@ -18,37 +19,29 @@ use url::Url;
 use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
-use super::{
-    CreatePresentationParams, OpenID4VPProximityDraft00Params, ProofShareParams,
-    create_presentation, prepare_proof_share,
-};
+use super::{OpenID4VPProximityDraft00Params, ProofShareParams, prepare_proof_share};
 use crate::config::core_config::{CoreConfig, TransportType};
 use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
-use crate::model::key::Key;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::{AuthenticationFn, HolderBindingCtx};
+use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
-use crate::provider::verification_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::ProximityHolderTransport;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
+    HolderCommonVPInteractionData, ProximityHolderTransport,
+};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
-use crate::provider::verification_protocol::openid4vp::{
-    OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
-    get_presentation_definition_with_local_credentials,
-};
-use crate::provider::verification_protocol::{
-    FormatMapper, TypeToDescriptorMapper, deserialize_interaction_data,
-};
+use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;
 pub mod model;
@@ -185,7 +178,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         })
     }
 
-    async fn receive_authorization_request_token(
+    async fn receive_authz_request_token(
         &self,
         context: &mut Self::Context,
     ) -> Result<String, VerificationProtocolError> {
@@ -200,7 +193,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
     }
 
-    fn interaction_data(
+    fn interaction_data_from_authz_request(
         &self,
         authz_request: OpenID4VP20AuthorizationRequest,
         context: Self::Context,
@@ -222,6 +215,105 @@ impl ProximityHolderTransport for MqttHolderTransport {
         };
         serde_json::to_vec(&mqtt_interaction_data)
             .map_err(|err| VerificationProtocolError::Failed(format!("Interaction data: {err}")))
+    }
+
+    fn parse_interaction_data(
+        &self,
+        interaction_data: Value,
+    ) -> Result<HolderCommonVPInteractionData, VerificationProtocolError> {
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
+            serde_json::from_value(interaction_data)
+                .map_err(VerificationProtocolError::JsonError)?;
+
+        Ok(HolderCommonVPInteractionData {
+            client_id: interaction_data.client_id,
+            presentation_definition: interaction_data.presentation_definition,
+            nonce: interaction_data.nonce,
+            identity_request_nonce: Some(interaction_data.identity_request_nonce),
+        })
+    }
+
+    async fn submit_presentation(
+        &self,
+        vp_token: String,
+        presentation_submission: PresentationSubmissionMappingDTO,
+        interaction_data: Value,
+    ) -> Result<(), VerificationProtocolError> {
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
+            serde_json::from_value(interaction_data)
+                .map_err(VerificationProtocolError::JsonError)?;
+
+        let response = MQTTOpenId4VpResponse {
+            vp_token,
+            presentation_submission,
+        };
+
+        let encryption = PeerEncryption::new(
+            interaction_data.session_keys.sender_key,
+            interaction_data.session_keys.receiver_key,
+            interaction_data.session_keys.nonce,
+        );
+
+        let encrypted = encryption
+            .encrypt(&response)
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        let presentation_submission_topic = self
+            .mqtt_client
+            .subscribe(
+                interaction_data.broker_url.to_string(),
+                interaction_data.broker_port,
+                format!(
+                    "/proof/{}/presentation-submission/accept",
+                    interaction_data.topic_id
+                ),
+            )
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        presentation_submission_topic
+            .send(encrypted)
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+    }
+
+    async fn reject_proof(&self, interaction_data: Value) -> Result<(), VerificationProtocolError> {
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
+            serde_json::from_value(interaction_data)
+                .map_err(VerificationProtocolError::JsonError)?;
+
+        let encryption = PeerEncryption::new(
+            interaction_data.session_keys.sender_key,
+            interaction_data.session_keys.receiver_key,
+            interaction_data.session_keys.nonce,
+        );
+
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let encrypted = encryption
+            .encrypt(&now)
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        let reject_topic_name = format!(
+            "/proof/{}/presentation-submission/reject",
+            interaction_data.topic_id
+        );
+
+        let reject_topic = self
+            .mqtt_client
+            .subscribe(
+                interaction_data.broker_url,
+                interaction_data.broker_port,
+                reject_topic_name,
+            )
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        reject_topic
+            .send(encrypted)
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        Ok(())
     }
 }
 
@@ -342,160 +434,6 @@ impl OpenId4VcMqtt {
         };
 
         Ok(())
-    }
-
-    pub(crate) fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
-
-        Ok(Some(HolderBindingCtx {
-            nonce: interaction_data.nonce,
-            audience: interaction_data.client_id,
-        }))
-    }
-
-    pub(crate) async fn holder_get_presentation_definition(
-        &self,
-        proof: &Proof,
-        context: serde_json::Value,
-        storage_access: &StorageAccess,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: MQTTOpenID4VPInteractionDataHolder =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
-
-        let presentation_definition =
-            interaction_data
-                .presentation_definition
-                .ok_or(VerificationProtocolError::Failed(
-                    "Presentation definition not found".to_string(),
-                ))?;
-
-        get_presentation_definition_with_local_credentials(
-            presentation_definition,
-            proof,
-            None,
-            storage_access,
-            &self.config,
-        )
-        .await
-    }
-
-    pub(crate) async fn holder_reject_proof(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), VerificationProtocolError> {
-        let interaction_data: MQTTOpenID4VPInteractionDataHolder = deserialize_interaction_data(
-            proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref()),
-        )?;
-
-        let encryption = PeerEncryption::new(
-            interaction_data.session_keys.sender_key,
-            interaction_data.session_keys.receiver_key,
-            interaction_data.session_keys.nonce,
-        );
-
-        let now = OffsetDateTime::now_utc().unix_timestamp();
-        let encrypted = encryption
-            .encrypt(&now)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let reject_topic_name = format!(
-            "/proof/{}/presentation-submission/reject",
-            interaction_data.topic_id
-        );
-
-        let reject_topic = self
-            .mqtt_client
-            .subscribe(
-                interaction_data.broker_url,
-                interaction_data.broker_port,
-                reject_topic_name,
-            )
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        reject_topic
-            .send(encrypted)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn holder_submit_proof(
-        &self,
-        proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
-        tracing::debug!("Called submit proof");
-
-        let interaction_data: MQTTOpenID4VPInteractionDataHolder = deserialize_interaction_data(
-            proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref()),
-        )?;
-
-        let (vp_token, presentation_submission) = create_presentation(CreatePresentationParams {
-            credential_presentations,
-            presentation_definition: interaction_data.presentation_definition.as_ref(),
-            holder_did,
-            key,
-            jwk_key_id,
-            client_id: &interaction_data.client_id,
-            identity_request_nonce: Some(&interaction_data.identity_request_nonce),
-            nonce: &interaction_data.nonce,
-            formatter_provider: &*self.formatter_provider,
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            key_provider: &*self.key_provider,
-        })
-        .await?;
-
-        let response = MQTTOpenId4VpResponse {
-            vp_token,
-            presentation_submission,
-        };
-
-        let encryption = PeerEncryption::new(
-            interaction_data.session_keys.sender_key,
-            interaction_data.session_keys.receiver_key,
-            interaction_data.session_keys.nonce,
-        );
-
-        let encrypted = encryption
-            .encrypt(&response)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_submission_topic = self
-            .mqtt_client
-            .subscribe(
-                interaction_data.broker_url.to_string(),
-                interaction_data.broker_port,
-                format!(
-                    "/proof/{}/presentation-submission/accept",
-                    interaction_data.topic_id
-                ),
-            )
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        presentation_submission_topic
-            .send(encrypted)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        Ok(UpdateResponse { update_proof: None })
     }
 
     #[allow(clippy::too_many_arguments)]
