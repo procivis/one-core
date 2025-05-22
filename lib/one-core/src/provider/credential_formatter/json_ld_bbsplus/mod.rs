@@ -345,11 +345,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did],
             holder_identifier_types: vec![IdentifierType::Did],
-            holder_key_algorithms: vec![
-                KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Dilithium,
-            ],
+            holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
     }
