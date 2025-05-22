@@ -5,7 +5,7 @@ use one_core::config::core_config::VerificationProtocolType;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::proof::{Proof, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use serde_json::Value;
 use shared_types::DidValue;
 use url::Url;
@@ -56,6 +56,7 @@ async fn test_share_proof_success() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         None,
     )
@@ -473,6 +474,7 @@ async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         None,
     )

@@ -2,7 +2,7 @@ use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::DidType;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::{Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -94,6 +94,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         Some(&identifier),
         None,
         ProofStateEnum::Requested,
+        ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
@@ -422,6 +423,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
         Some(&identifier),
         None,
         ProofStateEnum::Requested,
+        ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
@@ -800,6 +802,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         Some(&identifier),
         None,
         ProofStateEnum::Requested,
+        ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )

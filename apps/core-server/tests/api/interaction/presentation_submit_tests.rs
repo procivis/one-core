@@ -3,7 +3,7 @@ use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::Interaction;
 use one_core::model::organisation::Organisation;
-use one_core::model::proof::{Proof, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use serde_json::json;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -664,6 +664,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         None,
         None,
         ProofStateEnum::Requested,
+        ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )

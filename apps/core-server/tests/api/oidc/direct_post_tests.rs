@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -132,6 +132,7 @@ async fn test_direct_post_one_credential_correct() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
@@ -300,6 +301,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
@@ -544,6 +546,7 @@ async fn test_direct_post_multiple_presentations() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
@@ -728,6 +731,7 @@ async fn test_direct_post_wrong_claim_format() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
     )
@@ -865,6 +869,7 @@ async fn test_direct_post_draft25() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
+        ProofRole::Verifier,
         "OPENID4VP_DRAFT25",
         Some(&interaction),
     )

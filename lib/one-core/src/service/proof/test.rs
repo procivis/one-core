@@ -240,7 +240,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
 }
 
 #[tokio::test]
-async fn test_get_presentation_definition_holder_did_not_local() {
+async fn test_get_presentation_definition_proof_role_verifier() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof = Proof {
@@ -358,7 +358,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
 
     assert!(result.is_err_and(|e| matches!(
         e,
-        ServiceError::BusinessLogic(BusinessLogicError::IncompatibleDidType { .. })
+        ServiceError::BusinessLogic(BusinessLogicError::InvalidProofRole { .. })
     )));
 }
 

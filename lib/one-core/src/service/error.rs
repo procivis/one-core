@@ -15,7 +15,7 @@ use crate::config::core_config::VerificationProtocolType;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
-use crate::model::proof::ProofStateEnum;
+use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
@@ -219,8 +219,8 @@ pub enum BusinessLogicError {
     #[error("Invalid Proof state: {state}")]
     InvalidProofState { state: ProofStateEnum },
 
-    #[error("Invalid role for retract proof: {role}")]
-    InvalidProofRoleForRetraction { role: String },
+    #[error("Invalid proof role: {role}")]
+    InvalidProofRole { role: ProofRole },
 
     #[error("Cannot retract proof with exchange type: {exchange_type}")]
     InvalidProofExchangeForRetraction {
@@ -1089,7 +1089,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Credential role must be Holder for revocation check")]
     BR_0197,
 
-    #[strum(to_string = "Invalid role for retract proof")]
+    #[strum(to_string = "Invalid proof role")]
     BR_0198,
 
     #[strum(to_string = "Invalid exchange type for retract proof")]
@@ -1291,7 +1291,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
             Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
             Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
-            Self::InvalidProofRoleForRetraction { .. } => ErrorCode::BR_0198,
+            Self::InvalidProofRole { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
             Self::OverlappingHolderDidWithIdentifier => ErrorCode::BR_0217,
             Self::IncompatibleIssuanceIdentifier => ErrorCode::BR_0218,

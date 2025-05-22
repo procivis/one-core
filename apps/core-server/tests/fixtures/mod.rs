@@ -704,6 +704,7 @@ pub async fn create_proof(
     holder_identifier: Option<&Identifier>,
     proof_schema: Option<&ProofSchema>,
     state: ProofStateEnum,
+    role: ProofRole,
     exchange: &str,
     interaction: Option<&Interaction>,
 ) -> Proof {
@@ -732,7 +733,7 @@ pub async fn create_proof(
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state,
-        role: ProofRole::Verifier,
+        role,
         requested_date,
         completed_date,
         claims: None,

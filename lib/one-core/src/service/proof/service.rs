@@ -208,15 +208,8 @@ impl ProofService {
             .await?
             .ok_or(EntityNotFoundError::Proof(*id))?;
 
-        if proof
-            .holder_identifier
-            .as_ref()
-            .is_some_and(|identifier| identifier.is_remote)
-        {
-            return Err(BusinessLogicError::IncompatibleDidType {
-                reason: "holder_identifier is remote".to_string(),
-            }
-            .into());
+        if proof.role != ProofRole::Holder {
+            return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
         }
 
         throw_if_latest_proof_state_not_eq(&proof, Requested)?;

@@ -254,7 +254,6 @@ impl CredentialService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    issuer_identifier: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -271,7 +270,7 @@ impl CredentialService {
                 "credential_schema is None".to_string(),
             ))?;
 
-        let revocation_type = &self
+        let revocation_type = self
             .config
             .revocation
             .get_fields(&schema.revocation_method)
@@ -283,11 +282,8 @@ impl CredentialService {
             })?
             .r#type();
 
-        let is_issuer = credential
-            .issuer_identifier
-            .as_ref()
-            .is_some_and(|identifier| !identifier.is_remote);
-        if is_issuer && **revocation_type != RevocationType::None {
+        let is_issuer = credential.role == CredentialRole::Issuer;
+        if is_issuer && *revocation_type != RevocationType::None {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 

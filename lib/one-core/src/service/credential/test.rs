@@ -340,6 +340,7 @@ async fn test_delete_credential_incorrect_state() {
     let mut credential = generic_credential();
     credential.schema.as_mut().unwrap().revocation_method = "BITSTRINGSTATUSLIST".to_string();
     credential.state = CredentialStateEnum::Accepted;
+    credential.role = CredentialRole::Issuer;
 
     let copy = credential.clone();
     credential_repository
