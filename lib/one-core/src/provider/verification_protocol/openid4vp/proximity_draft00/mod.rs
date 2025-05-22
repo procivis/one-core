@@ -2,22 +2,20 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
-use ble::OpenID4VCBLE;
-use futures::FutureExt;
 use futures::future::BoxFuture;
+use futures::FutureExt;
 use key_agreement_key::KeyAgreementKey;
-use mqtt::OpenId4VcMqtt;
+use mqtt::oidc_mqtt_verifier::MqttVerifier;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
-use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
 use super::model::{
-    OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat, PresentationSubmissionMappingDTO,
-    default_presentation_url_scheme,
+    default_presentation_url_scheme, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
+    PresentationSubmissionMappingDTO,
 };
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
@@ -51,10 +49,12 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
     map_credential_formats_to_presentation_format,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{verifier_flow, AsyncVerifierFlowParams};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_verifier::{retract_proof_ble, schedule_ble_verifier_flow};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
-    HolderCommonVPInteractionData, ProximityHolderTransport, handle_invitation_with_transport,
-    submit_proof_with_transport,
+    handle_invitation_with_transport, submit_proof_with_transport, HolderCommonVPInteractionData,
+    ProximityHolderTransport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::provider::verification_protocol::{
@@ -81,15 +81,18 @@ pub(crate) struct OpenID4VPProximityDraft00Params {
     pub url_scheme: String,
 }
 pub struct OpenID4VPProximityDraft00 {
+    ble: Option<BleWaiter>,
     ble_holder_transport: Option<BleHolderTransport>,
     mqtt_holder_transport: Option<MqttHolderTransport>,
-    openid_ble: OpenID4VCBLE,
-    openid_mqtt: Option<OpenId4VcMqtt>,
+    mqtt_verifier: Option<MqttVerifier>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    interaction_repository: Arc<dyn InteractionRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
     config: Arc<CoreConfig>,
+    params: OpenID4VPProximityDraft00Params,
 }
 
 impl OpenID4VPProximityDraft00 {
@@ -106,36 +109,14 @@ impl OpenID4VPProximityDraft00 {
         key_provider: Arc<dyn KeyProvider>,
         ble: Option<BleWaiter>,
     ) -> Self {
-        let openid_ble = OpenID4VCBLE::new(
-            proof_repository.clone(),
-            interaction_repository.clone(),
-            did_method_provider.clone(),
-            formatter_provider.clone(),
-            key_algorithm_provider.clone(),
-            key_provider.clone(),
-            ble.clone(),
-            config.clone(),
-            params.clone(),
-        );
         let url_scheme = params.url_scheme.clone();
-        let ble_holder_transport = ble.map(|ble| {
+        let ble_holder_transport = ble.clone().map(|ble| {
             BleHolderTransport::new(url_scheme.clone(), ble, interaction_repository.clone())
         });
         let (openid_mqtt, mqtt_holder_transport) = if let Some(mqtt_client) = mqtt_client {
             if let Ok(transport_params) = config.transport.get(TransportType::Mqtt.as_ref()) {
                 (
-                    Some(OpenId4VcMqtt::new(
-                        mqtt_client.clone(),
-                        config.clone(),
-                        transport_params,
-                        params,
-                        interaction_repository,
-                        proof_repository,
-                        key_algorithm_provider.clone(),
-                        formatter_provider.clone(),
-                        did_method_provider.clone(),
-                        key_provider.clone(),
-                    )),
+                    Some(MqttVerifier::new(mqtt_client.clone(), transport_params)),
                     Some(MqttHolderTransport::new(url_scheme, mqtt_client)),
                 )
             } else {
@@ -146,15 +127,18 @@ impl OpenID4VPProximityDraft00 {
         };
 
         Self {
-            openid_ble,
-            openid_mqtt,
+            ble,
+            mqtt_verifier: openid_mqtt,
             mqtt_holder_transport,
             ble_holder_transport,
             did_method_provider,
             key_algorithm_provider,
             key_provider,
             formatter_provider,
+            interaction_repository,
+            proof_repository,
             config,
+            params,
         }
     }
 
@@ -411,58 +395,100 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
-    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
+    ) -> Result<ShareResponse<Value>, VerificationProtocolError> {
         let transport = get_transport(proof)?;
         let on_submission_callback = on_submission_callback.map(|fut| fut.shared());
 
-        let auth_key_id = proof.verifier_key.as_ref().map(|key| key.id).ok_or(
+        let key_id = proof.verifier_key.as_ref().map(|key| key.id).ok_or(
             VerificationProtocolError::Failed("Missing verifier key".to_string()),
         )?;
 
+        let organisation = proof
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.organisation.as_ref())
+            .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?
+            .clone();
+
+        let interaction_id = Uuid::new_v4();
+        let key_agreement = KeyAgreementKey::new_random();
+
+        let (presentation_definition, verifier_did, auth_fn_ble, auth_fn_mqtt) =
+            prepare_proof_share(ProofShareParams {
+                interaction_id,
+                proof,
+                type_to_descriptor,
+                format_to_type_mapper,
+                key_id,
+                did_method_provider: &*self.did_method_provider,
+                formatter_provider: &*self.formatter_provider,
+                key_provider: &*self.key_provider,
+                key_algorithm_provider: self.key_algorithm_provider.clone(),
+            })
+            .await?;
+
+        let params = AsyncVerifierFlowParams {
+            proof_id: proof.id,
+            presentation_definition,
+            did: verifier_did.did,
+            interaction_id,
+            proof_repository: self.proof_repository.clone(),
+            interaction_repository: self.interaction_repository.clone(),
+            key_agreement: key_agreement.clone(),
+            organisation,
+            // notification to cancel the other flow (if any) when one is selected
+            cancellation_token: Default::default(),
+        };
+
         match transport.as_slice() {
             [TransportType::Ble] => {
-                let interaction_id = Uuid::new_v4();
-                let key_agreement = KeyAgreementKey::new_random();
-
-                self.openid_ble
-                    .verifier_share_proof(
-                        proof,
-                        format_to_type_mapper,
-                        auth_key_id,
-                        type_to_descriptor,
-                        interaction_id,
-                        key_agreement,
-                        CancellationToken::new(),
-                        on_submission_callback,
-                    )
-                    .await
-                    .map(|url| ShareResponse {
-                        url: url.to_string(),
-                        interaction_id,
-                        context: json!({}),
-                    })
+                let ble = self.ble.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("BLE transport not configured".to_string())
+                })?;
+                schedule_ble_verifier_flow(
+                    ble,
+                    &key_agreement,
+                    &self.params.url_scheme,
+                    interaction_id,
+                    self.interaction_repository.clone(),
+                    |verifier_transport| {
+                        verifier_flow(
+                            params,
+                            auth_fn_ble,
+                            on_submission_callback,
+                            verifier_transport,
+                        )
+                        .boxed()
+                    },
+                )
+                .await
+                .map(|url| ShareResponse {
+                    url: url.to_string(),
+                    interaction_id,
+                    context: json!({}),
+                })
             }
-            [TransportType::Http] => {
-                return Err(VerificationProtocolError::Failed(
-                    "HTTP transport not supported".to_string(),
-                ));
-            }
+            [TransportType::Http] => Err(VerificationProtocolError::Failed(
+                "HTTP transport not supported".to_string(),
+            )),
             [TransportType::Mqtt] => {
-                let mqtt = self.openid_mqtt.as_ref().ok_or_else(|| {
+                let mqtt = self.mqtt_verifier.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
-                let interaction_id = Uuid::new_v4();
-                let key_agreement = KeyAgreementKey::new_random();
-
-                mqtt.verifier_share_proof(
-                    proof,
-                    format_to_type_mapper,
-                    auth_key_id,
-                    type_to_descriptor,
+                mqtt.schedule_verifier_flow(
+                    &key_agreement,
+                    &self.params.url_scheme,
                     interaction_id,
-                    key_agreement,
-                    CancellationToken::new(),
-                    on_submission_callback,
+                    proof.id,
+                    |verifier_transport| {
+                        verifier_flow(
+                            params,
+                            auth_fn_mqtt,
+                            on_submission_callback,
+                            verifier_transport,
+                        )
+                        .boxed()
+                    },
                 )
                 .await
                 .map(|url| ShareResponse {
@@ -474,44 +500,46 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
             [TransportType::Ble, TransportType::Mqtt]
             | [TransportType::Mqtt, TransportType::Ble] => {
-                let mqtt = self.openid_mqtt.as_ref().ok_or_else(|| {
+                let mqtt = self.mqtt_verifier.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
-                let interaction_id = Uuid::new_v4();
-                let key_agreement = KeyAgreementKey::new_random();
+                let ble = self.ble.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("BLE transport not configured".to_string())
+                })?;
 
-                // notification to cancel the other flow when one is selected
-                let cancellation_token = CancellationToken::new();
-
+                let ble_params = params.clone();
+                let ble_callback = on_submission_callback.clone();
+                let ble_url = schedule_ble_verifier_flow(
+                    ble,
+                    &key_agreement,
+                    &self.params.url_scheme,
+                    interaction_id,
+                    self.interaction_repository.clone(),
+                    |verifier_transport| {
+                        verifier_flow(ble_params, auth_fn_ble, ble_callback, verifier_transport)
+                            .boxed()
+                    },
+                )
+                .await?;
                 let mqtt_url = mqtt
-                    .verifier_share_proof(
-                        proof,
-                        format_to_type_mapper.clone(),
-                        auth_key_id,
-                        type_to_descriptor.clone(),
+                    .schedule_verifier_flow(
+                        &key_agreement,
+                        &self.params.url_scheme,
                         interaction_id,
-                        key_agreement.clone(),
-                        cancellation_token.clone(),
-                        on_submission_callback.clone(),
-                    )
-                    .await?;
-
-                let ble_url = self
-                    .openid_ble
-                    .verifier_share_proof(
-                        proof,
-                        format_to_type_mapper,
-                        auth_key_id,
-                        type_to_descriptor,
-                        interaction_id,
-                        key_agreement,
-                        cancellation_token,
-                        on_submission_callback,
+                        proof.id,
+                        |verifier_transport| {
+                            verifier_flow(
+                                params,
+                                auth_fn_mqtt,
+                                on_submission_callback,
+                                verifier_transport,
+                            )
+                            .boxed()
+                        },
                     )
                     .await?;
 
                 let url = merge_query_params(mqtt_url, ble_url);
-
                 Ok(ShareResponse {
                     url: format!("{url}"),
                     interaction_id,
@@ -543,9 +571,16 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         for transport in get_transport(proof)? {
             match transport {
                 TransportType::Http => {}
-                TransportType::Ble => self.openid_ble.retract_proof(proof).await?,
+                TransportType::Ble => {
+                    let ble = self.ble.as_ref().ok_or_else(|| {
+                        VerificationProtocolError::Failed(
+                            "BLE not configured for retract proof".to_string(),
+                        )
+                    })?;
+                    retract_proof_ble(ble).await;
+                }
                 TransportType::Mqtt => {
-                    self.openid_mqtt
+                    self.mqtt_verifier
                         .as_ref()
                         .ok_or_else(|| {
                             VerificationProtocolError::Failed(
@@ -792,7 +827,15 @@ pub(super) struct ProofShareParams<'a> {
 
 pub(super) async fn prepare_proof_share(
     params: ProofShareParams<'_>,
-) -> Result<(OpenID4VPPresentationDefinition, Did, AuthenticationFn), VerificationProtocolError> {
+) -> Result<
+    (
+        OpenID4VPPresentationDefinition,
+        Did,
+        AuthenticationFn,
+        AuthenticationFn,
+    ),
+    VerificationProtocolError,
+> {
     let presentation_definition = create_open_id_for_vp_presentation_definition(
         params.interaction_id,
         params.proof,
@@ -828,7 +871,15 @@ pub(super) async fn prepare_proof_share(
         .await
         .map_err(|err| VerificationProtocolError::Failed(format!("Failed resolving did {err}")))?;
 
-    let auth_fn = params
+    let auth_fn_ble = params
+        .key_provider
+        .get_signature_provider(
+            verifier_key,
+            Some(verifier_jwk_key_id.clone()),
+            params.key_algorithm_provider.clone(),
+        )
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let auth_fn_mqtt = params
         .key_provider
         .get_signature_provider(
             verifier_key,
@@ -837,5 +888,10 @@ pub(super) async fn prepare_proof_share(
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    Ok((presentation_definition, verifier_did.clone(), auth_fn))
+    Ok((
+        presentation_definition,
+        verifier_did.clone(),
+        auth_fn_ble,
+        auth_fn_mqtt,
+    ))
 }

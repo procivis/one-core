@@ -1,91 +1,159 @@
-use std::future;
 use std::sync::Arc;
 
-use futures::FutureExt;
-use futures::future::BoxFuture;
+use async_trait::async_trait;
+use futures::future::{BoxFuture, Shared};
 use one_crypto::utilities;
-use shared_types::DidValue;
+use shared_types::{DidValue, ProofId};
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::core_config::TransportType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::organisation::Organisation;
+use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPPresentationDefinition,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::key_agreement_key::KeyAgreementKey;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::error::ErrorCode::BR_0000;
 
-type SendPresentationFn<C> = fn(
-    signed_presentation_request: String,
-    context: Arc<C>,
-) -> BoxFuture<'static, Result<(), VerificationProtocolError>>;
-type ReceivePresentationFn<C, T> =
-    fn(context: Arc<C>) -> BoxFuture<'static, Result<T, VerificationProtocolError>>;
-type InteractionDataMapper<C, T> = fn(
-    nonce: String,
-    presentation_definition: OpenID4VPPresentationDefinition,
-    request: OpenID4VP20AuthorizationRequest,
-    submission: T,
-    context: Arc<C>,
-) -> Result<Vec<u8>, VerificationProtocolError>;
+#[async_trait]
+pub(super) trait ProximityVerifierTransport: Send + Sync {
+    type Context;
+    type PresentationSubmission;
 
-pub(crate) struct AsyncTransportHooks<C, T> {
-    pub wallet_connect: BoxFuture<'static, Result<C, VerificationProtocolError>>,
-    pub wallet_disconnect: fn(context: Arc<C>) -> BoxFuture<'static, ()>,
-    pub wallet_reject: fn(context: Arc<C>) -> BoxFuture<'static, ()>,
-    pub send_presentation_request: SendPresentationFn<C>,
-    pub receive_presentation: ReceivePresentationFn<C, T>,
-    pub interaction_data_from_response: InteractionDataMapper<C, T>,
+    fn transport_type(&self) -> TransportType;
+
+    async fn wallet_connect(
+        &mut self,
+        key_agreement: &KeyAgreementKey,
+    ) -> Result<Self::Context, VerificationProtocolError>;
+
+    async fn send_presentation_request(
+        &mut self,
+        context: &Self::Context,
+        signed_presentation_request: String,
+    ) -> Result<(), VerificationProtocolError>;
+
+    async fn receive_presentation(
+        &mut self,
+        context: &mut Self::Context,
+    ) -> Result<HolderSubmission<Self::PresentationSubmission>, VerificationProtocolError>;
+
+    fn interaction_data_from_submission(
+        &self,
+        context: Self::Context,
+        nonce: String,
+        presentation_definition: OpenID4VPPresentationDefinition,
+        request: OpenID4VP20AuthorizationRequest,
+        presentation_submission: Self::PresentationSubmission,
+    ) -> Result<Vec<u8>, VerificationProtocolError>;
+
+    async fn clean_up(&self);
 }
 
-pub(crate) struct AsyncVerifierFlowParams<'a> {
-    pub proof: &'a Proof,
+pub(crate) enum HolderSubmission<T> {
+    Presentation(T),
+    Rejection,
+}
+
+#[derive(Clone)]
+pub(crate) struct AsyncVerifierFlowParams {
+    pub proof_id: ProofId,
     pub presentation_definition: OpenID4VPPresentationDefinition,
-    pub did: &'a DidValue,
+    pub did: DidValue,
     pub interaction_id: InteractionId,
-    pub proof_repository: &'a dyn ProofRepository,
-    pub interaction_repository: &'a dyn InteractionRepository,
-    pub transport_type: TransportType,
+    pub proof_repository: Arc<dyn ProofRepository>,
+    pub interaction_repository: Arc<dyn InteractionRepository>,
+    pub key_agreement: KeyAgreementKey,
+    pub organisation: Organisation,
     pub cancellation_token: CancellationToken,
 }
 
-#[derive(Debug)]
-pub(crate) enum FlowState {
+enum FlowState {
     Cancelled,
-    Rejected,
     Finished,
+    Rejected,
 }
 
-pub(crate) async fn async_verifier_flow<C, T>(
-    params: AsyncVerifierFlowParams<'_>,
-    hooks: AsyncTransportHooks<C, T>,
+pub(crate) async fn verifier_flow(
+    params: AsyncVerifierFlowParams,
     auth_fn: AuthenticationFn,
+    on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
+    mut transport: impl ProximityVerifierTransport,
+) {
+    let transport_type = transport.transport_type();
+    let proof_id = params.proof_id;
+    let proof_repository = params.proof_repository.clone();
+
+    let result = verifier_flow_internal(params, auth_fn, &mut transport).await;
+    transport.clean_up().await;
+
+    match result {
+        Ok(FlowState::Finished) => {
+            if let Some(callback) = on_submission_callback {
+                callback.await;
+            }
+        }
+        Ok(FlowState::Cancelled) => {} // cancel -> nothing to do
+        Ok(FlowState::Rejected) => {
+            tracing::info!("{transport_type} verifier flow: stopping, proof request rejected");
+            set_proof_state_infallible(
+                &proof_id,
+                ProofStateEnum::Rejected,
+                None,
+                &*proof_repository,
+            )
+            .await;
+        }
+        Err(err) => {
+            let message = format!("{transport_type} verifier flow failure: {err}");
+            tracing::info!(message);
+            let error_metadata = HistoryErrorMetadata {
+                error_code: BR_0000,
+                message,
+            };
+            set_proof_state_infallible(
+                &proof_id,
+                ProofStateEnum::Error,
+                Some(error_metadata),
+                &*proof_repository,
+            )
+            .await;
+        }
+    }
+}
+
+async fn verifier_flow_internal<C, S>(
+    params: AsyncVerifierFlowParams,
+    auth_fn: AuthenticationFn,
+    transport: &mut dyn ProximityVerifierTransport<Context = C, PresentationSubmission = S>,
 ) -> Result<FlowState, VerificationProtocolError> {
-    let context: C = select! {
-        connection_result = hooks.wallet_connect => connection_result,
+    let transport_type = transport.transport_type();
+    let mut context = select! {
+        result = transport.wallet_connect(&params.key_agreement) => result,
         _ = params.cancellation_token.cancelled() => {
-                tracing::info!("{} verifier flow: stopping, other transport selected", params.transport_type);
+                tracing::info!("{transport_type} verifier flow: stopping, other transport selected");
                 return Ok(FlowState::Cancelled);
             }
     }?;
-    let context = Arc::new(context);
 
     // we notify other transport that this was selected so they can cancel their work
     params.cancellation_token.cancel();
 
     let update_proof_request = UpdateProofRequest {
-        transport: Some(params.transport_type.to_string()),
+        transport: Some(transport_type.to_string()),
         ..Default::default()
     };
     params
         .proof_repository
-        .update_proof(&params.proof.id, update_proof_request, None)
+        .update_proof(&params.proof_id, update_proof_request, None)
         .await
         .map_err(|err| {
             VerificationProtocolError::Failed(format!("Failed to update proof transport: {err}"))
@@ -94,53 +162,40 @@ pub(crate) async fn async_verifier_flow<C, T>(
     let nonce = utilities::generate_alphanumeric(32);
     let request = OpenID4VP20AuthorizationRequest {
         nonce: Some(nonce.to_owned()),
-        response_type: None,
-        response_mode: None,
-        response_uri: None,
-        client_metadata: None,
-        client_metadata_uri: None,
         presentation_definition: Some(params.presentation_definition.clone()),
-        presentation_definition_uri: None,
         client_id: params.did.to_string(),
         client_id_scheme: Some(ClientIdScheme::Did),
-        state: None,
-        redirect_uri: None,
+        ..Default::default()
     };
     let signed_request = request
         .clone()
-        .as_signed_jwt(params.did, auth_fn)
+        .as_signed_jwt(&params.did, auth_fn)
         .await
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+    transport
+        .send_presentation_request(&context, signed_request)
+        .await?;
 
-    let presentation_submission = select! {
-        biased;
-        _ = (hooks.wallet_disconnect)(context.clone()) => Err(VerificationProtocolError::Failed("wallet_disconnected".into()))?,
-        _ = (hooks.wallet_reject)(context.clone()) => {
-            tracing::info!("{} verifier flow: stopping, proof request rejected", params.transport_type);
-            set_proof_state(params.proof, ProofStateEnum::Rejected, None, params.proof_repository).await?;
-            return Ok(FlowState::Rejected);
-        },
-        result = send_request_and_receive_response(
-            signed_request,
-            &params,
-            hooks.send_presentation_request,
-            hooks.receive_presentation,
-            context.clone())
-        => result
-    }?;
-    let organisation = params
-        .proof
-        .schema
-        .as_ref()
-        .and_then(|schema| schema.organisation.as_ref())
-        .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?;
+    set_proof_state(
+        &params.proof_id,
+        ProofStateEnum::Requested,
+        None,
+        &*params.proof_repository,
+    )
+    .await?;
 
-    let interaction_data = (hooks.interaction_data_from_response)(
+    let holder_submission = transport.receive_presentation(&mut context).await?;
+    let presentation_submission = match holder_submission {
+        HolderSubmission::Presentation(submission) => submission,
+        HolderSubmission::Rejection => return Ok(FlowState::Rejected),
+    };
+
+    let interaction_data = transport.interaction_data_from_submission(
+        context,
         nonce,
         params.presentation_definition,
         request,
         presentation_submission,
-        context.clone(),
     )?;
     params
         .interaction_repository
@@ -148,64 +203,37 @@ pub(crate) async fn async_verifier_flow<C, T>(
             id: params.interaction_id,
             host: None,
             data: Some(interaction_data),
-            organisation: Some(organisation.clone()),
+            organisation: Some(params.organisation),
         })
         .await
         .map_err(|err| {
             VerificationProtocolError::Failed(format!("failed to update interaction: {err}"))
         })?;
-
-    tracing::info!(
-        "{} verifier flow: finished, received proof submission",
-        params.transport_type
-    );
+    tracing::info!("{transport_type} verifier flow: finished, received proof submission");
     Ok(FlowState::Finished)
 }
 
-async fn send_request_and_receive_response<'a, C, T>(
-    request: String,
-    params: &'a AsyncVerifierFlowParams<'a>,
-    send_presentation_request: SendPresentationFn<C>,
-    receive_presentation_submission: ReceivePresentationFn<C, T>,
-    context: Arc<C>,
-) -> Result<T, VerificationProtocolError> {
-    send_presentation_request(request, context.clone()).await?;
-    set_proof_state(
-        params.proof,
-        ProofStateEnum::Requested,
-        None,
-        params.proof_repository,
-    )
-    .await?;
-    receive_presentation_submission(context).await
-}
-
-/// Function that returns a `BoxFuture` that never completes.
-pub(crate) fn never<T>(_: T) -> BoxFuture<'static, ()> {
-    future::pending().boxed()
-}
-
 pub(crate) async fn set_proof_state_infallible(
-    proof: &Proof,
+    id: &ProofId,
     state: ProofStateEnum,
     error_metadata: Option<HistoryErrorMetadata>,
     proof_repository: &dyn ProofRepository,
 ) {
-    let result = set_proof_state(proof, state, error_metadata, proof_repository).await;
+    let result = set_proof_state(id, state, error_metadata, proof_repository).await;
     if let Err(err) = result {
         tracing::warn!("failed to set proof state: {}", err);
     }
 }
 
 async fn set_proof_state(
-    proof: &Proof,
+    id: &ProofId,
     state: ProofStateEnum,
     error_metadata: Option<HistoryErrorMetadata>,
     proof_repository: &dyn ProofRepository,
 ) -> Result<(), VerificationProtocolError> {
     if let Err(error) = proof_repository
         .update_proof(
-            &proof.id,
+            id,
             UpdateProofRequest {
                 state: Some(state.clone()),
                 ..Default::default()
@@ -214,7 +242,7 @@ async fn set_proof_state(
         )
         .await
     {
-        tracing::error!(%error, proof_id=%proof.id, ?state, "Failed setting proof state");
+        tracing::error!(%error, proof_id=%id, ?state, "Failed setting proof state");
         return Err(VerificationProtocolError::Failed(error.to_string()));
     }
     Ok(())

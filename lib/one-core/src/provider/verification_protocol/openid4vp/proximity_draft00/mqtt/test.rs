@@ -1,67 +1,50 @@
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-
+use futures::FutureExt;
 use mockall::predicate::eq;
 use serde_json::json;
-use shared_types::{DidValue, KeyId};
+use shared_types::DidValue;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
-use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-use crate::config::core_config::{Fields, FormatType, KeyAlgorithmType, TransportType};
-use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
+use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
-use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPPresentationDefinition,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
-    ProximityHolderTransport, handle_invitation_with_transport,
+    handle_invitation_with_transport, ProximityHolderTransport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
     MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
 };
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::oidc_mqtt_verifier::MqttVerifier;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::{
-    ConfigParams, MqttHolderTransport, OpenId4VcMqtt, generate_session_keys,
+    generate_session_keys, ConfigParams, MqttHolderTransport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
-    KeyAgreementKey, OpenID4VPProximityDraft00Params,
-};
-use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::proof_repository::MockProofRepository;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::service::storage_proxy::MockStorageProxy;
-use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
+use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct TestInputs<'a> {
     pub broker_url: Option<&'a str>,
     pub mqtt_client: MockMqttClient,
-    pub interaction_repository: MockInteractionRepository,
-    pub proof_repository: MockProofRepository,
-    pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub formatter_provider: MockCredentialFormatterProvider,
-    pub did_method_provider: MockDidMethodProvider,
-    pub key_provider: MockKeyProvider,
-    pub presentation_url_scheme: Option<&'a str>,
 }
 
-fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
+fn setup_protocol(inputs: TestInputs) -> MqttVerifier {
     let mut config = generic_config().core;
     config.transport.insert(
         "MQTT".into(),
@@ -75,9 +58,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         },
     );
 
-    OpenId4VcMqtt::new(
+    MqttVerifier::new(
         Arc::new(inputs.mqtt_client),
-        Arc::new(config),
         ConfigParams {
             broker_url: inputs
                 .broker_url
@@ -86,18 +68,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
                 .parse()
                 .unwrap(),
         },
-        OpenID4VPProximityDraft00Params {
-            url_scheme: inputs
-                .presentation_url_scheme
-                .unwrap_or("openid4vp")
-                .to_string(),
-        },
-        Arc::new(inputs.interaction_repository),
-        Arc::new(inputs.proof_repository),
-        Arc::new(inputs.key_algorithm_provider),
-        Arc::new(inputs.formatter_provider),
-        Arc::new(inputs.did_method_provider),
-        Arc::new(inputs.key_provider),
     )
 }
 
@@ -412,27 +382,6 @@ async fn test_presentation_reject_success() {
 async fn test_share_proof_for_mqtt_returns_url() {
     let broker_url = "tcp://share-proof-test:1234";
     let mut mqtt_client = MockMqttClient::default();
-    let mut did_provider = MockDidMethodProvider::default();
-    let mut key_provider = MockKeyProvider::default();
-
-    key_provider
-        .expect_get_signature_provider()
-        .returning(move |_, _, _| Ok(Box::new(MockSignatureProvider::default())));
-
-    let key_id: KeyId = Uuid::new_v4().into();
-    let did_value: DidValue = "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
-        .parse()
-        .unwrap();
-
-    did_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .withf({
-            let expected_did_value = did_value.clone();
-            let expected_key_id = key_id;
-            move |did, key| did.did == expected_did_value && key.id == expected_key_id
-        })
-        .returning(move |_, _| Ok(key_id.clone().to_string()));
-
     mqtt_client
         .expect_subscribe()
         .times(4)
@@ -448,92 +397,18 @@ async fn test_share_proof_for_mqtt_returns_url() {
     let protocol = setup_protocol(TestInputs {
         mqtt_client,
         broker_url: Some(broker_url),
-        did_method_provider: did_provider,
-        key_provider,
-        presentation_url_scheme: Some(custom_url_scheme),
-        ..Default::default()
     });
-
-    let proof_id = Uuid::new_v4();
-    let proof = Proof {
-        id: proof_id.into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
-        transport: "MQTT".to_string(),
-        redirect_uri: None,
-        state: ProofStateEnum::Pending,
-        role: ProofRole::Verifier,
-        requested_date: Some(OffsetDateTime::now_utc()),
-        completed_date: None,
-        schema: Some(ProofSchema {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            deleted_at: None,
-            name: "test-mqtt-share-proof".into(),
-            expire_duration: 123,
-            imported_source_url: None,
-            organisation: None,
-            input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
-                claim_schemas: None,
-                credential_schema: None,
-            }]),
-        }),
-        claims: None,
-        verifier_identifier: Some(Identifier {
-            did: Some(Did {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                name: "did".to_string(),
-                did: did_value,
-                did_type: DidType::Local,
-                did_method: "KEY".to_string(),
-                organisation: None,
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: Key {
-                        id: key_id,
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        public_key: vec![],
-                        name: "key".to_string(),
-                        key_reference: vec![],
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: None,
-                    },
-                }]),
-                deactivated: false,
-                log: None,
-            }),
-            ..dummy_identifier()
-        }),
-        holder_identifier: None,
-        verifier_key: None,
-        interaction: None,
-    };
-
-    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
-
-    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
 
     let key_agreement = KeyAgreementKey::new_random();
     let interaction_id = Uuid::new_v4();
 
     let url = protocol
-        .verifier_share_proof(
-            &proof,
-            format_type_mapper,
-            key_id,
-            type_to_descriptor_mapper,
+        .schedule_verifier_flow(
+            &key_agreement,
+            custom_url_scheme,
             interaction_id,
-            key_agreement,
-            CancellationToken::new(),
-            None,
+            Uuid::new_v4().into(),
+            |_| async {}.boxed(),
         )
         .await
         .unwrap();
