@@ -66,11 +66,13 @@ serde_json.workspace = true
 shadow-rs.workspace  = true
 
 [dev-dependencies]
+asn1-rs.workspace         = true
 async-trait.workspace     = true
 bs58.workspace            = true
 hex-literal               = { version = "0.4" }
 indoc                     = { version = "2.0" }
 rand.workspace            = true
+rcgen.workspace           = true
 reqwest                   = { version = "0.12", features = ["json"] }
 sea-orm.workspace         = true
 secrecy.workspace         = true

@@ -152,4 +152,22 @@ impl MockServer {
             .mount(&self.mock)
             .await;
     }
+
+    pub async fn fail_crl_download(&self, crl_id: &str) {
+        Mock::given(method(Method::GET))
+            .and(path(format!("/crl/{crl_id}")))
+            .respond_with(ResponseTemplate::new(404))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn crl_download(&self, crl_id: &str, content: &[u8]) {
+        Mock::given(method(Method::GET))
+            .and(path(format!("/crl/{crl_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(content, "application/pkix-crl"))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
 }

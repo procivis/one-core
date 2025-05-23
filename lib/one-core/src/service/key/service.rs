@@ -273,11 +273,12 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
         let key_storage = self.key_storage.clone();
         let key = self.key.clone();
         let msg = msg.to_vec();
+        let algorithm = self.algorithm;
 
         std::thread::spawn(move || {
             let _guard = handle.enter();
             let handle = tokio::spawn(async move {
-                key_storage
+                let mut signature = key_storage
                     .key_handle(&key)
                     .map_err(|error| {
                         tracing::error!(%error, "Failed to sign CSR - key handle failure");
@@ -288,7 +289,31 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
                     .map_err(|error| {
                         tracing::error!(%error, "Failed to sign CSR");
                         rcgen::Error::RemoteKeyError
-                    })
+                    })?;
+
+                // P256 signature must be ASN.1 encoded
+                if algorithm == &PKCS_ECDSA_P256_SHA256 {
+                    use asn1_rs::{Integer, SequenceOf, ToDer};
+
+                    let s: [u8; 32] = signature.split_off(32).try_into().map_err(|_| {
+                        tracing::error!("Failed to convert generated signature");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+                    let r: [u8; 32] = signature.try_into().map_err(|_| {
+                        tracing::error!("Failed to convert generated signature");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+
+                    let r = Integer::from_const_array(r);
+                    let s = Integer::from_const_array(s);
+                    let seq = SequenceOf::from_iter([r, s]);
+                    signature = seq.to_der_vec().map_err(|error| {
+                        tracing::error!(%error, "Failed to serialize P256 signature");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+                }
+
+                Ok(signature)
             });
             futures::executor::block_on(handle).map_err(|_| {
                 tracing::error!("Failed to join CSR task");

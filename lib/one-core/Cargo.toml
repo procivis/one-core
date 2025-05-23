@@ -10,6 +10,7 @@ version           = "0.1.0"
 [dependencies]
 aes-gcm                  = { version = "0.10.3", features = ["std"] }
 anyhow.workspace         = true
+asn1-rs.workspace        = true
 async-trait.workspace    = true
 bincode                  = { version = "1.3" }
 bit-vec                  = { version = "0.8" }
@@ -39,7 +40,7 @@ one-crypto               = { version = "0.1.0", path = "../one-crypto" }
 one-dto-mapper.workspace = true
 ouroboros                = { version = "0.18" }
 rand.workspace           = true
-rcgen                    = { version = "0.13" }
+rcgen.workspace          = true
 regex.workspace          = true
 reqwest.workspace        = true
 rumqttc                  = { version = "0.24", default-features = false, features = ["use-native-tls"] }
@@ -67,7 +68,7 @@ url.workspace            = true
 urlencoding.workspace    = true
 uuid                     = { workspace = true, features = ["serde"] }
 x25519-dalek             = { version = "2.0", features = ["reusable_secrets", "serde"] }
-x509-parser              = { version = "0.16", features = ["verify"] }
+x509-parser              = { version = "0.17", features = ["verify"] }
 yasna                    = { version = "0.5" }
 zip                      = { version = "2.1" }
 
