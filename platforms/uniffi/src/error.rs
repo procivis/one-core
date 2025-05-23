@@ -1,3 +1,4 @@
+use one_core::OneCoreBuildError;
 use one_core::provider::key_storage::error::KeyStorageError;
 use one_core::service::error::ErrorCodeMixin;
 use one_crypto::SignerError;
@@ -21,6 +22,12 @@ impl ErrorCodeMixin for SDKError {
             Self::InitializationFailure(_) => one_core::service::error::ErrorCode::BR_0183,
             Self::NotInitialized => one_core::service::error::ErrorCode::BR_0184,
         }
+    }
+}
+
+impl From<OneCoreBuildError> for SDKError {
+    fn from(err: OneCoreBuildError) -> Self {
+        SDKError::InitializationFailure(err.to_string())
     }
 }
 

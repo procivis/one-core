@@ -73,31 +73,45 @@ pub type DidMethodCreator = Box<
     dyn FnOnce(
             &mut DidConfig,
             &OneCoreBuilderProviders,
-        ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>)
-        + Send,
+        ) -> Result<
+            (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
+            OneCoreBuildError,
+        > + Send,
 >;
 
 pub type KeyAlgorithmCreator = Box<
-    dyn FnOnce(&mut KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>
+    dyn FnOnce(
+            &mut KeyAlgorithmConfig,
+            &OneCoreBuilderProviders,
+        ) -> Result<Arc<dyn KeyAlgorithmProvider>, OneCoreBuildError>
         + Send,
 >;
 
-pub type KeyStorageCreator =
-    Box<dyn FnOnce(&mut KeyStorageConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyProvider> + Send>;
+pub type KeyStorageCreator = Box<
+    dyn FnOnce(
+            &mut KeyStorageConfig,
+            &OneCoreBuilderProviders,
+        ) -> Result<Arc<dyn KeyProvider>, OneCoreBuildError>
+        + Send,
+>;
 
 pub type FormatterProviderCreator = Box<
     dyn FnOnce(
             &mut FormatConfig,
             &DatatypeConfig,
             &OneCoreBuilderProviders,
-        ) -> Arc<dyn CredentialFormatterProvider>
+        ) -> Result<Arc<dyn CredentialFormatterProvider>, OneCoreBuildError>
         + Send,
 >;
 
-pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository> + Send>;
+pub type DataProviderCreator =
+    Box<dyn FnOnce() -> Result<Arc<dyn DataRepository>, OneCoreBuildError> + Send>;
 
 pub type RevocationMethodCreator = Box<
-    dyn FnOnce(&mut RevocationConfig, &OneCoreBuilderProviders) -> Arc<dyn RevocationMethodProvider>
+    dyn FnOnce(
+            &mut RevocationConfig,
+            &OneCoreBuilderProviders,
+        ) -> Result<Arc<dyn RevocationMethodProvider>, OneCoreBuildError>
         + Send,
 >;
 
@@ -163,6 +177,9 @@ pub enum OneCoreBuildError {
     #[error("Missing required field: `{0}`")]
     MissingRequiredField(&'static str),
 
+    #[error("Missing dependency: `{0}`")]
+    MissingDependency(String),
+
     #[error("Config error: `{0}`")]
     Config(ConfigError),
 
@@ -191,49 +208,55 @@ impl OneCoreBuilder {
     pub fn with_key_algorithm_provider(
         mut self,
         key_algorithm_creator: KeyAlgorithmCreator,
-    ) -> Self {
+    ) -> Result<Self, OneCoreBuildError> {
         let key_algorithm_provider =
-            key_algorithm_creator(&mut self.core_config.key_algorithm, &self.providers);
+            key_algorithm_creator(&mut self.core_config.key_algorithm, &self.providers)?;
         self.providers.key_algorithm_provider = Some(key_algorithm_provider);
-        self
+        Ok(self)
     }
 
-    pub fn with_key_storage_provider(mut self, key_storage_creator: KeyStorageCreator) -> Self {
+    pub fn with_key_storage_provider(
+        mut self,
+        key_storage_creator: KeyStorageCreator,
+    ) -> Result<Self, OneCoreBuildError> {
         let key_storage_provider =
-            key_storage_creator(&mut self.core_config.key_storage, &self.providers);
+            key_storage_creator(&mut self.core_config.key_storage, &self.providers)?;
         self.providers.key_storage_provider = Some(key_storage_provider);
-        self
+        Ok(self)
     }
 
-    pub fn with_did_method_provider(mut self, did_met_provider: DidMethodCreator) -> Self {
+    pub fn with_did_method_provider(
+        mut self,
+        did_met_provider: DidMethodCreator,
+    ) -> Result<Self, OneCoreBuildError> {
         let (did_method_provider, did_mdl_validator) =
-            did_met_provider(&mut self.core_config.did, &self.providers);
+            did_met_provider(&mut self.core_config.did, &self.providers)?;
         self.providers.did_method_provider = Some(did_method_provider);
         self.providers.did_mdl_validator = did_mdl_validator;
-        self
+        Ok(self)
     }
 
     pub fn with_revocation_method_provider(
         mut self,
         revocation_met_provider: RevocationMethodCreator,
-    ) -> Self {
+    ) -> Result<Self, OneCoreBuildError> {
         let revocation_method_provider =
-            revocation_met_provider(&mut self.core_config.revocation, &self.providers);
+            revocation_met_provider(&mut self.core_config.revocation, &self.providers)?;
         self.providers.revocation_method_provider = Some(revocation_method_provider);
-        self
+        Ok(self)
     }
 
     pub fn with_formatter_provider(
         mut self,
         key_storage_creator: FormatterProviderCreator,
-    ) -> Self {
+    ) -> Result<Self, OneCoreBuildError> {
         let formatter_provider = key_storage_creator(
             &mut self.core_config.format,
             &self.core_config.datatype,
             &self.providers,
-        );
+        )?;
         self.providers.formatter_provider = Some(formatter_provider);
-        self
+        Ok(self)
     }
 
     pub fn with_mqtt_client(mut self, client: Arc<dyn MqttClient>) -> Self {
@@ -369,7 +392,7 @@ impl OneCore {
             OneCoreBuildError::MissingRequiredField("Caching loader is required"),
         )?;
 
-        let data_provider = data_provider_creator();
+        let data_provider = data_provider_creator()?;
 
         let formatter_provider = providers
             .formatter_provider

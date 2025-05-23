@@ -66,7 +66,7 @@ use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepos
 use one_core::service::error::ServiceError;
 use one_core::{
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
-    KeyStorageCreator, OneCoreBuilder, RevocationMethodCreator,
+    KeyStorageCreator, OneCoreBuildError, OneCoreBuilder, RevocationMethodCreator,
 };
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
@@ -236,7 +236,7 @@ async fn initialize(
                     key_algorithms.insert(name.to_owned(), key_algorithm);
                 }
 
-                Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms))
+                Ok(Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms)))
             });
 
             let key_storage_creator: KeyStorageCreator = Box::new(move |config, providers| {
@@ -245,35 +245,42 @@ async fn initialize(
                 for (name, field) in config.iter().filter(|(_, field)| field.enabled()) {
                     let provider = match field.r#type {
                         KeyStorageType::SecureElement => {
-                            let native_storage = native_secure_element
-                                .clone()
-                                .expect("Missing native key provider");
-                            let params =
-                                config.get(name).expect("Secure element config is required");
+                            let native_storage = native_secure_element.clone().ok_or(
+                                OneCoreBuildError::MissingDependency(
+                                    "native key provider".to_string(),
+                                ),
+                            )?;
+                            let params = config
+                                .get(name)
+                                .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                             Arc::new(SecureElementKeyProvider::new(native_storage, params)) as _
                         }
                         KeyStorageType::RemoteSecureElement => {
-                            let native_storage = remote_secure_element
-                                .clone()
-                                .expect("Missing native remote key provider");
+                            let native_storage = remote_secure_element.clone().ok_or(
+                                OneCoreBuildError::MissingDependency(
+                                    "native remote key provider".to_string(),
+                                ),
+                            )?;
                             Arc::new(RemoteSecureElementKeyProvider::new(native_storage)) as _
                         }
                         KeyStorageType::Internal => {
                             let params = config
                                 .get(name)
-                                .expect("Internal key provider config is required");
+                                .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                             Arc::new(InternalKeyProvider::new(
                                 providers
                                     .key_algorithm_provider
                                     .as_ref()
-                                    .expect("Missing key algorithm provider")
+                                    .ok_or(OneCoreBuildError::MissingDependency(
+                                        "missing key algorithm provider".to_string(),
+                                    ))?
                                     .clone(),
                                 params,
                             )) as _
                         }
-                        _ => {
-                            panic!("Unexpected key storage: {name}")
-                        }
+                        other => Err(OneCoreBuildError::Config(ConfigError::Validation(
+                            ConfigValidationError::InvalidType(name.to_string(), other.to_string()),
+                        )))?,
                     };
 
                     key_providers.insert(name.to_owned(), provider);
@@ -285,21 +292,23 @@ async fn initialize(
                     }
                 }
 
-                Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
+                Ok(Arc::new(KeyProviderImpl::new(key_providers.to_owned())))
             });
 
             let data_repository = Arc::new(DataLayer::build(db_conn, vec!["INTERNAL".to_string()]));
 
             let storage_creator: DataProviderCreator = {
                 let data_repository = data_repository.clone();
-                Box::new(move || data_repository)
+                Box::new(move || Ok(data_repository))
             };
 
             let cache_entities_config = core_config.cache_entities.to_owned();
             let reqwest_client = reqwest::Client::builder()
                 .https_only(!cfg.app.allow_insecure_http_transport)
                 .build()
-                .expect("Failed to create reqwest::Client");
+                .map_err(|_| {
+                    SDKError::InitializationFailure("Failed to create reqwest::Client".to_string())
+                })?;
 
             let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
             let data_provider = data_repository.clone();
@@ -320,38 +329,43 @@ async fn initialize(
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
-                                    .expect("key algorithm provider is required");
+                                    .ok_or(OneCoreBuildError::MissingDependency(
+                                        "key algorithm provider".to_string(),
+                                    ))?;
                                 Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
                             }
                             DidType::Web => {
                                 let params: DidWebParams = config
                                     .get(name)
-                                    .expect("failed to deserialize did web params");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 let did_web = WebDidMethod::new(
                                     &providers.core_base_url,
                                     client.clone(),
                                     params.into(),
                                 )
                                 .map_err(|_| {
-                                    ConfigError::Validation(ConfigValidationError::EntryNotFound(
-                                        "Base url".to_string(),
+                                    OneCoreBuildError::Config(ConfigError::Validation(
+                                        ConfigValidationError::EntryNotFound(
+                                            "Base url".to_string(),
+                                        ),
                                     ))
-                                })
-                                .expect("failed to create did web method");
+                                })?;
                                 Arc::new(did_web) as _
                             }
                             DidType::Jwk => {
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
-                                    .expect("key algorithm provider is required");
+                                    .ok_or(OneCoreBuildError::MissingDependency(
+                                        "key algorithm provider".to_string(),
+                                    ))?;
                                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
                             }
                             DidType::X509 => Arc::new(X509Method::new()) as _,
                             DidType::Universal => {
                                 let params: DidUniversalParams = config
                                     .get(name)
-                                    .expect("failed to deserialize did universal params");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(UniversalDidMethod::new(params.into(), client.clone()))
                                     as _
                             }
@@ -359,20 +373,23 @@ async fn initialize(
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
-                                    .expect("key algorithm provider is required");
+                                    .ok_or(OneCoreBuildError::MissingDependency(
+                                        "key algorithm provider".to_string(),
+                                    ))?;
 
                                 let params: DidMdlParams = config
                                     .get(name)
-                                    .expect("failed to deserialize did mdl params");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
                                 let did_mdl =
                                     DidMdl::new(params.into(), key_algorithm_provider.clone())
                                         .map_err(|err| {
-                                            ConfigParsingError::GeneralParsingError(format!(
-                                                "Invalid DID MDL config: {err}"
+                                            OneCoreBuildError::Config(ConfigError::Parsing(
+                                                ConfigParsingError::GeneralParsingError(format!(
+                                                    "Invalid DID MDL config: {err}"
+                                                )),
                                             ))
-                                        })
-                                        .expect("failed to create did mdl method");
+                                        })?;
                                 let did_mdl = Arc::new(did_mdl);
 
                                 did_mdl_validator =
@@ -384,25 +401,30 @@ async fn initialize(
                                 let key_algorithm_provider = providers
                                     .key_algorithm_provider
                                     .to_owned()
-                                    .expect("key algorithm provider is required");
+                                    .ok_or(OneCoreBuildError::MissingDependency(
+                                        "key algorithm provider".to_string(),
+                                    ))?;
 
-                                let params: DidSdJwtVCIssuerMetadataParams =
-                                    config.get(name).expect(
-                                        "failed to deserialize did SdJwtVCIssuerMetadata params",
-                                    );
+                                let params: DidSdJwtVCIssuerMetadataParams = config
+                                    .get(name)
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(
                                     SdJwtVcIssuerMetadataDidMethod::new(
                                         client.clone(),
                                         key_algorithm_provider.clone(),
                                         params.into(),
                                     )
-                                    .expect("failed to create SdJwtVCIssuerMetadataDidMethod"),
+                                    .map_err(|e| {
+                                        OneCoreBuildError::MissingDependency(format!(
+                                            "SD JWT VC did method: {e}"
+                                        ))
+                                    })?,
                                 )
                             }
                             DidType::WebVh => {
                                 let params: DidWebVhParams = config
                                     .get(name)
-                                    .expect("failed to deserialize did webvh params");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 // did:webvh cannot be constructed yet, as it needs a did resolver internally
                                 // -> save for later
                                 did_webvh_params.push((name.to_string(), params));
@@ -456,10 +478,10 @@ async fn initialize(
                     let did_caching_loader =
                         initialize_did_caching_loader(&cache_entities_config, data_provider);
 
-                    (
+                    Ok((
                         Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
                         did_mdl_validator,
-                    )
+                    ))
                 })
             };
 
@@ -474,7 +496,7 @@ async fn initialize(
                     data_repository.to_owned(),
                     client.clone(),
                 )
-                .await,
+                .await?,
             );
 
             let json_schema_cache = Arc::new(
@@ -483,7 +505,7 @@ async fn initialize(
                     data_repository.to_owned(),
                     client.clone(),
                 )
-                .await,
+                .await?,
             );
 
             let trust_list_cache = Arc::new(
@@ -503,27 +525,28 @@ async fn initialize(
                     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> =
                         HashMap::new();
 
-                    let did_method_provider = providers
-                        .did_method_provider
-                        .as_ref()
-                        .expect("Did method provider is mandatory");
+                    let did_method_provider = providers.did_method_provider.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("did method provider".to_string()),
+                    )?;
 
-                    let key_algorithm_provider = providers
-                        .key_algorithm_provider
-                        .as_ref()
-                        .expect("Key algorithm provider is mandatory");
+                    let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
+                    )?;
 
-                    let crypto = providers
-                        .crypto
-                        .as_ref()
-                        .expect("Crypto provider is mandatory");
+                    let crypto =
+                        providers
+                            .crypto
+                            .as_ref()
+                            .ok_or(OneCoreBuildError::MissingDependency(
+                                "crypto provider".to_string(),
+                            ))?;
 
                     for (name, field) in format_config.iter() {
                         let formatter = match field.r#type {
                             FormatType::Jwt => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("JWT formatter params are mandatory");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(JWTFormatter::new(params, key_algorithm_provider.clone()))
                                     as _
                             }
@@ -535,7 +558,7 @@ async fn initialize(
                             FormatType::SdJwt => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("SD-JWT formatter params are mandatory");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(SDJWTFormatter::new(
                                     params,
                                     crypto.clone(),
@@ -545,7 +568,7 @@ async fn initialize(
                             FormatType::SdJwtVc => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("SD-JWT VC formatter params are mandatory");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(SDJWTVCFormatter::new(
                                     params,
                                     crypto.clone(),
@@ -556,7 +579,7 @@ async fn initialize(
                             FormatType::JsonLdClassic => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("JSON_LD_CLASSIC formatter params are mandatory");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(JsonLdClassic::new(
                                     params,
                                     crypto.clone(),
@@ -569,7 +592,7 @@ async fn initialize(
                             FormatType::JsonLdBbsPlus => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("JSON_LD_BBSPLUS formatter params are mandatory");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(JsonLdBbsplus::new(
                                     params,
                                     crypto.clone(),
@@ -583,12 +606,14 @@ async fn initialize(
                             FormatType::Mdoc => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("MDOC formatter params are mandatory");
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
                                 let did_mdl_validator = providers
                                     .did_mdl_validator
                                     .as_ref()
-                                    .expect("Did mdl validator is mandatory");
+                                    .ok_or(OneCoreBuildError::MissingDependency(
+                                        "did mdl validator".to_string(),
+                                    ))?;
 
                                 Arc::new(MdocFormatter::new(
                                     params,
@@ -609,7 +634,7 @@ async fn initialize(
                         }
                     }
 
-                    Arc::new(CredentialFormatterProviderImpl::new(formatters))
+                    Ok(Arc::new(CredentialFormatterProviderImpl::new(formatters)))
                 })
             };
 
@@ -620,25 +645,23 @@ async fn initialize(
                     let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> =
                         HashMap::new();
 
-                    let did_method_provider = providers
-                        .did_method_provider
-                        .as_ref()
-                        .expect("Did method provider is mandatory");
+                    let did_method_provider = providers.did_method_provider.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("did method provider".to_string()),
+                    )?;
 
-                    let key_algorithm_provider = providers
-                        .key_algorithm_provider
-                        .as_ref()
-                        .expect("Key algorithm provider is mandatory");
+                    let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
+                    )?;
 
-                    let key_provider = providers
-                        .key_storage_provider
-                        .clone()
-                        .expect("Key storage provider is mandatory");
+                    let key_provider = providers.key_storage_provider.clone().ok_or(
+                        OneCoreBuildError::MissingDependency("key storage provider".to_string()),
+                    )?;
 
-                    let formatter_provider = providers
-                        .formatter_provider
-                        .clone()
-                        .expect("Credential formatter provider is mandatory");
+                    let formatter_provider = providers.formatter_provider.clone().ok_or(
+                        OneCoreBuildError::MissingDependency(
+                            "credential formatter provider".to_string(),
+                        ),
+                    )?;
 
                     for (key, fields) in config.iter() {
                         if !fields.enabled() {
@@ -666,20 +689,19 @@ async fn initialize(
                                 )) as _
                             }
                             RevocationType::Lvvc => {
-                                ({
-                                    let params =
-                                        config.get(key).expect("failed to get LVVC params");
-                                    Arc::new(LvvcProvider::new(
-                                        None,
-                                        formatter_provider.clone(),
-                                        did_method_provider.clone(),
-                                        data_repository.get_validity_credential_repository(),
-                                        key_provider.clone(),
-                                        key_algorithm_provider.clone(),
-                                        client.clone(),
-                                        params,
-                                    ))
-                                }) as _
+                                let params = config
+                                    .get(key)
+                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
+                                Arc::new(LvvcProvider::new(
+                                    None,
+                                    formatter_provider.clone(),
+                                    did_method_provider.clone(),
+                                    data_repository.get_validity_credential_repository(),
+                                    key_provider.clone(),
+                                    key_algorithm_provider.clone(),
+                                    client.clone(),
+                                    params,
+                                )) as _
                             }
                             RevocationType::TokenStatusList => Arc::new(
                                 TokenStatusList::new(
@@ -695,7 +717,13 @@ async fn initialize(
                                     client.clone(),
                                     None,
                                 )
-                                .expect("failed to create TokenStatusList revocation"),
+                                .map_err(|_| {
+                                    OneCoreBuildError::Config(ConfigError::Validation(
+                                        ConfigValidationError::EntryNotFound(
+                                            "Token revocation format must be JWT".to_string(),
+                                        ),
+                                    ))
+                                })?,
                             ) as _,
                         };
 
@@ -718,7 +746,9 @@ async fn initialize(
                         }) as _,
                     );
 
-                    Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
+                    Ok(Arc::new(RevocationMethodProviderImpl::new(
+                        revocation_methods,
+                    )))
                 })
             };
 
@@ -727,17 +757,17 @@ async fn initialize(
                 .with_jsonld_caching_loader(caching_loader)
                 .with_data_provider_creator(storage_creator)
                 .with_key_algorithm_provider(key_algo_creator)
-                .with_key_storage_provider(key_storage_creator)
-                .with_did_method_provider(did_method_creator)
-                .with_formatter_provider(formatter_provider_creator)
-                .with_ble(ble_peripheral, ble_central)
-                .with_mqtt_client(Arc::new(RumqttcClient::default()))
-                .with_revocation_method_provider(revocation_method_creator)
-                .with_vct_type_metadata_cache(vct_type_metadata_cache)
-                .with_json_schema_cache(json_schema_cache)
-                .with_client(client)
-                .with_trust_listcache(trust_list_cache)
-                .build()
+                .and_then(|b| b.with_key_storage_provider(key_storage_creator))
+                .and_then(|b| b.with_did_method_provider(did_method_creator))
+                .and_then(|b| b.with_formatter_provider(formatter_provider_creator))
+                .and_then(|b| b.with_revocation_method_provider(revocation_method_creator))
+                .map(|b| b.with_ble(ble_peripheral, ble_central))
+                .map(|b| b.with_mqtt_client(Arc::new(RumqttcClient::default())))
+                .map(|b| b.with_vct_type_metadata_cache(vct_type_metadata_cache))
+                .map(|b| b.with_json_schema_cache(json_schema_cache))
+                .map(|b| b.with_client(client))
+                .map(|b| b.with_trust_listcache(trust_list_cache))
+                .and_then(|b| b.build())
                 .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
         }) as _
     };
@@ -852,7 +882,7 @@ async fn initialize_vct_type_metadata_cache(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
     client: Arc<dyn HttpClient>,
-) -> VctTypeMetadataCache {
+) -> Result<VctTypeMetadataCache, SDKError> {
     let config = cache_entities_config
         .entities
         .get("JSON_SCHEMA")
@@ -883,16 +913,20 @@ async fn initialize_vct_type_metadata_cache(
     cache
         .initialize_from_static_resources()
         .await
-        .expect("Failed initializing VCT type metadata cache");
+        .map_err(|err| {
+            SDKError::InitializationFailure(format!(
+                "Failed initializing VCT type metadata cache: {err}"
+            ))
+        })?;
 
-    cache
+    Ok(cache)
 }
 
 async fn initialize_json_schema_cache(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
     client: Arc<dyn HttpClient>,
-) -> JsonSchemaCache {
+) -> Result<JsonSchemaCache, SDKError> {
     let config = cache_entities_config
         .entities
         .get("JSON_SCHEMA")
@@ -923,9 +957,11 @@ async fn initialize_json_schema_cache(
     cache
         .initialize_from_static_resources()
         .await
-        .expect("Failed initializing JSON schema cache");
+        .map_err(|err| {
+            SDKError::InitializationFailure(format!("Failed initializing JSON schema cache: {err}"))
+        })?;
 
-    cache
+    Ok(cache)
 }
 
 async fn initialize_trust_list_cache(

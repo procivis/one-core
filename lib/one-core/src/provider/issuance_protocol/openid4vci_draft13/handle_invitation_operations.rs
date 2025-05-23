@@ -32,7 +32,7 @@ use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::util::oidc::map_from_openid4vp_format;
 
 static SCHEMA_URL_REPLACEMENT_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"/ssi/openid4vci/[\w-]+/").unwrap());
+    LazyLock::new(|| Regex::new(r"/ssi/openid4vci/[\w-]+/").expect("Failed to compile regex"));
 
 pub(crate) struct HandleInvitationOperationsImpl {
     pub organisation: Organisation,

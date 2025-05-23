@@ -161,9 +161,15 @@ impl ProofService {
                 "missing interaction".to_string(),
             ))?;
 
-        let interaction_data: OpenID4VPVerifierInteractionContent =
-            serde_json::from_slice(interaction.data.as_ref().unwrap())
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let interaction_data: OpenID4VPVerifierInteractionContent = interaction
+            .data
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "missing interaction data".to_string(),
+            ))
+            .and_then(|d| {
+                serde_json::from_slice(d).map_err(|e| ServiceError::MappingError(e.to_string()))
+            })?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
             let verifier_key = proof

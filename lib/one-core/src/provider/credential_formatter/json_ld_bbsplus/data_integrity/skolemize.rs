@@ -85,7 +85,8 @@ fn deskolemize_quad((triple, graph): Spog<TermAdapter>) -> Spog<TermAdapter> {
             if iri.starts_with(URN_CUSTOM_SCHEME_PREFIX) =>
         {
             let suffix = &iri[URN_CUSTOM_SCHEME_PREFIX.len()..];
-            let bid = BlankIdBuf::new(format!("_:{suffix}")).unwrap();
+            let bid = BlankIdBuf::new(format!("_:{suffix}"))
+                .expect("should always be a valid BlankIdBuf");
             TermAdapter(rdf_types::Term::Id(rdf_types::Id::Blank(bid)))
         }
         _ => TermAdapter(term),
@@ -105,8 +106,8 @@ struct CustomUrnSchemaBlankNodeLabeler {
 impl Generator for CustomUrnSchemaBlankNodeLabeler {
     fn next(&mut self, _: &mut ()) -> rdf_types::Id {
         let random = Uuid::new_v4();
-        let bid =
-            IriBuf::new(format!("{URN_CUSTOM_SCHEME_PREFIX}{random}_{}", self.count)).unwrap();
+        let bid = IriBuf::new(format!("{URN_CUSTOM_SCHEME_PREFIX}{random}_{}", self.count))
+            .expect("should always be a valid Iri");
         self.count += 1;
         rdf_types::Id::Iri(bid)
     }

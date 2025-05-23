@@ -14,7 +14,8 @@ const TIMESTAMP_FORMAT: &[time::format_description::FormatItem<'static>] = time:
 
 impl TimestampFormat for OffsetDateTime {
     fn format_timestamp(&self) -> String {
-        self.format(&TIMESTAMP_FORMAT).unwrap()
+        self.format(&TIMESTAMP_FORMAT)
+            .expect("Failed to compile timestamp format")
     }
 }
 

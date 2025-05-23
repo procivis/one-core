@@ -89,13 +89,11 @@ async fn create_base_proof_with_options(
     }
 
     let context = unsecured_document.context.clone();
-    let unsecured_document = json_syntax::to_value(unsecured_document)
-        .map_err(|e| {
-            FormatterError::Failed(format!(
-                "Failed to convert unsecured document to value: {e}",
-            ))
-        })
-        .unwrap();
+    let unsecured_document = json_syntax::to_value(unsecured_document).map_err(|e| {
+        FormatterError::Failed(format!(
+            "Failed to convert unsecured document to value: {e}",
+        ))
+    })?;
 
     let mut proof_config = VcdmProof::builder()
         .context(context)

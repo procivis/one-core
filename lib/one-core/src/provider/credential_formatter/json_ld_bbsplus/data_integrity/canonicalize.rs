@@ -15,7 +15,8 @@ use super::skolemize::{skolemize_compact_json_ld, to_deskolemized_nquads};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::canonization::TermAdapter;
 
-static BLANK_NODE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"(_:([^\s]+))"#).unwrap());
+static BLANK_NODE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(_:([^\s]+))"#).expect("Failed to compile regex"));
 
 pub struct CanonicializeAndGroupOutput {
     pub groups: HashMap<String, GroupEntry>,
@@ -31,7 +32,9 @@ pub struct GroupEntry {
 }
 
 pub async fn canonicalize_and_group(
-    label_map_factory_function: impl FnMut(C14nIdMap) -> BTreeMap<String, String>,
+    label_map_factory_function: impl FnMut(
+        C14nIdMap,
+    ) -> Result<BTreeMap<String, String>, FormatterError>,
     group_definitions: HashMap<String, &[String]>,
     document: json_syntax::Value,
     loader: &impl Loader,
@@ -98,13 +101,15 @@ pub async fn canonicalize_and_group(
 
 pub fn label_replacement_canonicalize_nquads(
     nquads: HashSet<Spog<TermAdapter>>,
-    label_map_factory_function: impl FnMut(C14nIdMap) -> BTreeMap<String, String>,
+    label_map_factory_function: impl FnMut(
+        C14nIdMap,
+    ) -> Result<BTreeMap<String, String>, FormatterError>,
 ) -> Result<(Vec<String>, BTreeMap<String, String>), FormatterError> {
     let (_, canonical_id_map) = sophia_c14n::rdfc10::relabel(&nquads)
         .map_err(|e| FormatterError::Failed(format!("Failed to relabel nquads: {e}")))?;
 
     let mut label_map_factory_function = label_map_factory_function;
-    let label_map = label_map_factory_function(canonical_id_map.clone());
+    let label_map = label_map_factory_function(canonical_id_map.clone())?;
     let c14n_label_map: BTreeMap<String, String> = label_map
         .iter()
         .map(|(key, new_label)| {
@@ -141,7 +146,9 @@ pub fn label_replacement_canonicalize_nquads(
 
 pub async fn label_replacement_canonicalize_json_ld(
     document: json_syntax::Value,
-    label_map_factory_function: impl FnMut(C14nIdMap) -> BTreeMap<String, String>,
+    label_map_factory_function: impl FnMut(
+        C14nIdMap,
+    ) -> Result<BTreeMap<String, String>, FormatterError>,
     loader: &impl Loader,
     json_ld_processor_options: json_ld::Options,
 ) -> Result<Vec<String>, FormatterError> {
@@ -171,31 +178,32 @@ pub async fn label_replacement_canonicalize_json_ld(
 // https://www.w3.org/TR/vc-di-bbs/#createshuffledidlabelmapfunction
 pub fn create_shuffled_id_label_map_function(
     hmac: impl FnMut(&[u8]) -> Vec<u8>,
-) -> impl FnMut(C14nIdMap) -> BTreeMap<String, String> {
+) -> impl FnMut(C14nIdMap) -> Result<BTreeMap<String, String>, FormatterError> {
     let mut hmac = hmac;
     move |canonical_id_map| {
         let mut bnode_id_map = Vec::new();
 
         for (input, c14n_label) in canonical_id_map {
             let digest = hmac(c14n_label.as_bytes());
-            let b64url_digest = Base64UrlSafeNoPadding::encode_to_string(&digest).unwrap();
+            let b64url_digest = Base64UrlSafeNoPadding::encode_to_string(&digest)
+                .map_err(|e| FormatterError::Failed(e.to_string()))?;
             bnode_id_map.push((input, format!("u{b64url_digest}")));
         }
         // Derive the shuffled mapping from the bnode_id_map
         // sort by hmac ids.
         bnode_id_map.sort_by(|(_, v1), (_, v2)| v1.cmp(v2));
 
-        bnode_id_map
+        Ok(bnode_id_map
             .into_iter()
             .enumerate()
             .map(|(index, (key, _))| (key.to_string(), format!("b{index}")))
-            .collect()
+            .collect())
     }
 }
 // https://www.w3.org/TR/vc-di-ecdsa/#createlabelmapfunction
 pub fn create_label_map_function(
     label_map: BTreeMap<String, String>,
-) -> impl FnMut(C14nIdMap) -> BTreeMap<String, String> {
+) -> impl FnMut(C14nIdMap) -> Result<BTreeMap<String, String>, FormatterError> {
     move |canonical_id_map| {
         let mut bnode_id_map = BTreeMap::new();
 
@@ -203,7 +211,7 @@ pub fn create_label_map_function(
             bnode_id_map.insert(input.to_string(), label_map[c14n_label.as_str()].clone());
         }
 
-        bnode_id_map
+        Ok(bnode_id_map)
     }
 }
 

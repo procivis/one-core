@@ -62,7 +62,7 @@ use one_core::repository::DataRepository;
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::{
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
-    KeyStorageCreator, OneCore, OneCoreBuilder, RevocationMethodCreator,
+    KeyStorageCreator, OneCore, OneCoreBuildError, OneCoreBuilder, RevocationMethodCreator,
 };
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
@@ -81,7 +81,10 @@ use crate::did_config::{
 };
 use crate::{ServerConfig, build_info, did_config};
 
-pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) -> OneCore {
+pub async fn initialize_core(
+    app_config: &AppConfig<ServerConfig>,
+    db_conn: DbConn,
+) -> Result<OneCore, OneCoreBuildError> {
     let reqwest_client = reqwest::Client::builder()
         .https_only(!app_config.app.allow_insecure_http_transport)
         .build()
@@ -129,7 +132,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
             }
         }
 
-        Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms))
+        Ok(Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms)))
     });
 
     let data_repository = Arc::new(DataLayer::build(
@@ -139,7 +142,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
 
     let storage_creator: DataProviderCreator = {
         let data_repository = data_repository.clone();
-        Box::new(move || data_repository)
+        Box::new(move || Ok(data_repository))
     };
 
     let cache_entities_config = app_config.core.cache_entities.to_owned();
@@ -162,57 +165,64 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         let key_algorithm_provider = providers
                             .key_algorithm_provider
                             .to_owned()
-                            .expect("key algorithm provider is required");
+                            .ok_or(OneCoreBuildError::MissingDependency(
+                                "key algorithm provider".to_string(),
+                            ))?;
                         Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
                     }
                     DidType::Web => {
                         let params: DidWebParams = config
                             .get(name)
-                            .expect("failed to deserialize did web params");
+                            .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
                         let did_web = WebDidMethod::new(
                             &Some(core_base_url.to_owned()),
                             client.clone(),
                             params.into(),
                         )
                         .map_err(|_| {
-                            ConfigError::Validation(ConfigValidationError::EntryNotFound(
-                                "Base url".to_string(),
+                            OneCoreBuildError::Config(ConfigError::Validation(
+                                ConfigValidationError::EntryNotFound("Base url".to_string()),
                             ))
-                        })
-                        .expect("failed to create did web method");
+                        })?;
                         Arc::new(did_web) as _
                     }
                     DidType::Jwk => {
                         let key_algorithm_provider = providers
                             .key_algorithm_provider
                             .to_owned()
-                            .expect("key algorithm provider is required");
+                            .ok_or(OneCoreBuildError::MissingDependency(
+                                "key algorithm provider".to_string(),
+                            ))?;
                         Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
                     }
                     DidType::X509 => Arc::new(X509Method::new()) as _,
                     DidType::Universal => {
                         let params: DidUniversalParams = config
                             .get(name)
-                            .expect("failed to deserialize did universal params");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(UniversalDidMethod::new(params.into(), client.clone())) as _
                     }
                     DidType::MDL => {
                         let key_algorithm_provider = providers
                             .key_algorithm_provider
                             .to_owned()
-                            .expect("key algorithm provider is required");
+                            .ok_or(OneCoreBuildError::MissingDependency(
+                                "key algorithm provider".to_string(),
+                            ))?;
 
                         let params: DidMdlParams = config
                             .get(name)
-                            .expect("failed to deserialize did mdl params");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
                         let did_mdl = DidMdl::new(params.into(), key_algorithm_provider.clone())
                             .map_err(|err| {
-                                ConfigParsingError::GeneralParsingError(format!(
-                                    "Invalid DID MDL config: {err}"
-                                ))
-                            })
-                            .expect("failed to create did mdl method");
+                                OneCoreBuildError::Config(
+                                    ConfigParsingError::GeneralParsingError(format!(
+                                        "Invalid DID MDL config: {err}"
+                                    ))
+                                    .into(),
+                                )
+                            })?;
                         let did_mdl = Arc::new(did_mdl);
 
                         did_mdl_validator = Some(did_mdl.clone() as Arc<dyn DidMdlValidator>);
@@ -222,26 +232,32 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     DidType::SdJwtVcIssuerMetadata => {
                         let params: DidSdJwtVCIssuerMetadataParams = config
                             .get(name)
-                            .expect("failed to deserialize did SdJwtVCIssuerMetadata params");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
                         let key_algorithm_provider = providers
                             .key_algorithm_provider
                             .to_owned()
-                            .expect("key algorithm provider is required");
+                            .ok_or(OneCoreBuildError::MissingDependency(
+                                "key algorithm provider".to_string(),
+                            ))?;
 
                         let did_resolver = SdJwtVcIssuerMetadataDidMethod::new(
                             client.clone(),
                             key_algorithm_provider.clone(),
                             params.into(),
                         )
-                        .expect("failed to create SD JWT VC did method");
+                        .map_err(|e| {
+                            OneCoreBuildError::MissingDependency(format!(
+                                "SD JWT VC did method: {e}"
+                            ))
+                        })?;
 
                         Arc::new(did_resolver) as _
                     }
                     DidType::WebVh => {
                         let params: DidWebVhParams = config
                             .get(name)
-                            .expect("failed to deserialize did webvh params");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         // did:webvh cannot be constructed yet, as it needs a did resolver internally
                         // -> save for later
                         did_webvh_params.push((name.to_string(), params));
@@ -292,10 +308,10 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
 
             let did_caching_loader =
                 initialize_did_caching_loader(&cache_entities_config, data_provider);
-            (
+            Ok((
                 Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
                 did_mdl_validator,
-            )
+            ))
         })
     };
 
@@ -309,30 +325,38 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     KeyStorageType::Internal => {
                         let params = config
                             .get(name)
-                            .expect("Internal key provider config is required");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(InternalKeyProvider::new(
                             providers
                                 .key_algorithm_provider
                                 .as_ref()
-                                .expect("Missing key algorithm provider")
+                                .ok_or(OneCoreBuildError::MissingDependency(
+                                    "key algorithm provider".to_string(),
+                                ))?
                                 .clone(),
                             params,
                         )) as _
                     }
                     KeyStorageType::PKCS11 => Arc::new(PKCS11KeyProvider::new()) as _,
                     KeyStorageType::AzureVault => {
-                        let params = config.get(name).expect("AzureVault config is required");
+                        let params = config
+                            .get(name)
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(AzureVaultKeyProvider::new(
                             params,
                             providers
                                 .crypto
                                 .as_ref()
-                                .expect("Crypto provider is required")
+                                .ok_or(OneCoreBuildError::MissingDependency(
+                                    "crypto provider".to_string(),
+                                ))?
                                 .clone(),
                             client.clone(),
                         )) as _
                     }
-                    other => panic!("Unexpected key storage: {other}"),
+                    other => Err(OneCoreBuildError::Config(ConfigError::Validation(
+                        ConfigValidationError::InvalidType(name.to_string(), other.to_string()),
+                    )))?,
                 };
                 key_providers.insert(name.to_owned(), provider);
             }
@@ -343,7 +367,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                 }
             }
 
-            Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
+            Ok(Arc::new(KeyProviderImpl::new(key_providers.to_owned())))
         })
     };
 
@@ -366,27 +390,27 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         Box::new(move |format_config, datatype_config, providers| {
             let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
-            let did_method_provider = providers
-                .did_method_provider
-                .as_ref()
-                .expect("Did method provider is mandatory");
+            let did_method_provider = providers.did_method_provider.as_ref().ok_or(
+                OneCoreBuildError::MissingDependency("did method provider".to_string()),
+            )?;
 
-            let key_algorithm_provider = providers
-                .key_algorithm_provider
-                .as_ref()
-                .expect("Key algorithm provider is mandatory");
+            let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
+                OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
+            )?;
 
             let crypto = providers
                 .crypto
                 .as_ref()
-                .expect("Crypto provider is mandatory");
+                .ok_or(OneCoreBuildError::MissingDependency(
+                    "crypto provider".to_string(),
+                ))?;
 
             for (name, field) in format_config.iter() {
                 let formatter = match field.r#type {
                     FormatType::Jwt => {
                         let params = format_config
                             .get(name)
-                            .expect("JWT formatter params are mandatory");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(JWTFormatter::new(params, key_algorithm_provider.clone())) as _
                     }
                     FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new(
@@ -397,7 +421,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     FormatType::SdJwt => {
                         let params = format_config
                             .get(name)
-                            .expect("SD_JWT formatter params are mandatory");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(SDJWTFormatter::new(
                             params,
                             crypto.clone(),
@@ -407,7 +431,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     FormatType::SdJwtVc => {
                         let params = format_config
                             .get(name)
-                            .expect("SD-JWT VC formatter params are mandatory");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(SDJWTVCFormatter::new(
                             params,
                             crypto.clone(),
@@ -418,7 +442,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     FormatType::JsonLdClassic => {
                         let params = format_config
                             .get(name)
-                            .expect("JSON_LD_CLASSIC formatter params are mandatory");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(JsonLdClassic::new(
                             params,
                             crypto.clone(),
@@ -431,7 +455,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     FormatType::JsonLdBbsPlus => {
                         let params = format_config
                             .get(name)
-                            .expect("JSON_LD_BBSPLUS formatter params are mandatory");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(JsonLdBbsplus::new(
                             params,
                             crypto.clone(),
@@ -445,12 +469,11 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     FormatType::Mdoc => {
                         let params = format_config
                             .get(name)
-                            .expect("MDOC formatter params are mandatory");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
-                        let did_mdl_validator = providers
-                            .did_mdl_validator
-                            .as_ref()
-                            .expect("Did mdl validator is mandatory");
+                        let did_mdl_validator = providers.did_mdl_validator.as_ref().ok_or(
+                            OneCoreBuildError::MissingDependency("did mdl validator".to_string()),
+                        )?;
 
                         Arc::new(MdocFormatter::new(
                             params,
@@ -489,7 +512,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                 }
             }
 
-            Arc::new(CredentialFormatterProviderImpl::new(formatters))
+            Ok(Arc::new(CredentialFormatterProviderImpl::new(formatters)))
         })
     };
 
@@ -518,25 +541,21 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         Box::new(move |config, providers| {
             let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> = HashMap::new();
 
-            let did_method_provider = providers
-                .did_method_provider
-                .as_ref()
-                .expect("Did method provider is mandatory");
+            let did_method_provider = providers.did_method_provider.as_ref().ok_or(
+                OneCoreBuildError::MissingDependency("did method provider".to_string()),
+            )?;
 
-            let key_algorithm_provider = providers
-                .key_algorithm_provider
-                .as_ref()
-                .expect("Key algorithm provider is mandatory");
+            let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
+                OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
+            )?;
 
-            let key_provider = providers
-                .key_storage_provider
-                .clone()
-                .expect("Key storage provider is mandatory");
+            let key_provider = providers.key_storage_provider.clone().ok_or(
+                OneCoreBuildError::MissingDependency("key storage provider".to_string()),
+            )?;
 
-            let formatter_provider = providers
-                .formatter_provider
-                .clone()
-                .expect("Credential formatter provider is mandatory");
+            let formatter_provider = providers.formatter_provider.clone().ok_or(
+                OneCoreBuildError::MissingDependency("credential formatter provider".to_string()),
+            )?;
 
             for (key, fields) in config.iter() {
                 if !fields.enabled() {
@@ -551,7 +570,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                     RevocationType::BitstringStatusList => {
                         let params = config
                             .get(key)
-                            .expect("failed to get BitstringStatusList params");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
                         Arc::new(BitstringStatusList::new(
                             Some(core_base_url.clone()),
@@ -568,24 +587,24 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         )) as _
                     }
                     RevocationType::Lvvc => {
-                        ({
-                            let params = config.get(key).expect("failed to get LVVC params");
-                            Arc::new(LvvcProvider::new(
-                                Some(core_base_url.clone()),
-                                formatter_provider.clone(),
-                                did_method_provider.clone(),
-                                data_repository.get_validity_credential_repository(),
-                                key_provider.clone(),
-                                key_algorithm_provider.clone(),
-                                client.clone(),
-                                params,
-                            ))
-                        }) as _
+                        let params = config
+                            .get(key)
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
+                        Arc::new(LvvcProvider::new(
+                            Some(core_base_url.clone()),
+                            formatter_provider.clone(),
+                            did_method_provider.clone(),
+                            data_repository.get_validity_credential_repository(),
+                            key_provider.clone(),
+                            key_algorithm_provider.clone(),
+                            client.clone(),
+                            params,
+                        )) as _
                     }
                     RevocationType::TokenStatusList => {
                         let params = config
                             .get(key)
-                            .expect("failed to get TokenStatusList params");
+                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
                         Arc::new(
                             TokenStatusList::new(
@@ -601,7 +620,13 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                                 client.clone(),
                                 Some(params),
                             )
-                            .expect("failed to create TokenStatusList revocation"),
+                            .map_err(|_| {
+                                OneCoreBuildError::Config(ConfigError::Validation(
+                                    ConfigValidationError::EntryNotFound(
+                                        "Token revocation format must be JWT".to_string(),
+                                    ),
+                                ))
+                            })?,
                         ) as _
                     }
                 };
@@ -625,7 +650,9 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                 }) as _,
             );
 
-            Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
+            Ok(Arc::new(RevocationMethodProviderImpl::new(
+                revocation_methods,
+            )))
         })
     };
 
@@ -634,18 +661,17 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         .with_crypto(crypto)
         .with_jsonld_caching_loader(caching_loader)
         .with_data_provider_creator(storage_creator)
-        .with_key_algorithm_provider(key_algo_creator)
-        .with_key_storage_provider(key_storage_creator)
-        .with_did_method_provider(did_method_creator)
-        .with_formatter_provider(formatter_provider_creator)
-        .with_revocation_method_provider(revocation_method_creator)
+        .with_key_algorithm_provider(key_algo_creator)?
+        .with_key_storage_provider(key_storage_creator)?
+        .with_did_method_provider(did_method_creator)?
+        .with_formatter_provider(formatter_provider_creator)?
+        .with_revocation_method_provider(revocation_method_creator)?
         .with_vct_type_metadata_cache(vct_type_metadata_cache)
         .with_json_schema_cache(json_schema_cache)
         .with_trust_listcache(trust_list_cache)
         .with_client(client)
         .with_mqtt_client(Arc::new(RumqttcClient::default()))
         .build()
-        .expect("Failed to initialize core")
 }
 
 pub fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuard> {

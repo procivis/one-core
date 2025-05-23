@@ -12,6 +12,8 @@ pub async fn run_server(
     config: AppConfig<ServerConfig>,
     db: &DbConn,
 ) -> JoinHandle<()> {
-    let core = initialize_core(&config, db.to_owned()).await;
+    let core = initialize_core(&config, db.to_owned())
+        .await
+        .expect("Unable to initialize core");
     tokio::spawn(async move { start_server(listener, config.app, core).await })
 }

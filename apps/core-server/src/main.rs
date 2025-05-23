@@ -51,7 +51,9 @@ fn main() {
                     .await
                     .expect("Unable to establish database connection");
 
-            let core = initialize_core(&app_config, db_conn).await;
+            let core = initialize_core(&app_config, db_conn)
+                .await
+                .expect("Unable to initialize core");
 
             if let Some(task) = cli.task {
                 run_task(task, core).await
