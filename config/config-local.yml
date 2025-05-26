@@ -28,17 +28,6 @@ format:
         msoMinimumRefreshTime: 10
         leeway: 10
         embedLayoutProperties: true
-  SD_JWT_VC_SWIYU:
-    type: "SD_JWT_VC"
-    display:
-      en: "IETF SD-JWT VC (SWIYU)"
-      de: "IETF SD-JWT VC (SWIYU)"
-    order: 201
-    params:
-      public:
-        leeway: 60
-        embedLayoutProperties: true
-        swiyuMode: true
 issuanceProtocol:
   OPENID4VCI_DRAFT13:
     params:
@@ -49,20 +38,8 @@ issuanceProtocol:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
   OPENID4VCI_DRAFT13_SWIYU:
-    display:
-      en: "OpenID4VCI (SWIYU)"
-      de: "OpenID4VCI (SWIYU)"
-    order: 2
-    type: "OPENID4VCI_DRAFT13_SWIYU"
     params:
       public:
-        urlScheme: swiyu
-        credentialOfferByValue: true
-        preAuthorizedCodeExpiresIn: 300
-        tokenExpiresIn: 86400
-        refreshExpiresIn: 7776000 # 90 days in seconds
-        redirectUri:
-          enabled: true
           allowedSchemes: ["http", "https"]
       private:
         # this is the SHA-256 of "my encryption key"
@@ -75,28 +52,10 @@ verificationProtocol:
         redirectUri:
           allowedSchemes: ["http", "https"]
   OPENID4VP_DRAFT20_SWIYU:
-    display:
-      en: "OpenID4VP draft 20 (SWIYU)"
-      de: "OpenID4VP draft 20 (SWIYU)"
-    order: 7
-    type: "OPENID4VP_DRAFT20_SWIYU"
     params:
       public:
-        urlScheme: https
-        useRequestUri: true
-        verifier:
-          supportedClientIdSchemes: [did]
-          defaultClientIdScheme: did
-        holder:
-          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
         redirectUri:
-          enabled: true
           allowedSchemes: ["http", "https"]
-        predefinedClientMetadata:
-          vp_formats:
-            dc+sd-jwt:
-              sd-jwt_alg_values: ["ES256"]
-              kb-jwt_alg_values: ["ES256"]
   MDOC_OPENID4VP:
     params:
       public:
@@ -156,19 +115,6 @@ did:
     params:
       public:
         resolveToInsecureHttp: true
-datatype:
-  SWIYU_PICTURE:
-    display:
-      en: "Picture (SWIYU)"
-      de: "Bild (SWIYU)"
-    type: "FILE"
-    order: 403
-    params:
-      public:
-        accept:
-          - image/jpeg
-        fileSize: 4194304
-        showAs: IMAGE
 trustManagement:
   SIMPLE_TRUST_LIST:
     display: "trustManagement.simpleTrustList"
