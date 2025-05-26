@@ -19,7 +19,6 @@ use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
-use crate::provider::did_method::mdl::DidMdlValidationError;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
@@ -92,9 +91,6 @@ pub enum ServiceError {
 
     #[error("Did method provider error `{0}`")]
     DidMethodProviderError(#[from] DidMethodProviderError),
-
-    #[error("Did mdl validation error `{0}`")]
-    DidMdlValidationError(#[from] DidMdlValidationError),
 
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
@@ -981,12 +977,6 @@ pub enum ErrorCode {
     #[strum(message = "Invalid mdl request")]
     BR_0147,
 
-    #[strum(message = "Public key not matching key in core")]
-    BR_0156,
-
-    #[strum(message = "Certificate not signed by expected mdoc CA")]
-    BR_0157,
-
     #[strum(message = "Key storage not supported for proof request")]
     BR_0158,
 
@@ -1177,7 +1167,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
             Self::DidMethodProviderError(error) => error.error_code(),
-            Self::DidMdlValidationError(error) => error.error_code(),
             Self::ValidationError(_) | Self::Other(_) => ErrorCode::BR_0000,
             Self::Revocation(_) => ErrorCode::BR_0101,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
@@ -1443,19 +1432,6 @@ impl ErrorCodeMixin for DidMethodProviderError {
             | Self::DidValueValidationError
             | Self::Other(_) => ErrorCode::BR_0064,
             Self::MissingProvider(_) => ErrorCode::BR_0031,
-        }
-    }
-}
-
-impl ErrorCodeMixin for DidMdlValidationError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::CertificateSignatureVerificationFailed(_) | Self::CertificateExpired => {
-                ErrorCode::BR_0157
-            }
-            Self::SubjectPublicKeyNotMatching
-            | Self::KeyTypeNotSupported(_)
-            | Self::SubjectPublicKeyInvalidDer(_) => ErrorCode::BR_0156,
         }
     }
 }

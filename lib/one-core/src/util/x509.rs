@@ -11,7 +11,6 @@ use x509_parser::prelude::{GeneralName, ParsedExtension, Pem};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::mdl::parse_x509_from_der;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -148,6 +147,17 @@ fn parse_x509(certificate: &Certificate) -> anyhow::Result<X509Certificate> {
         Certificate::Der(der) => parse_x509_from_der(der),
     }
     .context("failed to parse x509 certificate")
+}
+
+fn parse_x509_from_der(certificate: &[u8]) -> Result<X509Certificate, DidMethodError> {
+    let (_leftover, certificate) =
+        x509_parser::parse_x509_certificate(certificate).map_err(|err| {
+            DidMethodError::CouldNotCreate(format!(
+                "Error parsing x509 certificate from DER format: {err}"
+            ))
+        })?;
+
+    Ok(certificate)
 }
 
 pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>> {

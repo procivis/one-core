@@ -198,7 +198,6 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
         "did:web",
         "did:jwk",
         "did:x509",
-        "did:mdl",
         "did:ion",
         "did:sd_jwt_vc_issuer_metadata",
         "did:tdw",

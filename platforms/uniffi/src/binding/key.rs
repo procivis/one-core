@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 
-use one_core::service::key::dto::KeyCheckCertificateRequestDTO;
-use one_dto_mapper::Into;
-
 use super::OneCoreBinding;
 use crate::error::BindingError;
-use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -21,25 +17,6 @@ impl OneCoreBinding {
             .await?
             .to_string())
     }
-
-    #[uniffi::method]
-    pub async fn check_certificate(
-        &self,
-        key_id: String,
-        certificate: KeyCheckCertificateRequestBindingDTO,
-    ) -> Result<(), BindingError> {
-        let core = self.use_core().await?;
-        Ok(core
-            .key_service
-            .check_certificate(&into_id(&key_id)?, certificate.into())
-            .await?)
-    }
-}
-
-#[derive(Clone, Debug, Into, uniffi::Record)]
-#[into(KeyCheckCertificateRequestDTO)]
-pub struct KeyCheckCertificateRequestBindingDTO {
-    pub certificate: String,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

@@ -392,9 +392,6 @@ pub enum DidType {
     #[serde(rename = "UNIVERSAL_RESOLVER")]
     #[strum(serialize = "UNIVERSAL_RESOLVER")]
     Universal,
-    #[serde(rename = "MDL")]
-    #[strum(serialize = "MDL")]
-    MDL,
     #[serde(rename = "SD_JWT_VC_ISSUER_METADATA")]
     #[strum(serialize = "SD_JWT_VC_ISSUER_METADATA")]
     SdJwtVcIssuerMetadata,

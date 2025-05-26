@@ -20,7 +20,7 @@ async fn test_exchange_protocol_capabilities() {
     );
     assert_eq!(
         resp["verificationProtocol"]["OPENID4VP_DRAFT20"]["capabilities"]["didMethods"],
-        json!(["KEY", "JWK", "WEB", "MDL", "WEBVH"])
+        json!(["KEY", "JWK", "WEB", "WEBVH"])
     );
 
     assert_eq!(
@@ -29,7 +29,7 @@ async fn test_exchange_protocol_capabilities() {
     );
     assert_eq!(
         resp["verificationProtocol"]["OPENID4VP_DRAFT25"]["capabilities"]["didMethods"],
-        json!(["KEY", "JWK", "WEB", "MDL", "WEBVH"])
+        json!(["KEY", "JWK", "WEB", "WEBVH"])
     );
 
     assert_eq!(
@@ -38,6 +38,6 @@ async fn test_exchange_protocol_capabilities() {
     );
     assert_eq!(
         resp["verificationProtocol"]["MDOC_OPENID4VP"]["capabilities"]["didMethods"],
-        json!(["MDL"])
-    );
+        json!(["KEY", "JWK", "WEB", "WEBVH"])
+    )
 }

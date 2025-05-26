@@ -9,7 +9,6 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
-use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -29,7 +28,6 @@ use crate::service::test_utilities::{dummy_organisation, generic_config};
 fn setup_service(
     repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
-    did_mdl_validator: MockDidMdlValidator,
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
     key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -43,7 +41,6 @@ fn setup_service(
     KeyService::new(
         Arc::new(repository),
         Arc::new(organisation_repository),
-        Some(Arc::new(did_mdl_validator)),
         Arc::new(provider),
         Arc::new(config),
         Arc::new(key_algorithm_provider),
@@ -109,7 +106,6 @@ async fn test_create_key_success() {
     let service = setup_service(
         repository,
         organisation_repository,
-        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -152,7 +148,6 @@ async fn test_get_key_success() {
     let service = setup_service(
         repository,
         organisation_repository,
-        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -187,7 +182,6 @@ async fn test_get_key_list() {
     let service = setup_service(
         repository,
         organisation_repository,
-        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -274,7 +268,6 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
     let service = setup_service(
         repository,
         organisation_repository,
-        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,

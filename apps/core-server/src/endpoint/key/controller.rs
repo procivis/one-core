@@ -5,10 +5,10 @@ use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use shared_types::KeyId;
 
-use super::dto::{GetKeyQuery, KeyCheckCertificateRequestRestDTO};
+use super::dto::GetKeyQuery;
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::key::dto::{
     KeyGenerateCSRRequestRestDTO, KeyGenerateCSRResponseRestDTO, KeyListItemResponseRestDTO,
     KeyRequestRestDTO, KeyResponseRestDTO,
@@ -119,38 +119,6 @@ pub(crate) async fn get_key_list(
             }
         }
     }
-}
-
-#[utoipa::path(
-    post,
-    path = "/api/key/v1/{id}/check-certificate",
-    request_body = KeyCheckCertificateRequestRestDTO,
-    responses(EmptyOrErrorResponse),
-    params(
-        ("id" = KeyId, Path, description = "Key id")
-    ),
-    tag = "key",
-    security(
-        ("bearer" = [])
-    ),
-    summary = "Check certificate",
-    description = "",
-)]
-pub(crate) async fn check_certificate(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<KeyId>, ErrorResponseRestDTO>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<KeyCheckCertificateRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> EmptyOrErrorResponse {
-    let result = state
-        .core
-        .key_service
-        .check_certificate(&id, request.into())
-        .await;
-
-    EmptyOrErrorResponse::from_result(result, state, "checking certificate")
 }
 
 #[utoipa::path(

@@ -413,7 +413,7 @@ impl VerificationProtocol for IsoMdl {
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
         VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Ble],
-            did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::MDL],
+            did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web],
             verifier_identifier_types: vec![IdentifierType::Did],
         }
     }

@@ -181,7 +181,7 @@ async fn test_config_formatter_issuance_did_methods_capability() {
         );
     }
 
-    check(&resp, "MDOC", "issuanceDidMethods", json!(["MDL"]));
+    check(&resp, "MDOC", "issuanceDidMethods", json!([]));
     check(
         &resp,
         "SD_JWT_VC",
@@ -224,7 +224,7 @@ async fn test_format_capabilities_for_issuance_identifier_types() {
         ("SD_JWT_VC_SWIYU", json!(["DID"])),
         ("JSON_LD_CLASSIC", json!(["DID"])),
         ("JSON_LD_BBSPLUS", json!(["DID"])),
-        ("MDOC", json!(["DID", "CERTIFICATE"])),
+        ("MDOC", json!(["CERTIFICATE"])),
         ("PHYSICAL_CARD", json!(["DID"])),
     ] {
         check(&resp, format, capability, expected);

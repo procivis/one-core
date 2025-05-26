@@ -97,16 +97,6 @@ impl KeysApi {
         self.client.get(&url).await
     }
 
-    pub async fn check_certificate(&self, key_id: &str, certificate: &str) -> Response {
-        let body = json!({
-            "certificate": certificate
-        });
-
-        self.client
-            .post(&format!("/api/key/v1/{key_id}/check-certificate"), body)
-            .await
-    }
-
     pub async fn generate_mdl_csr(&self, key_id: &str) -> Response {
         let body = json!({
             "exp": "2023-06-09T14:19:57.000Z",

@@ -142,7 +142,7 @@ enum RevocationList {
 }
 
 #[derive(DeriveIden, Clone, Copy)]
-enum NewRevocationList {
+pub enum NewRevocationList {
     Table,
     Id,
     CreatedDate,

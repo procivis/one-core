@@ -1,17 +1,6 @@
-use one_crypto::utilities::deserialize_base64;
 use one_dto_mapper::{From, Into};
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize, Into)]
-#[into(one_core::provider::did_method::mdl::Params)]
-#[serde(rename_all = "camelCase")]
-pub struct DidMdlParams {
-    #[serde(default)]
-    pub keys: Keys,
-    #[serde(deserialize_with = "deserialize_base64")]
-    pub iaca_certificate: Vec<u8>,
-}
 
 #[derive(Debug, Deserialize, Into)]
 #[into(one_core::provider::did_method::universal::Params)]

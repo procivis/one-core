@@ -747,12 +747,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
         validate_expiration_time(&response_credential.valid_until, formatter.get_leeway())
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        validate_issuer(
-            credential,
-            &response_credential,
-            &*self.certificate_validator,
-        )
-        .await?;
+        validate_issuer(credential, &response_credential).await?;
 
         let layout = schema.layout_properties.clone();
 
@@ -1066,9 +1061,24 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 )
             })?;
         let contexts = vcdm_v2_base_context(additional_contexts);
+
+        let issuer_certificate = if let Some(cert) = credential.issuer_certificate.clone() {
+            Some(cert)
+        } else {
+            credential
+                .issuer_identifier
+                .as_ref()
+                .and_then(|identifier| {
+                    identifier
+                        .certificates
+                        .as_ref()
+                        .and_then(|certs| certs.first().cloned())
+                })
+        };
+
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
-            credential.issuer_certificate.clone(),
+            issuer_certificate,
             holder_did.did,
             holder_key_id,
             core_base_url,
@@ -1160,7 +1170,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 ConfigDidType::Key,
                 ConfigDidType::Jwk,
                 ConfigDidType::Web,
-                ConfigDidType::MDL,
                 ConfigDidType::WebVh,
             ],
         }

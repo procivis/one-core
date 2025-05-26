@@ -1,8 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::service::key::dto::{
-    KeyCheckCertificateRequestDTO, KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile,
-    KeyGenerateCSRRequestSubjectDTO, KeyGenerateCSRResponseDTO, KeyListItemResponseDTO,
-    KeyRequestDTO, KeyResponseDTO,
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
+    KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
@@ -164,10 +163,4 @@ pub struct KeyGenerateCSRRequestSubjectRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct KeyGenerateCSRResponseRestDTO {
     pub content: String,
-}
-
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(KeyCheckCertificateRequestDTO)]
-pub struct KeyCheckCertificateRequestRestDTO {
-    pub certificate: String,
 }

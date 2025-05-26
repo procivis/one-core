@@ -1,7 +1,5 @@
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -16,7 +14,6 @@ use crate::provider::issuance_protocol::openid4vci_draft13::error::{
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCITokenRequestDTO,
 };
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
@@ -112,7 +109,6 @@ pub(super) fn validate_refresh_token(
 pub(crate) async fn validate_issuer(
     offered_credential: &Credential,
     received_credential: &DetailCredential,
-    certificate_validator: &dyn CertificateValidator,
 ) -> Result<(), IssuanceProtocolError> {
     // check credential is consistent with what was offered
     match &received_credential.issuer {
@@ -131,28 +127,7 @@ pub(crate) async fn validate_issuer(
             }
         }
         IssuerDetails::Certificate(CertificateDetails { fingerprint, .. }) => {
-            if let Some(ref identifier) = offered_credential.issuer_identifier {
-                // TODO ONE-5919: did:mdl compatibility shim, remove when did method is removed
-                if let Some(did) = identifier.did.as_ref().map(|did| &did.did) {
-                    let der_bytes = did
-                        .as_str()
-                        .strip_prefix("did:mdl:certificate:")
-                        .map(|s| Base64UrlSafeNoPadding::decode_to_vec(s, None))
-                        .transpose()
-                        .map_err(|_| IssuanceProtocolError::CertificateMismatch)?
-                        .ok_or(IssuanceProtocolError::CertificateMismatch)?;
-                    let chain = encode_many_config(
-                        &[Pem::new("CERTIFICATE", der_bytes)],
-                        EncodeConfig::new().set_line_ending(LineEnding::LF),
-                    );
-                    let ParsedCertificate { attributes, .. } = certificate_validator
-                        .parse_pem_chain(chain.as_bytes(), true)
-                        .await
-                        .map_err(|_| IssuanceProtocolError::CertificateMismatch)?;
-                    if attributes.fingerprint == *fingerprint {
-                        return Ok(());
-                    }
-                }
+            if offered_credential.issuer_identifier.is_some() {
                 return Err(IssuanceProtocolError::CertificateMismatch);
             } else if let Some(credential_offer_cert) =
                 offered_credential.issuer_certificate.as_ref()

@@ -80,11 +80,6 @@ pub struct KeyGenerateCSRResponseDTO {
     pub content: String,
 }
 
-#[derive(Debug)]
-pub struct KeyCheckCertificateRequestDTO {
-    pub certificate: String,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Into, From)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kty")]

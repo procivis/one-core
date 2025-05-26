@@ -23,7 +23,6 @@ pub mod jwk;
 pub mod key;
 pub mod key_helpers;
 pub mod keys;
-pub mod mdl;
 pub mod model;
 pub mod provider;
 pub mod resolver;

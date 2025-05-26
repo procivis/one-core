@@ -271,24 +271,9 @@ impl CredentialFormatter for MdocFormatter {
                 FormatterError::Failed(format!("failed to create x5c header param: {err}"))
             })?
         } else {
-            // TODO ONE-5919: did:mdl compatibility shim, remove when did method is removed
-            vec![
-                vcdm.issuer
-                    .to_did_value()?
-                    .as_str()
-                    .strip_prefix("did:mdl:certificate:")
-                    .map(|s| Base64UrlSafeNoPadding::decode_to_vec(s, None))
-                    .transpose()
-                    .map_err(|err| {
-                        FormatterError::CouldNotFormat(format!("Base64url decoding failed: {err}"))
-                    })?
-                    .map(Base64::encode_to_string)
-                    .transpose()
-                    .map_err(|err| {
-                        FormatterError::CouldNotFormat(format!("Base64 encoding failed: {err}"))
-                    })?
-                    .ok_or_else(|| FormatterError::CouldNotFormat("Invalid mdl did".into()))?,
-            ]
+            return Err(FormatterError::Failed(
+                "Missing issuer certificate".to_string(),
+            ));
         };
         let x5chain_header = build_x5chain_header(&x5c)?;
 
@@ -562,7 +547,7 @@ impl CredentialFormatter for MdocFormatter {
             ],
             allowed_schema_ids: vec![],
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
-            issuance_did_methods: vec![DidType::MDL],
+            issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
@@ -592,7 +577,7 @@ impl CredentialFormatter for MdocFormatter {
                 "MDL_PICTURE".to_string(),
             ],
             forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
-            issuance_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
+            issuance_identifier_types: vec![IdentifierType::Certificate],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],

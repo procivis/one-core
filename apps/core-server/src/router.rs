@@ -150,10 +150,6 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             )
             .route("/api/key/v1/{id}", get(key::controller::get_key))
             .route(
-                "/api/key/v1/{id}/check-certificate",
-                post(key::controller::check_certificate),
-            )
-            .route(
                 "/api/key/v1/{id}/generate-csr",
                 post(key::controller::generate_csr),
             )

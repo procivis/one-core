@@ -9,7 +9,7 @@ use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType,
     FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
-use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
+use one_core::config::{ConfigError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
@@ -26,7 +26,6 @@ use one_core::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatte
 use one_core::provider::did_method::DidMethod;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
-use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
 use one_core::provider::did_method::provider::DidMethodProviderImpl;
 use one_core::provider::did_method::resolver::DidCachingLoader;
 use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
@@ -85,9 +84,7 @@ use tracing::warn;
 use crate::binding::OneCoreBinding;
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
-use crate::did_config::{
-    DidMdlParams, DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams,
-};
+use crate::did_config::{DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams};
 use crate::error::{BindingError, SDKError};
 
 mod binding;
@@ -320,7 +317,6 @@ async fn initialize(
                     // sort by `order`
                     did_configs
                         .sort_by(|(_, fields1), (_, fields2)| fields1.order.cmp(&fields2.order));
-                    let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
                     let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
                     let mut did_webvh_params: Vec<(String, DidWebVhParams)> = vec![];
 
@@ -369,34 +365,6 @@ async fn initialize(
                                     .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                                 Arc::new(UniversalDidMethod::new(params.into(), client.clone()))
                                     as _
-                            }
-                            DidType::MDL => {
-                                let key_algorithm_provider = providers
-                                    .key_algorithm_provider
-                                    .to_owned()
-                                    .ok_or(OneCoreBuildError::MissingDependency(
-                                        "key algorithm provider".to_string(),
-                                    ))?;
-
-                                let params: DidMdlParams = config
-                                    .get(name)
-                                    .map_err(|e| OneCoreBuildError::Config(e.into()))?;
-
-                                let did_mdl =
-                                    DidMdl::new(params.into(), key_algorithm_provider.clone())
-                                        .map_err(|err| {
-                                            OneCoreBuildError::Config(ConfigError::Parsing(
-                                                ConfigParsingError::GeneralParsingError(format!(
-                                                    "Invalid DID MDL config: {err}"
-                                                )),
-                                            ))
-                                        })?;
-                                let did_mdl = Arc::new(did_mdl);
-
-                                did_mdl_validator =
-                                    Some(did_mdl.clone() as Arc<dyn DidMdlValidator>);
-
-                                did_mdl as _
                             }
                             DidType::SdJwtVcIssuerMetadata => {
                                 let key_algorithm_provider = providers
@@ -479,10 +447,10 @@ async fn initialize(
                     let did_caching_loader =
                         initialize_did_caching_loader(&cache_entities_config, data_provider);
 
-                    Ok((
-                        Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
-                        did_mdl_validator,
-                    ))
+                    Ok(Arc::new(DidMethodProviderImpl::new(
+                        did_caching_loader,
+                        did_methods,
+                    )))
                 })
             };
 

@@ -9,15 +9,12 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
-use super::dto::{
-    GetKeyListResponseDTO, KeyCheckCertificateRequestDTO, KeyRequestDTO, PrivateKeyJwkDTO,
-};
+use super::dto::{GetKeyListResponseDTO, KeyRequestDTO, PrivateKeyJwkDTO};
 use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
-use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
@@ -122,48 +119,6 @@ impl KeyService {
         let result = self.key_repository.get_key_list(query).await?;
 
         Ok(result.into())
-    }
-
-    /// Check if subject of certificate corresponds to key
-    ///
-    /// # Arguments
-    ///
-    /// * `KeyId` - Id of an existing key
-    /// * `request` - request with certificate in PEM or DER format
-    pub async fn check_certificate(
-        &self,
-        key_id: &KeyId,
-        request: KeyCheckCertificateRequestDTO,
-    ) -> Result<(), ServiceError> {
-        let did_mdl_validator =
-            self.did_mdl_validator
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "did_mdl_validator is None".to_string(),
-                ))?;
-
-        let key = self
-            .key_repository
-            .get_key(
-                key_id,
-                &KeyRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
-            .await?
-            .ok_or(EntityNotFoundError::Key(key_id.to_owned()))?;
-
-        if let Ok(pem) = parse_pem(&request.certificate) {
-            let certificate = parse_x509_from_pem(&pem)?;
-            did_mdl_validator.validate_subject_public_key(&certificate, &key)?;
-            did_mdl_validator.validate_certificate(&certificate)?;
-        } else {
-            let certificate = parse_x509_from_der(request.certificate.as_bytes())?;
-            did_mdl_validator.validate_subject_public_key(&certificate, &key)?;
-            did_mdl_validator.validate_certificate(&certificate)?;
-        };
-
-        Ok(())
     }
 
     /// Returns x509 CSR of given key

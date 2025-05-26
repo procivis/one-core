@@ -115,6 +115,7 @@ mod m20250605_085443_add_identifier_id_field_to_revocation_list;
 mod m20250605_085900_populate_identifier_id_column_in_revocation_list;
 mod m20250605_092053_drop_column_issuer_did_id_in_revocation_list;
 mod m20250607_093448_history_optional_orgid;
+mod m20250608_142503_remove_did_mdl;
 
 mod migrate_enum;
 pub struct Migrator;
@@ -232,6 +233,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250605_085443_add_identifier_id_field_to_revocation_list::Migration),
             Box::new(m20250605_085900_populate_identifier_id_column_in_revocation_list::Migration),
             Box::new(m20250605_092053_drop_column_issuer_did_id_in_revocation_list::Migration),
+            Box::new(m20250608_142503_remove_did_mdl::Migration),
         ]
     }
 }

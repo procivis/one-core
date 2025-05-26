@@ -214,13 +214,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
-        let mut did_methods = vec![
-            DidType::Key,
-            DidType::Jwk,
-            DidType::Web,
-            DidType::MDL,
-            DidType::WebVh,
-        ];
+        let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh];
         let mut verifier_identifier_types = HashSet::new();
         let schemes = &self.params.verifier.supported_client_id_schemes;
 
@@ -237,13 +231,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
 
         if schemes.contains(&ClientIdScheme::X509SanDns) {
             verifier_identifier_types.insert(IdentifierType::Certificate);
-            // TODO: remove this when API tests are adapted and did:mdl is not used anymore. ONE-5918
-            verifier_identifier_types.insert(IdentifierType::Did);
-        }
-
-        // TODO: remove this when API tests are adapted and did:mdl is not used anymore. ONE-5918
-        if *schemes == vec![ClientIdScheme::X509SanDns] {
-            did_methods = vec![DidType::MDL];
         }
 
         VerificationProtocolCapabilities {

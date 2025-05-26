@@ -43,7 +43,6 @@ use util::ble_resource::BleWaiter;
 use crate::config::core_config::{DidConfig, RevocationConfig};
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -74,10 +73,8 @@ pub type DidMethodCreator = Box<
     dyn FnOnce(
             &mut DidConfig,
             &OneCoreBuilderProviders,
-        ) -> Result<
-            (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
-            OneCoreBuildError,
-        > + Send,
+        ) -> Result<Arc<dyn DidMethodProvider>, OneCoreBuildError>
+        + Send,
 >;
 
 pub type KeyAlgorithmCreator = Box<
@@ -160,7 +157,6 @@ pub struct OneCoreBuilderProviders {
     pub did_method_provider: Option<Arc<dyn DidMethodProvider>>,
     pub key_algorithm_provider: Option<Arc<dyn KeyAlgorithmProvider>>,
     pub key_storage_provider: Option<Arc<dyn KeyProvider>>,
-    pub did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     pub formatter_provider: Option<Arc<dyn CredentialFormatterProvider>>,
     pub revocation_method_provider: Option<Arc<dyn RevocationMethodProvider>>,
     pub certificate_validator: Option<Arc<dyn CertificateValidator>>,
@@ -239,10 +235,8 @@ impl OneCoreBuilder {
         mut self,
         did_met_provider: DidMethodCreator,
     ) -> Result<Self, OneCoreBuildError> {
-        let (did_method_provider, did_mdl_validator) =
-            did_met_provider(&mut self.core_config.did, &self.providers)?;
+        let did_method_provider = did_met_provider(&mut self.core_config.did, &self.providers)?;
         self.providers.did_method_provider = Some(did_method_provider);
-        self.providers.did_mdl_validator = did_mdl_validator;
         Ok(self)
     }
 
@@ -373,8 +367,6 @@ impl OneCore {
             }
             _ => None,
         };
-
-        let did_mdl_validator = providers.did_mdl_validator.clone();
 
         let did_method_provider = providers
             .did_method_provider
@@ -647,7 +639,6 @@ impl OneCore {
             key_service: KeyService::new(
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
-                did_mdl_validator,
                 key_provider.clone(),
                 config.clone(),
                 key_algorithm_provider.clone(),
