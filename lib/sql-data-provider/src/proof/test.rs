@@ -17,6 +17,9 @@ use one_core::model::proof::{
     GetProofQuery, Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
 };
 use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
+use one_core::repository::certificate_repository::{
+    CertificateRepository, MockCertificateRepository,
+};
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
 use one_core::repository::credential_repository::{CredentialRepository, MockCredentialRepository};
 use one_core::repository::identifier_repository::{IdentifierRepository, MockIdentifierRepository};
@@ -59,6 +62,7 @@ async fn setup(
     identifier_repository: Arc<dyn IdentifierRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     key_repository: Arc<dyn KeyRepository>,
+    certificate_repository: Arc<dyn CertificateRepository>,
 ) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
@@ -162,6 +166,7 @@ async fn setup(
             identifier_repository,
             interaction_repository,
             key_repository,
+            certificate_repository,
         }),
         db,
         organisation_id,
@@ -193,6 +198,7 @@ async fn setup_with_proof(
     identifier_repository: Arc<dyn IdentifierRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     key_repository: Arc<dyn KeyRepository>,
+    certificate_repository: Arc<dyn CertificateRepository>,
 ) -> TestSetupWithProof {
     let TestSetup {
         repository,
@@ -211,6 +217,7 @@ async fn setup_with_proof(
         identifier_repository,
         interaction_repository,
         key_repository,
+        certificate_repository,
     )
     .await;
 
@@ -262,6 +269,10 @@ fn get_key_repository_mock() -> Arc<dyn KeyRepository> {
     Arc::from(MockKeyRepository::default())
 }
 
+fn get_certificate_repository_mock() -> Arc<dyn CertificateRepository> {
+    Arc::from(MockCertificateRepository::default())
+}
+
 #[tokio::test]
 async fn test_create_proof_success() {
     let TestSetup {
@@ -279,6 +290,7 @@ async fn test_create_proof_success() {
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -319,6 +331,7 @@ async fn test_create_proof_success() {
             key_type: "".to_string(),
             organisation: None,
         }),
+        verifier_certificate: None,
         verifier_identifier: Some(Identifier {
             id: identifier_id,
             created_date: get_dummy_date(),
@@ -375,6 +388,7 @@ async fn test_get_proof_list() {
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -410,6 +424,7 @@ async fn test_get_proof_missing() {
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -432,6 +447,7 @@ async fn test_get_proof_no_relations() {
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -594,6 +610,7 @@ async fn test_get_proof_with_relations() {
         Arc::from(identifier_repository),
         Arc::from(interaction_repository),
         Arc::from(key_repository),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -668,6 +685,7 @@ async fn test_get_proof_with_relations() {
                 }),
                 verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations::default()),
+                ..Default::default()
             },
         )
         .await
@@ -695,6 +713,7 @@ async fn test_get_proof_by_interaction_id_missing() {
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -769,6 +788,7 @@ async fn test_get_proof_by_interaction_id_success() {
         get_identifier_repository_mock(),
         Arc::from(interaction_repository),
         Arc::from(key_repository),
+        get_certificate_repository_mock(),
     )
     .await;
 
@@ -808,6 +828,7 @@ async fn test_set_proof_claims_success() {
         get_identifier_repository_mock(),
         get_interaction_repository_mock(),
         get_key_repository_mock(),
+        get_certificate_repository_mock(),
     )
     .await;
 

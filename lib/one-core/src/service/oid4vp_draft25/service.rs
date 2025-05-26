@@ -22,6 +22,7 @@ use crate::common_mapper::{
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType;
+use crate::model::certificate::CertificateRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
@@ -68,6 +69,10 @@ impl OID4VPDraft25Service {
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
                         ..Default::default()

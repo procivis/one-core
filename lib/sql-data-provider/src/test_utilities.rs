@@ -203,6 +203,7 @@ pub async fn insert_proof_request_to_database(
         holder_identifier_id: Set(holder_identifier_id),
         proof_schema_id: Set(Some(*proof_schema_id)),
         verifier_key_id: Set(Some(verifier_key_id)),
+        verifier_certificate_id: Set(None),
         interaction_id: Set(interaction_id),
     }
     .insert(database)

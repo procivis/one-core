@@ -87,6 +87,7 @@ impl ProofsDB {
             verifier_identifier: Some(verifier_identifier.to_owned()),
             holder_identifier: holder_identifier.cloned(),
             verifier_key: Some(verifier_key),
+            verifier_certificate: None,
             interaction: interaction.cloned(),
         };
 
@@ -127,6 +128,7 @@ impl ProofsDB {
                     }),
                     interaction: Some(Default::default()),
                     verifier_key: Some(KeyRelations::default()),
+                    ..Default::default()
                 },
             )
             .await

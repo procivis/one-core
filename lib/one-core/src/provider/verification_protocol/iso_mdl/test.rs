@@ -155,6 +155,7 @@ async fn test_presentation_reject_ok() {
         verifier_identifier: None,
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
@@ -234,6 +235,7 @@ async fn test_get_presentation_definition_ok() {
         verifier_identifier: None,
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
     };
 

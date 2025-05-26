@@ -240,6 +240,7 @@ impl DataLayer {
             credential_repository: credential_repository.clone(),
             proof_schema_repository: proof_schema_repository.clone(),
             identifier_repository: identifier_repository.clone(),
+            certificate_repository: certificate_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             key_repository: key_repository.clone(),
         });

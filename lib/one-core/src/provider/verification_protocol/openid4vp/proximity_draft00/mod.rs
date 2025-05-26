@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
-use futures::future::BoxFuture;
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use key_agreement_key::KeyAgreementKey;
 use mqtt::oidc_mqtt_verifier::MqttVerifier;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
@@ -703,7 +703,6 @@ pub(super) async fn create_interaction_and_proof(
             verifier_identifier,
             interaction,
             now,
-            None,
             transport_type.as_ref(),
             ProofStateEnum::Requested,
         ),

@@ -14,6 +14,7 @@ use super::dto::{
 };
 use crate::common_mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::model::certificate::Certificate;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::History;
 use crate::model::identifier::Identifier;
@@ -670,6 +671,7 @@ pub fn proof_from_create_request(
     transport: String,
     verifier_identifier: Identifier,
     verifier_key: Option<Key>,
+    verifier_certificate: Option<Certificate>,
 ) -> Proof {
     Proof {
         id: Uuid::new_v4().into(),
@@ -688,6 +690,7 @@ pub fn proof_from_create_request(
         verifier_identifier: Some(verifier_identifier),
         holder_identifier: None,
         verifier_key,
+        verifier_certificate,
         interaction: None,
     }
 }
@@ -716,6 +719,7 @@ pub fn proof_for_scan_to_verify(
         verifier_identifier: None,
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
             created_date: now,

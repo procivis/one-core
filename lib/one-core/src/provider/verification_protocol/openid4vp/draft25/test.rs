@@ -263,6 +263,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         verifier_identifier: None,
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
     }
 }

@@ -741,6 +741,7 @@ pub async fn create_proof(
         verifier_identifier: Some(verifier_identifier.to_owned()),
         holder_identifier: holder_identifier.cloned(),
         verifier_key: None,
+        verifier_certificate: None,
         interaction: interaction.cloned(),
     };
 
@@ -782,6 +783,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     ..Default::default()
                 }),
                 verifier_key: Some(KeyRelations::default()),
+                verifier_certificate: Some(Default::default()),
                 interaction: Some(InteractionRelations { organisation: None }),
             },
         )

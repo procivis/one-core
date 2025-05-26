@@ -625,39 +625,6 @@ pub(crate) struct CredentialClaimSchemaRequestDTO {
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-/// deserializes matching `ProofRequestClaimRestDTO`
-pub(crate) struct ProofClaimSchema {
-    pub id: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub key: String,
-    pub datatype: String,
-    pub required: bool,
-    pub credential_schema: ProofCredentialSchema,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-/// deserializes matching `CredentialSchemaListValueResponseRestDTO`
-pub(crate) struct ProofCredentialSchema {
-    pub id: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    pub schema_type: String,
-    pub schema_id: String,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCIParams {
@@ -680,25 +647,9 @@ fn default_issuance_url_scheme() -> String {
     "openid-credential-offer".to_string()
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub(crate) enum ClientIdScheme {
-    RedirectUri,
-    VerifierAttestation,
-    Did,
-    X509SanDns,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCRedirectUriParams {
     pub enabled: bool,
     pub allowed_schemes: Vec<String>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub(crate) struct OpenID4VCVerifierAttestationPayload {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub redirect_uris: Vec<String>,
 }

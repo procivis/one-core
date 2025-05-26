@@ -207,6 +207,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
     }
 }
@@ -334,6 +335,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
             ..dummy_identifier()
         }),
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
     };
@@ -451,6 +453,7 @@ async fn test_get_proof_exists() {
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
     };
@@ -659,6 +662,7 @@ async fn test_get_proof_with_array_holder() {
             ..dummy_identifier()
         }),
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Holder,
     };
@@ -894,6 +898,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             ..dummy_identifier()
         }),
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Holder,
     };
@@ -1134,6 +1139,7 @@ async fn test_get_proof_with_object_array_holder() {
             ..dummy_identifier()
         }),
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Holder,
     };
@@ -1371,6 +1377,7 @@ async fn test_get_proof_with_array() {
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
     };
@@ -1620,6 +1627,7 @@ async fn test_get_proof_with_array_in_object() {
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
     };
@@ -1875,6 +1883,7 @@ async fn test_get_proof_with_object_array() {
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
     };
@@ -2055,6 +2064,7 @@ async fn test_get_proof_list_success() {
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
     };
     {
@@ -2119,6 +2129,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2208,6 +2219,7 @@ async fn test_create_proof_using_invalid_did_method() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2332,6 +2344,7 @@ async fn test_create_proof_using_identifier() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2455,6 +2468,7 @@ async fn test_create_proof_without_related_key() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2585,6 +2599,7 @@ async fn test_create_proof_with_related_key() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2711,6 +2726,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2800,6 +2816,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2859,6 +2876,7 @@ async fn test_create_proof_did_deactivated_error() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -2974,6 +2992,7 @@ async fn test_create_proof_schema_deleted() {
             exchange: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: None,
             verifier_key: None,
+            verifier_certificate: None,
             scan_to_verify: None,
             iso_mdl_engagement: None,
             transport: None,
@@ -3034,6 +3053,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
             exchange: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: None,
             verifier_key: None,
+            verifier_certificate: None,
             scan_to_verify: Some(ScanToVerifyRequestDTO {
                 credential: "credential".to_string(),
                 barcode: "barcode".to_string(),
@@ -3058,6 +3078,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         exchange: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
+        verifier_certificate: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
@@ -3172,6 +3193,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             exchange: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: Some("invalid://domain.com".to_string()),
             verifier_key: None,
+            verifier_certificate: None,
             scan_to_verify: None,
             iso_mdl_engagement: None,
             transport: None,

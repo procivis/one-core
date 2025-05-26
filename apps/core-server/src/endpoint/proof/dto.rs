@@ -14,7 +14,9 @@ use one_core::service::proof::dto::{
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId};
+use shared_types::{
+    CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
@@ -90,6 +92,12 @@ pub struct CreateProofRequestRestDTO {
     /// used.
     #[schema(nullable = false)]
     pub verifier_key: Option<KeyId>,
+    /// If multiple active certificates are available under the verifier,
+    /// use this value to specify which certificate should be used
+    /// for this proof request. If a certificate isn't specified here,
+    /// an active certificate will be used.
+    #[schema(nullable = false)]
+    pub verifier_certificate: Option<CertificateId>,
     /// Only for use when verifying VC Barcodes.
     #[into(with_fn = convert_inner)]
     #[schema(nullable = false)]

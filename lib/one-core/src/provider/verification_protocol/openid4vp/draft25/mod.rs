@@ -673,7 +673,6 @@ async fn handle_proof_invitation(
         None,
         interaction,
         now,
-        None,
         "HTTP",
         ProofStateEnum::Requested,
     );

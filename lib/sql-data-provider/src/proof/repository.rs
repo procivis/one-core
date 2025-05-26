@@ -420,6 +420,22 @@ impl ProofProvider {
             proof.verifier_key = Some(verifier_key);
         }
 
+        if let (Some(verifier_certificate_relations), Some(verifier_certificate_id)) = (
+            &relations.verifier_certificate,
+            proof_model.verifier_certificate_id,
+        ) {
+            let verifier_certificate = self
+                .certificate_repository
+                .get(verifier_certificate_id, verifier_certificate_relations)
+                .await?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "proof-verifierCertificate",
+                    id: verifier_certificate_id.to_string(),
+                })?;
+
+            proof.verifier_certificate = Some(verifier_certificate);
+        }
+
         Ok(proof)
     }
 }

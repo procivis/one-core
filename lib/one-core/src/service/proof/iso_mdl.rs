@@ -62,6 +62,7 @@ impl ProofService {
             verifier_identifier: None,
             holder_identifier: None,
             verifier_key: None,
+            verifier_certificate: None,
             interaction: None,
         };
 

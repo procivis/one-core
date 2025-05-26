@@ -165,6 +165,8 @@ pub struct CreateProofRequestBindingDTO {
     pub redirect_uri: Option<String>,
     #[try_into(with_fn = into_id_opt)]
     pub verifier_key: Option<String>,
+    #[try_into(with_fn = into_id_opt)]
+    pub verifier_certificate: Option<String>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub scan_to_verify: Option<ScanToVerifyRequestBindingDTO>,
     #[try_into(with_fn = convert_inner, infallible)]

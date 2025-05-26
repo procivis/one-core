@@ -198,6 +198,7 @@ async fn test_presentation_definition_success() {
                     verifier_identifier: None,
                     holder_identifier: None,
                     verifier_key: None,
+                    verifier_certificate: None,
                     interaction: Some(Interaction {
                         id: Uuid::new_v4(),
                         created_date: get_dummy_date(),
@@ -887,6 +888,7 @@ async fn test_get_client_metadata_success() {
         }),
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
     };
     {

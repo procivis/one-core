@@ -130,10 +130,10 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    verifier_key: None,
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
+                    ..Default::default()
                 },
             )
             .await?;
@@ -488,6 +488,7 @@ impl ProofService {
                 transport,
                 verifier_identifier,
                 Some(verifier_key),
+                None,
             ))
             .await?;
 
@@ -731,6 +732,7 @@ impl ProofService {
                 verifier_identifier: None,
                 holder_identifier: None,
                 verifier_key: None,
+                verifier_certificate: None,
                 interaction: Some(interaction.clone()),
             })
             .await?;

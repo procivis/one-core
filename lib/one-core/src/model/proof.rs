@@ -2,6 +2,7 @@ use shared_types::{IdentifierId, ProofId};
 use strum::Display;
 use time::OffsetDateTime;
 
+use super::certificate::{Certificate, CertificateRelations};
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential::{Credential, CredentialRelations};
@@ -32,6 +33,7 @@ pub struct Proof {
     pub claims: Option<Vec<ProofClaim>>,
     pub verifier_identifier: Option<Identifier>,
     pub holder_identifier: Option<Identifier>,
+    pub verifier_certificate: Option<Certificate>,
     pub verifier_key: Option<Key>,
     pub interaction: Option<Interaction>,
 }
@@ -79,6 +81,7 @@ pub struct ProofRelations {
     pub verifier_identifier: Option<IdentifierRelations>,
     pub holder_identifier: Option<IdentifierRelations>,
     pub verifier_key: Option<KeyRelations>,
+    pub verifier_certificate: Option<CertificateRelations>,
     pub interaction: Option<InteractionRelations>,
 }
 

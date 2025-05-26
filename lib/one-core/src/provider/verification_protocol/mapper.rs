@@ -14,7 +14,6 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -44,7 +43,6 @@ pub(crate) fn proof_from_handle_invitation(
     verifier_identifier: Option<Identifier>,
     interaction: Interaction,
     now: OffsetDateTime,
-    verifier_key: Option<Key>,
     transport: &str,
     state: ProofStateEnum,
 ) -> Proof {
@@ -65,7 +63,8 @@ pub(crate) fn proof_from_handle_invitation(
         verifier_identifier,
         holder_identifier: None,
         interaction: Some(interaction),
-        verifier_key,
+        verifier_key: None,
+        verifier_certificate: None,
     }
 }
 

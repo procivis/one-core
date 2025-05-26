@@ -154,6 +154,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             verifier_identifier,
             holder_identifier: None,
             verifier_key: None,
+            verifier_certificate: None,
             interaction: None,
         })
     }
@@ -178,6 +179,7 @@ impl From<proof::Model> for Proof {
             verifier_identifier: None,
             holder_identifier: None,
             verifier_key: None,
+            verifier_certificate: None,
             interaction: None,
         }
     }
@@ -202,6 +204,9 @@ impl TryFrom<Proof> for proof::ActiveModel {
             holder_identifier_id: Set(value.holder_identifier.map(|identifier| identifier.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id)),
             verifier_key_id: Set(value.verifier_key.map(|key| key.id)),
+            verifier_certificate_id: Set(value
+                .verifier_certificate
+                .map(|certificate| certificate.id)),
             interaction_id: Set(value
                 .interaction
                 .map(|interaction| interaction.id.to_string())),

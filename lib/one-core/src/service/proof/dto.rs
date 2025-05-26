@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId};
+use shared_types::{
+    CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -22,6 +24,7 @@ pub struct CreateProofRequestDTO {
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
+    pub verifier_certificate: Option<CertificateId>,
     pub scan_to_verify: Option<ScanToVerifyRequestDTO>,
     pub iso_mdl_engagement: Option<String>,
     pub transport: Option<Vec<String>>,

@@ -355,6 +355,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         verifier_identifier: None,
         holder_identifier: None,
         verifier_key: None,
+        verifier_certificate: None,
         interaction: None,
     }
 }
