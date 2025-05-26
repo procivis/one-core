@@ -191,7 +191,8 @@ impl ProximityHolderTransport for BleHolderTransport {
         let peer = context.ble_peer.clone();
         let interaction_id = context.interaction_id;
         let interaction_repository = self.interaction_repository.clone();
-        self.ble
+        let (task_id, join_result) = self
+            .ble
             .schedule_continuation(
                 context.task_id,
                 |_, central, _| async move { read_presentation_request(&peer, central).await },
@@ -202,11 +203,10 @@ impl ProximityHolderTransport for BleHolderTransport {
             .value_or(VerificationProtocolError::Failed(
                 "ble is busy with other flow".into(),
             ))
-            .await
-            .and_then(|(_, join_result)| {
-                join_result.ok_or(VerificationProtocolError::Failed("task aborted".into()))
-            })
-            .and_then(std::convert::identity)
+            .await?;
+        // update task_id so we can schedule another continuation
+        context.task_id = task_id;
+        join_result.ok_or(VerificationProtocolError::Failed("task aborted".into()))?
     }
 
     fn interaction_data_from_authz_request(
