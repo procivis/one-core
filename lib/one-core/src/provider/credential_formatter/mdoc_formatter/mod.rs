@@ -560,8 +560,9 @@ impl CredentialFormatter for MdocFormatter {
                 "MDL_PICTURE".to_string(),
             ],
             forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
-            issuance_identifier_types: vec![IdentifierType::Did],
-            verification_identifier_types: vec![IdentifierType::Did],
+            // TODO: Remove Did once ONE-5920 is implemented
+            issuance_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
+            verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],

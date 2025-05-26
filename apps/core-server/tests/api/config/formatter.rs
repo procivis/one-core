@@ -203,3 +203,57 @@ fn check(resp: &serde_json::Value, format: &str, capability: &str, expected: ser
         "Failed for format:{format} and capability:{capability}"
     );
 }
+
+#[tokio::test]
+async fn test_format_capabilities_for_issuance_identifier_types() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.config.get().await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let capability = "issuanceIdentifierTypes";
+    for (format, expected) in [
+        ("JWT", json!(["DID"])),
+        ("SD_JWT", json!(["DID"])),
+        ("SD_JWT_VC", json!(["DID", "CERTIFICATE"])),
+        ("SD_JWT_VC_SWIYU", json!(["DID"])),
+        ("JSON_LD_CLASSIC", json!(["DID"])),
+        ("JSON_LD_BBSPLUS", json!(["DID"])),
+        ("MDOC", json!(["DID", "CERTIFICATE"])),
+        ("PHYSICAL_CARD", json!(["DID"])),
+    ] {
+        check(&resp, format, capability, expected);
+    }
+}
+
+#[tokio::test]
+async fn test_format_capabilities_for_verification_identifier_types() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.config.get().await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let capability = "verificationIdentifierTypes";
+    for (format, expected) in [
+        ("JWT", json!(["DID", "CERTIFICATE"])),
+        ("SD_JWT", json!(["DID", "CERTIFICATE"])),
+        ("SD_JWT_VC", json!(["DID", "CERTIFICATE"])),
+        ("SD_JWT_VC_SWIYU", json!(["DID"])),
+        ("JSON_LD_CLASSIC", json!(["DID", "CERTIFICATE"])),
+        ("JSON_LD_BBSPLUS", json!(["DID", "CERTIFICATE"])),
+        ("MDOC", json!(["DID", "CERTIFICATE"])),
+        ("PHYSICAL_CARD", json!(["DID", "CERTIFICATE"])),
+    ] {
+        check(&resp, format, capability, expected);
+    }
+}

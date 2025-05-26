@@ -285,8 +285,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
         ];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];
+        let mut issuance_identifier_types = vec![IdentifierType::Did];
         let mut proof_exchange_protocols =
             vec![VerificationProtocolType::OpenId4VpProximityDraft00];
+        let mut verification_identifier_types = vec![IdentifierType::Did];
         let mut signing_algorithms = vec![KeyAlgorithmType::Ecdsa];
 
         if self.params.swiyu_mode {
@@ -302,10 +304,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 DidType::X509,
             ]);
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13);
+            issuance_identifier_types.push(IdentifierType::Certificate);
             proof_exchange_protocols.extend_from_slice(&[
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,
             ]);
+            verification_identifier_types.push(IdentifierType::Certificate);
             signing_algorithms
                 .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::Dilithium]);
         }
@@ -331,8 +335,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 KeyStorageType::SecureElement,
             ],
             forbidden_claim_names: vec!["0".to_string()],
-            issuance_identifier_types: vec![IdentifierType::Did],
-            verification_identifier_types: vec![IdentifierType::Did],
+            issuance_identifier_types,
+            verification_identifier_types,
             holder_identifier_types: vec![IdentifierType::Did],
             holder_key_algorithms: signing_algorithms,
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
