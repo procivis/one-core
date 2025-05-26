@@ -4,6 +4,7 @@ include:
   - local: "docs/docs.gitlab-ci.yml"
   - project: "procivis/one/one-operations"
     file:
+      - 'gitlab/client-matrix.yml'
       - "gitlab/docker.gitlab-ci.yml"
       - "gitlab/github.gitlab-ci.yml"
       - "gitlab/rules.gitlab-ci.yml"
@@ -224,6 +225,17 @@ publish:
   extends:
     - .docker_publish
     - .rule:only_main_or_tag
+
+publish_image_acr:
+  stage: publish
+  needs:
+    - job: build
+      artifacts: true
+  extends:
+    - .docker_acr_publish
+    - .rule:only_main_or_tag
+  parallel:
+    matrix: !reference [ .one_core, clients_matrix ]
 
 sdk:ios:bitrise:
   stage: sdk_build
