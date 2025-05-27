@@ -97,6 +97,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
     )
     .await;
 
@@ -426,6 +427,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
     )
     .await;
 
@@ -805,6 +807,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
     )
     .await;
 

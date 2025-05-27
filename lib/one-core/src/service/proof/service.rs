@@ -28,6 +28,7 @@ use crate::config::validator::exchange::{
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
+use crate::model::certificate::{CertificateRelations, CertificateState};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -35,7 +36,7 @@ use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
-use crate::model::identifier::{IdentifierRelations, IdentifierState};
+use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -348,6 +349,10 @@ impl ProofService {
                                 keys: Some(Default::default()),
                                 ..Default::default()
                             }),
+                            certificates: Some(CertificateRelations {
+                                key: Some(Default::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         },
                     )
@@ -360,6 +365,22 @@ impl ProofService {
                     if Some(verifier_did_id) != identifier.did.as_ref().map(|did| did.id) {
                         return Err(ServiceError::ValidationError(
                             "Mismatching verifier and verifierDid specified".to_string(),
+                        ));
+                    }
+                }
+
+                if let Some(verifier_certificate) = request.verifier_certificate {
+                    if !identifier
+                        .certificates
+                        .as_ref()
+                        .is_some_and(|certificates| {
+                            certificates
+                                .iter()
+                                .any(|certificate| certificate.id == verifier_certificate)
+                        })
+                    {
+                        return Err(ServiceError::ValidationError(
+                            "Mismatching verifier and verifierCertificate specified".to_string(),
                         ));
                     }
                 }
@@ -392,35 +413,124 @@ impl ProofService {
             }
         };
 
-        let verifier_did = verifier_identifier
-            .did
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "missing identifier did".to_string(),
-            ))?;
-
-        if verifier_did.deactivated || verifier_identifier.state != IdentifierState::Active {
-            return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
+        if verifier_identifier.state != IdentifierState::Active {
+            return Err(BusinessLogicError::IdentifierIsDeactivated(verifier_identifier.id).into());
         }
 
-        if verifier_did.did_type.is_remote() || verifier_identifier.is_remote {
-            return Err(BusinessLogicError::IncompatibleDidType {
+        if verifier_identifier.is_remote {
+            return Err(BusinessLogicError::IncompatibleIdentifierType {
                 reason: "verifier is remote".to_string(),
             }
             .into());
         }
 
-        let verifier_key = match request.verifier_key {
-            Some(verifier_key) => verifier_did
-                .find_key(&verifier_key, KeyRole::Authentication)?
-                .ok_or(ValidationError::KeyNotFound)?,
-            None => verifier_did
-                .find_first_key_by_role(KeyRole::Authentication)?
-                .ok_or(ValidationError::InvalidKey(
-                    "No authentication key found".to_string(),
-                ))?,
-        }
-        .to_owned();
+        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
+            return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
+        };
+        let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
+
+        let (verifier_key, verifier_certificate) = match verifier_identifier.r#type {
+            IdentifierType::Did => {
+                let verifier_did =
+                    verifier_identifier
+                        .did
+                        .to_owned()
+                        .ok_or(ServiceError::MappingError(
+                            "missing identifier did".to_string(),
+                        ))?;
+
+                if verifier_did.deactivated {
+                    return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
+                }
+
+                if verifier_did.did_type.is_remote() {
+                    return Err(BusinessLogicError::IncompatibleDidType {
+                        reason: "verifier did is remote".to_string(),
+                    }
+                    .into());
+                }
+
+                validate_protocol_did_compatibility(
+                    &exchange_protocol_capabilities.did_methods,
+                    &verifier_did.did_method,
+                    &self.config.did,
+                )?;
+                validate_did_and_format_compatibility(
+                    &proof_schema,
+                    &verifier_did,
+                    &*self.credential_formatter_provider,
+                )?;
+
+                let key = match request.verifier_key {
+                    Some(verifier_key) => verifier_did
+                        .find_key(&verifier_key, KeyRole::Authentication)?
+                        .ok_or(ValidationError::KeyNotFound)?,
+                    None => verifier_did
+                        .find_first_key_by_role(KeyRole::Authentication)?
+                        .ok_or(ValidationError::InvalidKey(
+                            "No authentication key found".to_string(),
+                        ))?,
+                }
+                .to_owned();
+
+                (key, None)
+            }
+            IdentifierType::Certificate => {
+                let verifier_certificates = verifier_identifier.certificates.to_owned().ok_or(
+                    ServiceError::MappingError("missing identifier certificates".to_string()),
+                )?;
+
+                let certificate = match request.verifier_certificate {
+                    Some(verifier_certificate) => {
+                        let certificate = verifier_certificates
+                            .iter()
+                            .find(|certificate| certificate.id == verifier_certificate)
+                            .ok_or(ServiceError::ValidationError(
+                                "Mismatching verifier and verifierCertificate specified"
+                                    .to_string(),
+                            ))?;
+
+                        if certificate.state != CertificateState::Active {
+                            return Err(ServiceError::ValidationError(
+                                "Selected certificate not active".to_string(),
+                            ));
+                        }
+
+                        certificate
+                    }
+                    // no certificate selected by user, pick an active
+                    None => verifier_certificates
+                        .iter()
+                        .find(|certificate| certificate.state == CertificateState::Active)
+                        .ok_or(ServiceError::ValidationError(
+                            "No active certificate found".to_string(),
+                        ))?,
+                }
+                .to_owned();
+
+                let key = certificate
+                    .key
+                    .to_owned()
+                    .ok_or(ServiceError::MappingError(
+                        "missing certificate key".to_string(),
+                    ))?;
+
+                if let Some(verifier_key) = request.verifier_key {
+                    if key.id != verifier_key {
+                        return Err(ServiceError::ValidationError(
+                            "Mismatching verifierCertificate and verifierKey specified".to_string(),
+                        ));
+                    }
+                }
+
+                (key, Some(certificate))
+            }
+            IdentifierType::Key => {
+                return Err(ServiceError::ValidationError(
+                    "Key identifiers not supported".to_string(),
+                ));
+            }
+        };
 
         if verifier_key.key_type == "BBS_PLUS" {
             return Err(ValidationError::BBSNotSupported.into());
@@ -433,24 +543,10 @@ impl ProofService {
             &self.config,
         )?;
 
-        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
-            return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
-        };
-        let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
         validate_identifier(
             verifier_identifier.clone(),
             &exchange_protocol_capabilities.verifier_identifier_types,
             &self.config.identifier,
-        )?;
-        validate_protocol_did_compatibility(
-            &exchange_protocol_capabilities.did_methods,
-            &verifier_did.did_method,
-            &self.config.did,
-        )?;
-        validate_did_and_format_compatibility(
-            &proof_schema,
-            &verifier_did,
-            &*self.credential_formatter_provider,
         )?;
 
         let transport = validate_and_select_transport_type(
@@ -459,26 +555,25 @@ impl ProofService {
             &exchange_protocol_capabilities,
         )?;
 
-        let mut maybe_interaction_id = None;
+        let mut maybe_interaction = None;
         let transport = match transport {
             SelectedTransportType::Single(single) => single,
             // for multiple transports we store them in interaction data and set the transport=""
             SelectedTransportType::Multiple(multiple) => {
-                let interaction_id = Uuid::new_v4();
                 let data = CreateProofInteractionData {
                     transport: multiple,
                 };
 
-                add_new_interaction(
-                    interaction_id,
-                    &self.base_url,
-                    &*self.interaction_repository,
-                    serde_json::to_vec(&data).ok(),
-                    proof_schema.organisation.clone(),
-                )
-                .await?;
-
-                maybe_interaction_id = Some(interaction_id);
+                maybe_interaction = Some(
+                    add_new_interaction(
+                        Uuid::new_v4(),
+                        &self.base_url,
+                        &*self.interaction_repository,
+                        serde_json::to_vec(&data).ok(),
+                        proof_schema.organisation.clone(),
+                    )
+                    .await?,
+                );
 
                 String::new()
             }
@@ -492,14 +587,11 @@ impl ProofService {
                 proof_schema,
                 transport,
                 verifier_identifier,
-                Some(verifier_key),
-                None,
+                verifier_key,
+                verifier_certificate,
+                maybe_interaction,
             ))
             .await?;
-
-        if let Some(interaction_id) = maybe_interaction_id {
-            update_proof_interaction(proof_id, interaction_id, &*self.proof_repository).await?;
-        }
 
         Ok(proof_id)
     }
@@ -843,6 +935,10 @@ impl ProofService {
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
                         ..Default::default()

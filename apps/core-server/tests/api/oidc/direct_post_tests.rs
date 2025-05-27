@@ -1,12 +1,13 @@
 use std::collections::BTreeSet;
 
+use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    self, TestingIdentifierParams, create_credential_schema_with_claims, create_proof,
-    create_proof_schema, get_proof,
+    self, TestingDidParams, TestingIdentifierParams, create_credential_schema_with_claims,
+    create_proof, create_proof_schema, get_proof,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -50,7 +51,8 @@ vOFJHUHJrN3A0Y0diNFdOQlEiXX19.uD-PTubYXem7PtYT0R7KsSNvMDLQgHMRHGPUqZdZExg2c3-yge
 #[tokio::test]
 async fn test_direct_post_one_credential_correct() {
     // GIVEN
-    let (context, organisation, _, verifier_identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -135,6 +137,7 @@ async fn test_direct_post_one_credential_correct() {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        Some(&verifier_key),
     )
     .await;
 
@@ -242,7 +245,19 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     )
     .await;
 
-    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_key = fixtures::create_key(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: verifier_key.clone(),
+            }]),
+            ..Default::default()
+        }),
+    )
+    .await;
     let verifier_identifier = fixtures::create_identifier(
         &db_conn,
         &organisation,
@@ -304,6 +319,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        Some(&verifier_key),
     )
     .await;
 
@@ -433,7 +449,19 @@ async fn test_direct_post_multiple_presentations() {
     let proof_schema =
         create_proof_schema(&db_conn, "Schema1", &organisation, &proof_input_schemas).await;
 
-    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_key = fixtures::create_key(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: verifier_key.clone(),
+            }]),
+            ..Default::default()
+        }),
+    )
+    .await;
     let verifier_identifier = fixtures::create_identifier(
         &db_conn,
         &organisation,
@@ -549,6 +577,7 @@ async fn test_direct_post_multiple_presentations() {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        Some(&verifier_key),
     )
     .await;
 
@@ -666,7 +695,19 @@ async fn test_direct_post_wrong_claim_format() {
     )
     .await;
 
-    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_key = fixtures::create_key(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: verifier_key.clone(),
+            }]),
+            ..Default::default()
+        }),
+    )
+    .await;
     let verifier_identifier = fixtures::create_identifier(
         &db_conn,
         &organisation,
@@ -734,6 +775,7 @@ async fn test_direct_post_wrong_claim_format() {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        Some(&verifier_key),
     )
     .await;
 
@@ -787,7 +829,8 @@ async fn test_direct_post_wrong_claim_format() {
 #[tokio::test]
 async fn test_direct_post_draft25() {
     // GIVEN
-    let (context, organisation, _, verifier_identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
@@ -872,6 +915,7 @@ async fn test_direct_post_draft25() {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT25",
         Some(&interaction),
+        Some(&verifier_key),
     )
     .await;
 

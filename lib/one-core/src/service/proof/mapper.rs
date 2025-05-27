@@ -664,14 +664,16 @@ pub(super) async fn get_holder_proof_detail(
     })
 }
 
-pub fn proof_from_create_request(
+#[allow(clippy::too_many_arguments)]
+pub(super) fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,
     schema: ProofSchema,
     transport: String,
     verifier_identifier: Identifier,
-    verifier_key: Option<Key>,
+    verifier_key: Key,
     verifier_certificate: Option<Certificate>,
+    interaction: Option<Interaction>,
 ) -> Proof {
     Proof {
         id: Uuid::new_v4().into(),
@@ -689,9 +691,9 @@ pub fn proof_from_create_request(
         claims: None,
         verifier_identifier: Some(verifier_identifier),
         holder_identifier: None,
-        verifier_key,
+        verifier_key: Some(verifier_key),
         verifier_certificate,
-        interaction: None,
+        interaction,
     }
 }
 

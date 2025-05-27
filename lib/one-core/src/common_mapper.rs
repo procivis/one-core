@@ -308,36 +308,50 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
 ) -> Result<Option<PublicKeyWithJwk>, ServiceError> {
-    let verifier_did = proof
-        .verifier_identifier
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "verifier_identifier is None".to_string(),
-        ))?
-        .did
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "verifier_did is None".to_string(),
-        ))?;
+    let verifier_identifier =
+        proof
+            .verifier_identifier
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "verifier_identifier is None".to_string(),
+            ))?;
 
     let verifier_key = proof
         .verifier_key
         .as_ref()
         .ok_or(ServiceError::MappingError(
             "verifier_key is None".to_string(),
-        ))
-        .and_then(|value| verifier_did.find_key(&value.id, KeyRole::KeyAgreement));
+        ))?;
 
-    let Some(encryption_key) = match verifier_key {
-        Ok(Some(key)) => Some(key),
-        Err(ServiceError::Validation(_) | ServiceError::MappingError(_)) | Ok(None) => {
-            verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)?
+    let encryption_key = match verifier_identifier.r#type {
+        IdentifierType::Key => verifier_key,
+        IdentifierType::Certificate => verifier_key,
+        IdentifierType::Did => {
+            let verifier_did =
+                verifier_identifier
+                    .did
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "verifier_did is None".to_string(),
+                    ))?;
+
+            let encryption_key = verifier_did.find_key(&verifier_key.id, KeyRole::KeyAgreement);
+
+            let Some(encryption_key) = match encryption_key {
+                Ok(Some(key)) => Some(key),
+                Err(ServiceError::Validation(_)) | Ok(None) => {
+                    verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)?
+                }
+                Err(error) => Err(error)?,
+            }
+            .to_owned() else {
+                return Ok(None);
+            };
+
+            encryption_key
         }
-        Err(error) => Err(error)?,
     }
-    .to_owned() else {
-        return Ok(None);
-    };
+    .to_owned();
 
     let key_algorithm = encryption_key
         .key_algorithm_type()

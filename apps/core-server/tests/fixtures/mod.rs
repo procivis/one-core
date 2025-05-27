@@ -707,6 +707,7 @@ pub async fn create_proof(
     role: ProofRole,
     exchange: &str,
     interaction: Option<&Interaction>,
+    verifier_key: Option<&Key>,
 ) -> Proof {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -740,7 +741,7 @@ pub async fn create_proof(
         schema: proof_schema.cloned(),
         verifier_identifier: Some(verifier_identifier.to_owned()),
         holder_identifier: holder_identifier.cloned(),
-        verifier_key: None,
+        verifier_key: verifier_key.cloned(),
         verifier_certificate: None,
         interaction: interaction.cloned(),
     };

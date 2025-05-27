@@ -6,11 +6,11 @@ use x509_parser::prelude::{
     GeneralName, ParsedExtension, X509Certificate,
 };
 
-use super::CertificateService;
+use super::CertificateValidatorImpl;
 use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
 
-impl CertificateService {
+impl CertificateValidatorImpl {
     /// Returns `true` if certificate revoked, `false` if not revoked
     /// and `Err` if checking fails for some reason
     pub(super) async fn check_revocation(

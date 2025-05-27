@@ -519,6 +519,20 @@ async fn test_get_client_metadata_success() {
 
     let now = OffsetDateTime::now_utc();
     let proof_id: ProofId = Uuid::new_v4().into();
+
+    let verifier_key = Key {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        public_key: vec![],
+        name: "verifier_key1".to_string(),
+        key_reference: vec![],
+        storage_type: "INTERNAL".to_string(),
+        key_type: "EDDSA".to_string(),
+        organisation: None,
+    };
     let proof = Proof {
         id: proof_id,
         created_date: now,
@@ -528,7 +542,7 @@ async fn test_get_client_metadata_success() {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
-        role: ProofRole::Holder,
+        role: ProofRole::Verifier,
         requested_date: Some(now),
         completed_date: None,
         schema: None,
@@ -551,19 +565,7 @@ async fn test_get_client_metadata_success() {
                 did_method: "KEY".to_string(),
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::KeyAgreement,
-                    key: Key {
-                        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                            .unwrap()
-                            .into(),
-                        created_date: now,
-                        last_modified: now,
-                        public_key: vec![],
-                        name: "verifier_key1".to_string(),
-                        key_reference: vec![],
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: None,
-                    },
+                    key: verifier_key.clone(),
                 }]),
                 deactivated: false,
                 log: None,
@@ -571,7 +573,7 @@ async fn test_get_client_metadata_success() {
             ..dummy_identifier()
         }),
         holder_identifier: None,
-        verifier_key: None,
+        verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,
     };
@@ -699,6 +701,19 @@ async fn test_get_client_metadata_success_no_encryption() {
 
     let now = OffsetDateTime::now_utc();
     let proof_id: ProofId = Uuid::new_v4().into();
+    let verifier_key = Key {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        public_key: vec![],
+        name: "verifier_key1".to_string(),
+        key_reference: vec![],
+        storage_type: "INTERNAL".to_string(),
+        key_type: "EDDSA".to_string(),
+        organisation: None,
+    };
     let proof = Proof {
         id: proof_id,
         created_date: now,
@@ -708,7 +723,7 @@ async fn test_get_client_metadata_success_no_encryption() {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
-        role: ProofRole::Holder,
+        role: ProofRole::Verifier,
         requested_date: Some(now),
         completed_date: None,
         schema: None,
@@ -727,7 +742,7 @@ async fn test_get_client_metadata_success_no_encryption() {
                         .into(),
                 ))),
                 did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Remote,
+                did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 keys: Some(vec![]),
                 deactivated: false,
@@ -736,7 +751,7 @@ async fn test_get_client_metadata_success_no_encryption() {
             ..dummy_identifier()
         }),
         holder_identifier: None,
-        verifier_key: None,
+        verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,
     };

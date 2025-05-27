@@ -21,6 +21,7 @@ use provider::verification_protocol::verification_protocol_providers_from_config
 use repository::DataRepository;
 use service::backup::BackupService;
 use service::certificate::CertificateService;
+use service::certificate::validator::CertificateValidatorImpl;
 use service::config::ConfigService;
 use service::credential::CredentialService;
 use service::did::DidService;
@@ -449,11 +450,15 @@ impl OneCore {
             verification_protocols,
         ));
 
+        let certificate_validator = Arc::new(CertificateValidatorImpl::new(
+            key_algorithm_provider.clone(),
+            client.clone(),
+        ));
+
         let certificate_service = CertificateService::new(
             data_provider.get_certificate_repository(),
             data_provider.get_key_repository(),
-            key_algorithm_provider.clone(),
-            client.clone(),
+            certificate_validator.clone(),
         );
 
         let did_service = DidService::new(
@@ -495,7 +500,7 @@ impl OneCore {
             data_provider.get_certificate_repository(),
             data_provider.get_identifier_repository(),
             credential_service.clone(),
-            certificate_service.clone(),
+            certificate_validator,
         )
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));

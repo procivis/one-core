@@ -667,6 +667,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
     )
     .await;
 

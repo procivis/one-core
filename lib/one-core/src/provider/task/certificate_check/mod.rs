@@ -13,7 +13,7 @@ use crate::model::identifier::{IdentifierRelations, IdentifierState, UpdateIdent
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::service::certificate::CertificateService;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 
 pub mod dto;
@@ -21,19 +21,19 @@ pub mod dto;
 pub struct CertificateCheck {
     certificate_repository: Arc<dyn CertificateRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
-    certificate_service: CertificateService,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl CertificateCheck {
-    pub fn new(
+    pub(crate) fn new(
         certificate_repository: Arc<dyn CertificateRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
-        certificate_service: CertificateService,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             certificate_repository,
             identifier_repository,
-            certificate_service,
+            certificate_validator,
         }
     }
 }
@@ -178,7 +178,7 @@ impl CertificateCheck {
         let mut results: Vec<RevocationCheckResult> = vec![];
         for certificate in active_certificates.values {
             match self
-                .certificate_service
+                .certificate_validator
                 .parse_pem_chain(certificate.chain.as_bytes(), true, None)
                 .await
             {

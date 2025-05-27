@@ -6,7 +6,7 @@ use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::{
     OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519, OID_X509_EXT_SUBJECT_ALT_NAME,
 };
-use x509_parser::prelude::{GeneralName, ParsedExtension};
+use x509_parser::prelude::{GeneralName, ParsedExtension, Pem};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::PublicKeyJwk;
@@ -15,24 +15,24 @@ use crate::provider::did_method::mdl::parse_x509_from_der;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub enum Certificate {
+pub(crate) enum Certificate {
     Der(Vec<u8>),
 }
 
 impl Certificate {
-    pub fn from_base64_url_safe_no_padding(base64: &str) -> anyhow::Result<Self> {
+    pub(crate) fn from_base64_url_safe_no_padding(base64: &str) -> anyhow::Result<Self> {
         let der = Base64UrlSafeNoPadding::decode_to_vec(base64, None)
             .context("failed to decode certificate")?;
         Ok(Self::Der(der))
     }
 
-    pub fn as_base64_url_safe_no_padding(&self) -> anyhow::Result<String> {
+    pub(crate) fn as_base64_url_safe_no_padding(&self) -> anyhow::Result<String> {
         let Certificate::Der(der) = self;
         Base64UrlSafeNoPadding::encode_to_string(der).context("failed to encode certificate")
     }
 }
 
-pub fn extract_leaf_certificate_from_verified_chain(
+pub(crate) fn extract_leaf_certificate_from_verified_chain(
     x5c: &[String],
     client_id: &str,
     x509_ca_certificate: Option<&Certificate>,
@@ -100,7 +100,7 @@ pub fn extract_leaf_certificate_from_verified_chain(
         .context("no leaf certificate found in chain")
 }
 
-pub fn extract_jwk_from_der(
+pub(crate) fn extract_jwk_from_der(
     certificate: &str,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 ) -> anyhow::Result<PublicKeyJwk> {
@@ -148,6 +148,17 @@ fn parse_x509(certificate: &Certificate) -> anyhow::Result<X509Certificate> {
         Certificate::Der(der) => parse_x509_from_der(der),
     }
     .context("failed to parse x509 certificate")
+}
+
+pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>> {
+    Pem::iter_from_buffer(pem_chain.as_bytes())
+        .map(|pem| {
+            let pem = pem.context("failed to parse x509 certificate")?;
+            let encoded = Base64::encode_to_string(pem.contents)
+                .context("failed to encode x509 certificate")?;
+            Ok(encoded)
+        })
+        .collect()
 }
 
 pub(crate) fn is_dns_name_matching(dns_def: &str, target_domain: &str) -> bool {

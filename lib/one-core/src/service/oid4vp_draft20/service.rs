@@ -76,6 +76,7 @@ impl OID4VPDraft20Service {
                         ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     schema: Some(ProofSchemaRelations {
                         proof_inputs: Some(ProofInputSchemaRelations {
                             credential_schema: Some(Default::default()),

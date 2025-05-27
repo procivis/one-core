@@ -11,6 +11,7 @@ use crate::fixtures::{
 use crate::utils;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::DbClient;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -556,6 +557,90 @@ async fn test_create_proof_success_without_key_agreement_key() {
             "OPENID4VP_DRAFT20",
             &did.id.to_string(),
             None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+}
+
+#[tokio::test]
+async fn test_create_proof_success_with_certificate() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let _certificate = context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                key: Some(key),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create_with_identifier(
+            &proof_schema.id.to_string(),
+            "OPENID4VP_DRAFT20",
+            &identifier.id,
             None,
         )
         .await;

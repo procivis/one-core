@@ -192,8 +192,14 @@ pub enum BusinessLogicError {
     #[error("Incompatible DID type, reason: {reason}")]
     IncompatibleDidType { reason: String },
 
+    #[error("Incompatible identifier type, reason: {reason}")]
+    IncompatibleIdentifierType { reason: String },
+
     #[error("DID {0} is deactivated")]
     DidIsDeactivated(DidId),
+
+    #[error("Identifier {0} is deactivated")]
+    IdentifierIsDeactivated(IdentifierId),
 
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
@@ -1238,9 +1244,11 @@ impl ErrorCodeMixin for BusinessLogicError {
         match self {
             Self::OrganisationAlreadyExists => ErrorCode::BR_0023,
             Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
+            Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
             Self::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
             Self::DidIsDeactivated(_) => ErrorCode::BR_0027,
+            Self::IdentifierIsDeactivated(_) => ErrorCode::BR_0027,
             Self::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
             Self::CredentialSchemaAlreadyExists => ErrorCode::BR_0007,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,

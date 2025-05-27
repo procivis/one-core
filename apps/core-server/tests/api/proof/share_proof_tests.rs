@@ -20,7 +20,7 @@ use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInput
 #[tokio::test]
 async fn test_share_proof_success() {
     // GIVEN
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
     let credential_schema =
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
@@ -59,6 +59,7 @@ async fn test_share_proof_success() {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         None,
+        Some(&key),
     )
     .await;
 
@@ -438,7 +439,7 @@ async fn test_share_proof_success_jsonld() {
 }
 
 async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
     let credential_schema =
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
@@ -477,6 +478,7 @@ async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
         ProofRole::Verifier,
         "OPENID4VP_DRAFT20",
         None,
+        Some(&key),
     )
     .await;
 

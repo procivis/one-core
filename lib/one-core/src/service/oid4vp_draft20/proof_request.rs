@@ -6,6 +6,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use crate::common_mapper::get_encryption_key_jwk_from_proof;
+use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::proof::Proof;
@@ -29,6 +30,7 @@ use crate::provider::verification_protocol::openid4vp::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_presentation_definition,
 };
 use crate::util::oidc::determine_response_mode;
+use crate::util::x509::pem_chain_into_x5c;
 
 pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri(
     proof: &Proof,
@@ -215,31 +217,58 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
         ..
     } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
 
-    let verifier_did = proof
-        .verifier_identifier
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_identifier is None".to_string(),
-        ))?
-        .did
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_did is None".to_string(),
-        ))?;
-    let x5c = if let Some(certificate) = verifier_did
-        .did
-        .as_str()
-        .strip_prefix("did:mdl:certificate:")
-    {
-        let der = Base64UrlSafeNoPadding::decode_to_vec(certificate, None)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-        Base64::encode_to_string(der)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-    } else {
-        return Err(VerificationProtocolError::Failed(
-            "Invalid verifier did".to_string(),
-        ));
-    };
+    let verifier_identifier =
+        proof
+            .verifier_identifier
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "verifier_identifier is None".to_string(),
+            ))?;
+
+    let (x5c, issuer) =
+        match verifier_identifier.r#type {
+            IdentifierType::Did => {
+                let verifier_did =
+                    verifier_identifier
+                        .did
+                        .as_ref()
+                        .ok_or(VerificationProtocolError::Failed(
+                            "verifier_did is None".to_string(),
+                        ))?;
+
+                let x5c = if let Some(certificate) = verifier_did
+                    .did
+                    .as_str()
+                    .strip_prefix("did:mdl:certificate:")
+                {
+                    let der = Base64UrlSafeNoPadding::decode_to_vec(certificate, None)
+                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                    Base64::encode_to_string(der)
+                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                } else {
+                    return Err(VerificationProtocolError::Failed(
+                        "Invalid verifier did".to_string(),
+                    ));
+                };
+
+                (vec![x5c], Some(verifier_did.did.to_string()))
+            }
+            IdentifierType::Certificate => {
+                let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
+                    VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
+                )?;
+
+                let x5c = pem_chain_into_x5c(&verifier_certificate.chain)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+                (x5c, None)
+            }
+            IdentifierType::Key => {
+                return Err(VerificationProtocolError::Failed(
+                    "invalid verifier identifier type".to_string(),
+                ));
+            }
+        };
 
     let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
 
@@ -250,13 +279,13 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: None,
-            x5c: Some(vec![x5c]),
+            x5c: Some(x5c),
         },
         payload: JWTPayload {
             issued_at: None,
             expires_at,
             invalid_before: None,
-            issuer: Some(verifier_did.did.to_string()),
+            issuer,
             // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
             subject: None,
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),

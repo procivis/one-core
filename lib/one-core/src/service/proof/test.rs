@@ -152,6 +152,18 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         _ => None,
     };
 
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        public_key: vec![],
+        name: "key".to_string(),
+        key_reference: vec![],
+        storage_type: "INTERNAL".to_string(),
+        key_type: "EDDSA".to_string(),
+        organisation: None,
+    };
+
     Proof {
         id: proof_id.to_owned(),
         created_date: OffsetDateTime::now_utc(),
@@ -188,17 +200,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
                 did_method: "KEY".to_string(),
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::KeyAgreement,
-                    key: Key {
-                        id: Uuid::new_v4().into(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        public_key: vec![],
-                        name: "key".to_string(),
-                        key_reference: vec![],
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: None,
-                    },
+                    key: key.to_owned(),
                 }]),
                 deactivated: false,
                 log: None,
@@ -206,7 +208,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             ..dummy_identifier()
         }),
         holder_identifier: None,
-        verifier_key: None,
+        verifier_key: Some(key),
         verifier_certificate: None,
         interaction: None,
     }
@@ -2289,7 +2291,6 @@ async fn test_create_proof_using_invalid_did_method() {
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
         .expect_get_capabilities()
-        .times(2)
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![KeyStorageType::Internal],
@@ -2300,7 +2301,6 @@ async fn test_create_proof_using_invalid_did_method() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .times(2)
         .returning(move |_| Some(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -2785,21 +2785,36 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(move || FormatterCapabilities {
+        .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_identifier_types: vec![IdentifierType::Did],
             ..Default::default()
         });
+    let formatter = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
+            }
+        });
+
+        Some(Arc::new(protocol))
+    });
 
     let service = setup_service(Repositories {
         identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2945,10 +2960,26 @@ async fn test_create_proof_did_deactivated_error() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
+            }
+        });
+
+        Some(Arc::new(protocol))
+    });
+
     let service = setup_service(Repositories {
         identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -3152,7 +3183,6 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
     formatter
         .expect_get_capabilities()
-        .times(2)
         .returning(move || FormatterCapabilities {
             proof_exchange_protocols: vec![exchange_type],
             verification_key_storages: vec![],
@@ -3163,13 +3193,28 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .times(2)
         .returning(move |_| Some(formatter.clone()));
+
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
+            }
+        });
+
+        Some(Arc::new(protocol))
+    });
 
     let service = setup_service(Repositories {
         identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });

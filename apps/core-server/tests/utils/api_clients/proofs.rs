@@ -3,7 +3,7 @@ use std::fmt::Display;
 use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
-use shared_types::{ProofId, ProofSchemaId};
+use shared_types::{IdentifierId, ProofId, ProofSchemaId};
 
 use super::{HttpClient, Response};
 
@@ -45,6 +45,26 @@ impl ProofsApi {
 
         if let Some(verifier_key) = verifier_key {
             body["verifierKey"] = verifier_key.to_string().into();
+        }
+
+        self.client.post("/api/proof-request/v1", body).await
+    }
+
+    pub async fn create_with_identifier(
+        &self,
+        proof_schema_id: &str,
+        exchange: &str,
+        verifier_identifier_id: &IdentifierId,
+        redirect_uri: Option<&str>,
+    ) -> Response {
+        let mut body = json!({
+          "proofSchemaId": proof_schema_id,
+          "exchange": exchange,
+          "verifier": verifier_identifier_id
+        });
+
+        if let Some(redirect_uri) = redirect_uri {
+            body["redirectUri"] = redirect_uri.to_string().into();
         }
 
         self.client.post("/api/proof-request/v1", body).await
