@@ -17,7 +17,7 @@ use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -65,14 +65,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(ReqwestClient::default()),
-        inputs
-            .params
-            .unwrap_or(generic_params(ClientIdScheme::RedirectUri)),
+        inputs.params.unwrap_or(generic_params()),
         Arc::new(CoreConfig::default()),
     )
 }
 
-fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp20Params {
+fn generic_params() -> OpenID4Vp20Params {
     OpenID4Vp20Params {
         client_metadata_by_value: false,
         presentation_definition_by_value: false,
@@ -87,7 +85,6 @@ fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp20Params {
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
-            default_client_id_scheme: client_id_scheme,
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
@@ -389,7 +386,20 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
             }]),
         }),
         claims: None,
-        verifier_identifier: None,
+        verifier_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+            certificates: None,
+        }),
         holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -402,7 +412,7 @@ async fn test_share_proof_with_use_request_uri() {
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4Vp20Params {
             use_request_uri: true,
-            ..generic_params(ClientIdScheme::RedirectUri)
+            ..generic_params()
         }),
         ..Default::default()
     });
@@ -535,7 +545,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
         formatter_provider,
         params: Some(OpenID4Vp20Params {
             use_request_uri: true,
-            ..generic_params(ClientIdScheme::RedirectUri)
+            ..generic_params()
         }),
         ..Default::default()
     });
@@ -675,7 +685,7 @@ async fn test_handle_invitation_proof_success() {
 #[tokio::test]
 async fn test_handle_invitation_proof_with_client_request_ok() {
     let protocol = setup_protocol(TestInputs {
-        params: Some(generic_params(ClientIdScheme::RedirectUri)),
+        params: Some(generic_params()),
         ..Default::default()
     });
 
@@ -740,7 +750,7 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(key_alg))));
 
     let protocol = setup_protocol(TestInputs {
-        params: Some(generic_params(ClientIdScheme::Did)),
+        params: Some(generic_params()),
         did_method_provider,
         key_algorithm_provider,
         ..Default::default()
@@ -955,7 +965,7 @@ async fn test_handle_invitation_proof_failed() {
     let protocol_https_only = setup_protocol(TestInputs {
         params: Some(OpenID4Vp20Params {
             allow_insecure_http_transport: false,
-            ..generic_params(ClientIdScheme::RedirectUri)
+            ..generic_params()
         }),
         ..Default::default()
     });
@@ -1132,7 +1142,6 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
-            default_client_id_scheme: ClientIdScheme::RedirectUri,
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,

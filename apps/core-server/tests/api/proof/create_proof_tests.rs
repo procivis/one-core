@@ -80,6 +80,63 @@ async fn test_create_proof_success_without_related_key() {
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
 
+// TODO Enable this when we reverted the other todos marked with ONE-5918
+/* #[tokio::test]
+async fn test_create_proof_wrong_identifier_type() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(
+            &proof_schema.id.to_string(),
+            "MDOC_OPENID4VP",
+            &did.id.to_string(),
+            None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0218", resp.error_code().await);
+}*/
+
 #[tokio::test]
 async fn test_create_proof_success_with_related_key() {
     // GIVEN

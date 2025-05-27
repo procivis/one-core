@@ -5,7 +5,7 @@ use futures::future::BoxFuture;
 use url::Url;
 
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::config::core_config::{DidType, TransportType};
+use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -77,6 +77,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Http],
             did_methods: vec![DidType::WebVh],
+            verifier_identifier_types: vec![IdentifierType::Did],
         }
     }
 

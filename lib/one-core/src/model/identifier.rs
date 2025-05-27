@@ -1,5 +1,7 @@
+use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, OrganisationId};
+use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 
 use super::certificate::{Certificate, CertificateRelations};
@@ -9,6 +11,7 @@ use super::key::{Key, KeyRelations};
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
+use crate::config;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Identifier {
@@ -36,8 +39,9 @@ pub enum SortableIdentifierColumn {
     State,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Display, AsRefStr, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into(config::core_config::IdentifierType)]
 pub enum IdentifierType {
     Key,
     Did,

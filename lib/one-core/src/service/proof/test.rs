@@ -2185,6 +2185,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
             VerificationProtocolCapabilities {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
             }
         });
 
@@ -2310,6 +2311,7 @@ async fn test_create_proof_using_invalid_did_method() {
             VerificationProtocolCapabilities {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
             }
         });
 
@@ -2438,6 +2440,7 @@ async fn test_create_proof_using_identifier() {
             VerificationProtocolCapabilities {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
             }
         });
 
@@ -2568,6 +2571,7 @@ async fn test_create_proof_without_related_key() {
             VerificationProtocolCapabilities {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
             }
         });
 
@@ -2696,6 +2700,7 @@ async fn test_create_proof_with_related_key() {
             VerificationProtocolCapabilities {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
             }
         });
 

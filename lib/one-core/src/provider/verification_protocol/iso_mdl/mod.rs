@@ -24,7 +24,7 @@ use super::{
     VerificationProtocolError,
 };
 use crate::common_mapper::{NESTED_CLAIM_MARKER, PublicKeyWithJwk, decode_cbor_base64};
-use crate::config::core_config::{CoreConfig, DidType, TransportType};
+use crate::config::core_config::{CoreConfig, DidType, IdentifierType, TransportType};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::Did;
 use crate::model::key::Key;
@@ -414,6 +414,7 @@ impl VerificationProtocol for IsoMdl {
         VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Ble],
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::MDL],
+            verifier_identifier_types: vec![IdentifierType::Did],
         }
     }
 }

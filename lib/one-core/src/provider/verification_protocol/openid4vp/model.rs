@@ -308,7 +308,6 @@ pub(crate) struct OpenID4VCPresentationHolderParams {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCPresentationVerifierParams {
-    pub default_client_id_scheme: ClientIdScheme,
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 

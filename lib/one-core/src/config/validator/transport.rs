@@ -117,6 +117,7 @@ mod test {
         let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
+            verifier_identifier_types: vec![],
         };
 
         let selected =
@@ -133,6 +134,7 @@ mod test {
         let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Mqtt],
             did_methods: vec![],
+            verifier_identifier_types: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -153,6 +155,7 @@ mod test {
         let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
+            verifier_identifier_types: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -174,6 +177,7 @@ mod test {
         let capabilities = VerificationProtocolCapabilities {
             supported_transports: vec![],
             did_methods: vec![],
+            verifier_identifier_types: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -198,6 +202,7 @@ mod test {
                 TransportType::Http,
             ],
             did_methods: vec![],
+            verifier_identifier_types: vec![],
         };
 
         let selected = validate_and_select_transport_type(

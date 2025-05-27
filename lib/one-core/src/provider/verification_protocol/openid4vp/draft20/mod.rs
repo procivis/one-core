@@ -18,7 +18,9 @@ use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::map_credential_formats_to_presentation_format;
 use super::mdoc::mdoc_presentation_context;
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
+use crate::config::core_config::{
+    CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType,
+};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -53,6 +55,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
+    get_client_id_scheme,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
@@ -214,6 +217,20 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             DidType::MDL,
             DidType::WebVh,
         ];
+        let mut verifier_identifier_types = vec![];
+        let schemes = &self.params.verifier.supported_client_id_schemes;
+
+        if [
+            ClientIdScheme::Did,
+            ClientIdScheme::RedirectUri,
+            ClientIdScheme::VerifierAttestation,
+        ]
+        .iter()
+        .any(|scheme| schemes.contains(scheme))
+        {
+            verifier_identifier_types.push(IdentifierType::Did);
+        }
+
         if self
             .params
             .verifier
@@ -221,11 +238,15 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             .contains(&ClientIdScheme::X509SanDns)
         {
             did_methods = vec![DidType::MDL];
+            verifier_identifier_types.push(IdentifierType::Certificate);
         }
+        // TODO: remove this line when API tests are adapted and did:mdl is not used anymore. ONE-5918
+        verifier_identifier_types = vec![IdentifierType::Certificate, IdentifierType::Did];
 
         VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Http],
             did_methods,
+            verifier_identifier_types,
         }
     }
 
@@ -468,10 +489,19 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         let response_uri = format!("{base_url}/ssi/openid4vp/draft-20/response");
         let nonce = utilities::generate_alphanumeric(32);
 
-        let client_id_scheme = params
-            .unwrap_or_default()
-            .client_id_scheme
-            .unwrap_or(self.params.verifier.default_client_id_scheme);
+        let verifier_identifier =
+            proof
+                .clone()
+                .verifier_identifier
+                .ok_or(VerificationProtocolError::Failed(
+                    "Missing verifier identifier".to_string(),
+                ))?;
+
+        let client_id_scheme = get_client_id_scheme(
+            params,
+            &self.params.verifier.supported_client_id_schemes,
+            verifier_identifier,
+        )?;
 
         if !self
             .params

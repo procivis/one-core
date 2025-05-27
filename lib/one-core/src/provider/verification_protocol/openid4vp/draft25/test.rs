@@ -11,6 +11,7 @@ use super::model::OpenID4Vp25Params;
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -50,14 +51,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP25HTTP {
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(ReqwestClient::default()),
-        inputs
-            .params
-            .unwrap_or(generic_params(ClientIdScheme::RedirectUri)),
+        inputs.params.unwrap_or(generic_params()),
         Arc::new(CoreConfig::default()),
     )
 }
 
-fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp25Params {
+fn generic_params() -> OpenID4Vp25Params {
     OpenID4Vp25Params {
         allow_insecure_http_transport: true,
         use_request_uri: false,
@@ -70,7 +69,6 @@ fn generic_params(client_id_scheme: ClientIdScheme) -> OpenID4Vp25Params {
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
-            default_client_id_scheme: client_id_scheme,
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
@@ -260,7 +258,20 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
             }]),
         }),
         claims: None,
-        verifier_identifier: None,
+        verifier_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "identifier".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+            certificates: None,
+        }),
         holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,

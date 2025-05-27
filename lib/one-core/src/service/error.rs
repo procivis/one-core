@@ -393,6 +393,9 @@ pub enum BusinessLogicError {
 
     #[error("Incompatible holder key algorithm")]
     IncompatibleHolderKeyAlgorithm,
+
+    #[error("Identifier type not found")]
+    IdentifierTypeNotFound,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1299,6 +1302,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleHolderDidMethod => ErrorCode::BR_0218,
             Self::IncompatibleHolderIdentifier => ErrorCode::BR_0218,
             Self::IncompatibleHolderKeyAlgorithm => ErrorCode::BR_0218,
+            Self::IdentifierTypeNotFound => ErrorCode::BR_0207,
         }
     }
 }

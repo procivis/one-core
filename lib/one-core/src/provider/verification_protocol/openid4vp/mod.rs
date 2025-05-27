@@ -9,13 +9,15 @@ use one_dto_mapper::convert_inner;
 use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO};
 use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::proof::Proof;
 use crate::provider::verification_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
 };
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::util::oidc::map_from_openid4vp_format;
 
 pub mod draft20;
@@ -30,6 +32,47 @@ pub mod proximity_draft00;
 pub mod service;
 pub mod validator;
 pub(crate) mod x509;
+
+fn get_client_id_scheme(
+    params: Option<ShareProofRequestParamsDTO>,
+    supported_client_id_schemes: &[ClientIdScheme],
+    verifier_identifier: Identifier,
+) -> Result<ClientIdScheme, VerificationProtocolError> {
+    let param_scheme = params.unwrap_or_default().client_id_scheme;
+
+    if let Some(scheme) = param_scheme {
+        return Ok(scheme);
+    }
+
+    let fallback_scheme = supported_client_id_schemes
+        .iter()
+        .find(|scheme| {
+            get_supported_client_id_scheme_for_identifier(&verifier_identifier.r#type)
+                .contains(scheme)
+        })
+        .cloned()
+        .ok_or_else(|| {
+            VerificationProtocolError::InvalidRequest(
+                "No supported client_id_scheme for selected identifier type".to_string(),
+            )
+        })?;
+
+    Ok(fallback_scheme)
+}
+
+fn get_supported_client_id_scheme_for_identifier(
+    identifier: &IdentifierType,
+) -> Vec<ClientIdScheme> {
+    match identifier {
+        IdentifierType::Key => vec![],
+        IdentifierType::Did => vec![
+            ClientIdScheme::Did,
+            ClientIdScheme::VerifierAttestation,
+            ClientIdScheme::RedirectUri,
+        ],
+        IdentifierType::Certificate => vec![ClientIdScheme::X509SanDns],
+    }
+}
 
 fn extract_common_formats(
     allowed_schema_input_descriptor_formats: HashSet<String>,

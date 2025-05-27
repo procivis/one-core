@@ -23,7 +23,7 @@ use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::config::validator::exchange::{
-    validate_exchange_type, validate_protocol_did_compatibility,
+    validate_exchange_type, validate_identifier, validate_protocol_did_compatibility,
 };
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
@@ -437,6 +437,11 @@ impl ProofService {
             return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
         };
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
+        validate_identifier(
+            verifier_identifier.clone(),
+            &exchange_protocol_capabilities.verifier_identifier_types,
+            &self.config.identifier,
+        )?;
         validate_protocol_did_compatibility(
             &exchange_protocol_capabilities.did_methods,
             &verifier_did.did_method,

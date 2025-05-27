@@ -118,8 +118,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         verifier:
-                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
-                            defaultClientIdScheme: verifier_attestation
+                            supportedClientIdSchemes: [ verifier_attestation, redirect_uri, did ]
                         holder:
                             supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
                         redirectUri:
@@ -132,8 +131,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         verifier:
-                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
-                            defaultClientIdScheme: verifier_attestation
+                            supportedClientIdSchemes: [ verifier_attestation, redirect_uri, did ]
                         holder:
                             supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
                         redirectUri:

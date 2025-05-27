@@ -18,7 +18,7 @@ use super::model::{
     PresentationSubmissionMappingDTO,
 };
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::config::core_config::{CoreConfig, DidType, TransportType, VerificationProtocolType};
+use crate::config::core_config::{CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId};
@@ -608,6 +608,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods,
+            verifier_identifier_types: vec![IdentifierType::Did],
         }
     }
 }

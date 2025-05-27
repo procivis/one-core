@@ -1,7 +1,31 @@
 use serde::Serialize;
 
-use crate::config::core_config::{ConfigBlock, DidConfig, DidType};
-use crate::service::error::{BusinessLogicError, ValidationError};
+use crate::config::core_config::{
+    ConfigBlock, DidConfig, DidType, IdentifierConfig, IdentifierType,
+};
+use crate::model::identifier::Identifier;
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+
+pub fn validate_identifier(
+    verifier_identifier: Identifier,
+    expected_types: &[IdentifierType],
+    config: &IdentifierConfig,
+) -> Result<(), ServiceError> {
+    let requested_identifier_type = &verifier_identifier.r#type.into();
+    config
+        .get(requested_identifier_type)
+        .filter(|cfg| cfg.enabled.unwrap_or_default())
+        .map(|_| ())
+        .ok_or(ValidationError::IdentifierTypeDisabled(
+            requested_identifier_type.to_string(),
+        ))?;
+    if !expected_types.contains(requested_identifier_type) {
+        return Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleProofVerificationIdentifier,
+        ));
+    }
+    Ok(())
+}
 
 pub fn validate_exchange_type<T: Serialize + Clone>(
     exchange: &str,

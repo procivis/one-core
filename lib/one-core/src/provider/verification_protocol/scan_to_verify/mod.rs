@@ -15,7 +15,7 @@ use super::{
     VerificationProtocolError,
 };
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::config::core_config::{DidType, TransportType};
+use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -189,6 +189,7 @@ impl VerificationProtocol for ScanToVerify {
                 DidType::MDL,
                 DidType::WebVh,
             ],
+            verifier_identifier_types: vec![IdentifierType::Did],
         }
     }
 }
