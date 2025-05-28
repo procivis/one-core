@@ -267,6 +267,12 @@ pub(crate) struct AcceptProofResult {
     pub proved_claims: Vec<Claim>,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub(crate) struct OpenID4VPHolderInteractionDataVerifierCertificate {
+    pub chain: String,
+    pub fingerprint: String,
+}
+
 /// Interaction data used for OpenID4VP (HTTP) on holder side
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -293,7 +299,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     #[serde(default)]
     pub verifier_did: Option<String>, // did value
     #[serde(default)]
-    pub verifier_certificate: Option<String>, // pem chain
+    pub verifier_certificate: Option<OpenID4VPHolderInteractionDataVerifierCertificate>,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368

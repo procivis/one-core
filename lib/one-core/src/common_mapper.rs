@@ -11,7 +11,9 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
-use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::certificate::{
+    Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
+};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -24,6 +26,7 @@ use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::PublicKeyJwk;
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -180,8 +183,31 @@ pub(crate) async fn get_or_create_certificate_identifier(
     identifier_repository: &dyn IdentifierRepository,
     organisation: &Option<Organisation>,
     chain: String,
+    fingerprint: String,
 ) -> Result<(Certificate, Identifier), ServiceError> {
-    // TODO: ONE-5921 currently no lookup of existing identifier. always create a new one
+    let organisation_id = organisation
+        .as_ref()
+        .map(|org| CertificateFilterValue::OrganisationId(org.id));
+    let list = certificate_repository
+        .list(CertificateListQuery {
+            filtering: Some(
+                CertificateFilterValue::Fingerprint(fingerprint.to_owned()).condition()
+                    & organisation_id,
+            ),
+            ..Default::default()
+        })
+        .await?;
+
+    if let Some(certificate) = list.values.into_iter().next() {
+        let identifier = identifier_repository
+            .get(certificate.identifier_id, &Default::default())
+            .await?
+            .ok_or(ServiceError::MappingError(
+                "Certificate identifier not found".to_string(),
+            ))?;
+
+        return Ok((certificate, identifier));
+    }
 
     let ParsedCertificate {
         attributes,
@@ -218,6 +244,7 @@ pub(crate) async fn get_or_create_certificate_identifier(
         expiry_date: attributes.not_after,
         name: subject_common_name.unwrap_or(name),
         chain,
+        fingerprint,
         state: CertificateState::Active,
         key: None,
         organisation: organisation.to_owned(),

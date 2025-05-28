@@ -17,6 +17,7 @@ pub struct Model {
 
     pub name: String,
     pub chain: String,
+    pub fingerprint: String,
     pub state: CertificateState,
 
     pub identifier_id: IdentifierId,

@@ -17,6 +17,7 @@ pub struct TestingCertificateParams {
     pub expiry_date: Option<OffsetDateTime>,
     pub name: Option<String>,
     pub chain: Option<String>,
+    pub fingerprint: Option<String>,
     pub state: Option<CertificateState>,
     pub key: Option<Key>,
 }
@@ -45,6 +46,7 @@ impl CertificatesDB {
             expiry_date: params.expiry_date.unwrap_or(now),
             name: unwrap_or_random(params.name),
             chain: unwrap_or_random(params.chain),
+            fingerprint: unwrap_or_random(params.fingerprint),
             state: params.state.unwrap_or(CertificateState::Active),
             key: params.key,
             organisation: None,

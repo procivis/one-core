@@ -3,13 +3,14 @@ use one_core::model::certificate::{
 };
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
+use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 
 use crate::common::calculate_pages_count;
 use crate::entity::certificate::{self, ActiveModel};
+use crate::entity::identifier;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_string_match_condition,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 
 impl From<Certificate> for ActiveModel {
@@ -24,6 +25,7 @@ impl From<Certificate> for ActiveModel {
             expiry_date: Set(certificate.expiry_date),
             name: Set(certificate.name),
             chain: Set(certificate.chain),
+            fingerprint: Set(certificate.fingerprint),
             state: Set(certificate.state.into()),
             key_id: Set(key_id),
         }
@@ -40,6 +42,7 @@ impl From<certificate::Model> for Certificate {
             expiry_date: value.expiry_date,
             name: value.name,
             chain: value.chain,
+            fingerprint: value.fingerprint,
             state: value.state.into(),
             key: None,
             organisation: None,
@@ -73,6 +76,28 @@ impl IntoFilterCondition for CertificateFilterValue {
             Self::ExpiryDate(date_comparison) => {
                 get_comparison_condition(certificate::Column::ExpiryDate, date_comparison)
             }
+            Self::Fingerprint(fingerprint) => {
+                get_equals_condition(certificate::Column::Fingerprint, fingerprint)
+            }
+            Self::OrganisationId(organisation_id) => identifier::Column::OrganisationId
+                .eq(organisation_id)
+                .into_condition(),
+        }
+    }
+}
+
+impl IntoJoinRelations for CertificateFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation> {
+        match self {
+            // add identifiers if filtering by organisationId
+            Self::OrganisationId(_) => {
+                vec![JoinRelation {
+                    join_type: JoinType::InnerJoin,
+                    relation_def: certificate::Relation::Identifier.def(),
+                    alias: None,
+                }]
+            }
+            _ => vec![],
         }
     }
 }

@@ -537,13 +537,14 @@ impl SSIHolderService {
                     proof.verifier_identifier = Some(identifier);
                 }
 
-                if let Some(pem_chain) = data.verifier_certificate {
+                if let Some(verifier_certificate) = data.verifier_certificate {
                     let (_, identifier) = get_or_create_certificate_identifier(
                         &*self.certificate_repository,
                         &*self.certificate_validator,
                         &*self.identifier_repository,
                         &interaction.organisation,
-                        pem_chain,
+                        verifier_certificate.chain,
+                        verifier_certificate.fingerprint,
                     )
                     .await?;
 

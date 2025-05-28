@@ -168,6 +168,7 @@ async fn insert_certificate_to_database(
         key_id: Set(key_id),
         state: Set(CertificateState::Active),
         chain: Set("chain".into()),
+        fingerprint: Set("fingerprint".into()),
         identifier_id: Set(identifier_id),
     }
     .insert(database)

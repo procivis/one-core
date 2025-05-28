@@ -72,6 +72,7 @@ impl CertificateService {
             expiry_date: attributes.not_after,
             name,
             chain: request.chain,
+            fingerprint: attributes.fingerprint,
             state: CertificateState::Active,
             key: Some(key),
             organisation: None,

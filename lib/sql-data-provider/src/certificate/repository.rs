@@ -12,7 +12,7 @@ use time::OffsetDateTime;
 use super::CertificateProvider;
 use super::mapper::create_list_response;
 use crate::entity::{certificate, identifier};
-use crate::list_query_generic::SelectWithListQuery;
+use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 impl CertificateProvider {
@@ -96,6 +96,7 @@ impl CertificateRepository for CertificateProvider {
         query_params: CertificateListQuery,
     ) -> Result<GetCertificateList, DataLayerError> {
         let query = certificate::Entity::find()
+            .with_filter_join(&query_params)
             .with_list_query(&query_params)
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CertificateId, IdentifierId};
+use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
@@ -17,6 +17,7 @@ pub struct Certificate {
     pub expiry_date: OffsetDateTime,
     pub name: String,
     pub chain: String,
+    pub fingerprint: String,
     pub state: CertificateState,
 
     // Relations:
@@ -57,8 +58,10 @@ pub enum SortableCertificateColumn {
 pub enum CertificateFilterValue {
     Ids(Vec<CertificateId>),
     Name(StringMatch),
+    Fingerprint(String),
     State(CertificateState),
     ExpiryDate(ValueComparison<OffsetDateTime>),
+    OrganisationId(OrganisationId),
 }
 
 impl ListFilterValue for CertificateFilterValue {}
