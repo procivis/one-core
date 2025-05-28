@@ -7,6 +7,8 @@ use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use super::mapper::create_response_dto;
 use super::validator::ParsedCertificate;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
+use crate::model::key::Key;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 
 impl CertificateService {
@@ -28,7 +30,7 @@ impl CertificateService {
 
         let ParsedCertificate { attributes, .. } = self
             .validator
-            .parse_pem_chain(certificate.chain.as_bytes(), false, None)
+            .parse_pem_chain(certificate.chain.as_bytes(), false)
             .await?;
 
         Ok(create_response_dto(certificate, attributes))
@@ -48,11 +50,13 @@ impl CertificateService {
         let ParsedCertificate {
             attributes,
             subject_common_name,
-            ..
+            public_key,
         } = self
             .validator
-            .parse_pem_chain(request.chain.as_bytes(), true, Some(&key))
+            .parse_pem_chain(request.chain.as_bytes(), true)
             .await?;
+
+        validate_subject_public_key(&public_key, &key)?;
 
         let name = match request.name {
             Some(name) => name,
@@ -73,4 +77,16 @@ impl CertificateService {
             organisation: None,
         })
     }
+}
+
+fn validate_subject_public_key(
+    subject_public_key: &KeyHandle,
+    expected_key: &Key,
+) -> Result<(), ServiceError> {
+    let subject_raw_public_key = subject_public_key.public_key_as_raw();
+    if expected_key.public_key != subject_raw_public_key {
+        return Err(ValidationError::CertificateKeyNotMatching.into());
+    }
+
+    Ok(())
 }

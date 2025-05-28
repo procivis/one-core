@@ -179,7 +179,7 @@ impl CertificateCheck {
         for certificate in active_certificates.values {
             match self
                 .certificate_validator
-                .parse_pem_chain(certificate.chain.as_bytes(), true, None)
+                .parse_pem_chain(certificate.chain.as_bytes(), true)
                 .await
             {
                 Ok(_) => {}

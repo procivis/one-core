@@ -44,6 +44,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
 };
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
@@ -54,6 +55,7 @@ struct TestInputs {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
+    pub certificate_validator: MockCertificateValidator,
     pub params: Option<OpenID4Vp20Params>,
 }
 
@@ -64,6 +66,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
+        Arc::new(inputs.certificate_validator),
         Arc::new(ReqwestClient::default()),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(CoreConfig::default()),
@@ -77,11 +80,11 @@ fn generic_params() -> OpenID4Vp20Params {
         allow_insecure_http_transport: true,
         use_request_uri: false,
         url_scheme: "openid4vp".to_string(),
-        x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
+                ClientIdScheme::Did,
             ],
         },
         verifier: OpenID4VCPresentationVerifierParams {
@@ -1134,7 +1137,6 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
         allow_insecure_http_transport: true,
         use_request_uri: false,
         url_scheme: presentation_url_scheme.to_string(),
-        x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,

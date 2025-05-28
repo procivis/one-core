@@ -161,6 +161,19 @@ pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>>
         .collect()
 }
 
+pub(crate) fn x5c_into_pem_chain(x5c: &[String]) -> anyhow::Result<String> {
+    use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
+    let pems: Vec<Pem> = x5c.iter().try_fold(Vec::new(), |mut aggr, item| {
+        let der = Base64::decode_to_vec(item, None).context("failed to decode x5c")?;
+        aggr.push(pem::Pem::new("CERTIFICATE", der));
+        Ok::<_, anyhow::Error>(aggr)
+    })?;
+    Ok(encode_many_config(
+        &pems,
+        EncodeConfig::new().set_line_ending(LineEnding::LF),
+    ))
+}
+
 pub(crate) fn is_dns_name_matching(dns_def: &str, target_domain: &str) -> bool {
     // https://datatracker.ietf.org/doc/html/rfc1034#section-4.3.3
     if let Some(wildcard_domain) = dns_def.strip_prefix("*") {

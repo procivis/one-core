@@ -31,7 +31,6 @@ pub mod model;
 pub mod proximity_draft00;
 pub mod service;
 pub mod validator;
-pub(crate) mod x509;
 
 fn get_client_id_scheme(
     params: Option<ShareProofRequestParamsDTO>,

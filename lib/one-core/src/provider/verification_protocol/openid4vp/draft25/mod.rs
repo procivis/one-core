@@ -57,6 +57,7 @@ use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
     get_client_id_scheme,
 };
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub mod mappers;
@@ -76,6 +77,7 @@ pub(crate) struct OpenID4VP25HTTP {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
     params: OpenID4Vp25Params,
     config: Arc<CoreConfig>,
@@ -89,6 +91,7 @@ impl OpenID4VP25HTTP {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
         params: OpenID4Vp25Params,
         config: Arc<CoreConfig>,
@@ -99,6 +102,7 @@ impl OpenID4VP25HTTP {
             did_method_provider,
             key_algorithm_provider,
             key_provider,
+            certificate_validator,
             client,
             params,
             config,
@@ -297,6 +301,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             Some(organisation),
             &self.key_algorithm_provider,
             &self.did_method_provider,
+            &self.certificate_validator,
             &self.params,
         )
         .await
@@ -653,6 +658,7 @@ async fn handle_proof_invitation(
     organisation: Option<Organisation>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
     params: &OpenID4Vp25Params,
 ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
     let query = url
@@ -662,18 +668,21 @@ async fn handle_proof_invitation(
         ))?;
 
     let holder_interaction_data = {
-        let (interaction_data, verifier_did) = interaction_data_from_openid4vp_25_query(
-            query,
-            client,
-            allow_insecure_http_transport,
-            key_algorithm_provider,
-            did_method_provider,
-            params,
-        )
-        .await?;
+        let (interaction_data, verifier_did, verifier_certificate) =
+            interaction_data_from_openid4vp_25_query(
+                query,
+                client,
+                allow_insecure_http_transport,
+                key_algorithm_provider,
+                did_method_provider,
+                certificate_validator,
+                params,
+            )
+            .await?;
 
         let mut holder_state: OpenID4VPHolderInteractionData = interaction_data.try_into()?;
         holder_state.verifier_did = verifier_did;
+        holder_state.verifier_certificate = verifier_certificate;
         holder_state
     };
 

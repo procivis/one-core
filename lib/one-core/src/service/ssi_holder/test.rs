@@ -42,6 +42,7 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
+use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -51,6 +52,7 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
@@ -1227,12 +1229,14 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         validity_credential_repository: Arc::new(MockValidityCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        certificate_repository: Arc::new(MockCertificateRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         issuance_protocol_provider: Arc::new(MockIssuanceProtocolProvider::new()),
         verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
         did_method_provider: Arc::new(did_method_provider),
+        certificate_validator: Arc::new(MockCertificateValidator::new()),
         config: Arc::new(generic_config().core),
         client: client.clone(),
         vct_type_metadata_cache: Arc::new(VctTypeMetadataCache::new(

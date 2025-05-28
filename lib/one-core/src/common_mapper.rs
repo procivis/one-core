@@ -11,6 +11,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
+use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -33,8 +34,10 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
@@ -169,6 +172,59 @@ pub(crate) async fn get_or_create_did_and_identifier(
     };
 
     Ok((did, identifier))
+}
+
+pub(crate) async fn get_or_create_certificate_identifier(
+    certificate_repository: &dyn CertificateRepository,
+    certificate_validator: &dyn CertificateValidator,
+    identifier_repository: &dyn IdentifierRepository,
+    organisation: &Option<Organisation>,
+    chain: String,
+) -> Result<(Certificate, Identifier), ServiceError> {
+    // TODO: ONE-5921 currently no lookup of existing identifier. always create a new one
+
+    let ParsedCertificate {
+        attributes,
+        subject_common_name,
+        ..
+    } = certificate_validator
+        .parse_pem_chain(chain.as_bytes(), false)
+        .await?;
+
+    let identifier_id = Uuid::new_v4().into();
+    let name = format!("Remote {identifier_id}");
+
+    let identifier = Identifier {
+        id: identifier_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: name.to_owned(),
+        r#type: IdentifierType::Certificate,
+        is_remote: true,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: organisation.to_owned(),
+        did: None,
+        key: None,
+        certificates: None,
+    };
+    identifier_repository.create(identifier.clone()).await?;
+
+    let certificate = Certificate {
+        id: Uuid::new_v4().into(),
+        identifier_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        expiry_date: attributes.not_after,
+        name: subject_common_name.unwrap_or(name),
+        chain,
+        state: CertificateState::Active,
+        key: None,
+        organisation: organisation.to_owned(),
+    };
+    certificate_repository.create(certificate.clone()).await?;
+
+    Ok((certificate, identifier))
 }
 
 pub(crate) fn value_to_model_claims(

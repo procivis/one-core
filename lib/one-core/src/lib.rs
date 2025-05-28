@@ -381,6 +381,12 @@ impl OneCore {
             ))?
             .clone();
 
+        let certificate_validator = Arc::new(CertificateValidatorImpl::new(
+            key_algorithm_provider.clone(),
+            client.clone(),
+            Arc::new(core_config.clone()),
+        ));
+
         let revocation_method_provider = providers
             .revocation_method_provider
             .as_ref()
@@ -435,6 +441,7 @@ impl OneCore {
             data_provider.clone(),
             formatter_provider.clone(),
             key_provider.clone(),
+            certificate_validator.clone(),
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
             ble_waiter.clone(),
@@ -448,11 +455,6 @@ impl OneCore {
 
         let verification_provider = Arc::new(VerificationProtocolProviderImpl::new(
             verification_protocols,
-        ));
-
-        let certificate_validator = Arc::new(CertificateValidatorImpl::new(
-            key_algorithm_provider.clone(),
-            client.clone(),
         ));
 
         let certificate_service = CertificateService::new(
@@ -500,7 +502,7 @@ impl OneCore {
             data_provider.get_certificate_repository(),
             data_provider.get_identifier_repository(),
             credential_service.clone(),
-            certificate_validator,
+            certificate_validator.clone(),
         )
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
@@ -679,12 +681,14 @@ impl OneCore {
                 data_provider.get_validity_credential_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_identifier_repository(),
+                data_provider.get_certificate_repository(),
                 key_provider,
                 key_algorithm_provider,
                 formatter_provider,
                 issuance_provider,
                 verification_provider,
                 did_method_provider,
+                certificate_validator,
                 config.clone(),
                 client.clone(),
                 vct_type_metadata_cache,

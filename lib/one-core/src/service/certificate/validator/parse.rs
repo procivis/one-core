@@ -6,7 +6,6 @@ use x509_parser::prelude::X509Certificate;
 
 use super::{CertificateValidator, CertificateValidatorImpl, ParsedCertificate, x509_extension};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -14,11 +13,10 @@ use crate::service::error::{MissingProviderError, ServiceError, ValidationError}
 
 #[async_trait::async_trait]
 impl CertificateValidator for CertificateValidatorImpl {
-    async fn parse_pem_chain<'a>(
-        &'a self,
+    async fn parse_pem_chain(
+        &self,
         pem_chain: &[u8],
         validate: bool,
-        expected_pub_key: Option<&'a Key>,
     ) -> Result<ParsedCertificate, ServiceError> {
         let mut result: Option<ParsedCertificate> = None;
 
@@ -43,12 +41,6 @@ impl CertificateValidator for CertificateValidatorImpl {
                 .chain(std::iter::once((None, None))),
         ) {
             if result.is_none() {
-                let public_key = self.extract_public_key(current)?;
-                if let Some(expected_pub_key) = expected_pub_key {
-                    validate_subject_public_key(&public_key, expected_pub_key)?;
-                }
-
-                let attributes = parse_x509_attributes(current, &current_pem.contents)?;
                 let subject_common_name = current
                     .subject
                     .iter_common_name()
@@ -57,9 +49,9 @@ impl CertificateValidator for CertificateValidatorImpl {
                     .map(ToString::to_string);
 
                 let res = ParsedCertificate {
-                    attributes,
+                    attributes: parse_x509_attributes(current, &current_pem.contents)?,
                     subject_common_name,
-                    public_key,
+                    public_key: self.extract_public_key(current)?,
                 };
                 if validate {
                     result = Some(res);
@@ -138,18 +130,6 @@ impl CertificateValidatorImpl {
 
         Ok(key_handle)
     }
-}
-
-fn validate_subject_public_key(
-    subject_public_key: &KeyHandle,
-    expected_key: &Key,
-) -> Result<(), ServiceError> {
-    let subject_raw_public_key = subject_public_key.public_key_as_raw();
-    if expected_key.public_key != subject_raw_public_key {
-        return Err(ValidationError::CertificateKeyNotMatching.into());
-    }
-
-    Ok(())
 }
 
 fn parse_x509_attributes(

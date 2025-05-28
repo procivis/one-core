@@ -6,7 +6,10 @@ use url::Url;
 
 use super::SSIHolderService;
 use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
-use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER, get_or_create_did_and_identifier};
+use crate::common_mapper::{
+    DidRole, NESTED_CLAIM_MARKER, get_or_create_certificate_identifier,
+    get_or_create_did_and_identifier,
+};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
@@ -501,7 +504,7 @@ impl SSIHolderService {
 
         proof.exchange = verification_exchange;
 
-        self.fill_verifier_did_in_proof(&mut proof).await?;
+        self.fill_verifier_in_proof(&mut proof).await?;
 
         self.proof_repository.create_proof(proof.to_owned()).await?;
 
@@ -511,7 +514,7 @@ impl SSIHolderService {
         })
     }
 
-    async fn fill_verifier_did_in_proof(&self, proof: &mut Proof) -> Result<(), ServiceError> {
+    async fn fill_verifier_in_proof(&self, proof: &mut Proof) -> Result<(), ServiceError> {
         if let Some(interaction) = proof.interaction.as_ref() {
             let deserialized: Result<OpenID4VPHolderInteractionData, _> =
                 deserialize_interaction_data(interaction.data.as_ref());
@@ -527,6 +530,19 @@ impl SSIHolderService {
                         &interaction.organisation,
                         &did_value,
                         DidRole::Verifier,
+                    )
+                    .await?;
+
+                    proof.verifier_identifier = Some(identifier);
+                }
+
+                if let Some(pem_chain) = data.verifier_certificate {
+                    let (_, identifier) = get_or_create_certificate_identifier(
+                        &*self.certificate_repository,
+                        &*self.certificate_validator,
+                        &*self.identifier_repository,
+                        &interaction.organisation,
+                        pem_chain,
                     )
                     .await?;
 

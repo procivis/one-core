@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::model::key::Key;
+use crate::config::core_config::CoreConfig;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -15,7 +15,6 @@ mod x509_extension;
 pub(crate) struct ParsedCertificate {
     pub attributes: CertificateX509AttributesDTO,
     pub subject_common_name: Option<String>,
-    #[allow(dead_code)]
     pub public_key: KeyHandle,
 }
 
@@ -27,11 +26,10 @@ pub(crate) trait CertificateValidator: Send + Sync {
     /// * not expired
     /// * not revoked
     /// * correctly signed by the parent cert in the chain
-    async fn parse_pem_chain<'a>(
-        &'a self,
+    async fn parse_pem_chain(
+        &self,
         pem_chain: &[u8],
         validate: bool,
-        expected_pub_key: Option<&'a Key>,
     ) -> Result<ParsedCertificate, ServiceError>;
 }
 
@@ -39,16 +37,19 @@ pub(crate) trait CertificateValidator: Send + Sync {
 pub(crate) struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
+    config: Arc<CoreConfig>,
 }
 
 impl CertificateValidatorImpl {
     pub(crate) fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             key_algorithm_provider,
             client,
+            config,
         }
     }
 }

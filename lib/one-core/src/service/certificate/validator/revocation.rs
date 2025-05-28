@@ -47,15 +47,21 @@ impl CertificateValidatorImpl {
             self.check_crl_signature(&crl, parent)?;
         }
 
-        // check CRL validity
-        if crl.last_update().to_datetime() > OffsetDateTime::now_utc() {
-            return Err(ValidationError::CRLOutdated.into());
-        }
-        if crl
-            .next_update()
-            .is_some_and(|next_update| next_update.to_datetime() < OffsetDateTime::now_utc())
+        if self
+            .config
+            .unsafe_x509_crl_validity_check_enabled
+            .is_none_or(|enabled| enabled)
         {
-            return Err(ValidationError::CRLOutdated.into());
+            // check CRL validity
+            if crl.last_update().to_datetime() > OffsetDateTime::now_utc() {
+                return Err(ValidationError::CRLOutdated.into());
+            }
+            if crl
+                .next_update()
+                .is_some_and(|next_update| next_update.to_datetime() < OffsetDateTime::now_utc())
+            {
+                return Err(ValidationError::CRLOutdated.into());
+            }
         }
 
         Ok(crl

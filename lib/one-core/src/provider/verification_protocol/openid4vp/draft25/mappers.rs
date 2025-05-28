@@ -247,6 +247,7 @@ impl TryFrom<OpenID4VP25AuthorizationRequest> for OpenID4VPHolderInteractionData
             presentation_definition_uri: value.presentation_definition_uri,
             redirect_uri: value.redirect_uri,
             verifier_did: None,
+            verifier_certificate: None,
         })
     }
 }

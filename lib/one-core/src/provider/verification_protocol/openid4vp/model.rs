@@ -291,7 +291,9 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub redirect_uri: Option<String>,
 
     #[serde(default)]
-    pub verifier_did: Option<String>,
+    pub verifier_did: Option<String>, // did value
+    #[serde(default)]
+    pub verifier_certificate: Option<String>, // pem chain
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368

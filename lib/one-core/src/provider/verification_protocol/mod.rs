@@ -9,9 +9,10 @@ use error::VerificationProtocolError;
 use futures::future::BoxFuture;
 use openid4vp::draft20::OpenID4VP20HTTP;
 use openid4vp::draft20::model::OpenID4Vp20Params;
+use openid4vp::draft20_swiyu::OpenID4VP20Swiyu;
 use openid4vp::draft25::OpenID4VP25HTTP;
 use openid4vp::draft25::model::OpenID4Vp25Params;
-use openid4vp::model::{ClientIdScheme, OpenID4VpPresentationFormat};
+use openid4vp::model::OpenID4VpPresentationFormat;
 use openid4vp::proximity_draft00::{OpenID4VPProximityDraft00, OpenID4VPProximityDraft00Params};
 use serde::de::Deserialize;
 use serde_json::json;
@@ -34,9 +35,9 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
-use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4VP20Swiyu;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
@@ -77,6 +78,7 @@ pub(crate) fn verification_protocol_providers_from_config(
     data_provider: Arc<dyn DataRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
@@ -106,28 +108,13 @@ pub(crate) fn verification_protocol_providers_from_config(
                         source,
                     })?;
 
-                // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
-                if params
-                    .holder
-                    .supported_client_id_schemes
-                    .contains(&ClientIdScheme::X509SanDns)
-                    || params
-                        .verifier
-                        .supported_client_id_schemes
-                        .contains(&ClientIdScheme::X509SanDns)
-                {
-                    params
-                        .x509_ca_certificate
-                        .as_ref()
-                        .ok_or(ConfigValidationError::MissingX509CaCertificate)?;
-                };
-
                 let http25 = OpenID4VP25HTTP::new(
                     core_base_url.clone(),
                     formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
+                    certificate_validator.clone(),
                     client.clone(),
                     params.clone(),
                     config.clone(),
@@ -156,6 +143,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
+                    certificate_validator.clone(),
                     client.clone(),
                     params.clone(),
                     config.clone(),
@@ -185,6 +173,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
+                    certificate_validator.clone(),
                     client.clone(),
                     inner_params,
                     config.clone(),
@@ -244,32 +233,18 @@ fn openid4vp_draft20_from_params(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     params: OpenID4Vp20Params,
     config: Arc<CoreConfig>,
 ) -> Result<OpenID4VP20HTTP, ConfigValidationError> {
-    // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
-    if params
-        .holder
-        .supported_client_id_schemes
-        .contains(&ClientIdScheme::X509SanDns)
-        || params
-            .verifier
-            .supported_client_id_schemes
-            .contains(&ClientIdScheme::X509SanDns)
-    {
-        params
-            .x509_ca_certificate
-            .as_ref()
-            .ok_or(ConfigValidationError::MissingX509CaCertificate)?;
-    };
-
     Ok(OpenID4VP20HTTP::new(
         core_base_url,
         formatter_provider,
         did_method_provider,
         key_algorithm_provider,
         key_provider,
+        certificate_validator,
         client,
         params,
         config,

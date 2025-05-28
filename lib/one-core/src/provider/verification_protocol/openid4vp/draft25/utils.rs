@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use url::Url;
 
 use super::mappers::decode_client_id_with_scheme;
@@ -22,9 +23,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
-use crate::provider::verification_protocol::openid4vp::x509::extract_x5c_san_dns;
+use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::util::key_verification::KeyVerification;
-use crate::util::x509::is_dns_name_matching;
+use crate::util::x509::{is_dns_name_matching, x5c_into_pem_chain};
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<Vec<u8>>,
@@ -43,10 +44,8 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
 
 async fn parse_referenced_data_from_x509_san_dns_token(
     request_token: DecomposedToken<OpenID4VP25AuthorizationRequest>,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    did_method_provider: &Arc<dyn DidMethodProvider>,
-    x509_ca_certificate: &str,
-) -> Result<(OpenID4VP25AuthorizationRequest, Option<String>), VerificationProtocolError> {
+    certificate_validator: &Arc<dyn CertificateValidator>,
+) -> Result<(OpenID4VP25AuthorizationRequest, String), VerificationProtocolError> {
     let x5c = request_token
         .header
         .x5c
@@ -55,30 +54,15 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     let (client_id, _) =
         decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
 
-    let did_value = extract_x5c_san_dns(&x5c, &client_id, x509_ca_certificate)?;
+    let pem_chain = x5c_into_pem_chain(&x5c)
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 
-    let did_document = did_method_provider
-        .resolve(&did_value)
+    let ParsedCertificate { public_key, .. } = certificate_validator
+        .parse_pem_chain(pem_chain.as_bytes(), true)
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 
-    let (_alg_id, alg) = key_algorithm_provider
-        .key_algorithm_from_jose_alg(&request_token.header.algorithm)
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "Missing algorithm: {}",
-            request_token.header.algorithm
-        )))?;
-
-    let key = did_document
-        .find_verification_method(None, Some(KeyRole::AssertionMethod))
-        .ok_or(VerificationProtocolError::Failed(
-            "Missing key in did".to_string(),
-        ))?;
-
-    let handle = alg
-        .parse_jwk(&key.public_key_jwk)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-    handle
+    public_key
         .signature()
         .ok_or(VerificationProtocolError::Failed(
             "Signature key missing".to_string(),
@@ -109,14 +93,14 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         ));
     }
 
-    Ok((request_token.payload.custom, Some(did_value.to_string())))
+    Ok((request_token.payload.custom, pem_chain))
 }
 
 async fn parse_referenced_data_from_did_signed_token(
     request_token: DecomposedToken<OpenID4VP25AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-) -> Result<(OpenID4VP25AuthorizationRequest, Option<String>), VerificationProtocolError> {
+) -> Result<(OpenID4VP25AuthorizationRequest, DidValue), VerificationProtocolError> {
     let client_id = request_token.payload.custom.client_id.clone();
 
     let Some(kid) = request_token.header.key_id.clone() else {
@@ -162,7 +146,7 @@ async fn parse_referenced_data_from_did_signed_token(
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    Ok((request_token.payload.custom, Some(verifier_did.to_string())))
+    Ok((request_token.payload.custom, verifier_did))
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
@@ -256,14 +240,22 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     ))
 }
 
-pub async fn retrieve_authorization_params_by_reference(
+async fn retrieve_authorization_params_by_reference(
     query_params: OpenID4VP25AuthorizationRequestQueryParams,
     url: Url,
     client: &Arc<dyn HttpClient>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
     params: &OpenID4Vp25Params,
-) -> Result<(OpenID4VP25AuthorizationRequest, Option<String>), VerificationProtocolError> {
+) -> Result<
+    (
+        OpenID4VP25AuthorizationRequest,
+        Option<String>,
+        Option<String>,
+    ),
+    VerificationProtocolError,
+> {
     let token = client
         .get(url.as_str())
         .header("Accept", "application/oauth-authz-req+jwt")
@@ -294,39 +286,47 @@ pub async fn retrieve_authorization_params_by_reference(
     let (_, client_id_scheme) =
         decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
 
-    let (referenced_params, verifier_did): (OpenID4VP25AuthorizationRequest, Option<String>) =
-        match client_id_scheme {
-            ClientIdScheme::VerifierAttestation => {
-                parse_referenced_data_from_verifier_attestation_token(
-                    request_token,
-                    key_algorithm_provider,
-                    did_method_provider,
-                )
-                .await?
-            }
-            ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
-            ClientIdScheme::X509SanDns => {
-                parse_referenced_data_from_x509_san_dns_token(
-                    request_token,
-                    key_algorithm_provider,
-                    did_method_provider,
-                    params.x509_ca_certificate.as_ref().ok_or(
-                        VerificationProtocolError::Failed(
-                            "missing x509_ca_certificate".to_string(),
-                        ),
-                    )?,
-                )
-                .await?
-            }
-            ClientIdScheme::Did => {
-                parse_referenced_data_from_did_signed_token(
-                    request_token,
-                    key_algorithm_provider,
-                    did_method_provider,
-                )
-                .await?
-            }
-        };
+    if !params
+        .holder
+        .supported_client_id_schemes
+        .contains(&client_id_scheme)
+    {
+        return Err(VerificationProtocolError::InvalidRequest(
+            "Unsupported client_id_scheme".into(),
+        ));
+    }
+
+    let (referenced_params, verifier_did, verifier_certificate): (
+        OpenID4VP25AuthorizationRequest,
+        Option<String>,
+        Option<String>,
+    ) = match client_id_scheme {
+        ClientIdScheme::VerifierAttestation => {
+            let (request, did) = parse_referenced_data_from_verifier_attestation_token(
+                request_token,
+                key_algorithm_provider,
+                did_method_provider,
+            )
+            .await?;
+            (request, did, None)
+        }
+        ClientIdScheme::RedirectUri => (request_token.payload.custom, None, None),
+        ClientIdScheme::X509SanDns => {
+            let (params, certificate) =
+                parse_referenced_data_from_x509_san_dns_token(request_token, certificate_validator)
+                    .await?;
+            (params, None, Some(certificate))
+        }
+        ClientIdScheme::Did => {
+            let (request, did) = parse_referenced_data_from_did_signed_token(
+                request_token,
+                key_algorithm_provider,
+                did_method_provider,
+            )
+            .await?;
+            (request, Some(did.to_string()), None)
+        }
+    };
 
     // client_id from the query params must match client_id inisde the token
     if referenced_params.client_id != query_params.client_id {
@@ -335,7 +335,7 @@ pub async fn retrieve_authorization_params_by_reference(
         ));
     }
 
-    Ok((referenced_params, verifier_did))
+    Ok((referenced_params, verifier_did, verifier_certificate))
 }
 
 pub(crate) async fn interaction_data_from_openid4vp_25_query(
@@ -344,12 +344,20 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
     allow_insecure_http_transport: bool,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
     params: &OpenID4Vp25Params,
-) -> Result<(OpenID4VP25AuthorizationRequest, Option<String>), VerificationProtocolError> {
+) -> Result<
+    (
+        OpenID4VP25AuthorizationRequest,
+        Option<String>,
+        Option<String>,
+    ),
+    VerificationProtocolError,
+> {
     let query_params: OpenID4VP25AuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
-    let (mut authorization_request, verifier_did) =
+    let (mut authorization_request, verifier_did, verifier_certificate) =
         match (&query_params.request_uri, &query_params.request) {
             (Some(_), Some(_)) => {
                 return Err(VerificationProtocolError::InvalidRequest(
@@ -366,21 +374,26 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
                     ));
                 }
 
-                let (authorization_req, verifier_did) = retrieve_authorization_params_by_reference(
+                Ok(retrieve_authorization_params_by_reference(
                     query_params,
                     request_uri,
                     client,
                     did_method_provider,
                     key_algorithm_provider,
+                    certificate_validator,
                     params,
                 )
-                .await?;
-
-                Ok((authorization_req, verifier_did))
+                .await?)
             }
-            (None, Some(request)) => serde_json::from_str(request).map_err(|e| {
-                VerificationProtocolError::InvalidRequest(format!("Failed to parse request: {}", e))
-            }),
+            (None, Some(request)) => {
+                let authorization_request = serde_json::from_str(request).map_err(|e| {
+                    VerificationProtocolError::InvalidRequest(format!(
+                        "Failed to parse request: {}",
+                        e
+                    ))
+                })?;
+                Ok((authorization_request, None, None))
+            }
             (None, None) => {
                 return Err(VerificationProtocolError::InvalidRequest(
                     "request or request_uri is required".to_string(),
@@ -420,7 +433,7 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
         authorization_request.presentation_definition = Some(presentation_definition);
     }
 
-    Ok((authorization_request, verifier_did))
+    Ok((authorization_request, verifier_did, verifier_certificate))
 }
 
 pub(crate) fn validate_interaction_data(

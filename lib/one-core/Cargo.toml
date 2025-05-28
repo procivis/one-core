@@ -39,6 +39,7 @@ multihash.workspace      = true
 one-crypto               = { version = "0.1.0", path = "../one-crypto" }
 one-dto-mapper.workspace = true
 ouroboros                = { version = "0.18" }
+pem                      = { version = "3" }
 rand.workspace           = true
 rcgen.workspace          = true
 regex.workspace          = true

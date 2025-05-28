@@ -23,8 +23,7 @@ pub(crate) struct OpenID4Vp20Params {
 
     #[serde(default = "default_presentation_url_scheme")]
     pub url_scheme: String,
-    #[serde(default)]
-    pub x509_ca_certificate: Option<String>,
+
     pub holder: OpenID4VCPresentationHolderParams,
     pub verifier: OpenID4VCPresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
