@@ -20,7 +20,7 @@ use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyRole};
+use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::PublicKeyJwk;
@@ -393,12 +393,13 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
                         "verifier_did is None".to_string(),
                     ))?;
 
-            let encryption_key = verifier_did.find_key(&verifier_key.id, KeyRole::KeyAgreement);
+            let key_filter = KeyFilter::role_filter(KeyRole::KeyAgreement);
+            let encryption_key = verifier_did.find_key(&verifier_key.id, &key_filter);
 
             let Some(encryption_key) = match encryption_key {
                 Ok(Some(key)) => Some(key),
                 Err(ServiceError::Validation(_)) | Ok(None) => {
-                    verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)?
+                    verifier_did.find_first_matching_key(&key_filter)?
                 }
                 Err(error) => Err(error)?,
             }

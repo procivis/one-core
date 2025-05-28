@@ -19,7 +19,7 @@ use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionId, InteractionRelations};
@@ -169,12 +169,13 @@ impl SSIHolderService {
                 "missing identifier did".to_string(),
             ))?;
 
+        let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
         let selected_key = match submission.key_id {
             Some(key_id) => holder_did
-                .find_key(&key_id, KeyRole::Authentication)?
+                .find_key(&key_id, &key_filter)?
                 .ok_or(ValidationError::KeyNotFound)?,
             None => holder_did
-                .find_first_key_by_role(KeyRole::Authentication)?
+                .find_first_matching_key(&key_filter)?
                 .ok_or(ValidationError::KeyNotFound)?,
         };
 

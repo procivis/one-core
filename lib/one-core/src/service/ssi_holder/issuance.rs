@@ -16,7 +16,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
-use crate::model::did::{Did, DidRelations, KeyRole};
+use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
@@ -112,15 +112,17 @@ impl SSIHolderService {
             "missing identifier did".to_string(),
         ))?;
 
+        let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
         let selected_key = match key_id {
             Some(key_id) => did
-                .find_key(&key_id, KeyRole::Authentication)?
+                .find_key(&key_id, &key_filter)?
                 .ok_or(ValidationError::KeyNotFound)?,
-            None => did.find_first_key_by_role(KeyRole::Authentication)?.ok_or(
-                ValidationError::InvalidKey(
-                    "No key with role authentication available".to_string(),
-                ),
-            )?,
+            None => {
+                did.find_first_matching_key(&key_filter)?
+                    .ok_or(ValidationError::InvalidKey(
+                        "No key with role authentication available".to_string(),
+                    ))?
+            }
         };
 
         let holder_jwk_key_id = self

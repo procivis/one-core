@@ -4,7 +4,7 @@ use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationProtocolConfig, VerificationProtocolType,
 };
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::model::Features;
@@ -82,7 +82,8 @@ pub(super) fn validate_did_and_format_compatibility(
             "input_schemas is None".to_string(),
         ))?;
 
-    let key_agreement_key = verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)?;
+    let key_agreement_key =
+        verifier_did.find_first_matching_key(&KeyFilter::role_filter(KeyRole::KeyAgreement))?;
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =

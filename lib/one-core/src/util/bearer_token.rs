@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 
 use crate::KeyProvider;
 use crate::common_validator::validate_expiration_time;
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::model::TokenVerifier;
@@ -23,7 +23,7 @@ pub(crate) async fn prepare_bearer_token(
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ServiceError> {
     let authentication_key = did
-        .find_first_key_by_role(KeyRole::Authentication)?
+        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::Authentication))?
         .ok_or(ValidationError::KeyNotFound)?;
 
     let key_algorithm = authentication_key

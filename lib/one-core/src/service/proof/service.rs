@@ -34,7 +34,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::DidRelations;
+use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
@@ -392,10 +392,11 @@ impl ProofService {
         };
 
         let selected_entities = entities_for_local_active_identifier(
+            &verifier_identifier,
+            &KeyFilter::role_filter(KeyRole::Authentication),
             request.verifier_key,
             request.verifier_did_id,
             request.verifier_certificate,
-            &verifier_identifier,
         )?;
         let (verifier_key, verifier_certificate) = match selected_entities {
             IdentifierEntitySelection::Key(_) => {

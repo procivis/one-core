@@ -1,7 +1,7 @@
 use shared_types::{CertificateId, DidId, KeyId};
 
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::{Did, KeyFilter};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
@@ -19,12 +19,13 @@ pub(crate) enum IdentifierEntitySelection<'a> {
     },
 }
 
-pub(crate) fn entities_for_local_active_identifier(
+pub(crate) fn entities_for_local_active_identifier<'a>(
+    identifier: &'a Identifier,
+    key_filter: &KeyFilter,
     key_id: Option<KeyId>,
     did_id: Option<DidId>,
     certificate_id: Option<CertificateId>,
-    identifier: &Identifier,
-) -> Result<IdentifierEntitySelection, ServiceError> {
+) -> Result<IdentifierEntitySelection<'a>, ServiceError> {
     if identifier.state != IdentifierState::Active {
         return Err(BusinessLogicError::IdentifierIsDeactivated(identifier.id).into());
     }
@@ -38,6 +39,12 @@ pub(crate) fn entities_for_local_active_identifier(
 
     match identifier.r#type {
         IdentifierType::Did => {
+            if certificate_id.is_some() {
+                return Err(ServiceError::ValidationError(
+                    "Certificate cannot be specified for identifier of type did".to_string(),
+                ));
+            }
+
             let did = identifier.did.as_ref().ok_or(ServiceError::MappingError(
                 "missing identifier did".to_string(),
             ))?;
@@ -61,18 +68,24 @@ pub(crate) fn entities_for_local_active_identifier(
                 .into());
             }
 
-            let key = match key_id {
-                Some(key_id) => did
-                    .find_key(&key_id, KeyRole::Authentication)?
-                    .ok_or(ValidationError::KeyNotFound)?,
-                None => did.find_first_key_by_role(KeyRole::Authentication)?.ok_or(
-                    ValidationError::InvalidKey("No authentication key found".to_string()),
-                )?,
-            };
+            let key =
+                match key_id {
+                    Some(key_id) => did
+                        .find_key(&key_id, key_filter)?
+                        .ok_or(ValidationError::KeyNotFound)?,
+                    None => did.find_first_matching_key(key_filter)?.ok_or(
+                        ValidationError::InvalidKey("No authentication key found".to_string()),
+                    )?,
+                };
 
             Ok(IdentifierEntitySelection::Did { did, key })
         }
         IdentifierType::Certificate => {
+            if did_id.is_some() {
+                return Err(ServiceError::ValidationError(
+                    "Did cannot be specified for identifier of type certificate".to_string(),
+                ));
+            }
             let certificates =
                 identifier
                     .certificates
@@ -114,6 +127,17 @@ pub(crate) fn entities_for_local_active_identifier(
             Ok(IdentifierEntitySelection::Certificate { certificate, key })
         }
         IdentifierType::Key => {
+            if did_id.is_some() {
+                return Err(ServiceError::ValidationError(
+                    "Did cannot be specified for identifier of type key".to_string(),
+                ));
+            }
+            if certificate_id.is_some() {
+                return Err(ServiceError::ValidationError(
+                    "Certificate cannot be specified for identifier of type key".to_string(),
+                ));
+            }
+
             let key = identifier.key.as_ref().ok_or(ServiceError::MappingError(
                 "missing identifier key".to_string(),
             ))?;

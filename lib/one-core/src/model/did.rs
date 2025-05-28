@@ -8,6 +8,7 @@ use super::key::Key;
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::KeyRelations;
 use crate::service::error::{ServiceError, ValidationError};
 
@@ -58,12 +59,52 @@ pub struct Did {
     pub organisation: Option<Organisation>,
 }
 
+#[derive(Default, Clone)]
+pub struct KeyFilter {
+    pub role: Option<KeyRole>,
+    pub algorithms: Option<Vec<KeyAlgorithmType>>,
+}
+
+impl KeyFilter {
+    pub fn role_filter(role: KeyRole) -> Self {
+        Self {
+            role: Some(role),
+            ..Default::default()
+        }
+    }
+
+    pub fn matches_key(&self, key: &RelatedKey) -> bool {
+        let role_match = self
+            .role
+            .as_ref()
+            .map(|role| *role == key.role)
+            .unwrap_or(true);
+
+        let algorithm_match = self
+            .algorithms
+            .as_ref()
+            .map(|algorithms| {
+                let Some(algorithm_type) = key.key.key_algorithm_type() else {
+                    return false;
+                };
+                algorithms.contains(&algorithm_type)
+            })
+            .unwrap_or(true);
+
+        role_match && algorithm_match
+    }
+}
+
 impl Did {
     pub fn is_remote(&self) -> bool {
         self.did_type.is_remote()
     }
 
-    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<Option<&Key>, ServiceError> {
+    pub fn find_key(
+        &self,
+        key_id: &KeyId,
+        filter: &KeyFilter,
+    ) -> Result<Option<&Key>, ServiceError> {
         let mut same_id_keys = self
             .keys
             .as_ref()
@@ -78,19 +119,24 @@ impl Did {
 
         Ok(Some(
             &same_id_keys
-                .find(|entry| entry.role == role)
-                .ok_or_else(|| ValidationError::InvalidKey("key has wrong role".into()))?
+                .find(|entry| filter.matches_key(entry))
+                .ok_or_else(|| {
+                    ValidationError::InvalidKey("key has wrong role or algorithm".into())
+                })?
                 .key,
         ))
     }
 
-    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<Option<&Key>, ServiceError> {
+    pub fn find_first_matching_key(
+        &self,
+        filter: &KeyFilter,
+    ) -> Result<Option<&Key>, ServiceError> {
         Ok(self
             .keys
             .as_ref()
             .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
             .iter()
-            .find(|entry| entry.role == role)
+            .find(|entry| filter.matches_key(entry))
             .map(|entry| &entry.key))
     }
 }

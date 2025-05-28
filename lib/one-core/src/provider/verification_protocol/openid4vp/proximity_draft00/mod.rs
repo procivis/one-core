@@ -19,7 +19,7 @@ use super::model::{
 };
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType};
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
@@ -856,8 +856,10 @@ pub(super) async fn prepare_proof_share(
         )));
     };
 
-    let Ok(Some(verifier_key)) = verifier_did.find_key(&params.key_id, KeyRole::Authentication)
-    else {
+    let Ok(Some(verifier_key)) = verifier_did.find_key(
+        &params.key_id,
+        &KeyFilter::role_filter(KeyRole::Authentication),
+    ) else {
         return Err(VerificationProtocolError::InvalidRequest(format!(
             "Verifier key {} not found for proof {}",
             params.key_id,

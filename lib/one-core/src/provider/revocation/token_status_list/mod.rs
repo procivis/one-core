@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -420,7 +420,7 @@ pub async fn format_status_list_credential(
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
     let key = issuer_did
-        .find_first_key_by_role(KeyRole::AssertionMethod)
+        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
         .ok_or(RevocationError::KeyWithRoleNotFound(
             KeyRole::AssertionMethod,
