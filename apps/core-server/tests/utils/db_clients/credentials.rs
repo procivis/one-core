@@ -117,6 +117,7 @@ impl CredentialsDB {
             suspend_end_date: params.suspend_end_date,
             claims: Some(claims),
             issuer_identifier: Some(issuer_identifier.to_owned()),
+            issuer_certificate: None,
             holder_identifier: params.holder_identifier,
             schema: Some(credential_schema.to_owned()),
             interaction: params.interaction,

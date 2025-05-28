@@ -180,6 +180,7 @@ fn generic_credential() -> Credential {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -251,6 +252,7 @@ fn generic_credential_list_entity() -> Credential {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -3831,6 +3833,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -4396,6 +4399,7 @@ async fn test_get_credential_success_array_index_sorting() {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -4710,6 +4714,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -4927,6 +4932,7 @@ async fn test_get_credential_success_array_single_element() {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

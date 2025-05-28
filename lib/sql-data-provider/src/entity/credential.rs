@@ -4,7 +4,7 @@ use one_core::model::credential::{
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId};
+use shared_types::{CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -30,6 +30,7 @@ pub struct Model {
     pub role: CredentialRole,
 
     pub issuer_identifier_id: Option<IdentifierId>,
+    pub issuer_certificate_id: Option<CertificateId>,
     pub key_id: Option<KeyId>,
 
     pub holder_identifier_id: Option<IdentifierId>,
@@ -64,6 +65,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     IssuerIdentifier,
+    #[sea_orm(
+        belongs_to = "super::certificate::Entity",
+        from = "Column::IssuerCertificateId",
+        to = "super::certificate::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    IssuerCertificate,
     #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::HolderIdentifierId",

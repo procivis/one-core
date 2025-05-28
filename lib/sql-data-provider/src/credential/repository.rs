@@ -193,6 +193,26 @@ impl CredentialProvider {
             None
         };
 
+        let issuer_certificate = if let Some(certificate_relations) = &relations.issuer_certificate
+        {
+            match &credential.issuer_certificate_id {
+                None => None,
+                Some(certificate_id) => {
+                    let certificate = self
+                        .certificate_repository
+                        .get(*certificate_id, certificate_relations)
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "credential-certificate",
+                            id: certificate_id.to_string(),
+                        })?;
+                    Some(certificate)
+                }
+            }
+        } else {
+            None
+        };
+
         Ok(Credential {
             issuer_identifier,
             holder_identifier,
@@ -201,6 +221,7 @@ impl CredentialProvider {
             revocation_list,
             interaction,
             key,
+            issuer_certificate,
             ..credential.into()
         })
     }
@@ -342,6 +363,8 @@ impl CredentialRepository for CredentialProvider {
             .as_ref()
             .map(|identifier| identifier.id);
 
+        let issuer_certificate_id = request.issuer_certificate.as_ref().map(|cert| cert.id);
+
         let holder_identifier_id = request
             .holder_identifier
             .as_ref()
@@ -376,6 +399,7 @@ impl CredentialRepository for CredentialProvider {
             &request,
             schema,
             issuer_identifier_id,
+            issuer_certificate_id,
             holder_identifier_id,
             interaction_id,
             revocation_list_id,

@@ -74,6 +74,7 @@ async fn insert_credential_to_database(
         credential: Set(vec![]),
         role: Set(CredentialRole::Holder),
         issuer_identifier_id: Set(None),
+        issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),

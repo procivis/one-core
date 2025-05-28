@@ -288,6 +288,8 @@ pub(crate) fn extracted_credential_to_model(
         suspend_end_date: None,
         claims: Some(model_claims),
         issuer_identifier: Some(issuer_identifier),
+        // TODO ONE-5920: Fill in value if issued using certificate
+        issuer_certificate: None,
         holder_identifier,
         schema: Some(credential_schema),
         redirect_uri: None,

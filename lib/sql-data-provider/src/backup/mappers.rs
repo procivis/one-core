@@ -51,6 +51,8 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             suspend_end_date: value.suspend_end_date,
             claims: Some(convert_inner(claims_with_schema)),
             issuer_identifier: None,
+            // TODO ONE-5920: Fill in value if issued using certificate
+            issuer_certificate: None,
             holder_identifier: None,
             schema: Some(CredentialSchema {
                 id: value.credential_schema_id,

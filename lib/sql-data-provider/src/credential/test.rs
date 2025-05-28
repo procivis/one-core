@@ -18,6 +18,9 @@ use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::OrganisationRelations;
+use one_core::repository::certificate_repository::{
+    CertificateRepository, MockCertificateRepository,
+};
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::{
@@ -224,6 +227,7 @@ struct Repositories {
     pub identifier_repository: Arc<dyn IdentifierRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub revocation_list_repository: Arc<dyn RevocationListRepository>,
+    pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
 }
 
@@ -235,6 +239,7 @@ impl Default for Repositories {
             identifier_repository: Arc::from(MockIdentifierRepository::default()),
             interaction_repository: Arc::from(MockInteractionRepository::default()),
             revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+            certificate_repository: Arc::new(MockCertificateRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
         }
     }
@@ -252,6 +257,7 @@ fn credential_repository(
         identifier_repository: repositories.identifier_repository,
         interaction_repository: repositories.interaction_repository,
         revocation_list_repository: repositories.revocation_list_repository,
+        certificate_repository: repositories.certificate_repository,
         key_repository: repositories.key_repository,
     };
     CredentialHistoryDecorator {
@@ -338,6 +344,7 @@ async fn test_create_credential_success() {
             suspend_end_date: None,
             claims: Some(claims),
             issuer_identifier: Some(identifier),
+            issuer_certificate: None,
             holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
@@ -415,6 +422,7 @@ async fn test_create_credential_empty_claims() {
             suspend_end_date: None,
             claims: Some(vec![]),
             issuer_identifier: Some(identifier),
+            issuer_certificate: None,
             holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
@@ -476,6 +484,7 @@ async fn test_create_credential_already_exists() {
             suspend_end_date: None,
             claims: Some(claims),
             issuer_identifier: Some(identifier),
+            issuer_certificate: None,
             holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
@@ -546,6 +555,7 @@ async fn test_delete_credential_failed_not_found() {
             suspend_end_date: None,
             claims: None,
             issuer_identifier: None,
+            issuer_certificate: None,
             holder_identifier: None,
             schema: None,
             interaction: None,

@@ -455,6 +455,7 @@ fn dummy_credential() -> Credential {
             }),
         }]),
         issuer_identifier: None,
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

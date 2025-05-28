@@ -170,6 +170,7 @@ fn generic_credential() -> Credential {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_identifier: Some(issuer_identifier),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")

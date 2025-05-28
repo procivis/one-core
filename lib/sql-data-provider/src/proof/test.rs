@@ -567,6 +567,7 @@ async fn test_get_proof_with_relations() {
                 suspend_end_date: None,
                 claims: None,
                 issuer_identifier: None,
+                issuer_certificate: None,
                 holder_identifier: None,
                 schema: None,
                 interaction: None,

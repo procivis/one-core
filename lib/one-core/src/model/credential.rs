@@ -10,6 +10,7 @@ use super::interaction::{Interaction, InteractionId, InteractionRelations};
 use super::key::Key;
 use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
+use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::key::KeyRelations;
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
 
@@ -30,6 +31,7 @@ pub struct Credential {
     // Relations:
     pub claims: Option<Vec<Claim>>,
     pub issuer_identifier: Option<Identifier>,
+    pub issuer_certificate: Option<Certificate>,
     pub holder_identifier: Option<Identifier>,
     pub schema: Option<CredentialSchema>,
     pub interaction: Option<Interaction>,
@@ -41,6 +43,7 @@ pub struct Credential {
 pub struct CredentialRelations {
     pub claims: Option<ClaimRelations>,
     pub issuer_identifier: Option<IdentifierRelations>,
+    pub issuer_certificate: Option<CertificateRelations>,
     pub holder_identifier: Option<IdentifierRelations>,
     pub schema: Option<CredentialSchemaRelations>,
     pub interaction: Option<InteractionRelations>,

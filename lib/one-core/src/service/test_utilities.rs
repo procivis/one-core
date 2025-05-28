@@ -245,6 +245,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             did: Some(dummy_did()),
             ..dummy_identifier()
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),

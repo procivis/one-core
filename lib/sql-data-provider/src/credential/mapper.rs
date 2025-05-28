@@ -10,7 +10,7 @@ use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
-use shared_types::{IdentifierId, KeyId};
+use shared_types::{CertificateId, IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{self, claim, credential, credential_schema, did};
@@ -96,6 +96,7 @@ impl From<entity::credential::Model> for Credential {
             suspend_end_date: credential.suspend_end_date,
             claims: None,
             issuer_identifier: None,
+            issuer_certificate: None,
             holder_identifier: None,
             schema: None,
             interaction: None,
@@ -110,6 +111,7 @@ pub(super) fn request_to_active_model(
     request: &Credential,
     schema: CredentialSchema,
     issuer_identifier_id: Option<IdentifierId>,
+    issuer_certificate_id: Option<CertificateId>,
     holder_identifier_id: Option<IdentifierId>,
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
@@ -126,6 +128,7 @@ pub(super) fn request_to_active_model(
         credential: Set(request.credential.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
         issuer_identifier_id: Set(issuer_identifier_id),
+        issuer_certificate_id: Set(issuer_certificate_id),
         holder_identifier_id: Set(holder_identifier_id),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
@@ -242,6 +245,7 @@ pub(super) fn credential_list_model_to_repository_model(
         suspend_end_date: credential.suspend_end_date,
         claims: None,
         issuer_identifier,
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,

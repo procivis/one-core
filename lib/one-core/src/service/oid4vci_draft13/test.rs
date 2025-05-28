@@ -178,6 +178,7 @@ fn dummy_credential(
         suspend_end_date: None,
         claims: None,
         issuer_identifier: None,
+        issuer_certificate: None,
         holder_identifier: None,
         schema,
         interaction: Some(dummy_interaction(

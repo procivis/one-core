@@ -1285,6 +1285,7 @@ fn dummy_credential() -> Credential {
             key: None,
             certificates: None,
         }),
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(crate::model::credential_schema::CredentialSchema {
             id: Uuid::new_v4().into(),

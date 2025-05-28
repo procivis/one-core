@@ -56,6 +56,7 @@ pub async fn insert_credential(
         credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
         issuer_identifier_id: Set(Some(issuer_identifier_id)),
+        issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),

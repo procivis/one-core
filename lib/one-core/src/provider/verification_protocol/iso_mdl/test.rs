@@ -421,6 +421,7 @@ async fn test_get_presentation_definition_ok() {
                 suspend_end_date: None,
                 claims: Some(claims),
                 issuer_identifier: None,
+                issuer_certificate: None,
                 holder_identifier: None,
                 key: None,
                 interaction: None,

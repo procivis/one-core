@@ -344,6 +344,8 @@ pub(super) fn from_create_request(
         exchange: request.exchange,
         claims: Some(claims),
         issuer_identifier: Some(issuer_identifier),
+        // TODO ONE-5920: Fill in value if issued using certificate
+        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,

@@ -64,6 +64,8 @@ pub(super) async fn credential_from_proved(
         state: proved_credential.credential.state,
         claims: convert_inner_of_inner(proved_credential.credential.claims),
         issuer_identifier: Some(issuer_identifier),
+        // TODO ONE-5920: Fill in value if issued using certificate
+        issuer_certificate: None,
         holder_identifier: Some(holder_identifier),
         schema: proved_credential
             .credential
