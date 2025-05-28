@@ -57,6 +57,7 @@ impl ErrorResponse {
             }
             ServiceError::Validation(ValidationError::Unauthorized) => Self::Forbidden,
             ServiceError::Validation(_)
+            | ServiceError::ValidationError(_)
             | ServiceError::BusinessLogic(_)
             | ServiceError::FormatterError(FormatterError::BBSOnly)
             | ServiceError::ConfigValidationError(_)

@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::dto::{CredentialSchemaType, DetailCredentialSchemaResponseDTO};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
@@ -327,6 +328,7 @@ pub(super) fn from_create_request(
     credential_id: CredentialId,
     claims: Vec<Claim>,
     issuer_identifier: Identifier,
+    issuer_certificate: Option<Certificate>,
     schema: CredentialSchema,
     key: Key,
 ) -> Credential {
@@ -344,8 +346,7 @@ pub(super) fn from_create_request(
         exchange: request.exchange,
         claims: Some(claims),
         issuer_identifier: Some(issuer_identifier),
-        // TODO ONE-5920: Fill in value if issued using certificate
-        issuer_certificate: None,
+        issuer_certificate,
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,

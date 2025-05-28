@@ -2,7 +2,8 @@ use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
+    CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
+    OrganisationId,
 };
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
@@ -196,6 +197,7 @@ pub struct CreateCredentialRequestDTO {
     pub issuer: Option<IdentifierId>,
     pub issuer_did: Option<DidId>,
     pub issuer_key: Option<KeyId>,
+    pub issuer_certificate: Option<CertificateId>,
     pub exchange: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,

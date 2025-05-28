@@ -40,6 +40,8 @@ impl CredentialsDB {
                         ..Default::default()
                     }),
                     key: Some(Default::default()),
+                    issuer_identifier: Some(Default::default()),
+                    issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },
             )

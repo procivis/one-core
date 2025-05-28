@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
@@ -31,7 +32,7 @@ async fn test_create_credential_success() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -44,6 +45,8 @@ async fn test_create_credential_success() {
                     "path": "isOver18"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -96,7 +99,7 @@ async fn test_create_credential_with_array_success() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id_root_field.to_string(),
@@ -129,6 +132,8 @@ async fn test_create_credential_with_array_success() {
                     "path": "namespace/root_array/1/nested/1/field"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -195,7 +200,7 @@ async fn test_create_credential_success_with_nested_claims() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": street_claim_id.to_string(),
@@ -213,6 +218,8 @@ async fn test_create_credential_success_with_nested_claims() {
                     "path": "address/coordinates/y"
                 },
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -303,7 +310,7 @@ async fn test_create_credential_with_issuer_key() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -311,7 +318,9 @@ async fn test_create_credential_with_issuer_key() {
                     "path": "firstName"
                 }
             ]),
+            did.id,
             Some(key3.id),
+            None,
         )
         .await;
 
@@ -377,7 +386,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -385,7 +394,9 @@ async fn test_fail_to_create_credential_invalid_key_role() {
                     "path": "firstName"
                 }
             ]),
+            did.id,
             Some(key.id),
+            None,
         )
         .await;
 
@@ -412,7 +423,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -420,13 +431,312 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                     "path": "firstName"
                 }
             ]),
+            did.id,
             KeyId::from(Uuid::new_v4()),
+            None,
         )
         .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0096", resp.error_code().await);
+    assert_eq!("BR_0037", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_create_credential_with_certificate_identifier() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let certificate = context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                key: Some(key.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_DRAFT13",
+            identifier.id,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                }
+            ]),
+            None,
+            None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(credential.issuer_certificate.unwrap().id, certificate.id);
+    assert_eq!(credential.key.unwrap().id, key.id);
+}
+
+#[tokio::test]
+async fn test_create_credential_with_certificate_selection() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let key2 = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                key: Some(key2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let certificate = context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                key: Some(key.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_DRAFT13",
+            identifier.id,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                }
+            ]),
+            None,
+            None,
+            Some(certificate.id),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(credential.issuer_certificate.unwrap().id, certificate.id);
+    assert_eq!(credential.key.unwrap().id, key.id);
+}
+
+#[tokio::test]
+async fn test_create_credential_with_invalid_certificate_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                key: Some(key.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_DRAFT13",
+            identifier.id,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                }
+            ]),
+            None,
+            None,
+            Some(Uuid::new_v4().into()),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0000")
+}
+
+#[tokio::test]
+async fn test_create_credential_fail_with_only_certificate_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let certificate = context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                key: Some(key.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_DRAFT13",
+            None,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                }
+            ]),
+            None,
+            None,
+            Some(certificate.id),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0000")
 }
 
 #[tokio::test]
@@ -450,7 +760,7 @@ async fn test_create_credential_with_big_picture_success() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -458,6 +768,8 @@ async fn test_create_credential_with_big_picture_success() {
                     "path": "firstName"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -493,7 +805,7 @@ async fn test_create_credential_failed_specified_object_claim() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": object_claim_id.to_string(),
@@ -501,6 +813,8 @@ async fn test_create_credential_failed_specified_object_claim() {
                     "path": "address"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -531,7 +845,7 @@ async fn test_create_credential_boolean_value_wrong() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -544,6 +858,8 @@ async fn test_create_credential_boolean_value_wrong() {
                     "path": "isOver18"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -583,12 +899,14 @@ async fn test_fail_create_credential_with_empty_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
                 "value": "",
                 "path": "root"
             }]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -599,11 +917,13 @@ async fn test_fail_create_credential_with_empty_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
                 "path": "root"
             }]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -648,7 +968,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": str_array_claim_id.to_string(),
@@ -661,6 +981,8 @@ async fn test_fail_create_credential_with_empty_array_value() {
                     "path": "root/str_array/1"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -671,7 +993,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": str_array_claim_id.to_string(),
@@ -683,6 +1005,8 @@ async fn test_fail_create_credential_with_empty_array_value() {
                     "path": "root/str_array/1"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -743,7 +1067,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": name_claim_id.to_string(),
@@ -751,6 +1075,8 @@ async fn test_fail_create_credential_with_empty_object_value() {
                     "path": "root/name"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -761,13 +1087,15 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": name_claim_id.to_string(),
                     "path": "root/name"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -778,7 +1106,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": nested_object_name_claim_id.to_string(),
@@ -786,6 +1114,8 @@ async fn test_fail_create_credential_with_empty_object_value() {
                     "path": "root/nested/name"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;
@@ -796,13 +1126,15 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            did.id,
+            None,
             serde_json::json!([
                 {
                     "claimId": nested_object_name_claim_id.to_string(),
                     "path": "root/nested/name"
                 }
             ]),
+            did.id,
+            None,
             None,
         )
         .await;

@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use serde_json::json;
-use shared_types::{CredentialId, KeyId};
+use shared_types::{CertificateId, CredentialId, DidId, IdentifierId, KeyId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -23,19 +23,24 @@ impl CredentialsApi {
         Self { client }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         credential_schema_id: impl Into<Uuid>,
         exchange: impl Into<String>,
-        issuer_did: impl Into<Uuid>,
+        issuer: impl Into<Option<IdentifierId>>,
         claims: serde_json::Value,
+        issuer_did: impl Into<Option<DidId>>,
         issuer_key: impl Into<Option<KeyId>>,
+        issuer_certificate: impl Into<Option<CertificateId>>,
     ) -> Response {
         let body = json!({
           "credentialSchemaId": credential_schema_id.into(),
           "exchange": exchange.into(),
+          "issuer": issuer.into(),
           "issuerDid": issuer_did.into(),
           "issuerKey": issuer_key.into(),
+          "issuerCertificate": issuer_certificate.into(),
           "claimValues": claims
         });
 

@@ -8,7 +8,9 @@ use one_core::service::credential::dto::{
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId};
+use shared_types::{
+    CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -276,6 +278,12 @@ pub struct CreateCredentialRequestRestDTO {
     /// key listed during DID creation will be used.
     #[into(with_fn = convert_inner)]
     pub issuer_key: Option<KeyId>,
+    /// If multiple active certificates are available under the verifier,
+    /// use this value to specify which certificate should be used
+    /// for this proof request. If a certificate isn't specified here,
+    /// an active certificate will be used.
+    #[schema(nullable = false)]
+    pub issuer_certificate: Option<CertificateId>,
     /// Exchange protocol to use for issuing the credential to a wallet. Check
     /// the `exchange` object of the configuration for supported options and
     /// reference the configuration instance.

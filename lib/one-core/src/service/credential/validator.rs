@@ -8,34 +8,23 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
-use crate::config::validator::exchange::{
-    validate_exchange_type, validate_protocol_did_compatibility,
-};
+use crate::config::validator::exchange::validate_exchange_type;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
-use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 pub(crate) fn validate_create_request(
-    did_method: &str,
     exchange: &str,
-    exchange_capabilities: &IssuanceProtocolCapabilities,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
     validate_exchange_type(exchange, &config.issuance_protocol)?;
-    validate_protocol_did_compatibility(
-        &exchange_capabilities.did_methods,
-        did_method,
-        &config.did,
-    )?;
     validate_format_and_exchange_protocol_compatibility(exchange, formatter_capabilities, config)?;
-    validate_format_and_did_method_compatibility(did_method, formatter_capabilities, config)?;
 
     // ONE-843: cannot create credential based on deleted schema
     if schema.deleted_at.is_some() {
@@ -461,7 +450,7 @@ fn validate_format_and_exchange_protocol_compatibility(
     Ok(())
 }
 
-fn validate_format_and_did_method_compatibility(
+pub(crate) fn validate_format_and_did_method_compatibility(
     did_method: &str,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,

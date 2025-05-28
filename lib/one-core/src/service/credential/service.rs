@@ -2,10 +2,14 @@ use shared_types::CredentialId;
 use uuid::Uuid;
 
 use super::mapper::credential_detail_response_from_model;
-use super::validator::{validate_redirect_uri, verify_suspension_support};
+use super::validator::{
+    validate_format_and_did_method_compatibility, validate_redirect_uri, verify_suspension_support,
+};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
 use crate::config::core_config::RevocationType;
+use crate::config::validator::exchange::validate_protocol_did_compatibility;
+use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -14,9 +18,9 @@ use crate::model::credential::{
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyRole, RelatedKey};
+use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::{IdentifierRelations, IdentifierState};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -37,9 +41,10 @@ use crate::service::credential::mapper::{
     claims_from_create_request, credential_revocation_state_to_model_state, from_create_request,
 };
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::util::history::log_history_event_credential;
+use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
@@ -57,34 +62,26 @@ impl CredentialService {
         request: CreateCredentialRequestDTO,
     ) -> Result<CredentialId, ServiceError> {
         let issuer_identifier = match request.issuer {
-            Some(issuer_identifier_id) => {
-                let identifier = self
-                    .identifier_repository
-                    .get(
-                        issuer_identifier_id,
-                        &IdentifierRelations {
-                            did: Some(DidRelations {
-                                keys: Some(Default::default()),
-                                ..Default::default()
-                            }),
+            Some(issuer_identifier_id) => self
+                .identifier_repository
+                .get(
+                    issuer_identifier_id,
+                    &IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
                             ..Default::default()
-                        },
-                    )
-                    .await?
-                    .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
-                        issuer_identifier_id,
-                    )))?;
-
-                if let Some(issuer_did_id) = request.issuer_did {
-                    if Some(issuer_did_id) != identifier.did.as_ref().map(|did| did.id) {
-                        return Err(ServiceError::ValidationError(
-                            "Mismatching issuer and issuerDid specified".to_string(),
-                        ));
-                    }
-                }
-
-                identifier
-            }
+                        }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                    issuer_identifier_id,
+                )))?,
             None => {
                 let issuer_did_id = request.issuer_did.ok_or(ServiceError::ValidationError(
                     "No issuer or issuerDid specified".to_string(),
@@ -105,24 +102,6 @@ impl CredentialService {
                     .ok_or(ServiceError::from(EntityNotFoundError::Did(issuer_did_id)))?
             }
         };
-
-        let issuer_did = issuer_identifier
-            .did
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "missing identifier did".to_string(),
-            ))?;
-
-        if issuer_did.is_remote() || issuer_identifier.is_remote {
-            return Err(BusinessLogicError::IncompatibleDidType {
-                reason: "Issuer is remote".to_string(),
-            }
-            .into());
-        }
-
-        if issuer_did.deactivated || issuer_identifier.state != IdentifierState::Active {
-            return Err(BusinessLogicError::DidIsDeactivated(issuer_did.id).into());
-        }
 
         let Some(schema) = self
             .credential_schema_repository
@@ -159,10 +138,44 @@ impl CredentialService {
             ))?
             .get_capabilities();
 
+        let key_filter = KeyFilter {
+            role: Some(KeyRole::AssertionMethod),
+            algorithms: Some(formatter_capabilities.signing_key_algorithms.clone()),
+        };
+        let selected_entities = entities_for_local_active_identifier(
+            &issuer_identifier,
+            &key_filter,
+            request.issuer_key,
+            request.issuer_did,
+            request.issuer_certificate,
+        )?;
+
+        let (issuer_key, issuer_certificate) = match selected_entities {
+            IdentifierEntitySelection::Key(_) => {
+                return Err(ServiceError::ValidationError(
+                    "Key identifiers not supported".to_string(),
+                ));
+            }
+            IdentifierEntitySelection::Certificate { certificate, key } => {
+                (key, Some(certificate.to_owned()))
+            }
+            IdentifierEntitySelection::Did { did, key } => {
+                validate_protocol_did_compatibility(
+                    &exchange_capabilities.did_methods,
+                    &did.did_method,
+                    &self.config.did,
+                )?;
+                validate_format_and_did_method_compatibility(
+                    &did.did_method,
+                    &formatter_capabilities,
+                    &self.config,
+                )?;
+                (key, None)
+            }
+        };
+
         super::validator::validate_create_request(
-            &issuer_did.did_method,
             &request.exchange,
-            &exchange_capabilities,
             &request.claim_values,
             &schema,
             &formatter_capabilities,
@@ -181,51 +194,15 @@ impl CredentialService {
             &claim_schemas,
         )?;
 
-        let valid_keys_filter = |entry: &&RelatedKey| {
-            if let Some(key_algorithm) = entry
-                .key
-                .key_algorithm_type()
-                .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            {
-                entry.role == KeyRole::AssertionMethod
-                    && formatter_capabilities
-                        .signing_key_algorithms
-                        .contains(&key_algorithm.algorithm_type())
-            } else {
-                false
-            }
-        };
-
-        let did_keys = issuer_did
-            .keys
-            .as_ref()
-            .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?;
-
-        let key = match request.issuer_key {
-            Some(key_id) => did_keys
-                .iter()
-                .filter(valid_keys_filter)
-                .find(|entry| entry.key.id == key_id)
-                .ok_or(ServiceError::Validation(ValidationError::InvalidKey(
-                    "key not found or invalid".into(),
-                )))?,
-            // no explicit key specified, pick first valid key
-            None => did_keys.iter().find(valid_keys_filter).ok_or_else(|| {
-                ServiceError::Validation(ValidationError::InvalidKey(
-                    "no valid keys found in did".to_string(),
-                ))
-            })?,
-        }
-        .key
-        .clone();
-
+        let issuer_key = issuer_key.to_owned();
         let credential = from_create_request(
             request,
             credential_id,
             claims,
             issuer_identifier,
+            issuer_certificate,
             schema,
-            key,
+            issuer_key,
         );
 
         let result = self
