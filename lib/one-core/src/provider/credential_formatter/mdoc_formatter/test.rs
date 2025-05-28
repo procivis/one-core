@@ -215,6 +215,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         claims,
         holder_did: Some(holder_did.clone()),
         holder_key_id: None,
+        issuer_certificate: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();
@@ -402,6 +403,7 @@ async fn test_unverified_credential_extraction() {
         claims,
         holder_did: Some(holder_did.clone()),
         holder_key_id: None,
+        issuer_certificate: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();
@@ -593,6 +595,7 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
         claims,
         holder_did: Some(holder_did.clone()),
         holder_key_id: None,
+        issuer_certificate: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();

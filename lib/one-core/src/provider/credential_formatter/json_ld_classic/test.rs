@@ -95,6 +95,7 @@ async fn create_token(include_layout: bool) -> Value {
         claims,
         holder_did: Some(holder_did.clone()),
         holder_key_id: None,
+        issuer_certificate: None,
     };
 
     let mut did_method_provider = MockDidMethodProvider::new();

@@ -3,8 +3,8 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};
+use crate::provider::credential_formatter::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -151,6 +151,7 @@ impl OpenID4VCIProofJWTFormatter {
             Some(_) => None,
             None => holder_key_id,
         };
+        let jwk = jwk.map(JwtPublicKeyInfo::Jwk);
 
         let jwt = Jwt::new(
             JWT_PROOF_TYPE.to_string(),

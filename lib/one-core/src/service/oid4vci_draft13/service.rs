@@ -250,8 +250,7 @@ impl OID4VCIDraft13Service {
                     "issuer_identifier missing".to_string(),
                 ))?
                 .did
-                .ok_or(ServiceError::MappingError("issuer did missing".to_string()))?
-                .did,
+                .map(|did| did.did),
             &credential_schema_id,
             &credential_schema.schema_id,
             credential_subject,

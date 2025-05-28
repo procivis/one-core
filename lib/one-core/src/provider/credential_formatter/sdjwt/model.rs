@@ -6,6 +6,7 @@ use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use crate::model::certificate::Certificate;
 use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus, Issuer};
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
 
@@ -97,6 +98,7 @@ pub struct SdJwtFormattingInputs {
     pub token_type: String,
     // Toggles the malformed `cnf` claim required for SWIYU interop
     pub swiyu_proof_of_possession: bool,
+    pub issuer_certificate: Option<Certificate>,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]

@@ -53,21 +53,32 @@ pub struct Jwt<Payload> {
     pub payload: JWTPayload<Payload>,
 }
 
+pub enum JwtPublicKeyInfo {
+    Jwk(PublicKeyJwkDTO),
+    X5c(Vec<String>),
+}
+
 impl<Payload> Jwt<Payload> {
     pub fn new(
         r#type: String,
         algorithm: String,
         key_id: Option<String>,
-        jwk: Option<PublicKeyJwkDTO>,
+        public_key_info: Option<JwtPublicKeyInfo>,
         payload: JWTPayload<Payload>,
     ) -> Jwt<Payload> {
+        let (jwk, x5c) = match public_key_info {
+            None => (None, None),
+            Some(JwtPublicKeyInfo::Jwk(jwk)) => (Some(jwk), None),
+            Some(JwtPublicKeyInfo::X5c(vec)) => (None, Some(vec)),
+        };
+
         let header = JWTHeader {
             r#type: Some(r#type),
             algorithm,
             key_id,
             jwk,
             jwt: None,
-            x5c: None,
+            x5c,
         };
 
         Jwt { header, payload }

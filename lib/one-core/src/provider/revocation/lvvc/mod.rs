@@ -460,6 +460,7 @@ pub async fn create_lvvc_with_status(
         claims: vec![],
         holder_did: None,
         holder_key_id: None,
+        issuer_certificate: None,
     };
 
     let formatted_credential = formatter

@@ -12,7 +12,7 @@ use super::model::{AuthenticationFn, HolderBindingCtx, TokenVerifier, Verificati
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
-use crate::provider::credential_formatter::jwt::{AnyPayload, Jwt};
+use crate::provider::credential_formatter::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     compute_object_disclosures, parse_token, select_disclosures,
@@ -24,6 +24,7 @@ use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::util::x509::pem_chain_into_x5c;
 
 pub mod disclosures;
 pub mod mapper;
@@ -46,7 +47,7 @@ pub(crate) async fn format_credential<T: Serialize>(
     did_method_provider: &dyn DidMethodProvider,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<String, FormatterError> {
-    let issuer = credential.issuer.to_did_value()?.to_string();
+    let issuer = credential.issuer.as_url().to_string();
     let id = credential.id.clone();
     let issued_at = credential.valid_from.or(credential.issuance_date);
     let expires_at = credential.valid_until.or(credential.expiration_date);
@@ -95,7 +96,14 @@ pub(crate) async fn format_credential<T: Serialize>(
             "Invalid key algorithm".to_string(),
         ))?,
         key_id,
-        None,
+        additional_inputs
+            .issuer_certificate
+            .map(|issuer_certificate| pem_chain_into_x5c(&issuer_certificate.chain))
+            .transpose()
+            .map_err(|err| {
+                FormatterError::Failed(format!("failed to create x5c header parameter: {err}"))
+            })?
+            .map(JwtPublicKeyInfo::X5c),
         payload,
     );
 

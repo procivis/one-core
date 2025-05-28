@@ -184,6 +184,7 @@ impl VCAPIService {
             vcdm,
             claims: vec![],
             holder_key_id: None,
+            issuer_certificate: None,
         };
         let test = formatter.format_credential(credential_data, auth_fn).await;
 

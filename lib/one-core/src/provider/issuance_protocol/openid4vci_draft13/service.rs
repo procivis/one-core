@@ -256,14 +256,14 @@ pub(crate) fn get_credential_schema_base_url(
 pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
     pre_authorized_code: &str,
-    issuer_did: DidValue,
+    issuer_did: Option<DidValue>,
     credential_schema_uuid: &CredentialSchemaId,
     credential_schema_id: &str,
     credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenIDIssuanceError> {
     Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
-        issuer_did: Some(issuer_did),
+        issuer_did,
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants {
             code: OpenID4VCIGrant {

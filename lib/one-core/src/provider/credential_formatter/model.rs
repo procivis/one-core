@@ -19,6 +19,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
+use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -165,6 +166,7 @@ pub struct CredentialData {
     pub claims: Vec<PublishedClaim>,
     pub holder_did: Option<DidValue>,
     pub holder_key_id: Option<String>,
+    pub issuer_certificate: Option<Certificate>,
 }
 
 #[derive(Debug)]

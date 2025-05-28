@@ -107,6 +107,7 @@ async fn main() -> Result<(), CredentialServiceError> {
         claims,
         holder_did: Some(holder_did),
         holder_key_id: None,
+        issuer_certificate: None,
     };
 
     let token = credential_service

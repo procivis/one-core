@@ -76,6 +76,7 @@ impl CredentialFormatter for SDJWTFormatter {
             leeway: self.params.leeway,
             token_type: "SD_JWT".to_string(),
             swiyu_proof_of_possession: false,
+            issuer_certificate: None,
         };
 
         let cred = vcdm.clone();

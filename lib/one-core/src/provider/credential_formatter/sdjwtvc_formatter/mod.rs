@@ -94,6 +94,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             leeway: self.params.leeway,
             token_type: "vc+sd-jwt".to_string(),
             swiyu_proof_of_possession: self.params.swiyu_mode,
+            issuer_certificate: credential_data.issuer_certificate,
         };
 
         let vct_integrity = self

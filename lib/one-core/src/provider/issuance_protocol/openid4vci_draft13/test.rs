@@ -223,7 +223,7 @@ async fn test_generate_offer() {
     let offer = create_credential_offer(
         &protocol_base_url,
         &interaction_id.to_string(),
-        credential.issuer_identifier.unwrap().did.unwrap().did,
+        Some(credential.issuer_identifier.unwrap().did.unwrap().did),
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,

@@ -978,6 +978,7 @@ async fn test_format_extract_round_trip() {
         claims,
         holder_did: Some(holder_did.clone()),
         holder_key_id: Some(format!("{holder_did}#0")),
+        issuer_certificate: None,
     };
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
