@@ -28,15 +28,15 @@ use crate::config::validator::exchange::{
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
-use crate::model::certificate::{CertificateRelations, CertificateState};
+use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::DidRelations;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
-use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -72,6 +72,7 @@ use crate::service::proof::validator::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_proof;
+use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
@@ -338,55 +339,32 @@ impl ProofService {
                 .await;
         }
 
+        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
+            return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
+        };
+        let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
+
         let verifier_identifier = match request.verifier_identifier_id {
-            Some(verifier_identifier_id) => {
-                let identifier = self
-                    .identifier_repository
-                    .get(
-                        verifier_identifier_id,
-                        &IdentifierRelations {
-                            did: Some(DidRelations {
-                                keys: Some(Default::default()),
-                                ..Default::default()
-                            }),
-                            certificates: Some(CertificateRelations {
-                                key: Some(Default::default()),
-                                ..Default::default()
-                            }),
+            Some(verifier_identifier_id) => self
+                .identifier_repository
+                .get(
+                    verifier_identifier_id,
+                    &IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
                             ..Default::default()
-                        },
-                    )
-                    .await?
-                    .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
-                        verifier_identifier_id,
-                    )))?;
-
-                if let Some(verifier_did_id) = request.verifier_did_id {
-                    if Some(verifier_did_id) != identifier.did.as_ref().map(|did| did.id) {
-                        return Err(ServiceError::ValidationError(
-                            "Mismatching verifier and verifierDid specified".to_string(),
-                        ));
-                    }
-                }
-
-                if let Some(verifier_certificate) = request.verifier_certificate {
-                    if !identifier
-                        .certificates
-                        .as_ref()
-                        .is_some_and(|certificates| {
-                            certificates
-                                .iter()
-                                .any(|certificate| certificate.id == verifier_certificate)
-                        })
-                    {
-                        return Err(ServiceError::ValidationError(
-                            "Mismatching verifier and verifierCertificate specified".to_string(),
-                        ));
-                    }
-                }
-
-                identifier
-            }
+                        }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                    verifier_identifier_id,
+                )))?,
             None => {
                 let verifier_did_id =
                     request
@@ -413,122 +391,33 @@ impl ProofService {
             }
         };
 
-        if verifier_identifier.state != IdentifierState::Active {
-            return Err(BusinessLogicError::IdentifierIsDeactivated(verifier_identifier.id).into());
-        }
-
-        if verifier_identifier.is_remote {
-            return Err(BusinessLogicError::IncompatibleIdentifierType {
-                reason: "verifier is remote".to_string(),
+        let selected_entities = entities_for_local_active_identifier(
+            request.verifier_key,
+            request.verifier_did_id,
+            request.verifier_certificate,
+            &verifier_identifier,
+        )?;
+        let (verifier_key, verifier_certificate) = match selected_entities {
+            IdentifierEntitySelection::Key(_) => {
+                return Err(ServiceError::ValidationError(
+                    "Key identifiers not supported".to_string(),
+                ));
             }
-            .into());
-        }
-
-        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
-            return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
-        };
-        let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
-
-        let (verifier_key, verifier_certificate) = match verifier_identifier.r#type {
-            IdentifierType::Did => {
-                let verifier_did =
-                    verifier_identifier
-                        .did
-                        .to_owned()
-                        .ok_or(ServiceError::MappingError(
-                            "missing identifier did".to_string(),
-                        ))?;
-
-                if verifier_did.deactivated {
-                    return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
-                }
-
-                if verifier_did.did_type.is_remote() {
-                    return Err(BusinessLogicError::IncompatibleDidType {
-                        reason: "verifier did is remote".to_string(),
-                    }
-                    .into());
-                }
-
+            IdentifierEntitySelection::Certificate { certificate, key } => {
+                (key, Some(certificate.to_owned()))
+            }
+            IdentifierEntitySelection::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_protocol_capabilities.did_methods,
-                    &verifier_did.did_method,
+                    &did.did_method,
                     &self.config.did,
                 )?;
                 validate_did_and_format_compatibility(
                     &proof_schema,
-                    &verifier_did,
+                    did,
                     &*self.credential_formatter_provider,
                 )?;
-
-                let key = match request.verifier_key {
-                    Some(verifier_key) => verifier_did
-                        .find_key(&verifier_key, KeyRole::Authentication)?
-                        .ok_or(ValidationError::KeyNotFound)?,
-                    None => verifier_did
-                        .find_first_key_by_role(KeyRole::Authentication)?
-                        .ok_or(ValidationError::InvalidKey(
-                            "No authentication key found".to_string(),
-                        ))?,
-                }
-                .to_owned();
-
                 (key, None)
-            }
-            IdentifierType::Certificate => {
-                let verifier_certificates = verifier_identifier.certificates.to_owned().ok_or(
-                    ServiceError::MappingError("missing identifier certificates".to_string()),
-                )?;
-
-                let certificate = match request.verifier_certificate {
-                    Some(verifier_certificate) => {
-                        let certificate = verifier_certificates
-                            .iter()
-                            .find(|certificate| certificate.id == verifier_certificate)
-                            .ok_or(ServiceError::ValidationError(
-                                "Mismatching verifier and verifierCertificate specified"
-                                    .to_string(),
-                            ))?;
-
-                        if certificate.state != CertificateState::Active {
-                            return Err(ServiceError::ValidationError(
-                                "Selected certificate not active".to_string(),
-                            ));
-                        }
-
-                        certificate
-                    }
-                    // no certificate selected by user, pick an active
-                    None => verifier_certificates
-                        .iter()
-                        .find(|certificate| certificate.state == CertificateState::Active)
-                        .ok_or(ServiceError::ValidationError(
-                            "No active certificate found".to_string(),
-                        ))?,
-                }
-                .to_owned();
-
-                let key = certificate
-                    .key
-                    .to_owned()
-                    .ok_or(ServiceError::MappingError(
-                        "missing certificate key".to_string(),
-                    ))?;
-
-                if let Some(verifier_key) = request.verifier_key {
-                    if key.id != verifier_key {
-                        return Err(ServiceError::ValidationError(
-                            "Mismatching verifierCertificate and verifierKey specified".to_string(),
-                        ));
-                    }
-                }
-
-                (key, Some(certificate))
-            }
-            IdentifierType::Key => {
-                return Err(ServiceError::ValidationError(
-                    "Key identifiers not supported".to_string(),
-                ));
             }
         };
 
@@ -538,7 +427,7 @@ impl ProofService {
 
         validate_verification_key_storage_compatibility(
             &proof_schema,
-            &verifier_key,
+            verifier_key,
             &*self.credential_formatter_provider,
             &self.config,
         )?;
@@ -579,6 +468,7 @@ impl ProofService {
             }
         };
 
+        let verifier_key = verifier_key.to_owned();
         let proof_id = self
             .proof_repository
             .create_proof(proof_from_create_request(

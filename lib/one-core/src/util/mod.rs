@@ -10,5 +10,6 @@ pub mod timestamp;
 pub mod vcdm_jsonld_contexts;
 pub mod x509;
 
+pub mod identifier;
 #[cfg(test)]
 pub mod test_utilities;
