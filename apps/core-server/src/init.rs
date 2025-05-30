@@ -25,7 +25,6 @@ use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::provider::DidMethodProviderImpl;
 use one_core::provider::did_method::resolver::DidCachingLoader;
-use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::webvh::DidWebVh;
@@ -77,9 +76,7 @@ use sql_data_provider::{DataLayer, DbConn};
 use time::Duration;
 use tracing_subscriber::prelude::*;
 
-use crate::did_config::{
-    DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams, DidWebVhParams,
-};
+use crate::did_config::{DidUniversalParams, DidWebParams, DidWebVhParams};
 use crate::{ServerConfig, build_info, did_config};
 
 pub async fn initialize_core(
@@ -201,31 +198,6 @@ pub async fn initialize_core(
                             .get(name)
                             .map_err(|e| OneCoreBuildError::Config(e.into()))?;
                         Arc::new(UniversalDidMethod::new(params.into(), client.clone())) as _
-                    }
-                    DidType::SdJwtVcIssuerMetadata => {
-                        let params: DidSdJwtVCIssuerMetadataParams = config
-                            .get(name)
-                            .map_err(|e| OneCoreBuildError::Config(e.into()))?;
-
-                        let key_algorithm_provider = providers
-                            .key_algorithm_provider
-                            .to_owned()
-                            .ok_or(OneCoreBuildError::MissingDependency(
-                                "key algorithm provider".to_string(),
-                            ))?;
-
-                        let did_resolver = SdJwtVcIssuerMetadataDidMethod::new(
-                            client.clone(),
-                            key_algorithm_provider.clone(),
-                            params.into(),
-                        )
-                        .map_err(|e| {
-                            OneCoreBuildError::MissingDependency(format!(
-                                "SD JWT VC did method: {e}"
-                            ))
-                        })?;
-
-                        Arc::new(did_resolver) as _
                     }
                     DidType::WebVh => {
                         let params: DidWebVhParams = config
@@ -403,6 +375,7 @@ pub async fn initialize_core(
                             params,
                             crypto.clone(),
                             did_method_provider.clone(),
+                            client.clone(),
                         )) as _
                     }
                     FormatType::SdJwtVc => {
@@ -416,6 +389,7 @@ pub async fn initialize_core(
                             vct_type_metadata_cache.clone(),
                             certificate_validator.clone(),
                             datatype_config.clone(),
+                            client.clone(),
                         )) as _
                     }
                     FormatType::JsonLdClassic => {

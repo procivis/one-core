@@ -26,7 +26,6 @@ pub mod keys;
 pub mod model;
 pub mod provider;
 pub mod resolver;
-pub mod sd_jwt_vc_issuer_metadata;
 pub mod universal;
 pub mod web;
 pub mod webvh;

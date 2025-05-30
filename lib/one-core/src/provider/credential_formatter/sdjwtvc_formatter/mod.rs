@@ -49,6 +49,7 @@ use crate::provider::credential_formatter::sdjwt::{
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::service::certificate::validator::CertificateValidator;
@@ -62,6 +63,7 @@ pub struct SDJWTVCFormatter {
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     certificate_validator: Arc<dyn CertificateValidator>,
     datatype_config: DatatypeConfig,
+    http_client: Arc<dyn HttpClient>,
     params: Params,
 }
 
@@ -387,6 +389,7 @@ impl SDJWTVCFormatter {
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         certificate_validator: Arc<dyn CertificateValidator>,
         datatype_config: DatatypeConfig,
+        http_client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             params,
@@ -395,6 +398,7 @@ impl SDJWTVCFormatter {
             vct_type_metadata_cache,
             certificate_validator,
             datatype_config,
+            http_client,
         }
     }
 
@@ -419,6 +423,7 @@ impl SDJWTVCFormatter {
                 verification.as_ref(),
                 params,
                 Some(&*self.certificate_validator),
+                &*self.http_client,
             )
             .await?;
 

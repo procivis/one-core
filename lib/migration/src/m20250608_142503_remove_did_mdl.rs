@@ -45,7 +45,7 @@ impl MigrationTrait for Migration {
     }
 }
 
-async fn remove_dids_and_related_entities(
+pub(super) async fn remove_dids_and_related_entities(
     manager: &SchemaManager<'_>,
     did_ids: &[String],
 ) -> Result<(), DbErr> {
@@ -99,7 +99,7 @@ async fn remove_dids_and_related_entities(
     Ok(())
 }
 
-async fn find_dids_with_method(
+pub(super) async fn find_dids_with_method(
     manager: &SchemaManager<'_>,
     method: &str,
 ) -> Result<Vec<String>, DbErr> {

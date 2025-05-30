@@ -42,10 +42,12 @@ use crate::provider::credential_formatter::sdjwt::{
     SdJwtHolderBindingParams, format_credential, model, prepare_sd_presentation,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::http_client::HttpClient;
 
 pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    client: Arc<dyn HttpClient>,
     params: Params,
 }
 
@@ -123,6 +125,7 @@ impl CredentialFormatter for SDJWTFormatter {
             &*self.crypto,
             holder_binding_ctx,
             Duration::seconds(self.get_leeway() as i64),
+            &*self.client,
         )
         .await?;
 
@@ -155,6 +158,7 @@ impl CredentialFormatter for SDJWTFormatter {
             &*self.crypto,
             None,
             Duration::seconds(self.get_leeway() as i64),
+            &*self.client,
         )
         .await?;
 
@@ -188,7 +192,7 @@ impl CredentialFormatter for SDJWTFormatter {
         verification: VerificationFn,
         context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        self.extract_presentation_internal(token, Some(&verification), context)
+        self.extract_presentation_internal(token, Some(&verification), context, &*self.client)
             .await
     }
 
@@ -197,7 +201,7 @@ impl CredentialFormatter for SDJWTFormatter {
         token: &str,
         context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        self.extract_presentation_internal(token, None, context)
+        self.extract_presentation_internal(token, None, context, &*self.client)
             .await
     }
 
@@ -278,11 +282,13 @@ impl SDJWTFormatter {
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             params,
             crypto,
             did_method_provider,
+            client,
         }
     }
 }
@@ -293,6 +299,7 @@ pub(super) async fn extract_credentials_internal(
     crypto: &dyn CryptoProvider,
     holder_binding_ctx: Option<HolderBindingCtx>,
     leeway: Duration,
+    http_client: &dyn HttpClient,
 ) -> Result<(DetailCredential, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
     let params = SdJwtHolderBindingParams {
         holder_binding_context: holder_binding_ctx,
@@ -300,7 +307,15 @@ pub(super) async fn extract_credentials_internal(
         skip_holder_binding_aud_check: false,
     };
     let (jwt, key_binding_payload, issuer_details): (Jwt<VcClaim>, _, _) =
-        Jwt::build_from_token_with_disclosures(token, crypto, verification, params, None).await?;
+        Jwt::build_from_token_with_disclosures(
+            token,
+            crypto,
+            verification,
+            params,
+            None,
+            http_client,
+        )
+        .await?;
     let credential_subject = jwt
         .payload
         .custom
@@ -366,6 +381,7 @@ impl SDJWTFormatter {
         token: &str,
         verification: Option<&VerificationFn>,
         _context: ExtractPresentationCtx,
+        http_client: &dyn HttpClient,
     ) -> Result<Presentation, FormatterError> {
         // W3C VP SD-JWT tokens and SD-JWT tokens.
         let as_jwt_vp: Result<Jwt<Sdvp>, FormatterError> =
@@ -385,6 +401,7 @@ impl SDJWTFormatter {
             &*self.crypto,
             None,
             Duration::seconds(self.get_leeway() as i64),
+            http_client,
         )
         .await?;
 

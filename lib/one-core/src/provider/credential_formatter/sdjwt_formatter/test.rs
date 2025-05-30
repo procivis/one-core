@@ -28,6 +28,7 @@ use crate::provider::credential_formatter::vcdm::{
 };
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::test_utilities::{dummy_did_document, dummy_jwk};
@@ -88,6 +89,7 @@ async fn test_format_credential_a() {
             leeway,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -260,6 +262,7 @@ async fn test_format_credential_with_array() {
             leeway,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -381,6 +384,7 @@ async fn test_extract_credentials() {
             leeway,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -510,6 +514,7 @@ async fn test_extract_credentials_with_array() {
             leeway,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -618,6 +623,7 @@ async fn test_extract_credentials_with_array_stripped() {
             leeway,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -681,6 +687,7 @@ async fn test_extract_presentation() {
             leeway,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -746,6 +753,7 @@ fn test_get_capabilities() {
             leeway: 123u64,
             embed_layout_properties: false,
         },
+        client: Arc::new(MockHttpClient::new()),
     };
 
     assert_eq!(

@@ -26,9 +26,11 @@ use crate::provider::credential_formatter::sdjwt::disclosures::{
 use crate::provider::credential_formatter::sdjwt::model::{
     KeyBindingPayload, SdJwtFormattingInputs,
 };
+use crate::provider::credential_formatter::sdjwt::x5c::resolve_jwks_url;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::http_client::HttpClient;
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
@@ -36,6 +38,7 @@ use crate::util::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 pub mod disclosures;
 pub mod mapper;
 pub mod model;
+pub mod x5c;
 
 #[cfg(test)]
 pub mod test;
@@ -232,6 +235,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         verification: Option<&VerificationFn>,
         params: SdJwtHolderBindingParams,
         certificate_validator: Option<&dyn CertificateValidator>,
+        http_client: &dyn HttpClient,
     ) -> Result<
         (
             Jwt<Payload>,
@@ -295,19 +299,32 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         } else {
             match decomposed_token.header.x5c.as_ref() {
                 None => {
-                    let issuer = format!(
-                        "did:sd_jwt_vc_issuer_metadata:{}",
-                        urlencoding::encode(issuer)
-                    );
-                    let did: DidValue = issuer
-                        .parse()
-                        .context("issuer did parsing error")
-                        .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                    let jwks = resolve_jwks_url(
+                        issuer.parse().map_err(|e| {
+                            FormatterError::CouldNotExtractCredentials(format!(
+                                "failed parsing did url: {e}"
+                            ))
+                        })?,
+                        http_client,
+                    )
+                    .await?;
+                    let header_key_id = decomposed_token.header.key_id.as_deref();
+
+                    let jwk = jwks
+                        .iter()
+                        .find(|dto| dto.get_kid().as_deref() == header_key_id)
+                        .or(jwks.first())
+                        .ok_or(FormatterError::CouldNotExtractCredentials(
+                            "empty JWK list".to_string(),
+                        ))?;
+
+                    let did = encode_to_did(jwk)
+                        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
                     let params = PublicKeySource::Did {
                         did: Cow::Owned(did.clone()),
                         key_id: decomposed_token.header.key_id.as_deref(),
                     };
-                    (issuer, params, IssuerDetails::Did(did))
+                    (issuer.clone(), params, IssuerDetails::Did(did))
                 }
                 Some(x5c) => {
                     let certificate_validator = certificate_validator.ok_or(

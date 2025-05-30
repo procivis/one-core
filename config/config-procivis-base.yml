@@ -261,10 +261,6 @@ did:
         resolverUrl: https://dev.uniresolver.io
         supportedMethodNames:
           - "ion"
-  SD_JWT_VC_ISSUER_METADATA:
-    type: "SD_JWT_VC_ISSUER_METADATA"
-    display: "did.sd_jwt_vc_issuer_metadata"
-    order: 20
   WEBVH:
     type: "WEBVH"
     display: "did.webvh"

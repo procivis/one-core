@@ -30,14 +30,6 @@ pub struct DidWebParams {
     pub resolve_to_insecure_http: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Into)]
-#[into(one_core::provider::did_method::sd_jwt_vc_issuer_metadata::Params)]
-#[serde(rename_all = "camelCase")]
-pub struct DidSdJwtVCIssuerMetadataParams {
-    pub resolve_to_insecure_http: Option<bool>,
-    pub iaca_certificate: Option<String>,
-}
-
 #[derive(Debug, Default, Clone, Deserialize, Serialize, From, Into)]
 #[from(one_core::provider::did_method::keys::Keys)]
 #[into(one_core::provider::did_method::keys::Keys)]
