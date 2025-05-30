@@ -233,7 +233,7 @@ publish_image_acr:
       artifacts: true
   extends:
     - .docker_acr_publish
-    - .rule:only_main_or_tag
+    - .only_tag
   parallel:
     matrix: !reference [ .one_core, clients_matrix ]
 
