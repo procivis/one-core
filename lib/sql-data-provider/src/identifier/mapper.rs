@@ -5,7 +5,7 @@ use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, S
 use time::OffsetDateTime;
 
 use crate::entity::identifier::ActiveModel;
-use crate::entity::{self, did, identifier, key, key_did};
+use crate::entity::{self, certificate, did, identifier, key, key_did};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, get_equals_condition,
     get_string_match_condition,
@@ -103,6 +103,11 @@ impl IntoFilterCondition for IdentifierFilterValue {
                     Alias::new("did_key").into_iden(),
                     key::Column::KeyType.into_iden(),
                 )
+                .is_in(&key_algorithms))
+                .or(ColumnRef::TableColumn(
+                    Alias::new("certificate_key").into_iden(),
+                    key::Column::KeyType.into_iden(),
+                )
                 .is_in(key_algorithms))
                 .into_condition(),
             IdentifierFilterValue::KeyRoles(key_roles) => key_did::Column::Role
@@ -117,6 +122,11 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 .is_in(key_storages.clone())
                 .or(ColumnRef::TableColumn(
                     Alias::new("did_key").into_iden(),
+                    key::Column::StorageType.into_iden(),
+                )
+                .is_in(&key_storages))
+                .or(ColumnRef::TableColumn(
+                    Alias::new("certificate_key").into_iden(),
                     key::Column::StorageType.into_iden(),
                 )
                 .is_in(key_storages))
@@ -152,6 +162,16 @@ impl IntoJoinRelations for IdentifierFilterValue {
                         join_type: JoinType::LeftJoin,
                         relation_def: identifier::Relation::Key.def(),
                         alias: None,
+                    },
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: certificate::Relation::Identifier.def().rev(),
+                        alias: None,
+                    },
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: certificate::Relation::Key.def(),
+                        alias: Some(Alias::new("certificate_key").into_iden()),
                     },
                 ]
             }
