@@ -426,10 +426,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 ));
             };
 
-            if !audience
-                .iter()
-                .any(|aud| *aud == holder_binding_context.audience)
-            {
+            if !audience.contains(&holder_binding_context.audience) {
                 return Err(FormatterError::CouldNotExtractCredentials(format!(
                     "Invalid key binding token aud: expected '{}' to be listed, got '{:?}'",
                     holder_binding_context.audience, kb_payload.audience

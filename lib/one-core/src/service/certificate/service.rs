@@ -1,4 +1,4 @@
-use shared_types::{CertificateId, IdentifierId};
+use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -39,6 +39,7 @@ impl CertificateService {
     pub(crate) async fn validate_and_prepare_certificate(
         &self,
         identifier_id: IdentifierId,
+        organisation_id: OrganisationId,
         request: CreateCertificateRequestDTO,
     ) -> Result<Certificate, ServiceError> {
         let key = self
@@ -67,6 +68,7 @@ impl CertificateService {
         Ok(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
+            organisation_id: Some(organisation_id),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             expiry_date: attributes.not_after,
@@ -75,7 +77,6 @@ impl CertificateService {
             fingerprint: attributes.fingerprint,
             state: CertificateState::Active,
             key: Some(key),
-            organisation: None,
         })
     }
 }

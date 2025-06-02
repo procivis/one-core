@@ -49,7 +49,7 @@ impl CertificatesDB {
             fingerprint: unwrap_or_random(params.fingerprint),
             state: params.state.unwrap_or(CertificateState::Active),
             key: params.key,
-            organisation: None,
+            organisation_id: None,
         };
 
         self.repository.create(certificate.clone()).await.unwrap();

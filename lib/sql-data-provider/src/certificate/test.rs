@@ -6,7 +6,7 @@ use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, OrganisationId};
 use uuid::Uuid;
 
 use super::CertificateProvider;
@@ -19,6 +19,7 @@ use crate::test_utilities::{
 struct TestSetup {
     pub provider: CertificateHistoryDecorator,
     pub identifier_id: IdentifierId,
+    pub organisation_id: OrganisationId,
 }
 
 #[derive(Default)]
@@ -56,6 +57,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
             db,
         },
         identifier_id,
+        organisation_id,
     }
 }
 
@@ -77,6 +79,7 @@ async fn test_create_certificate() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -85,7 +88,6 @@ async fn test_create_certificate() {
         fingerprint: "fingerprint".to_string(),
         state: CertificateState::Active,
         key: None,
-        organisation: None,
     };
 
     assert_eq!(id, setup.provider.create(certificate).await.unwrap());
@@ -108,6 +110,7 @@ async fn test_get_certificate() {
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -116,7 +119,6 @@ async fn test_get_certificate() {
         fingerprint: "fingerprint".to_string(),
         state: CertificateState::Active,
         key: None,
-        organisation: None,
     };
 
     setup.provider.create(certificate.clone()).await.unwrap();
@@ -171,6 +173,7 @@ async fn test_update_certificate() {
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -179,7 +182,6 @@ async fn test_update_certificate() {
         fingerprint: "fingerprint".to_string(),
         state: CertificateState::Active,
         key: None,
-        organisation: None,
     };
 
     setup.provider.create(certificate.clone()).await.unwrap();

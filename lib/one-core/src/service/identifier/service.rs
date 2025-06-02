@@ -189,7 +189,7 @@ impl IdentifierService {
                 for request in certificate_requests {
                     certificates.push(
                         self.certificate_service
-                            .validate_and_prepare_certificate(id, request)
+                            .validate_and_prepare_certificate(id, organisation.id, request)
                             .await?,
                     );
                 }

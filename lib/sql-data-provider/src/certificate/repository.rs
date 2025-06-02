@@ -48,10 +48,11 @@ impl CertificateProvider {
                 })?;
 
             if let Some(organisation_id) = identifier.organisation_id {
-                result.organisation = Some(
+                result.organisation_id = Some(
                     self.organisation_repository
                         .get_organisation(&organisation_id, organisation_relations)
                         .await?
+                        .map(|o| o.id)
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "certificate-organisation",
                             id: organisation_id.to_string(),

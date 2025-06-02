@@ -6,12 +6,13 @@ use super::common::GetListResponse;
 use super::key::{Key, KeyRelations};
 use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
-use super::organisation::{Organisation, OrganisationRelations};
+use super::organisation::OrganisationRelations;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Certificate {
     pub id: CertificateId,
     pub identifier_id: IdentifierId,
+    pub organisation_id: Option<OrganisationId>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub expiry_date: OffsetDateTime,
@@ -22,7 +23,6 @@ pub struct Certificate {
 
     // Relations:
     pub key: Option<Key>,
-    pub organisation: Option<Organisation>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

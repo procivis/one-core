@@ -326,8 +326,7 @@ fn validate_revocation_method_is_compatible_with_suspension(
         && !revocation_method
             .get_capabilities()
             .operations
-            .iter()
-            .any(|capability| *capability == Operation::Suspend)
+            .contains(&Operation::Suspend)
     {
         return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
     }

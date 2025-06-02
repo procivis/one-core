@@ -86,11 +86,7 @@ impl KeyAlgorithm for MlDsa {
 
     fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError> {
         if let PublicKeyJwk::Mlwe(data) = key {
-            if !self
-                .verification_jose_alg_ids()
-                .iter()
-                .any(|value| *value == data.alg)
-            {
+            if !self.verification_jose_alg_ids().contains(&data.alg) {
                 return Err(KeyAlgorithmError::Failed(format!(
                     "unsupported key algorithm variant: {}",
                     data.alg

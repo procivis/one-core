@@ -239,6 +239,7 @@ pub(crate) async fn get_or_create_certificate_identifier(
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
+        organisation_id: organisation.as_ref().map(|o| o.id),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         expiry_date: attributes.not_after,
@@ -247,7 +248,6 @@ pub(crate) async fn get_or_create_certificate_identifier(
         fingerprint,
         state: CertificateState::Active,
         key: None,
-        organisation: organisation.to_owned(),
     };
     certificate_repository.create(certificate.clone()).await?;
 

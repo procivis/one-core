@@ -1,6 +1,6 @@
 //! Utilities for Token Status List.
 
-use std::io::{Read, Write};
+use std::io::{BufReader, Read, Write};
 
 use bit_vec::BitVec;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
@@ -40,7 +40,7 @@ pub(crate) fn extract_state_from_token(
         .map_err(TokenError::Base64Decoding)?;
 
     let decoder = ZlibDecoder::new(&compressed[..]);
-    let bytes: Vec<u8> = decoder
+    let bytes: Vec<u8> = BufReader::new(decoder)
         .bytes()
         .collect::<Result<_, std::io::Error>>()
         .map_err(|err| {

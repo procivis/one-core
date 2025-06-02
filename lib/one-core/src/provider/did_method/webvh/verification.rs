@@ -347,8 +347,7 @@ async fn verify_verification_method(
         .ok_or(ResolutionError(
             "Proof verification failed: missing update_keys".to_string(),
         ))?
-        .iter()
-        .any(|key| *key == multibase)
+        .contains(&multibase)
     {
         return Err(ResolutionError(format!(
             "Proof verification failed: verification method {} is not allowed update_key",

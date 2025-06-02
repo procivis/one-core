@@ -157,6 +157,7 @@ async fn insert_did_to_database(
 async fn insert_certificate_to_database(
     database: &DatabaseConnection,
     identifier_id: IdentifierId,
+    organisation_id: Option<OrganisationId>,
     key_id: Option<KeyId>,
 ) -> CertificateId {
     certificate::ActiveModel {
@@ -168,8 +169,9 @@ async fn insert_certificate_to_database(
         key_id: Set(key_id),
         state: Set(CertificateState::Active),
         chain: Set("chain".into()),
-        fingerprint: Set("fingerprint".into()),
+        fingerprint: Set(format!("fingerprint:{}", identifier_id).parse().unwrap()),
         identifier_id: Set(identifier_id),
+        organisation_id: Set(organisation_id),
     }
     .insert(database)
     .await
@@ -429,7 +431,13 @@ async fn add_identifier_with_type(
                 IdentifierType::Certificate,
             )
             .await;
-            insert_certificate_to_database(db, exportable_identifier, Some(key_id.into())).await;
+            insert_certificate_to_database(
+                db,
+                exportable_identifier,
+                Some(organisation_id),
+                Some(key_id.into()),
+            )
+            .await;
             exportable_identifier
         }
         IdentifierType::Key => {
@@ -564,7 +572,7 @@ async fn test_fetch_unexportable_identifiers_certs_remote() {
         IdentifierType::Certificate,
     )
     .await;
-    insert_certificate_to_database(&setup.db, exportable_identifier, None).await;
+    insert_certificate_to_database(&setup.db, exportable_identifier, None, None).await;
 
     let unexportable = setup.provider.fetch_unexportable(None).await.unwrap();
 
