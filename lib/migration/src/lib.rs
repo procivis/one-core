@@ -110,9 +110,9 @@ mod m20250513_075017_rename_identifier_status_to_state;
 mod m20250526_112527_proof_verifier_certificate;
 mod m20250526_125848_add_certificate_id_to_credential;
 mod m20250528_101308_certificate_fingerprint;
+
 mod m20250602_054912_add_organization_id_to_certificate;
 mod migrate_enum;
-
 pub struct Migrator;
 
 #[async_trait::async_trait]
