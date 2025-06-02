@@ -1,8 +1,6 @@
 use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::Organisation;
-
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -16,17 +14,27 @@ impl MigrationTrait for Migration {
                     .alter_table(
                         Table::alter()
                             .table(Certificate::Table)
-                            .add_column(ColumnDef::new(Certificate::OrganisationId).string().null())
-                            .add_foreign_key(
-                                ForeignKey::create()
-                                    .name("fk_certificate_organisation_id")
-                                    .from(Certificate::Table, Certificate::OrganisationId)
-                                    .to(Organisation::Table, Organisation::Id)
-                                    .get_foreign_key(),
+                            .add_column_if_not_exists(
+                                ColumnDef::new(Certificate::OrganisationId)
+                                    .char_len(36)
+                                    .null(),
                             )
                             .to_owned(),
                     )
                     .await?;
+                manager
+                    .get_connection()
+                    .execute_unprepared(
+                        r#"
+                        IF NOT EXISTS(
+                            SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                            WHERE TABLE_NAME = 'certificate' AND CONSTRAINT_NAME =  'fk_certificate_organisation_id'
+                        ) THEN
+                            ALTER TABLE certificate
+                                ADD FOREIGN KEY (organisation_id) REFERENCES organisation(id);
+                        END IF;
+                        "#).await?;
                 manager
                     .get_connection()
                     .execute_unprepared(
@@ -44,17 +52,28 @@ impl MigrationTrait for Migration {
                     .alter_table(
                         Table::alter()
                             .table(Certificate::Table)
-                            .add_column(ColumnDef::new(Certificate::OrganisationId).string().null())
-                            .add_foreign_key(
-                                ForeignKey::create()
-                                    .name("fk_certificate_organisation_id")
-                                    .from(Certificate::Table, Certificate::OrganisationId)
-                                    .to(Organisation::Table, Organisation::Id)
-                                    .get_foreign_key(),
+                            .add_column_if_not_exists(
+                                ColumnDef::new(Certificate::OrganisationId)
+                                    .char_len(36)
+                                    .null(),
                             )
                             .to_owned(),
                     )
                     .await?;
+                manager
+                    .get_connection()
+                    .execute_unprepared(
+                        r#"
+                        IF NOT EXISTS(
+                            SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                            WHERE TABLE_NAME = 'certificate' AND CONSTRAINT_NAME =  'fk_certificate_organisation_id'
+                        ) THEN
+                            ALTER TABLE certificate
+                                ADD CONSTRAINT fk_certificate_organisation_id FOREIGN KEY (organisation_id) REFERENCES organisation(id);
+                        END IF;
+                        "#).await?;
+
                 manager
                     .get_connection()
                     .execute_unprepared(
@@ -74,7 +93,7 @@ impl MigrationTrait for Migration {
                     .execute_unprepared(
                         r#"
                     ALTER TABLE certificate 
-                    ADD COLUMN organisation_id TEXT REFERENCES organisation(id);
+                    ADD COLUMN organisation_id VARCHAR(36) REFERENCES organisation(id);
                     "#,
                     )
                     .await?;
@@ -97,10 +116,11 @@ impl MigrationTrait for Migration {
             .create_index(
                 Index::create()
                     .unique()
-                    .name("index-Certificate-Fingerprint-OrganisationId--Unique")
+                    .name("index-Certificate-Fingerprint-OrganisationId-Unique")
                     .table(Certificate::Table)
                     .col(Certificate::Fingerprint)
                     .col(Certificate::OrganisationId)
+                    .if_not_exists()
                     .to_owned(),
             )
             .await?;
