@@ -278,9 +278,9 @@ pub struct CreateCredentialRequestRestDTO {
     /// key listed during DID creation will be used.
     #[into(with_fn = convert_inner)]
     pub issuer_key: Option<KeyId>,
-    /// If multiple active certificates are available under the verifier,
+    /// If multiple active certificates are available under the issuer,
     /// use this value to specify which certificate should be used
-    /// for this proof request. If a certificate isn't specified here,
+    /// for this credential. If a certificate isn't specified here,
     /// an active certificate will be used.
     #[schema(nullable = false)]
     pub issuer_certificate: Option<CertificateId>,
