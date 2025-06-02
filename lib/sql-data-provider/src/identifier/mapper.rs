@@ -93,10 +93,12 @@ impl IntoFilterCondition for IdentifierFilterValue {
             }
             IdentifierFilterValue::DidMethods(did_methods) => entity::did::Column::Method
                 .is_in(did_methods)
+                .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
                 .into_condition(),
-            IdentifierFilterValue::IsRemote(is_remote) => {
-                get_equals_condition(identifier::Column::IsRemote, is_remote)
-            }
+            IdentifierFilterValue::IsRemote(is_remote) => identifier::Column::IsRemote
+                .eq(is_remote)
+                .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
+                .into_condition(),
             IdentifierFilterValue::KeyAlgorithms(key_algorithms) => key::Column::KeyType
                 .is_in(key_algorithms.clone())
                 .or(ColumnRef::TableColumn(
@@ -117,6 +119,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                         .map(key_did::KeyRole::from)
                         .collect::<Vec<_>>(),
                 )
+                .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
                 .into_condition(),
             IdentifierFilterValue::KeyStorages(key_storages) => key::Column::StorageType
                 .is_in(key_storages.clone())
