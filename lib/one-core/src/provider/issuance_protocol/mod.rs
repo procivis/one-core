@@ -38,6 +38,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;
@@ -70,6 +71,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
 ) -> Result<HashMap<String, Arc<dyn IssuanceProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
@@ -98,6 +100,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 key_provider.clone(),
+                certificate_validator.clone(),
                 core_base_url.clone(),
                 config.clone(),
                 params,
@@ -113,6 +116,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 key_provider.clone(),
+                certificate_validator.clone(),
                 core_base_url.clone(),
                 config.clone(),
                 params,

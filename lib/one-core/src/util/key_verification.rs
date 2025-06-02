@@ -6,33 +6,31 @@ use shared_types::DidValue;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::model::TokenVerifier;
+use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::util::x509::x5c_into_pem_chain;
 
 #[derive(Clone)]
 pub struct KeyVerification {
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    pub certificate_validator: Arc<dyn CertificateValidator>,
     pub key_role: KeyRole,
 }
 
-#[async_trait]
-impl TokenVerifier for KeyVerification {
-    async fn verify<'a>(
+impl KeyVerification {
+    async fn public_key_from_did(
         &self,
-        issuer_did_value: Option<DidValue>,
-        issuer_key_id: Option<&'a str>,
+        issuer_did_value: &DidValue,
+        issuer_key_id: Option<&str>,
         algorithm: KeyAlgorithmType,
-        token: &'a [u8],
-        signature: &'a [u8],
-    ) -> Result<(), SignerError> {
+    ) -> Result<KeyHandle, SignerError> {
         let did_document = self
             .did_method_provider
-            .resolve(
-                &issuer_did_value
-                    .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?,
-            )
+            .resolve(issuer_did_value)
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
@@ -55,12 +53,9 @@ impl TokenVerifier for KeyVerification {
         tracing::debug!("Verification method_id: {method_id}");
         let method = did_document
             .verification_method
-            .iter()
+            .into_iter()
             .find(|method| method.id == method_id)
             .ok_or(SignerError::MissingKey)?;
-
-        tracing::debug!("Verification method: {:#?}", method);
-        tracing::debug!("Verification algorithm: {algorithm}");
         let alg = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)
@@ -71,7 +66,40 @@ impl TokenVerifier for KeyVerification {
         let public_key = alg
             .parse_jwk(&method.public_key_jwk)
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+        Ok(public_key)
+    }
 
+    async fn public_key_from_cert(&self, x5c: &[String]) -> Result<KeyHandle, SignerError> {
+        let pem_chain = x5c_into_pem_chain(x5c).map_err(|err| {
+            SignerError::CouldNotVerify(format!("failed to parse x5c header param: {err}"))
+        })?;
+
+        let ParsedCertificate { public_key, .. } = self
+            .certificate_validator
+            .parse_pem_chain(pem_chain.as_bytes(), true)
+            .await
+            .map_err(|err| {
+                SignerError::CouldNotVerify(format!("failed to parse certificate chain: {err}"))
+            })?;
+        Ok(public_key)
+    }
+}
+
+#[async_trait]
+impl TokenVerifier for KeyVerification {
+    async fn verify<'a>(
+        &self,
+        public_key_source: PublicKeySource<'a>,
+        algorithm: KeyAlgorithmType,
+        token: &'a [u8],
+        signature: &'a [u8],
+    ) -> Result<(), SignerError> {
+        let public_key = match public_key_source {
+            PublicKeySource::Did { did, key_id } => {
+                self.public_key_from_did(did, key_id, algorithm).await
+            }
+            PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await,
+        }?;
         public_key.verify(token, signature)
     }
 
@@ -95,6 +123,7 @@ mod test {
         KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
     };
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use crate::service::certificate::validator::MockCertificateValidator;
 
     fn get_dummy_did_document() -> DidDocument {
         DidDocument {
@@ -166,13 +195,18 @@ mod test {
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
+            certificate_validator: Arc::new(MockCertificateValidator::default()),
             key_role: KeyRole::Authentication,
         };
 
+        let did_value = "did:example:123".parse().unwrap();
+        let params = PublicKeySource::Did {
+            did: &did_value,
+            key_id: None,
+        };
         let result = verification
             .verify(
-                Some("did:example:123".parse().unwrap()),
-                None,
+                params,
                 KeyAlgorithmType::Ecdsa,
                 "token".as_bytes(),
                 b"signature",
@@ -194,14 +228,19 @@ mod test {
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
+            certificate_validator: Arc::new(MockCertificateValidator::default()),
             key_role: KeyRole::Authentication,
         };
 
+        let did_value = "did:example:123".parse().unwrap();
+        let params = PublicKeySource::Did {
+            did: &did_value,
+            key_id: None,
+        };
         let result = verification
             .verify(
-                Some("did:example:123".parse().unwrap()),
-                None,
-                KeyAlgorithmType::Eddsa,
+                params,
+                KeyAlgorithmType::Ecdsa,
                 "token".as_bytes(),
                 b"signature",
             )
@@ -249,13 +288,18 @@ mod test {
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
+            certificate_validator: Arc::new(MockCertificateValidator::default()),
             key_role: KeyRole::Authentication,
         };
 
+        let did_value = "did:example:123".parse().unwrap();
+        let params = PublicKeySource::Did {
+            did: &did_value,
+            key_id: None,
+        };
         let result = verification
             .verify(
-                Some("did:example:123".parse().unwrap()),
-                None,
+                params,
                 KeyAlgorithmType::Ecdsa,
                 "token".as_bytes(),
                 b"signature",

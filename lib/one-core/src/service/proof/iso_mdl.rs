@@ -82,6 +82,7 @@ impl ProofService {
             self.did_repository.clone(),
             self.identifier_repository.clone(),
             self.proof_repository.clone(),
+            self.certificate_validator.clone(),
         )
         .await?;
 

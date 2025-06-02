@@ -63,10 +63,12 @@ use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::repository::DataRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
+use one_core::service::certificate::validator::CertificateValidatorImpl;
 use one_core::service::error::ServiceError;
 use one_core::{
-    DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
-    KeyStorageCreator, OneCoreBuildError, OneCoreBuilder, RevocationMethodCreator,
+    CertificateValidatorCreator, DataProviderCreator, DidMethodCreator, FormatterProviderCreator,
+    KeyAlgorithmCreator, KeyStorageCreator, OneCoreBuildError, OneCoreBuilder,
+    RevocationMethodCreator,
 };
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
@@ -663,6 +665,10 @@ async fn initialize(
                         ),
                     )?;
 
+                    let certificate_validator = providers.certificate_validator.clone().ok_or(
+                        OneCoreBuildError::MissingDependency("certificate validator".to_string()),
+                    )?;
+
                     for (key, fields) in config.iter() {
                         if !fields.enabled() {
                             continue;
@@ -684,6 +690,7 @@ async fn initialize(
                                         data_repository.clone(),
                                     ),
                                     formatter_provider.clone(),
+                                    certificate_validator.clone(),
                                     client.clone(),
                                     None,
                                 )) as _
@@ -714,6 +721,7 @@ async fn initialize(
                                         data_repository.clone(),
                                     ),
                                     formatter_provider.clone(),
+                                    certificate_validator.clone(),
                                     client.clone(),
                                     None,
                                 )
@@ -742,6 +750,7 @@ async fn initialize(
                         Arc::new(StatusList2021 {
                             key_algorithm_provider: key_algorithm_provider.clone(),
                             did_method_provider: did_method_provider.clone(),
+                            certificate_validator: certificate_validator.clone(),
                             client,
                         }) as _,
                     );
@@ -752,11 +761,29 @@ async fn initialize(
                 })
             };
 
+            let certificate_validator_creator: CertificateValidatorCreator = {
+                let client = client.clone();
+                Box::new(move |config, providers| {
+                    let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
+                    )?;
+
+                    Ok(Arc::new(CertificateValidatorImpl::new(
+                        key_algorithm_provider.clone(),
+                        client,
+                        config
+                            .unsafe_x509_crl_validity_check_enabled
+                            .unwrap_or(true),
+                    )))
+                })
+            };
+
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
                 .with_jsonld_caching_loader(caching_loader)
                 .with_data_provider_creator(storage_creator)
                 .with_key_algorithm_provider(key_algo_creator)
+                .and_then(|b| b.with_certificate_validator(certificate_validator_creator))
                 .and_then(|b| b.with_key_storage_provider(key_storage_creator))
                 .and_then(|b| b.with_did_method_provider(did_method_creator))
                 .and_then(|b| b.with_formatter_provider(formatter_provider_creator))

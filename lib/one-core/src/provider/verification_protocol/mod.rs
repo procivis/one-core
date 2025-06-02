@@ -96,6 +96,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     formatter_provider.clone(),
                     key_algorithm_provider.clone(),
                     did_method_provider.clone(),
+                    certificate_validator.clone(),
                 ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
@@ -204,6 +205,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_provider.clone(),
+                    certificate_validator.clone(),
                     ble.clone(),
                 );
                 fields.capabilities = Some(json!(protocol.get_capabilities()));

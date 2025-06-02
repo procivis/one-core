@@ -62,6 +62,7 @@ use crate::provider::verification_protocol::{
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
@@ -91,6 +92,7 @@ pub struct OpenID4VPProximityDraft00 {
     key_provider: Arc<dyn KeyProvider>,
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     config: Arc<CoreConfig>,
     params: OpenID4VPProximityDraft00Params,
 }
@@ -107,6 +109,7 @@ impl OpenID4VPProximityDraft00 {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         ble: Option<BleWaiter>,
     ) -> Self {
         let url_scheme = params.url_scheme.clone();
@@ -137,6 +140,7 @@ impl OpenID4VPProximityDraft00 {
             formatter_provider,
             interaction_repository,
             proof_repository,
+            certificate_validator,
             config,
             params,
         }
@@ -158,6 +162,7 @@ impl OpenID4VPProximityDraft00 {
             did_method_provider: self.did_method_provider.clone(),
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
         handle_invitation_with_transport(
             url,

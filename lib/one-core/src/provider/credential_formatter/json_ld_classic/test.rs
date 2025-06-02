@@ -579,7 +579,7 @@ async fn test_parse_presentation_multi_tokens() {
     token_verifier
         .expect_verify()
         .once()
-        .returning(move |_, _, _, _, _| Ok(()));
+        .returning(move |_, _, _, _| Ok(()));
 
     let presentation = formatter
         .extract_presentation(

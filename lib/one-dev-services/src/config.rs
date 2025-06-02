@@ -1,25 +1,30 @@
+#[derive(Clone)]
 pub struct OneCoreConfig {
     pub caching_config: CachingConfig,
     pub did_method_config: DidMethodConfig,
     pub formatter_config: FormatterConfig,
 }
 
+#[derive(Clone)]
 pub struct CachingLoaderConfig {
     pub cache_size: usize,
     pub cache_refresh_timeout: time::Duration,
     pub refresh_after: time::Duration,
 }
 
+#[derive(Clone)]
 pub struct CachingConfig {
     pub did: CachingLoaderConfig,
     pub json_ld_context: CachingLoaderConfig,
 }
 
+#[derive(Clone)]
 pub struct DidMethodConfig {
     pub universal_resolver_url: String,
     pub key_count_range: (usize, usize),
 }
 
+#[derive(Clone)]
 pub struct FormatterConfig {
     pub leeway: u64,
     pub embed_layout_properties: bool,

@@ -12,6 +12,7 @@ use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
 use crate::util::key_verification::KeyVerification;
 
@@ -81,11 +82,13 @@ pub(crate) async fn validate_bearer_token(
     bearer_token: &str,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<Jwt<BearerTokenPayload>, ServiceError> {
     let token_signature_verification = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::Authentication,
+        certificate_validator,
     });
 
     let jwt: Jwt<BearerTokenPayload> = Jwt::build_from_token(

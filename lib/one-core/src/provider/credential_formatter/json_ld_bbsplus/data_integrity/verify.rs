@@ -12,7 +12,7 @@ use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::{
     base_proof_config, base_proof_hashing, base_proof_transformation, generate_signature_input,
     parse_derived_proof_value,
 };
-use crate::provider::credential_formatter::model::TokenVerifier;
+use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
 
 pub async fn verify_base_proof(
@@ -61,10 +61,14 @@ pub async fn verify_base_proof(
         return Err(FormatterError::Failed("Invalid bbs header".to_string()));
     }
 
+    let did_value = vcdm.issuer.to_did_value()?;
+    let params = PublicKeySource::Did {
+        did: &did_value,
+        key_id: Some(&proof.verification_method),
+    };
     verifier
         .verify(
-            Some(vcdm.issuer.to_did_value()?),
-            Some(&proof.verification_method),
+            params,
             KeyAlgorithmType::BbsPlus,
             &signature_input.message,
             &proof_components.bbs_signature,
@@ -399,7 +403,7 @@ mod test {
 
         verifier
             .expect_verify()
-            .returning(move |_, _, _, token, signature| key_handle.verify(token, signature));
+            .returning(move |_, _, token, signature| key_handle.verify(token, signature));
 
         verifier
     }

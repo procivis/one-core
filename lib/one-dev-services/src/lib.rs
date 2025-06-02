@@ -127,6 +127,7 @@ use one_core::provider::key_storage::internal::{
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use one_core::service::certificate::validator::CertificateValidatorImpl;
 use one_crypto::CryptoProviderImpl;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
@@ -312,7 +313,7 @@ impl OneDevCore {
                         did_method_provider.clone(),
                         key_algorithm_provider.clone(),
                         json_ld_caching_loader,
-                        client,
+                        client.clone(),
                     )) as _,
                 ),
             ]),
@@ -322,12 +323,18 @@ impl OneDevCore {
             SignatureService::new(crypto_provider, key_algorithm_provider.clone());
 
         let did_service = DidService::new(did_method_provider.clone(), Some(universal_resolver));
+        let certificate_validator = Arc::new(CertificateValidatorImpl::new(
+            key_algorithm_provider.clone(),
+            client,
+            true,
+        ));
 
         let credential_service = CredentialService::new(
             key_storage_provider,
             credential_formatter_provider,
             key_algorithm_provider,
             did_method_provider,
+            certificate_validator,
         );
 
         Ok(Self {

@@ -18,6 +18,7 @@ use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::util::ble_resource::BleWaiter;
 
 pub mod dto;
@@ -50,6 +51,7 @@ pub struct ProofService {
     base_url: Option<String>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl ProofService {
@@ -75,6 +77,7 @@ impl ProofService {
         base_url: Option<String>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             proof_repository,
@@ -97,6 +100,7 @@ impl ProofService {
             base_url,
             organisation_repository,
             validity_credential_repository,
+            certificate_validator,
         }
     }
 }

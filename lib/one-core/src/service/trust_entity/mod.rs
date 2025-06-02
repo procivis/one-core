@@ -9,6 +9,7 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::trust_anchor_repository::TrustAnchorRepository;
 use crate::repository::trust_entity_repository::TrustEntityRepository;
+use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;
@@ -29,6 +30,7 @@ pub struct TrustEntityService {
     trust_provider: Arc<dyn TrustManagementProvider>,
     key_provider: Arc<dyn KeyProvider>,
     client: Arc<dyn HttpClient>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl TrustEntityService {
@@ -43,6 +45,7 @@ impl TrustEntityService {
         trust_provider: Arc<dyn TrustManagementProvider>,
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             trust_anchor_repository,
@@ -53,6 +56,7 @@ impl TrustEntityService {
             key_algorithm_provider,
             trust_provider,
             key_provider,
+            certificate_validator,
             client,
         }
     }

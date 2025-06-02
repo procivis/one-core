@@ -37,7 +37,7 @@ use self::mdoc::{
     MobileSecurityObjectVersion, Namespace, Namespaces, OID4VPHandover, SessionTranscript,
     ValidityInfo, ValueDigests,
 };
-use super::model::{CredentialData, HolderBindingCtx, IssuerDetails};
+use super::model::{CredentialData, HolderBindingCtx, IssuerDetails, PublicKeySource};
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{
@@ -746,14 +746,12 @@ async fn try_verify_issuer_auth(
 
     let signature = &cose_sign1.signature;
 
+    let params = PublicKeySource::Did {
+        did: issuer_did,
+        key_id: None,
+    };
     verifier
-        .verify(
-            Some(issuer_did.to_owned()),
-            None,
-            algorithm,
-            &token,
-            signature,
-        )
+        .verify(params, algorithm, &token, signature)
         .await
         .map_err(|err| FormatterError::CouldNotVerify(err.to_string()))
 }
@@ -949,14 +947,12 @@ pub async fn try_verify_detached_signature_with_provider(
 
     let signature = &device_signature.signature;
 
+    let params = PublicKeySource::Did {
+        did: issuer_did_value,
+        key_id: None, /* take the first one */
+    };
     verifier
-        .verify(
-            Some(issuer_did_value.to_owned()),
-            None, /* take the first one */
-            algorithm,
-            &sig_data,
-            signature,
-        )
+        .verify(params, algorithm, &sig_data, signature)
         .await
 }
 

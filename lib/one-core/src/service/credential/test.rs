@@ -51,6 +51,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
@@ -81,6 +82,7 @@ struct Repositories {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockValidityCredentialRepository,
+    pub certificate_validator: MockCertificateValidator,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -101,6 +103,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.lvvc_repository),
         None,
         Arc::new(ReqwestClient::default()),
+        Arc::new(repositories.certificate_validator),
     )
 }
 

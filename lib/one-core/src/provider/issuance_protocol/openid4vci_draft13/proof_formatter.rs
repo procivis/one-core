@@ -5,7 +5,9 @@ use time::OffsetDateTime;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};
 use crate::provider::credential_formatter::jwt::{Jwt, JwtPublicKeyInfo};
-use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, PublicKeySource, TokenVerifier,
+};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
@@ -80,10 +82,13 @@ impl OpenID4VCIProofJWTFormatter {
                         "Invalid key algorithm".to_string(),
                     ))?;
 
+                let params = PublicKeySource::Did {
+                    did: &did,
+                    key_id: fragment,
+                };
                 verifier
                     .verify(
-                        Some(did.clone()),
-                        fragment,
+                        params,
                         key_algorithm.algorithm_type(),
                         unverified_jwt.as_bytes(),
                         &signature,
@@ -185,6 +190,7 @@ mod test {
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::key_storage::provider::SignatureProviderImpl;
+    use crate::service::certificate::validator::MockCertificateValidator;
     use crate::util::key_verification::KeyVerification;
 
     #[tokio::test]
@@ -287,6 +293,7 @@ mod test {
             did_method_provider: Arc::new(did_method_provider),
             key_algorithm_provider,
             key_role: KeyRole::Authentication,
+            certificate_validator: Arc::new(MockCertificateValidator::default()),
         };
 
         Box::new(key_verification)

@@ -25,6 +25,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
 
@@ -37,7 +38,6 @@ pub(crate) struct ValidatedProofClaimDTO {
 
 // copied from lib/one-core/src/service/ssi_verifier/validator.rs
 // just adapted to always use MDOC
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn validate_proof(
     proof_schema: &ProofSchema,
     presentation: &str,
@@ -45,17 +45,20 @@ pub(crate) async fn validate_proof(
     formatter_provider: &dyn CredentialFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<(DidValue, Vec<ValidatedProofClaimDTO>), ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),
         did_method_provider: did_method_provider.clone(),
         key_role: KeyRole::Authentication,
+        certificate_validator: certificate_validator.clone(),
     });
 
     let key_verification_credentials = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
+        certificate_validator: certificate_validator.clone(),
     });
 
     let format = "MDOC";

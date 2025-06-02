@@ -26,14 +26,23 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
+pub enum PublicKeySource<'a> {
+    Did {
+        did: &'a DidValue,
+        key_id: Option<&'a str>,
+    },
+    X5c {
+        x5c: &'a [String],
+    },
+}
+
 /// Method for verifying credential.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait TokenVerifier: Send + Sync {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<DidValue>,
-        issuer_key_id: Option<&'a str>,
+        public_key_source: PublicKeySource<'a>,
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],

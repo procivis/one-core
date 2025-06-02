@@ -21,7 +21,6 @@ use provider::verification_protocol::verification_protocol_providers_from_config
 use repository::DataRepository;
 use service::backup::BackupService;
 use service::certificate::CertificateService;
-use service::certificate::validator::CertificateValidatorImpl;
 use service::config::ConfigService;
 use service::credential::CredentialService;
 use service::did::DidService;
@@ -53,6 +52,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::cache::CacheService;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::identifier::IdentifierService;
@@ -116,6 +116,14 @@ pub type RevocationMethodCreator = Box<
         + Send,
 >;
 
+pub type CertificateValidatorCreator = Box<
+    dyn FnOnce(
+            &mut CoreConfig,
+            &OneCoreBuilderProviders,
+        ) -> Result<Arc<dyn CertificateValidator>, OneCoreBuildError>
+        + Send,
+>;
+
 pub struct OneCore {
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
@@ -155,6 +163,7 @@ pub struct OneCoreBuilderProviders {
     pub did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     pub formatter_provider: Option<Arc<dyn CredentialFormatterProvider>>,
     pub revocation_method_provider: Option<Arc<dyn RevocationMethodProvider>>,
+    pub certificate_validator: Option<Arc<dyn CertificateValidator>>,
     //repository and providers that we initialize as we build
 }
 
@@ -257,6 +266,16 @@ impl OneCoreBuilder {
             &self.providers,
         )?;
         self.providers.formatter_provider = Some(formatter_provider);
+        Ok(self)
+    }
+
+    pub fn with_certificate_validator(
+        mut self,
+        certificate_validator_creator: CertificateValidatorCreator,
+    ) -> Result<Self, OneCoreBuildError> {
+        let certificate_validator =
+            certificate_validator_creator(&mut self.core_config, &self.providers)?;
+        self.providers.certificate_validator = Some(certificate_validator);
         Ok(self)
     }
 
@@ -381,11 +400,13 @@ impl OneCore {
             ))?
             .clone();
 
-        let certificate_validator = Arc::new(CertificateValidatorImpl::new(
-            key_algorithm_provider.clone(),
-            client.clone(),
-            Arc::new(core_config.clone()),
-        ));
+        let certificate_validator = providers
+            .certificate_validator
+            .as_ref()
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "certificate validator is required",
+            ))?
+            .clone();
 
         let revocation_method_provider = providers
             .revocation_method_provider
@@ -430,6 +451,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
             did_method_provider.clone(),
+            certificate_validator.clone(),
             client.clone(),
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
@@ -491,6 +513,7 @@ impl OneCore {
             data_provider.get_validity_credential_repository(),
             providers.core_base_url.clone(),
             client.clone(),
+            certificate_validator.clone(),
         );
 
         let task_providers = tasks_from_config(
@@ -524,6 +547,7 @@ impl OneCore {
                 trust_management_provider,
                 key_provider.clone(),
                 client.clone(),
+                certificate_validator.clone(),
             ),
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
@@ -548,6 +572,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
+                certificate_validator.clone(),
             ),
             oid4vci_draft13_service: OID4VCIDraft13Service::new(
                 providers.core_base_url.clone(),
@@ -561,6 +586,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 formatter_provider.clone(),
+                certificate_validator.clone(),
             ),
             oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),
@@ -574,6 +600,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 formatter_provider.clone(),
+                certificate_validator.clone(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 data_provider.get_credential_repository(),
@@ -588,6 +615,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
+                certificate_validator.clone(),
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
                 data_provider.get_credential_repository(),
@@ -602,6 +630,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
+                certificate_validator.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),
@@ -654,6 +683,7 @@ impl OneCore {
                 providers.core_base_url.clone(),
                 data_provider.get_organisation_repository().clone(),
                 data_provider.get_validity_credential_repository().clone(),
+                certificate_validator.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
@@ -669,6 +699,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 data_provider.get_revocation_list_repository(),
+                certificate_validator.clone(),
                 ContextCache::new(jsonld_caching_loader.clone(), client.clone()),
                 providers.core_base_url,
             ),

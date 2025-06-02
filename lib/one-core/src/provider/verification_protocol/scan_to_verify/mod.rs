@@ -25,6 +25,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::{ScanToVerifyRequestDTO, ShareProofRequestParamsDTO};
 use crate::util::key_verification::KeyVerification;
 
@@ -34,6 +35,7 @@ pub(crate) struct ScanToVerify {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl ScanToVerify {
@@ -41,11 +43,13 @@ impl ScanToVerify {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             formatter_provider,
             key_algorithm_provider,
             did_method_provider,
+            certificate_validator,
         }
     }
 }
@@ -164,6 +168,7 @@ impl VerificationProtocol for ScanToVerify {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
 
         let credential = formatter

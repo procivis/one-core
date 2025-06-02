@@ -9,6 +9,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod service;
@@ -28,6 +29,7 @@ pub struct RevocationListService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     config: Arc<core_config::CoreConfig>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl RevocationListService {
@@ -43,6 +45,7 @@ impl RevocationListService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         config: Arc<core_config::CoreConfig>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             core_base_url,
@@ -54,6 +57,7 @@ impl RevocationListService {
             key_provider,
             key_algorithm_provider,
             revocation_method_provider,
+            certificate_validator,
             config,
         }
     }

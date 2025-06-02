@@ -12,6 +12,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;
@@ -32,6 +33,7 @@ pub struct OID4VCIDraft13Service {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -48,6 +50,7 @@ impl OID4VCIDraft13Service {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -63,6 +66,7 @@ impl OID4VCIDraft13Service {
             did_method_provider,
             key_algorithm_provider,
             formatter_provider,
+            certificate_validator,
         }
     }
 
@@ -79,6 +83,7 @@ impl OID4VCIDraft13Service {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             protocol_base_url,
@@ -93,6 +98,7 @@ impl OID4VCIDraft13Service {
             did_method_provider,
             key_algorithm_provider,
             formatter_provider,
+            certificate_validator,
         }
     }
 }

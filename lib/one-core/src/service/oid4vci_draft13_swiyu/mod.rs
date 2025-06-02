@@ -15,6 +15,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::oid4vci_draft13::OID4VCIDraft13Service;
 
 #[derive(Clone)]
@@ -36,6 +37,7 @@ impl OID4VCIDraft13SwiyuService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         let protocol_base_url = core_base_url
             .as_ref()
@@ -54,6 +56,7 @@ impl OID4VCIDraft13SwiyuService {
                 did_method_provider,
                 key_algorithm_provider,
                 formatter_provider,
+                certificate_validator,
             ),
         }
     }

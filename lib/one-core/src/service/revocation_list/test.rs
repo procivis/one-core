@@ -16,6 +16,7 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::revocation_list::RevocationListService;
 use crate::service::revocation_list::dto::RevocationListResponseDTO;
 use crate::service::test_utilities::generic_config;
@@ -30,6 +31,7 @@ struct Repositories {
     pub key_provider: MockKeyProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
+    pub certificate_validator: MockCertificateValidator,
 }
 
 fn setup_service(repositories: Repositories) -> RevocationListService {
@@ -44,6 +46,7 @@ fn setup_service(repositories: Repositories) -> RevocationListService {
         Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(generic_config().core),
+        Arc::new(repositories.certificate_validator),
     )
 }
 

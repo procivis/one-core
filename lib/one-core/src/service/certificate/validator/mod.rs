@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::config::core_config::CoreConfig;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -12,7 +11,7 @@ mod revocation;
 mod x509_extension;
 
 #[derive(Clone)]
-pub(crate) struct ParsedCertificate {
+pub struct ParsedCertificate {
     pub attributes: CertificateX509AttributesDTO,
     pub subject_common_name: Option<String>,
     pub public_key: KeyHandle,
@@ -20,7 +19,7 @@ pub(crate) struct ParsedCertificate {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub(crate) trait CertificateValidator: Send + Sync {
+pub trait CertificateValidator: Send + Sync {
     /// Extract leaf certificate from the provided PEM chain
     /// Optionally validate the chain, each certificate must be:
     /// * not expired
@@ -34,22 +33,22 @@ pub(crate) trait CertificateValidator: Send + Sync {
 }
 
 #[derive(Clone)]
-pub(crate) struct CertificateValidatorImpl {
+pub struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
-    config: Arc<CoreConfig>,
+    unsafe_x509_crl_validity_check_enabled: bool,
 }
 
 impl CertificateValidatorImpl {
-    pub(crate) fn new(
+    pub fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
-        config: Arc<CoreConfig>,
+        unsafe_x509_crl_validity_check_enabled: bool,
     ) -> Self {
         Self {
             key_algorithm_provider,
             client,
-            config,
+            unsafe_x509_crl_validity_check_enabled,
         }
     }
 }

@@ -42,6 +42,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::test_utilities::*;
@@ -60,6 +61,7 @@ struct Mocks {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub validity_credential_repository: MockValidityCredentialRepository,
+    pub certificate_validator: MockCertificateValidator,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -77,6 +79,7 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.validity_credential_repository),
+        Arc::new(mocks.certificate_validator),
     )
 }
 

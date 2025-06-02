@@ -28,6 +28,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::storage_proxy::StorageAccess;
 
 pub(crate) const OID4VCI_DRAFT13_SWIYU_VERSION: &str = "draft-13-swiyu";
@@ -49,6 +50,7 @@ impl OpenID4VCI13Swiyu {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
@@ -65,6 +67,7 @@ impl OpenID4VCI13Swiyu {
                 did_method_provider,
                 key_algorithm_provider,
                 key_provider,
+                certificate_validator,
                 base_url,
                 config,
                 params,

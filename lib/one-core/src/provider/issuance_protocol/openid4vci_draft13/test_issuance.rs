@@ -46,6 +46,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::test_utilities::{
     dummy_did_document, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
@@ -228,6 +229,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
+        Arc::new(MockCertificateValidator::new()),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
         OpenID4VCIParams {
@@ -421,6 +423,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
+        Arc::new(MockCertificateValidator::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
         OpenID4VCIParams {
@@ -608,6 +611,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
+        Arc::new(MockCertificateValidator::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
         OpenID4VCIParams {
@@ -704,6 +708,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeyProvider::new()),
+        Arc::new(MockCertificateValidator::new()),
         Some("base_url".to_string()),
         Arc::new(config),
         OpenID4VCIParams {

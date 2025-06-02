@@ -40,6 +40,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
 };
+use crate::service::certificate::validator::CertificateValidator;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
@@ -115,6 +116,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
     config: &CoreConfig,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
     throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
@@ -132,6 +134,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
         formatter_provider,
         key_algorithm_provider,
         revocation_method_provider,
+        certificate_validator,
         config,
     )
     .await?;
@@ -155,6 +158,7 @@ async fn process_proof_submission(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
     config: &CoreConfig,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let presentation_submission = &submission.presentation_submission;
@@ -250,6 +254,7 @@ async fn process_proof_submission(
                 KeyRole::Authentication,
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
+                certificate_validator.clone(),
             ),
             context,
         )
@@ -361,6 +366,7 @@ async fn process_proof_submission(
                 KeyRole::AssertionMethod,
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
+                certificate_validator.clone(),
             ),
             did_method_provider,
             revocation_method_provider,
@@ -443,11 +449,13 @@ fn build_key_verification(
     key_role: KeyRole,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Box<KeyVerification> {
     Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
         key_role,
+        certificate_validator,
     })
 }
 

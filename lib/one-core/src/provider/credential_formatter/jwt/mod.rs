@@ -12,7 +12,7 @@ use serde::de::DeserializeOwned;
 use shared_types::DidValue;
 
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
-use super::model::VerificationFn;
+use super::model::{PublicKeySource, VerificationFn};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
@@ -31,14 +31,13 @@ pub type AnyPayload = serde_json::Map<String, serde_json::Value>;
 impl TokenVerifier for Box<dyn TokenVerifier> {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<DidValue>,
-        issuer_key_id: Option<&'a str>,
+        public_key_source: PublicKeySource<'a>,
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
         self.as_ref()
-            .verify(issuer_did_value, issuer_key_id, algorithm, token, signature)
+            .verify(public_key_source, algorithm, token, signature)
             .await
     }
 
@@ -126,16 +125,21 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                     header.algorithm
                 )))?;
 
+            let did = payload
+                .issuer
+                .as_ref()
+                .map(|did| did.parse().context("did parsing error"))
+                .transpose()
+                .map_err(|e| FormatterError::Failed(e.to_string()))?
+                .or(issuer_did)
+                .ok_or(FormatterError::Failed("missing did value".to_string()))?;
+            let params = PublicKeySource::Did {
+                did: &did,
+                key_id: header.key_id.as_deref(),
+            };
             verification
                 .verify(
-                    payload
-                        .issuer
-                        .as_ref()
-                        .map(|did| did.parse().context("did parsing error"))
-                        .transpose()
-                        .map_err(|e| FormatterError::Failed(e.to_string()))?
-                        .or(issuer_did),
-                    header.key_id.as_deref(),
+                    params,
                     algorithm.algorithm_type(),
                     unverified_jwt.as_bytes(),
                     &signature,

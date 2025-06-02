@@ -47,11 +47,7 @@ impl CertificateValidatorImpl {
             self.check_crl_signature(&crl, parent)?;
         }
 
-        if self
-            .config
-            .unsafe_x509_crl_validity_check_enabled
-            .is_none_or(|enabled| enabled)
-        {
+        if self.unsafe_x509_crl_validity_check_enabled {
             // check CRL validity
             if crl.last_update().to_datetime() > OffsetDateTime::now_utc() {
                 return Err(ValidationError::CRLOutdated.into());

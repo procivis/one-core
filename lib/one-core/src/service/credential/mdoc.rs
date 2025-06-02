@@ -163,6 +163,7 @@ impl CredentialService {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
         formatter
             .extract_credentials(&result.credential, Some(schema), verification_fn, None)

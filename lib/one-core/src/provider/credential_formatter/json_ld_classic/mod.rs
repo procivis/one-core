@@ -19,7 +19,7 @@ use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
 use super::json_ld::{
     is_context_list_valid, json_ld_processor_options, jsonld_forbidden_claim_names,
 };
-use super::model::{CredentialData, HolderBindingCtx, IssuerDetails};
+use super::model::{CredentialData, HolderBindingCtx, IssuerDetails, PublicKeySource};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
     DidType, FormatType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -668,14 +668,12 @@ pub(super) async fn verify_proof_signature(
         }
     };
 
+    let params = PublicKeySource::Did {
+        did: issuer_did,
+        key_id: Some(key_id),
+    };
     verification_fn
-        .verify(
-            Some(issuer_did.clone()),
-            Some(key_id),
-            algorithm,
-            proof_hash,
-            &signature,
-        )
+        .verify(params, algorithm, proof_hash, &signature)
         .await
         .map_err(|e| FormatterError::CouldNotVerify(format!("Verification error: {e}")))?;
 

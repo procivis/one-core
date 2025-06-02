@@ -35,6 +35,7 @@ use crate::provider::revocation::token_status_list::resolver::StatusListCachingL
 use crate::provider::revocation::token_status_list::util::{
     PREFERRED_ENTRY_SIZE, calculate_preferred_token_size,
 };
+use crate::service::certificate::validator::CertificateValidator;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
@@ -70,6 +71,7 @@ pub struct TokenStatusList {
     pub key_provider: Arc<dyn KeyProvider>,
     pub caching_loader: StatusListCachingLoader,
     pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    pub certificate_validator: Arc<dyn CertificateValidator>,
     resolver: Arc<StatusListResolver>,
     params: Params,
 }
@@ -83,6 +85,7 @@ impl TokenStatusList {
         key_provider: Arc<dyn KeyProvider>,
         caching_loader: StatusListCachingLoader,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
         params: Option<Params>,
     ) -> Result<Self, RevocationError> {
@@ -101,6 +104,7 @@ impl TokenStatusList {
             key_provider,
             caching_loader,
             formatter_provider,
+            certificate_validator,
             resolver: Arc::new(StatusListResolver::new(client)),
             params,
         })
@@ -210,6 +214,7 @@ impl RevocationMethod for TokenStatusList {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
         let jwt: Jwt<TokenStatusListContent> = Jwt::build_from_token(
             &response_content,

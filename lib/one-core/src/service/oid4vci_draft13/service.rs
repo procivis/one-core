@@ -327,6 +327,7 @@ impl OID4VCIDraft13Service {
                     key_algorithm_provider: self.key_algorithm_provider.clone(),
                     did_method_provider: self.did_method_provider.clone(),
                     key_role: KeyRole::Authentication,
+                    certificate_validator: self.certificate_validator.clone(),
                 }),
                 interaction_data.nonce,
             )

@@ -8,7 +8,9 @@ use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
 use super::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
-use super::model::{AuthenticationFn, HolderBindingCtx, TokenVerifier, VerificationFn};
+use super::model::{
+    AuthenticationFn, HolderBindingCtx, PublicKeySource, TokenVerifier, VerificationFn,
+};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
@@ -464,15 +466,17 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 token.header.algorithm
             )))?;
 
+        let did = issuer
+            .parse()
+            .context("issuer did parsing error")
+            .map_err(|e| FormatterError::Failed(e.to_string()))?;
+        let params = PublicKeySource::Did {
+            did: &did,
+            key_id: token.header.key_id.as_deref(),
+        };
         verification_fn
             .verify(
-                Some(
-                    issuer
-                        .parse()
-                        .context("issuer did parsing error")
-                        .map_err(|e| FormatterError::Failed(e.to_string()))?,
-                ),
-                token.header.key_id.as_deref(),
+                params,
                 algorithm.algorithm_type(),
                 token.unverified_jwt.as_bytes(),
                 &token.signature,

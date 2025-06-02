@@ -18,6 +18,7 @@ use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::test_utilities::get_dummy_date;
 use crate::service::trust_entity::TrustEntityService;
@@ -34,6 +35,7 @@ struct TestData {
     pub trust_provider: MockTrustManagementProvider,
     pub key_provider: MockKeyProvider,
     pub client: MockHttpClient,
+    pub certificate_validator: MockCertificateValidator,
 }
 
 fn setup_service(test_data: TestData) -> TrustEntityService {
@@ -47,6 +49,7 @@ fn setup_service(test_data: TestData) -> TrustEntityService {
         Arc::new(test_data.trust_provider),
         Arc::new(test_data.key_provider),
         Arc::new(test_data.client),
+        Arc::new(test_data.certificate_validator),
     )
 }
 

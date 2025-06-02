@@ -18,12 +18,14 @@ use crate::provider::revocation::model::{
     RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::util::key_verification::KeyVerification;
 
 pub struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub client: Arc<dyn HttpClient>,
+    pub certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 const CREDENTIAL_STATUS_TYPE: &str = "StatusList2021Entry";
@@ -97,6 +99,7 @@ impl RevocationMethod for StatusList2021 {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
 
         let encoded_list =

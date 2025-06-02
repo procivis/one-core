@@ -693,7 +693,7 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
     token_verifier
         .expect_verify()
         .never()
-        .returning(move |_, _, _, _, _| Ok(()));
+        .returning(move |_, _, _, _| Ok(()));
 
     formatter
         .extract_credentials(&formatted_credential, None, Box::new(token_verifier), None)

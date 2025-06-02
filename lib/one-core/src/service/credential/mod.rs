@@ -15,6 +15,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;
@@ -41,6 +42,7 @@ pub struct CredentialService {
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     base_url: Option<String>,
     client: Arc<dyn HttpClient>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl CredentialService {
@@ -62,6 +64,7 @@ impl CredentialService {
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         base_url: Option<String>,
         client: Arc<dyn HttpClient>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -80,6 +83,7 @@ impl CredentialService {
             validity_credential_repository: lvvc_repository,
             base_url,
             client,
+            certificate_validator,
         }
     }
 }

@@ -26,6 +26,7 @@ use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::get_or_create_revocation_list_id;
@@ -40,6 +41,7 @@ impl VCAPIService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         json_ld_ctx_cache: ContextCache,
         base_url: Option<String>,
     ) -> Self {
@@ -51,6 +53,7 @@ impl VCAPIService {
             did_method_provider,
             key_algorithm_provider,
             revocation_list_repository,
+            certificate_validator,
             jsonld_ctx_cache: json_ld_ctx_cache,
             base_url,
         }
@@ -244,6 +247,7 @@ impl VCAPIService {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
 
         formatter
@@ -286,6 +290,7 @@ impl VCAPIService {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
 
         formatter

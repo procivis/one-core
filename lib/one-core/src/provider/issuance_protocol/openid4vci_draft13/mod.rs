@@ -84,6 +84,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::util::history::log_history_event_credential;
@@ -120,6 +121,7 @@ pub(crate) struct OpenID4VCI13 {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
     protocol_base_url: Option<String>,
     config: Arc<CoreConfig>,
@@ -139,6 +141,7 @@ impl OpenID4VCI13 {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
@@ -159,6 +162,7 @@ impl OpenID4VCI13 {
             protocol_base_url,
             config,
             params,
+            certificate_validator,
         }
     }
 
@@ -174,6 +178,7 @@ impl OpenID4VCI13 {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
@@ -197,6 +202,7 @@ impl OpenID4VCI13 {
             protocol_base_url,
             config,
             params,
+            certificate_validator,
         }
     }
 
@@ -718,6 +724,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
         let response_credential = formatter
             .extract_credentials(

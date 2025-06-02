@@ -18,7 +18,7 @@ use crate::provider::credential_formatter::jwt::model::{
 };
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Features, Issuer,
-    IssuerDetails, MockTokenVerifier, PublishedClaim,
+    IssuerDetails, MockTokenVerifier, PublicKeySource, PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -387,18 +387,15 @@ async fn test_extract_credentials() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    "did:issuer:test",
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:test"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_,  _, _, _| Ok(()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -519,18 +516,15 @@ async fn test_extract_credentials_with_array() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    "did:issuer:123",
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:123"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_, _,  _, _| Ok(()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -630,18 +624,15 @@ async fn test_extract_credentials_with_array_stripped() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    "did:issuer:123",
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:123"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_,  _, _, _| Ok(()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -696,18 +687,15 @@ async fn test_extract_presentation() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    "did:holder:123",
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:holder:123"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_,  _, _, _| Ok(()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider

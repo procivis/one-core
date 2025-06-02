@@ -44,6 +44,7 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::ServiceError;
 use crate::service::test_utilities::*;
 
@@ -59,6 +60,7 @@ struct Mocks {
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
+    pub certificate_validator: MockCertificateValidator,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -75,6 +77,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.formatter_provider),
+        Arc::new(mocks.certificate_validator),
     )
 }
 

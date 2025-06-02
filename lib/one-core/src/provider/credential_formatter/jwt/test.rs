@@ -3,7 +3,6 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use time::macros::datetime;
 
@@ -11,6 +10,7 @@ use super::model::JWTPayload;
 use super::{Jwt, TokenVerifier};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::common::MockAuth;
+use crate::provider::credential_formatter::model::PublicKeySource;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 
@@ -35,16 +35,20 @@ pub struct TestVerify {
 impl TokenVerifier for TestVerify {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<DidValue>,
-        _issuer_key_id: Option<&'a str>,
+        public_key_source: PublicKeySource<'a>,
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        assert_eq!(
-            issuer_did_value.map(|v| v.to_string()),
-            self.issuer_did_value
-        );
+        match public_key_source {
+            PublicKeySource::Did { did, .. } => {
+                assert_eq!(
+                    did.to_string(),
+                    self.issuer_did_value.as_ref().unwrap().to_string()
+                )
+            }
+            PublicKeySource::X5c { .. } => return Err(SignerError::InvalidSignature),
+        }
         assert_eq!(algorithm, self.algorithm);
         assert_eq!(token, self.token.as_bytes());
 

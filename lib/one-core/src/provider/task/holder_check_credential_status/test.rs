@@ -40,6 +40,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential::CredentialService;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
@@ -175,6 +176,7 @@ struct Repositories {
     pub did_method_provider: Arc<MockDidMethodProvider>,
     pub key_provider: Arc<MockKeyProvider>,
     pub key_algorithm_provider: Arc<MockKeyAlgorithmProvider>,
+    pub certificate_validator: Arc<MockCertificateValidator>,
     pub config: Arc<CoreConfig>,
     pub lvvc_repository: Arc<MockValidityCredentialRepository>,
 }
@@ -197,6 +199,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         repositories.lvvc_repository,
         None,
         Arc::new(ReqwestClient::default()),
+        repositories.certificate_validator,
     )
 }
 

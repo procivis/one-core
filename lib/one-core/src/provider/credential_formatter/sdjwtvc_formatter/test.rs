@@ -28,7 +28,8 @@ use crate::provider::credential_formatter::jwt::model::{
 };
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Issuer,
-    IssuerDetails, MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
+    IssuerDetails, MockSignatureProvider, MockTokenVerifier, PublicKeySource, PublishedClaim,
+    PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -48,6 +49,7 @@ use crate::provider::key_algorithm::provider::{
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{dummy_did_document, dummy_jwk};
@@ -422,18 +424,15 @@ async fn test_extract_credentials() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW",
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_,  _, _, _| Ok(()));
 
     let credentials = sd_formatter
         .extract_credentials(&token, None, Box::new(verify_mock), None)
@@ -550,18 +549,15 @@ async fn test_extract_credentials_swiyu() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527",
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() ==  "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_,  _, _, _| Ok(()));
 
     let now = OffsetDateTime::now_utc();
     let credential_schema = crate::model::credential_schema::CredentialSchema {
@@ -703,11 +699,8 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         .expect_verify()
         .once()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, received_signature| {
-                assert_eq!(
-                    expected_issuer_did,
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, received_signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == expected_issuer_did));
                 assert_eq!(KeyAlgorithmType::Ecdsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(
@@ -717,7 +710,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_, _, _, _| Ok(()));
 
     let credentials = sd_formatter
         .extract_credentials(
@@ -769,11 +762,8 @@ async fn test_extract_presentation() {
     verify_mock
         .expect_verify()
         .withf(
-            move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!(
-                    expected_issuer_did,
-                    issuer_did_value.as_ref().unwrap().as_str()
-                );
+            move |params, algorithm, token, signature| {
+                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == expected_issuer_did));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(
@@ -783,7 +773,7 @@ async fn test_extract_presentation() {
                 true
             },
         )
-        .return_once(|_, _, _, _, _| Ok(()));
+        .return_once(|_,  _, _, _| Ok(()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -1041,6 +1031,7 @@ async fn test_format_extract_round_trip() {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
+        certificate_validator: Arc::new(MockCertificateValidator::default()),
     });
 
     let token = formatter

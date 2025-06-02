@@ -286,6 +286,7 @@ impl TrustEntityService {
             bearer_token,
             self.did_method_provider.clone(),
             self.key_algorithm_provider.clone(),
+            self.certificate_validator.clone(),
         )
         .await?;
 

@@ -9,7 +9,7 @@ use super::PhysicalCardFormatter;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
-use crate::provider::credential_formatter::model::MockTokenVerifier;
+use crate::provider::credential_formatter::model::{MockTokenVerifier, PublicKeySource};
 use crate::provider::credential_formatter::physical_card::mappers::terse_bitstring_status_list_to_bitstring_status;
 use crate::provider::credential_formatter::physical_card::model::{
     OptiocalBarcodeCredential, TerseBitstringStatusListEntry,
@@ -162,10 +162,8 @@ async fn test_mrz_proof_process() {
 
     let expected_issuer = credential.issuer.clone();
     token_verifier.expect_verify().once().returning(
-        move |issuer, verification_method, alg, digest, signature| {
-            let expected_issuer = expected_issuer.to_did_value().unwrap();
-            assert_eq!(issuer, Some(expected_issuer));
-            assert_eq!(verification_method, verification_method);
+        move |params, alg, digest, signature| {
+            assert!(matches!(params, PublicKeySource::Did {did, ..} if *did == expected_issuer.to_did_value().unwrap()));
             assert_eq!(alg, KeyAlgorithmType::Ecdsa);
             assert_eq!(digest.len(), 3);
             assert_eq!(signature.len(), 64);

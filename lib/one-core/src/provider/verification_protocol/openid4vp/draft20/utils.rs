@@ -168,6 +168,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
 ) -> Result<(OpenID4VP20AuthorizationRequest, Option<String>), VerificationProtocolError> {
     let attestation_jwt = request_token
         .header
@@ -180,6 +181,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         key_algorithm_provider: key_algorithm_provider.to_owned(),
         did_method_provider: did_method_provider.to_owned(),
         key_role: KeyRole::AssertionMethod,
+        certificate_validator: certificate_validator.to_owned(),
     });
 
     /*
@@ -358,6 +360,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
                         request_token,
                         key_algorithm_provider,
                         did_method_provider,
+                        certificate_validator,
                     )
                     .await?;
                     (params, did, None)

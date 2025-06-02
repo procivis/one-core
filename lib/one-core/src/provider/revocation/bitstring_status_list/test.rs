@@ -14,6 +14,7 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
 use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
 
 #[tokio::test]
@@ -60,6 +61,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         Arc::new(key_provider),
         caching_loader,
         Arc::new(formatter_provider),
+        Arc::new(MockCertificateValidator::default()),
         client,
         None,
     );

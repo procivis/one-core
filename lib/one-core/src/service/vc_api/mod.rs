@@ -10,6 +10,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;
@@ -25,4 +26,5 @@ pub struct VCAPIService {
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     jsonld_ctx_cache: ContextCache,
     base_url: Option<String>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }

@@ -52,6 +52,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation, get_dummy_date};
@@ -67,6 +68,7 @@ struct TestInputs {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
+    pub certificate_validator: MockCertificateValidator,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIParams>,
 }
@@ -83,6 +85,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
+        Arc::new(inputs.certificate_validator),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
         inputs.params.unwrap_or(OpenID4VCIParams {

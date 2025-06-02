@@ -35,6 +35,7 @@ use crate::provider::revocation::model::{
     RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
@@ -69,6 +70,7 @@ pub struct BitstringStatusList {
     pub key_provider: Arc<dyn KeyProvider>,
     pub caching_loader: StatusListCachingLoader,
     pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    pub certificate_validator: Arc<dyn CertificateValidator>,
     resolver: Arc<StatusListResolver>,
     params: Params,
 }
@@ -82,6 +84,7 @@ impl BitstringStatusList {
         key_provider: Arc<dyn KeyProvider>,
         caching_loader: StatusListCachingLoader,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
         params: Option<Params>,
     ) -> Self {
@@ -92,6 +95,7 @@ impl BitstringStatusList {
             key_provider,
             caching_loader,
             formatter_provider,
+            certificate_validator,
             resolver: Arc::new(StatusListResolver::new(client)),
             params: params.unwrap_or(Params {
                 format: StatusListCredentialFormat::Jwt,
@@ -268,6 +272,7 @@ impl RevocationMethod for BitstringStatusList {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
 
         let status_credential = self

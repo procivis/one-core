@@ -17,6 +17,7 @@ use one_core::provider::credential_formatter::provider::CredentialFormatterProvi
 use one_core::provider::did_method::provider::DidMethodProvider;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use one_core::provider::key_storage::provider::KeyProvider;
+use one_core::service::certificate::validator::CertificateValidator;
 use one_core::util::key_verification::KeyVerification;
 
 use crate::model::CredentialFormat;
@@ -27,6 +28,7 @@ pub struct CredentialService {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl CredentialService {
@@ -35,12 +37,14 @@ impl CredentialService {
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             key_storage_provider,
             credential_formatter_provider,
             key_algorithm_provider,
             did_method_provider,
+            certificate_validator,
         }
     }
 
@@ -90,6 +94,7 @@ impl CredentialService {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
         });
 
         let details = self
