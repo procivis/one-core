@@ -47,6 +47,7 @@ use crate::model::revocation_list::{
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::provider::credential_formatter::model::IssuerDetails;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -763,12 +764,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
         };
 
         // issuer_did must be set based on issued credential (might be unknown in credential offer)
-        let issuer_did_value =
-            response_credential
-                .issuer_did
-                .ok_or(IssuanceProtocolError::Failed(
-                    "issuer_did missing".to_string(),
-                ))?;
+        let IssuerDetails::Did(issuer_did_value) = response_credential.issuer else {
+            return Err(IssuanceProtocolError::Failed(
+                "issuer did is missing".to_string(),
+            ));
+        };
 
         // check did is consistent with what was offered
         if let Some(credential_offer_did) = credential

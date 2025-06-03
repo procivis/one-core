@@ -22,7 +22,9 @@ use time::Duration;
 use url::Url;
 
 use super::jwt::model::JWTPayload;
-use super::model::{CredentialData, CredentialStatus, HolderBindingCtx, PublishedClaim};
+use super::model::{
+    CredentialData, CredentialStatus, HolderBindingCtx, IssuerDetails, PublishedClaim,
+};
 use super::sdjwt;
 use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
@@ -432,6 +434,12 @@ impl SDJWTVCFormatter {
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
+        let issuer = DidValue::from_str(
+            &jwt.payload
+                .issuer
+                .ok_or(FormatterError::Failed("Missing issuer".to_string()))?,
+        )
+        .map_err(|err| FormatterError::Failed(format!("Failed to parse issuer did: {err}")))?;
         Ok((
             DetailCredential {
                 id: jwt.payload.jwt_id,
@@ -439,12 +447,7 @@ impl SDJWTVCFormatter {
                 valid_until: jwt.payload.expires_at,
                 update_at: None,
                 invalid_before: jwt.payload.invalid_before,
-                issuer_did: jwt
-                    .payload
-                    .issuer
-                    .map(|did| DidValue::from_str(&did))
-                    .transpose()
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                issuer: IssuerDetails::Did(issuer),
                 subject,
                 claims: CredentialSubject {
                     claims: HashMap::from_iter(jwt.payload.custom.public_claims),

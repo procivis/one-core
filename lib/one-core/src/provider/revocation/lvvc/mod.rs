@@ -18,7 +18,9 @@ use uuid::fmt::Urn;
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::model::{CredentialData, CredentialStatus, Issuer};
+use crate::provider::credential_formatter::model::{
+    CredentialData, CredentialStatus, Issuer, IssuerDetails,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
@@ -207,12 +209,11 @@ impl LvvcProvider {
                 "no matching LVVC found among credentials".to_string(),
             ))?;
 
-        let lvvc_issuer_did = lvvc
-            .issuer_did
-            .as_ref()
-            .ok_or(RevocationError::ValidationError(
+        let IssuerDetails::Did(ref lvvc_issuer_did) = lvvc.issuer else {
+            return Err(RevocationError::ValidationError(
                 "LVVC issuer DID missing".to_string(),
-            ))?;
+            ));
+        };
 
         if issuer_did != lvvc_issuer_did {
             return Err(RevocationError::ValidationError(

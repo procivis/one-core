@@ -27,7 +27,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, MockSignatureProvider,
+    CredentialSubject, DetailCredential, IssuerDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -428,7 +428,7 @@ async fn test_holder_accept_expired_credential_fails() {
                         valid_until: Some(get_dummy_date() - Duration::weeks(1)),
                         update_at: None,
                         invalid_before: None,
-                        issuer_did: None,
+                        issuer: IssuerDetails::Did(dummy_did().did),
                         subject: None,
                         claims: CredentialSubject {
                             id: None,

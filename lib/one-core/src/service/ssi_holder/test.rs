@@ -19,7 +19,9 @@ use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
+use crate::provider::credential_formatter::model::{
+    CredentialSubject, DetailCredential, IssuerDetails,
+};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -985,7 +987,7 @@ async fn test_accept_credential() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: None,
+                issuer: IssuerDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
                     claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),
@@ -1126,7 +1128,7 @@ async fn test_accept_credential_with_did() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: None,
+                issuer: IssuerDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
                     claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),

@@ -13,6 +13,7 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::model::IssuerDetails;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
@@ -128,10 +129,11 @@ impl ProofService {
             proof_input: input_schema.clone(),
         }));
 
-        let issuer_did = credential
-            .issuer_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("missing issuer_did".to_string()))?;
+        let IssuerDetails::Did(ref issuer_did) = credential.issuer else {
+            return Err(ServiceError::MappingError(
+                "issuer did is missing".to_string(),
+            ));
+        };
 
         // check revocation
         for status in &credential.status {

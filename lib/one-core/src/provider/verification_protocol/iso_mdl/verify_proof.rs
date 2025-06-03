@@ -15,7 +15,9 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
-use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
+use crate::provider::credential_formatter::model::{
+    DetailCredential, ExtractPresentationCtx, IssuerDetails,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -398,15 +400,14 @@ pub(crate) async fn accept_proof(
         let first_claim = credential_claims
             .first()
             .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
-        let issuer_did =
-            first_claim
-                .credential
-                .issuer_did
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "issuer_did is missing".to_string(),
-                ))?;
-        let (_, isssuer_identifier) = get_or_create_did_and_identifier(
+
+        let IssuerDetails::Did(ref issuer_did) = first_claim.credential.issuer else {
+            return Err(ServiceError::MappingError(
+                "issuer did is missing".to_string(),
+            ));
+        };
+
+        let (_, issuer_identifier) = get_or_create_did_and_identifier(
             did_method_provider,
             did_repository,
             identifier_repository,
@@ -429,7 +430,7 @@ pub(crate) async fn accept_proof(
             claim_schemas,
             credential_schema.to_owned(),
             claims,
-            isssuer_identifier,
+            issuer_identifier,
             Some(holder_identifier.clone()),
             proof.exchange.to_owned(),
         )?;

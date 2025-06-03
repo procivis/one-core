@@ -24,7 +24,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities,
-    HolderBindingCtx, Presentation, SelectiveDisclosure, VerificationFn,
+    HolderBindingCtx, IssuerDetails, Presentation, SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -346,7 +346,7 @@ pub(super) async fn extract_credentials_internal(
             valid_until: jwt.payload.expires_at,
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
-            issuer_did: Some(issuer_did),
+            issuer: IssuerDetails::Did(issuer_did),
             subject: jwt
                 .payload
                 .subject

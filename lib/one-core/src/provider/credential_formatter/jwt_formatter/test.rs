@@ -19,7 +19,8 @@ use crate::provider::credential_formatter::jwt_formatter::model::{
 };
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialStatus, ExtractPresentationCtx, Issuer, MockTokenVerifier, PublishedClaim,
+    CredentialStatus, ExtractPresentationCtx, Issuer, IssuerDetails, MockTokenVerifier,
+    PublishedClaim,
 };
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
@@ -467,8 +468,8 @@ async fn test_extract_credentials() {
     let credentials = result.unwrap();
 
     assert_eq!(
-        credentials.issuer_did,
-        Some("did:issuer:test".parse().unwrap()),
+        credentials.issuer,
+        IssuerDetails::Did("did:issuer:test".parse().unwrap()),
     );
     assert_eq!(
         credentials.subject,
@@ -552,8 +553,8 @@ async fn test_extract_credentials_nested_array() {
     let credentials = result.unwrap();
 
     assert_eq!(
-        credentials.issuer_did,
-        Some("did:issuer:test".parse().unwrap()),
+        credentials.issuer,
+        IssuerDetails::Did("did:issuer:test".parse().unwrap()),
     );
     assert_eq!(
         credentials.subject,

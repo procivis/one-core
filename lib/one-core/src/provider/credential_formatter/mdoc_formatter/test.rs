@@ -500,8 +500,8 @@ async fn test_unverified_credential_extraction() {
 
     // assert
     assert_eq!(
-        issuer_did.to_did_value().unwrap(),
-        credential.issuer_did.unwrap()
+        IssuerDetails::Did(issuer_did.to_did_value().unwrap()),
+        credential.issuer
     );
 
     assert_eq!(

@@ -18,7 +18,7 @@ use crate::provider::credential_formatter::jwt::model::{
 };
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Features, Issuer,
-    MockTokenVerifier, PublishedClaim,
+    IssuerDetails, MockTokenVerifier, PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -423,8 +423,8 @@ async fn test_extract_credentials() {
     let credentials = result.unwrap();
 
     assert_eq!(
-        credentials.issuer_did,
-        Some("did:issuer:test".parse().unwrap())
+        credentials.issuer,
+        IssuerDetails::Did("did:issuer:test".parse().unwrap())
     );
     assert_eq!(
         credentials.subject,

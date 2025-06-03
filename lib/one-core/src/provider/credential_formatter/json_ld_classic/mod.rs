@@ -19,7 +19,7 @@ use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
 use super::json_ld::{
     is_context_list_valid, json_ld_processor_options, jsonld_forbidden_claim_names,
 };
-use super::model::{CredentialData, HolderBindingCtx};
+use super::model::{CredentialData, HolderBindingCtx, IssuerDetails};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
     DidType, FormatType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -426,7 +426,7 @@ impl JsonLdClassic {
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(vcdm.issuer.to_did_value()?),
+            issuer: IssuerDetails::Did(vcdm.issuer.to_did_value()?),
             subject: credential_subject
                 .id
                 .and_then(|id| DidValue::from_did_url(id).ok()),

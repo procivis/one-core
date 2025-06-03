@@ -14,7 +14,8 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, HolderBindingCtx, Presentation, TokenVerifier,
+    DetailCredential, ExtractPresentationCtx, HolderBindingCtx, IssuerDetails, Presentation,
+    TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -183,12 +184,11 @@ pub(super) async fn validate_credential(
     validate_issuance_time(&credential.valid_from, formatter.get_leeway())?;
     validate_expiration_time(&credential.valid_until, formatter.get_leeway())?;
 
-    let issuer_did = credential
-        .issuer_did
-        .clone()
-        .ok_or(OpenID4VCError::ValidationError(
-            "Issuer DID missing".to_owned(),
-        ))?;
+    let IssuerDetails::Did(ref issuer_did) = credential.issuer else {
+        return Err(OpenID4VCError::MappingError(
+            "issuer did is missing".to_string(),
+        ));
+    };
 
     if is_revocation_credential(&credential) {
         return Ok((credential, None));
@@ -204,7 +204,7 @@ pub(super) async fn validate_credential(
         match revocation_method
             .check_credential_revocation_status(
                 credential_status,
-                &issuer_did,
+                issuer_did,
                 Some(CredentialDataByRole::Verifier(Box::new(
                     VerifierCredentialData {
                         credential: credential.to_owned(),

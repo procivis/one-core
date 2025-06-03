@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use url::Url;
 
 use super::error::FormatterError;
-use super::model::{CredentialSubject, DetailCredential};
+use super::model::{CredentialSubject, DetailCredential, IssuerDetails};
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
@@ -448,7 +448,7 @@ impl TryFrom<VcdmCredential> for DetailCredential {
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(vcdm.issuer.to_did_value()?),
+            issuer: IssuerDetails::Did(vcdm.issuer.to_did_value()?),
             subject,
             claims,
             status: vcdm.credential_status,

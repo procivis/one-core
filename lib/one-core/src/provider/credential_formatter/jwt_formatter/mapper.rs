@@ -7,7 +7,8 @@ use super::model::{VP, VcClaim, VerifiableCredential};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
-    CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, Presentation,
+    CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IssuerDetails,
+    Presentation,
 };
 
 impl From<CredentialSchemaData> for Option<CredentialSchema> {
@@ -45,13 +46,19 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             .or(credential_subject.id.as_ref().map(|url| url.as_str()))
             .and_then(|did| DidValue::from_did_url(did).ok());
 
+        let did = jwt
+            .payload
+            .issuer
+            .ok_or(anyhow::anyhow!("JWT missing credential issuer"))?
+            .parse()?;
+
         Ok(Self {
             id: jwt.payload.jwt_id,
             valid_from: jwt.payload.issued_at,
             valid_until: jwt.payload.expires_at,
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
-            issuer_did: jwt.payload.issuer.map(|did| did.parse()).transpose()?,
+            issuer: IssuerDetails::Did(did),
             subject,
             claims: CredentialSubject {
                 id: credential_subject.id,

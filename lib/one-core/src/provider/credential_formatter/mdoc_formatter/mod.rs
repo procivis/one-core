@@ -37,7 +37,7 @@ use self::mdoc::{
     MobileSecurityObjectVersion, Namespace, Namespaces, OID4VPHandover, SessionTranscript,
     ValidityInfo, ValueDigests,
 };
-use super::model::{CredentialData, HolderBindingCtx};
+use super::model::{CredentialData, HolderBindingCtx, IssuerDetails};
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{
@@ -831,7 +831,7 @@ fn extract_credentials_internal(
             .expected_update
             .map(|update| update.into()),
         invalid_before: None,
-        issuer_did: Some(issuer_did),
+        issuer: IssuerDetails::Did(issuer_did),
         subject: Some(holder_did),
         claims: CredentialSubject { claims, id: None },
         status: vec![],

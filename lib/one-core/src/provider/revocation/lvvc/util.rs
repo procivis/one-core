@@ -37,7 +37,9 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
-    use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
+    use crate::provider::credential_formatter::model::{
+        CredentialSubject, DetailCredential, IssuerDetails,
+    };
 
     fn create_test_detail_credential(
         subject: Option<DidValue>,
@@ -49,7 +51,7 @@ mod tests {
             valid_until: None,
             update_at: None,
             invalid_before: None,
-            issuer_did: None,
+            issuer: IssuerDetails::Did("did:example:123".parse().unwrap()),
             subject,
             claims,
             status: vec![],

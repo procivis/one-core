@@ -6,7 +6,7 @@ use super::model::{
 };
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialSchema, CredentialStatus, CredentialSubject, DetailCredential,
+    CredentialSchema, CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::verification_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
@@ -124,7 +124,7 @@ impl TryInto<DetailCredential> for OptiocalBarcodeCredential {
             valid_until: None,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(self.credential.issuer.to_did_value()?),
+            issuer: IssuerDetails::Did(self.credential.issuer.to_did_value()?),
             subject: None,
             claims: credential_subject,
             status: status?,

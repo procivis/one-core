@@ -17,7 +17,7 @@ use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, MockSignatureProvider,
+    CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -126,7 +126,7 @@ fn extracted_credential(status: &str) -> DetailCredential {
         valid_until: None,
         update_at: None,
         invalid_before: None,
-        issuer_did: None,
+        issuer: IssuerDetails::Did("did:example:123".parse().unwrap()),
         subject: None,
         claims: CredentialSubject {
             claims: HashMap::from([("status".to_string(), json!(status))]),

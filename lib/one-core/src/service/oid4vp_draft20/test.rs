@@ -19,7 +19,7 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, Presentation,
+    CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails, Presentation,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -373,7 +373,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: Some(issuer_did_clone.to_owned()),
+                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
                 subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     claims: HashMap::from([
@@ -430,7 +430,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: Some(issuer_did_clone.to_owned()),
+                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
                 subject: Some(holder_did.to_owned()),
                 claims: CredentialSubject {
                     claims: HashMap::from([

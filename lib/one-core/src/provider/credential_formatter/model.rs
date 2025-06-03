@@ -53,6 +53,12 @@ pub trait SignatureProvider: Send + Sync {
     fn get_public_key(&self) -> Vec<u8>;
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum IssuerDetails {
+    Did(DidValue),
+    Certificate { chain: String, fingerprint: String },
+}
+
 #[derive(Debug, Clone)]
 pub struct DetailCredential {
     pub id: Option<String>,
@@ -60,7 +66,7 @@ pub struct DetailCredential {
     pub valid_until: Option<OffsetDateTime>,
     pub update_at: Option<OffsetDateTime>,
     pub invalid_before: Option<OffsetDateTime>,
-    pub issuer_did: Option<DidValue>,
+    pub issuer: IssuerDetails,
     pub subject: Option<DidValue>,
     pub claims: CredentialSubject,
     pub status: Vec<CredentialStatus>,

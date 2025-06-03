@@ -28,7 +28,7 @@ use crate::provider::credential_formatter::jwt::model::{
 };
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Issuer,
-    MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
+    IssuerDetails, MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -441,8 +441,8 @@ async fn test_extract_credentials() {
         .unwrap();
 
     assert_eq!(
-        credentials.issuer_did,
-        Some(
+        credentials.issuer,
+        IssuerDetails::Did(
             "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW"
                 .parse()
                 .unwrap()
@@ -605,8 +605,8 @@ async fn test_extract_credentials_swiyu() {
         .unwrap();
 
     assert_eq!(
-        credentials.issuer_did,
-        Some(
+        credentials.issuer,
+        IssuerDetails::Did(
             "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527"
                 .parse()
                 .unwrap()
