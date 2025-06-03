@@ -13,7 +13,6 @@ use crate::provider::credential_formatter::model::{
     Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -21,6 +20,8 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::test_utilities::generic_config;
 
 #[test]
@@ -275,7 +276,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
 
     let formatter = MdocFormatter::new(
         params,
-        Arc::new(MockDidMdlValidator::new()),
+        Arc::new(MockCertificateValidator::new()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -469,12 +470,38 @@ async fn test_unverified_credential_extraction() {
             let key_algorithm = Arc::new(key_algorithm);
             move |_| Some(key_algorithm.clone())
         });
+    let mut certificate_validator = MockCertificateValidator::new();
+    let expiry = OffsetDateTime::now_utc() + Duration::days(1);
+    certificate_validator
+        .expect_parse_pem_chain()
+        .once()
+        .returning(move |_, _| {
+            let mut public_key_handle = MockSignaturePublicKeyHandle::default();
+            public_key_handle
+                .expect_as_multibase()
+                .return_once(|| Ok("abcd".to_string()));
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "".to_string(),
+                    not_before: OffsetDateTime::now_utc() - Duration::days(1),
+                    not_after: expiry,
+                    issuer: "Some issuer".to_string(),
+                    subject: "Some subject".to_string(),
+                    fingerprint: "fingerprint".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("common name".to_string()),
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    public_key_handle,
+                ))),
+            })
+        });
 
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
         params,
-        Arc::new(MockDidMdlValidator::new()),
+        Arc::new(certificate_validator),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -500,7 +527,33 @@ async fn test_unverified_credential_extraction() {
 
     // assert
     assert_eq!(
-        IssuerDetails::Did(issuer_did.to_did_value().unwrap()),
+        IssuerDetails::Certificate(CertificateDetails {
+            chain: r#"-----BEGIN CERTIFICATE-----
+MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
+aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
+Y29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMC
+Q0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNV
+BAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMB
+BwMiAAJx38tO0JCdq3ZecMSW6a+BAAzllydQxVOQ+KDjnwLXJ6OCAeswggHnMA4G
+A1UdDwEB/wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB/wQC
+MAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBP
+oE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdG
+MzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbsw
+gbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vl
+ci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBa
+BggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENE
+MjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1Ud
+EgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0
+ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFem
+Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
+1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg==
+-----END CERTIFICATE-----
+"#
+            .to_string(),
+            fingerprint: "fingerprint".to_string(),
+            expiry,
+        }),
         credential.issuer
     );
 
@@ -661,17 +714,37 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
             move |_| Some(key_algorithm.clone())
         });
 
-    let mut did_mdl_validator = MockDidMdlValidator::new();
-    did_mdl_validator
-        .expect_validate_certificate()
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| {
+            let mut public_key_handle = MockSignaturePublicKeyHandle::default();
+            public_key_handle
+                .expect_as_multibase()
+                .return_once(|| Ok("abcd".to_string()));
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "".to_string(),
+                    not_before: OffsetDateTime::now_utc() - Duration::days(1),
+                    not_after: OffsetDateTime::now_utc() + Duration::days(1),
+                    issuer: "Some issuer".to_string(),
+                    subject: "Some subject".to_string(),
+                    fingerprint: "fingerprint".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("common name".to_string()),
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    public_key_handle,
+                ))),
+            })
+        });
 
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
         params,
-        Arc::new(did_mdl_validator),
+        Arc::new(certificate_validator),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -712,7 +785,7 @@ fn test_credential_schema_id() {
     };
     let formatter = MdocFormatter::new(
         params,
-        Arc::new(MockDidMdlValidator::new()),
+        Arc::new(MockCertificateValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         None,

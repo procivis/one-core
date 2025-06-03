@@ -47,7 +47,7 @@ impl TokenVerifier for TestVerify {
                     self.issuer_did_value.as_ref().unwrap().to_string()
                 )
             }
-            PublicKeySource::X5c { .. } => return Err(SignerError::InvalidSignature),
+            _ => return Err(SignerError::InvalidSignature),
         }
         assert_eq!(algorithm, self.algorithm);
         assert_eq!(token, self.token.as_bytes());

@@ -166,7 +166,7 @@ async fn test_issuer_submit_succeeds() {
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
-        .times(2)
+        .once()
         .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
@@ -280,6 +280,7 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
         key: Some(key),
         schema: Some(CredentialSchema {
             format: format.to_string(),
+            schema_type: CredentialSchemaType::Mdoc,
             ..dummy_credential().schema.unwrap()
         }),
         ..dummy_credential()
@@ -348,7 +349,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
-        .times(2)
+        .once()
         .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
@@ -507,7 +508,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
-        .times(2)
+        .once()
         .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();

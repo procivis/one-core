@@ -808,6 +808,7 @@ static IACA_CERTIFICATE: &str = "MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmg
 async fn test_revoke_check_mdoc_update() {
     // GIVEN
     let additional_config = indoc::formatdoc! {"
+        unsafeX509CrlValidityCheckEnabled: false
         did:
             MDL:
                 params:
@@ -1112,6 +1113,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
 async fn test_revoke_check_mdoc_update_force_refresh() {
     // GIVEN
     let additional_config = Some(indoc::formatdoc! {"
+        unsafeX509CrlValidityCheckEnabled: false
         format:
             MDOC:
                 params:
@@ -1686,6 +1688,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
 async fn test_suspended_to_valid_mdoc() {
     // GIVEN
     let additional_config = indoc::formatdoc! {"
+        unsafeX509CrlValidityCheckEnabled: false
         did:
             MDL:
                 params:

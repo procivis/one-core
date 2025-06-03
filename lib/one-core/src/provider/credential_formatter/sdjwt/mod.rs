@@ -12,8 +12,8 @@ use time::{Duration, OffsetDateTime};
 
 use super::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use super::model::{
-    AuthenticationFn, HolderBindingCtx, IssuerDetails, PublicKeySource, TokenVerifier,
-    VerificationFn,
+    AuthenticationFn, CertificateDetails, HolderBindingCtx, IssuerDetails, PublicKeySource,
+    TokenVerifier, VerificationFn,
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -328,11 +328,11 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                     (
                         issuer.clone(),
                         params,
-                        IssuerDetails::Certificate {
+                        IssuerDetails::Certificate(CertificateDetails {
                             chain,
                             fingerprint: attributes.fingerprint,
                             expiry: attributes.not_after,
-                        },
+                        }),
                     )
                 }
             }

@@ -34,7 +34,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, ExtractPresentationCtx, IssuerDetails,
+    AuthenticationFn, CertificateDetails, ExtractPresentationCtx, IssuerDetails,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -617,9 +617,9 @@ pub(crate) async fn credential_from_proved(
             .await?;
             (issuer_identifier, None)
         }
-        IssuerDetails::Certificate {
+        IssuerDetails::Certificate(CertificateDetails {
             chain, fingerprint, ..
-        } => {
+        }) => {
             let (cert, identifier) = get_or_create_certificate_identifier(
                 certificate_repository,
                 certificate_validator,

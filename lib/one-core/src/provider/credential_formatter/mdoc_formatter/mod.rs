@@ -18,6 +18,7 @@ use indexmap::{IndexMap, IndexSet};
 use mdoc::{DataElementValue, DeviceNamespaces};
 use one_crypto::SignerError;
 use one_crypto::utilities::generate_random_bytes;
+use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
@@ -38,7 +39,9 @@ use self::mdoc::{
     MobileSecurityObjectVersion, Namespace, Namespaces, OID4VPHandover, SessionTranscript,
     ValidityInfo, ValueDigests,
 };
-use super::model::{CredentialData, HolderBindingCtx, IssuerDetails, PublicKeySource};
+use super::model::{
+    CertificateDetails, CredentialData, HolderBindingCtx, IssuerDetails, PublicKeySource,
+};
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{
@@ -57,11 +60,12 @@ use crate::provider::credential_formatter::model::{
     FormatterCapabilities, Presentation, PublishedClaim, SelectiveDisclosure, SignatureProvider,
     TokenVerifier, VerificationFn,
 };
-use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::util::x509::pem_chain_into_x5c;
 
 mod cose;
 pub mod mdoc;
@@ -74,7 +78,7 @@ const FULL_DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-
 static LAYOUT_NAMESPACE: &str = "ch.procivis.mdoc_layout.1";
 
 pub struct MdocFormatter {
-    did_mdl_validator: Arc<dyn DidMdlValidator>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -99,14 +103,14 @@ pub struct Params {
 impl MdocFormatter {
     pub fn new(
         params: Params,
-        did_mdl_validator: Arc<dyn DidMdlValidator>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         base_url: Option<String>,
         datatype_config: DatatypeConfig,
     ) -> Self {
         Self {
-            did_mdl_validator,
+            certificate_validator,
             params,
             did_method_provider,
             key_algorithm_provider,
@@ -264,7 +268,31 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(key_algorithm)?;
 
-        let x5chain_header = build_x5chain_header(vcdm.issuer.to_did_value()?)?;
+        let x5c = if let Some(certificate) = credential_data.issuer_certificate {
+            pem_chain_into_x5c(&certificate.chain).map_err(|err| {
+                FormatterError::Failed(format!("failed to create x5c header param: {err}"))
+            })?
+        } else {
+            // TODO ONE-5919: did:mdl compatibility shim, remove when did method is removed
+            vec![
+                vcdm.issuer
+                    .to_did_value()?
+                    .as_str()
+                    .strip_prefix("did:mdl:certificate:")
+                    .map(|s| Base64UrlSafeNoPadding::decode_to_vec(s, None))
+                    .transpose()
+                    .map_err(|err| {
+                        FormatterError::CouldNotFormat(format!("Base64url decoding failed: {err}"))
+                    })?
+                    .map(Base64::encode_to_string)
+                    .transpose()
+                    .map_err(|err| {
+                        FormatterError::CouldNotFormat(format!("Base64 encoding failed: {err}"))
+                    })?
+                    .ok_or_else(|| FormatterError::CouldNotFormat("Invalid mdl did".into()))?,
+            ]
+        };
+        let x5chain_header = build_x5chain_header(&x5c)?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)
@@ -307,10 +335,11 @@ impl CredentialFormatter for MdocFormatter {
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(
             &*self.key_algorithm_provider,
-            &*self.did_mdl_validator,
+            &*self.certificate_validator,
             token,
             true,
         )
+        .await
     }
 
     async fn extract_credentials_unverified<'a>(
@@ -320,10 +349,11 @@ impl CredentialFormatter for MdocFormatter {
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(
             &*self.key_algorithm_provider,
-            &*self.did_mdl_validator,
+            &*self.certificate_validator,
             token,
             false,
         )
+        .await
     }
 
     async fn format_presentation(
@@ -394,24 +424,24 @@ impl CredentialFormatter for MdocFormatter {
 
         let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
-        let mut current_issuer_did = None;
-
+        let mut presentation_issuer_jwk = None;
         // can we have more than one document?
         for document in documents {
             let issuer_signed = document.issuer_signed;
 
-            let issuer_did = extract_did_from_x5chain_header(
-                Some(self.did_mdl_validator.as_ref()),
+            let cert_details = extract_certificate_from_x5chain_header(
+                &*self.certificate_validator,
                 &issuer_signed.issuer_auth,
-            )?;
+                true,
+            )
+            .await?;
 
-            try_verify_issuer_auth(&issuer_signed.issuer_auth, &issuer_did, &verification).await?;
+            let x5c = pem_chain_into_x5c(&cert_details.chain).map_err(|err| {
+                FormatterError::CouldNotExtractPresentation(format!("Failed to create x5c: {err}"))
+            })?;
+            try_verify_issuer_auth(&issuer_signed.issuer_auth, &x5c, &verification).await?;
 
-            let holder_did = try_extract_holder_did_mdl_public_key(
-                self.key_algorithm_provider.as_ref(),
-                &issuer_signed.issuer_auth,
-            )?;
-            current_issuer_did = Some(holder_did.clone());
+            let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
 
             //try verify device signed
             let device_signed = document.device_signed;
@@ -429,11 +459,12 @@ impl CredentialFormatter for MdocFormatter {
                 session_transcript.to_owned(),
                 &doc_type,
                 &signature,
-                &holder_did,
+                &holder_jwk,
                 &verification,
             )
             .await?;
 
+            presentation_issuer_jwk = Some(holder_jwk);
             tokens.push(encode_cbor_base64(issuer_signed)?)
         }
 
@@ -442,7 +473,9 @@ impl CredentialFormatter for MdocFormatter {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
-            issuer_did: current_issuer_did,
+            issuer_did: presentation_issuer_jwk
+                .map(|jwk| jwk_to_did(&jwk, &*self.key_algorithm_provider))
+                .transpose()?,
             nonce,
             credentials: tokens,
         })
@@ -561,7 +594,6 @@ impl CredentialFormatter for MdocFormatter {
                 "MDL_PICTURE".to_string(),
             ],
             forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
-            // TODO: Remove Did once ONE-5920 is implemented
             issuance_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],
@@ -611,38 +643,6 @@ impl CredentialFormatter for MdocFormatter {
             .clone()
             .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
     }
-}
-
-fn try_extract_holder_did_mdl_public_key(
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    issuer_auth: &CoseSign1,
-) -> Result<DidValue, FormatterError> {
-    let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
-    let algorithm = match &holder_public_key {
-        PublicKeyJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
-        PublicKeyJwk::Okp(_) => KeyAlgorithmType::Eddsa,
-        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
-            return Err(FormatterError::Failed(format!(
-                "Key `{key:?}` should not be available for mdoc",
-            )));
-        }
-    };
-
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_type(algorithm)
-        .ok_or(FormatterError::CouldNotVerify(format!(
-            "Key algorithm `{algorithm}` not configured"
-        )))?;
-    let multibase_public_key = key_algorithm
-        .parse_jwk(&holder_public_key)
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?
-        .public_key_as_multibase()
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
-
-    format!("did:mdl:public_key:{multibase_public_key}")
-        .parse()
-        .context("did parsing error")
-        .map_err(|e| FormatterError::Failed(e.to_string()))
 }
 
 fn try_extract_holder_public_key(
@@ -730,7 +730,7 @@ fn try_extract_holder_public_key(
 
 async fn try_verify_issuer_auth(
     CoseSign1(cose_sign1): &CoseSign1,
-    issuer_did: &DidValue,
+    chain: &[String],
     verifier: &dyn TokenVerifier,
 ) -> Result<(), FormatterError> {
     let token = coset::sig_structure_data(
@@ -747,29 +747,26 @@ async fn try_verify_issuer_auth(
 
     let signature = &cose_sign1.signature;
 
-    let params = PublicKeySource::Did {
-        did: Cow::Borrowed(issuer_did),
-        key_id: None,
-    };
+    let params = PublicKeySource::X5c { x5c: chain };
     verifier
         .verify(params, algorithm, &token, signature)
         .await
         .map_err(|err| FormatterError::CouldNotVerify(err.to_string()))
 }
 
-fn extract_credentials_internal(
+async fn extract_credentials_internal(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    did_mdl_validator: &dyn DidMdlValidator,
+    certificate_validator: &dyn CertificateValidator,
     token: &str,
     verify: bool,
 ) -> Result<DetailCredential, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
-    let validator = if verify {
-        Some(did_mdl_validator)
-    } else {
-        None
-    };
-    let issuer_did = extract_did_from_x5chain_header(validator, &issuer_signed.issuer_auth)?;
+    let issuer_cert = extract_certificate_from_x5chain_header(
+        certificate_validator,
+        &issuer_signed.issuer_auth,
+        verify,
+    )
+    .await?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
     let Some(namespaces) = issuer_signed.name_spaces else {
         return Err(FormatterError::Failed(
@@ -777,8 +774,8 @@ fn extract_credentials_internal(
         ));
     };
 
-    let holder_did =
-        try_extract_holder_did_mdl_public_key(key_algorithm_provider, &issuer_signed.issuer_auth)?;
+    let issuer_auth = &issuer_signed.issuer_auth;
+    let holder_jwk = try_extract_holder_public_key(issuer_auth)?;
 
     if verify {
         let digest_algo = mso.digest_algorithm;
@@ -830,8 +827,8 @@ fn extract_credentials_internal(
             .expected_update
             .map(|update| update.into()),
         invalid_before: None,
-        issuer: IssuerDetails::Did(issuer_did),
-        subject: Some(holder_did),
+        issuer: IssuerDetails::Certificate(issuer_cert),
+        subject: Some(jwk_to_did(&holder_jwk, key_algorithm_provider)?),
         claims: CredentialSubject { claims, id: None },
         status: vec![],
         credential_schema: Some(CredentialSchema {
@@ -889,12 +886,11 @@ async fn try_build_device_signed(
     Ok(device_signed)
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn try_verify_device_signed(
     session_transcript: SessionTranscript,
     doctype: &str,
     signature: &coset::CoseSign1,
-    holder_did: &DidValue,
+    holder_key: &PublicKeyJwk,
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
     let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
@@ -920,7 +916,7 @@ async fn try_verify_device_signed(
         signature,
         &device_auth_bytes,
         &[],
-        holder_did,
+        holder_key,
         verify_fn,
     )
     .await
@@ -931,7 +927,7 @@ pub async fn try_verify_detached_signature_with_provider(
     device_signature: &coset::CoseSign1,
     payload: &[u8],
     external_aad: &[u8],
-    issuer_did_value: &DidValue,
+    issuer_key: &PublicKeyJwk,
     verifier: &dyn TokenVerifier,
 ) -> Result<(), SignerError> {
     let sig_data = coset::sig_structure_data(
@@ -948,9 +944,8 @@ pub async fn try_verify_detached_signature_with_provider(
 
     let signature = &device_signature.signature;
 
-    let params = PublicKeySource::Did {
-        did: Cow::Borrowed(issuer_did_value),
-        key_id: None, /* take the first one */
+    let params = PublicKeySource::Jwk {
+        jwk: Cow::Borrowed(issuer_key),
     };
     verifier
         .verify(params, algorithm, &sig_data, signature)
@@ -1154,19 +1149,22 @@ fn map_to_ciborium_value(
     })
 }
 
-fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> {
+fn build_x5chain_header(x5c: &[String]) -> Result<Header, FormatterError> {
     let x5chain_label = coset::iana::HeaderParameter::X5Chain.to_i64();
 
-    let body = issuer_did
-        .as_str()
-        .strip_prefix("did:mdl:certificate:")
-        .ok_or_else(|| FormatterError::CouldNotFormat("Invalid mdl did".into()))?;
+    let mut chain = vec![];
+    for cert in x5c {
+        let bytes = Base64::decode_to_vec(cert, None).map_err(|e| {
+            FormatterError::CouldNotFormat(format!("failed to build x5c header: {e}"))
+        })?;
+        chain.push(ciborium::Value::Bytes(bytes));
+    }
 
-    let decoded = Base64UrlSafeNoPadding::decode_to_vec(body, None)
-        .map_err(|e| FormatterError::CouldNotFormat(format!("Base64url decoding failed: {e}")))?;
-
-    let x5chain_value = ciborium::Value::Bytes(decoded);
-
+    let x5chain_value = if chain.len() == 1 {
+        chain.remove(0)
+    } else {
+        ciborium::Value::Array(chain)
+    };
     Ok(HeaderBuilder::new()
         .value(x5chain_label, x5chain_value)
         .build())
@@ -1192,42 +1190,54 @@ fn try_build_algorithm_header(
     })
 }
 
-fn extract_did_from_x5chain_header(
-    did_mdl_validator: Option<&dyn DidMdlValidator>,
+async fn extract_certificate_from_x5chain_header(
+    certificate_validator: &dyn CertificateValidator,
     CoseSign1(cose_sign1): &CoseSign1,
-) -> Result<DidValue, FormatterError> {
+    verify: bool,
+) -> Result<CertificateDetails, FormatterError> {
     let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
 
-    cose_sign1
+    let (_, x5c) = cose_sign1
         .unprotected
         .rest
         .iter()
         .find(|(label, _)| label == &x5chain_label)
-        .context(anyhow::anyhow!("Missing x5chain header"))
-        .and_then(|(_, value)| {
-            let value = value
-                .as_bytes()
-                .context(anyhow::anyhow!("Invalid value for x5chain header"))?;
+        .ok_or(FormatterError::Failed("Missing x5chain header".to_string()))?;
 
-            let (_, certificate) = x509_parser::parse_x509_certificate(value)
-                .map_err(|err| anyhow::anyhow!("Cannot parse x509 certificate: {err}"))?;
+    let pem_chain_bytes = match x5c {
+        Value::Bytes(single_cert) => {
+            vec![single_cert.clone()]
+        }
+        Value::Array(many_certs) => many_certs
+            .iter()
+            .flat_map(|val| val.as_bytes().into_iter().cloned())
+            .collect(),
+        val => {
+            return Err(FormatterError::Failed(format!(
+                "Unexpected value in x5chain header: {:?}",
+                val
+            )));
+        }
+    };
+    let pems: Vec<Pem> =
+        pem_chain_bytes
+            .into_iter()
+            .try_fold(Vec::new(), |mut aggr, der_bytes| {
+                aggr.push(Pem::new("CERTIFICATE", der_bytes));
+                Ok::<_, FormatterError>(aggr)
+            })?;
+    let chain = encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF));
 
-            if let Some(did_mdl_validator) = did_mdl_validator {
-                did_mdl_validator
-                    .validate_certificate(&certificate)
-                    .map_err(|err| anyhow::anyhow!("Invalid x509 certificate: {err}"))?;
-            }
+    let ParsedCertificate { attributes, .. } = certificate_validator
+        .parse_pem_chain(chain.as_bytes(), verify)
+        .await
+        .map_err(|err| FormatterError::Failed(format!("Failed to validate pem chain: {err}")))?;
 
-            let did = Base64UrlSafeNoPadding::encode_to_string(value)
-                .map(|cert| format!("did:mdl:certificate:{cert}"))
-                .map_err(|err| anyhow::anyhow!("Base64 encoding failed: {err}"))?;
-
-            Ok(did
-                .parse()
-                .context("did parsing failed")
-                .map_err(|e| FormatterError::Failed(e.to_string()))?)
-        })
-        .map_err(|err| FormatterError::Failed(format!("Failed extracting x5chain header {err}")))
+    Ok(CertificateDetails {
+        chain,
+        fingerprint: attributes.fingerprint,
+        expiry: attributes.not_after,
+    })
 }
 
 fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<KeyAlgorithmType> {
@@ -1477,4 +1487,35 @@ pub async fn try_extracting_mso_from_token(
 ) -> Result<MobileSecurityObject, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
     try_extract_mobile_security_object(&issuer_signed.issuer_auth)
+}
+
+fn jwk_to_did(
+    jwk: &PublicKeyJwk,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<DidValue, FormatterError> {
+    let algorithm = match jwk {
+        PublicKeyJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
+        PublicKeyJwk::Okp(_) => KeyAlgorithmType::Eddsa,
+        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
+            return Err(FormatterError::Failed(format!(
+                "Key `{key:?}` should not be available for mdoc",
+            )));
+        }
+    };
+
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_type(algorithm)
+        .ok_or(FormatterError::CouldNotVerify(format!(
+            "Key algorithm `{algorithm}` not configured"
+        )))?;
+    let multibase = key_algorithm
+        .parse_jwk(jwk)
+        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?
+        .public_key_as_multibase()
+        .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
+
+    format!("did:key:{multibase}")
+        .parse()
+        .context("did parsing error")
+        .map_err(|e| FormatterError::Failed(e.to_string()))
 }

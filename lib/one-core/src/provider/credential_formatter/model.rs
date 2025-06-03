@@ -22,6 +22,7 @@ use crate::config::core_config::{
 };
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
+use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
@@ -34,6 +35,9 @@ pub enum PublicKeySource<'a> {
     },
     X5c {
         x5c: &'a [String],
+    },
+    Jwk {
+        jwk: Cow<'a, PublicKeyJwk>,
     },
 }
 
@@ -64,13 +68,16 @@ pub trait SignatureProvider: Send + Sync {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CertificateDetails {
+    pub chain: String,
+    pub fingerprint: String,
+    pub expiry: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum IssuerDetails {
     Did(DidValue),
-    Certificate {
-        chain: String,
-        fingerprint: String,
-        expiry: OffsetDateTime,
-    },
+    Certificate(CertificateDetails),
 }
 
 #[derive(Debug, Clone)]

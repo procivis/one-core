@@ -6,7 +6,7 @@ use crate::common_mapper::{
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::model::IssuerDetails;
+use crate::provider::credential_formatter::model::{CertificateDetails, IssuerDetails};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
@@ -52,9 +52,9 @@ pub(super) async fn credential_from_proved(
             .await?;
             (issuer_identifier, None)
         }
-        IssuerDetails::Certificate {
+        IssuerDetails::Certificate(CertificateDetails {
             chain, fingerprint, ..
-        } => {
+        }) => {
             let (cert, identifier) = get_or_create_certificate_identifier(
                 certificate_repository,
                 certificate_validator,

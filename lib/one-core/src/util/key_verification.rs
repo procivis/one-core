@@ -99,6 +99,16 @@ impl TokenVerifier for KeyVerification {
                 self.public_key_from_did(&did, key_id, algorithm).await
             }
             PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await,
+            PublicKeySource::Jwk { jwk } => {
+                let alg = self
+                    .key_algorithm_provider
+                    .key_algorithm_from_type(algorithm)
+                    .ok_or(SignerError::CouldNotVerify(format!(
+                        "Invalid algorithm: {algorithm}"
+                    )))?;
+                alg.parse_jwk(&jwk)
+                    .map_err(|e| SignerError::CouldNotVerify(e.to_string()))
+            }
         }?;
         public_key.verify(token, signature)
     }

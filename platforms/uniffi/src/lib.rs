@@ -615,16 +615,16 @@ async fn initialize(
                                     .get(name)
                                     .map_err(|e| OneCoreBuildError::Config(e.into()))?;
 
-                                let did_mdl_validator = providers
-                                    .did_mdl_validator
+                                let certificate_validator = providers
+                                    .certificate_validator
                                     .as_ref()
                                     .ok_or(OneCoreBuildError::MissingDependency(
-                                        "did mdl validator".to_string(),
+                                        "certificate validator".to_string(),
                                     ))?;
 
                                 Arc::new(MdocFormatter::new(
                                     params,
-                                    did_mdl_validator.clone(),
+                                    certificate_validator.clone(),
                                     did_method_provider.clone(),
                                     key_algorithm_provider.clone(),
                                     providers.core_base_url.clone(),

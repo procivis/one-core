@@ -812,6 +812,11 @@ impl CredentialSchemasDB {
             )
             .collect();
 
+        let schema_type = match format {
+            "SD_JWT_VC" => CredentialSchemaType::SdJwtVc,
+            "MDOC" => CredentialSchemaType::Mdoc,
+            _ => CredentialSchemaType::ProcivisOneSchema2024,
+        };
         let credential_schema = CredentialSchema {
             id: id.to_owned().into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -838,7 +843,7 @@ impl CredentialSchemasDB {
                 code: None,
             }),
             schema_id: schema_id.to_owned(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_type,
             allow_suspension: true,
         };
 

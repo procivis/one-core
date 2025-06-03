@@ -1988,6 +1988,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".to_string();
+    schema.schema_type = CredentialSchemaType::Mdoc;
 
     credential_schema_repository
         .expect_get_credential_schema()

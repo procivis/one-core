@@ -47,7 +47,7 @@ use crate::model::revocation_list::{
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::IssuerDetails;
+use crate::provider::credential_formatter::model::{CertificateDetails, IssuerDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -258,6 +258,13 @@ impl OpenID4VCI13 {
         credential_schema: &CredentialSchema,
         revocation_method: &Arc<dyn RevocationMethod>,
     ) -> Result<Option<CredentialAdditionalData>, IssuanceProtocolError> {
+        if credential_schema.revocation_method != StatusListType::BitstringStatusList.to_string()
+            && credential_schema.revocation_method != StatusListType::TokenStatusList.to_string()
+        {
+            // TODO ONE-5920: Early exit to avoid mandating issuer did for MSO MDOC suspension. Clean up, once certificates are properly supported for TokenStatusList as well.
+            return Ok(None);
+        }
+
         let issuer_did = credential
             .issuer_identifier
             .as_ref()
@@ -741,7 +748,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
         validate_expiration_time(&response_credential.valid_until, formatter.get_leeway())
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        validate_issuer(credential, &response_credential)?;
+        validate_issuer(
+            credential,
+            &response_credential,
+            &*self.certificate_validator,
+        )
+        .await?;
 
         let layout = schema.layout_properties.clone();
 
@@ -789,11 +801,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 )
                 .await?
             }
-            IssuerDetails::Certificate {
+            IssuerDetails::Certificate(CertificateDetails {
                 chain,
                 fingerprint,
                 expiry,
-            } => {
+            }) => {
                 prepare_certificate_identifier(
                     chain,
                     fingerprint,
@@ -1073,8 +1085,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        match (credential_schema.format.as_str(), credential_state) {
-            ("MDOC", CredentialStateEnum::Accepted) => {
+        match (credential_schema.schema_type, credential_state) {
+            (CredentialSchemaType::Mdoc, CredentialStateEnum::Accepted) => {
                 self.validity_credential_repository
                     .insert(
                         Mdoc {
@@ -1088,7 +1100,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
             }
-            ("MDOC", CredentialStateEnum::Offered) => {
+            (CredentialSchemaType::Mdoc, CredentialStateEnum::Offered) => {
                 log_history_event_credential(
                     &*self.history_repository,
                     &credential,

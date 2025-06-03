@@ -20,7 +20,9 @@ use crate::config::core_config::IssuanceProtocolType;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
+use crate::model::credential_schema::{
+    CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
+};
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
@@ -486,7 +488,7 @@ impl OID4VCIDraft13Service {
             }
 
             // we add refresh token for mdoc
-            if credential_schema.format == "MDOC" {
+            if credential_schema.schema_type == CredentialSchemaType::Mdoc {
                 response.refresh_token = Some(generate_new_token());
                 response.refresh_token_expires_in =
                     Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
