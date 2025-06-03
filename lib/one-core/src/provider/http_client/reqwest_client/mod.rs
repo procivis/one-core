@@ -32,6 +32,10 @@ impl HttpClient for ReqwestClient {
         RequestBuilder::new(Arc::new(self.clone()), Method::Post, url)
     }
 
+    fn put(&self, url: &str) -> RequestBuilder {
+        RequestBuilder::new(Arc::new(self.clone()), Method::Put, url)
+    }
+
     fn patch(&self, url: &str) -> RequestBuilder {
         RequestBuilder::new(Arc::new(self.clone()), Method::Patch, url)
     }
@@ -54,6 +58,7 @@ impl HttpClient for ReqwestClient {
         let mut builder = match method {
             Method::Get => self.client.get(url),
             Method::Post => self.client.post(url),
+            Method::Put => self.client.put(url),
             Method::Patch => self.client.patch(url),
         };
 

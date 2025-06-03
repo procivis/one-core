@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use secrecy::SecretString;
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 
@@ -99,4 +100,40 @@ pub struct PublicKeyJwkEllipticData {
     pub crv: String,
     pub x: String,
     pub y: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub enum PrivateKeyJwk {
+    Ec(PrivateKeyJwkEllipticData),
+    Okp(PrivateKeyJwkEllipticData),
+    Mlwe(PrivateKeyJwkMlweData),
+}
+
+impl PrivateKeyJwk {
+    pub fn supported_key_type(&self) -> KeyAlgorithmType {
+        match self {
+            PrivateKeyJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
+            PrivateKeyJwk::Okp(_) => KeyAlgorithmType::Eddsa,
+            PrivateKeyJwk::Mlwe(_) => KeyAlgorithmType::Dilithium,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct PrivateKeyJwkMlweData {
+    pub r#use: Option<String>,
+    pub kid: Option<String>,
+    pub alg: String,
+    pub x: String,
+    pub d: SecretString,
+}
+
+#[derive(Clone, Debug)]
+pub struct PrivateKeyJwkEllipticData {
+    pub r#use: Option<String>,
+    pub kid: Option<String>,
+    pub crv: String,
+    pub x: String,
+    pub y: Option<String>,
+    pub d: SecretString,
 }

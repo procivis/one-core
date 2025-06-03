@@ -1,4 +1,4 @@
-use serde_json::json;
+use serde_json::{Value, json};
 use shared_types::{KeyId, OrganisationId};
 use uuid::Uuid;
 
@@ -38,6 +38,26 @@ impl KeysApi {
           "storageType": "INTERNAL"
         });
 
+        self.client.post("/api/key/v1", body).await
+    }
+
+    pub async fn import(
+        &self,
+        organisation_id: impl Into<Uuid>,
+        key_type: &str,
+        name: &str,
+        jwk: Value,
+    ) -> Response {
+        let body = json!({
+            "keyParams": {},
+            "keyType": key_type,
+            "name": name,
+            "organisationId": organisation_id.into(),
+            "storageParams": {
+                "jwk": jwk,
+            },
+            "storageType": "INTERNAL"
+        });
         self.client.post("/api/key/v1", body).await
     }
 

@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::{InternalKeyProvider, decrypt_data};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
+use crate::model::key::{Key, PrivateKeyJwk, PrivateKeyJwkEllipticData};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -16,6 +16,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::internal::Params;
 
 #[tokio::test]
@@ -138,4 +139,83 @@ async fn test_internal_sign_with_encryption() {
     let key_handle = provider.key_handle(&key).unwrap();
 
     key_handle.sign("message".as_bytes()).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_internal_import() {
+    let mut mock_key_algorithm = MockKeyAlgorithm::default();
+    mock_key_algorithm
+        .expect_parse_private_jwk()
+        .return_once(|_| {
+            Ok(GeneratedKey {
+                key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
+                    private: Arc::new(MockSignaturePrivateKeyHandle::default()),
+                    public: Arc::new(MockSignaturePublicKeyHandle::default()),
+                }),
+                public: vec![1],
+                private: SecretSlice::from(vec![1, 2, 3]),
+            })
+        });
+
+    let arc = Arc::new(mock_key_algorithm);
+
+    let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    mock_key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .times(1)
+        .returning(move |_| Some(arc.clone()));
+
+    let provider = InternalKeyProvider::new(
+        Arc::new(mock_key_algorithm_provider),
+        Params {
+            encryption: SecretSlice::from(vec![0; 32]),
+        },
+    );
+
+    provider
+        .import(
+            Uuid::new_v4().into(),
+            KeyAlgorithmType::Ecdsa,
+            PrivateKeyJwk::Ec(PrivateKeyJwkEllipticData {
+                r#use: None,
+                kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
+                crv: "P-256".to_string(),
+                x: "r1U6-8dqlyj-_CwYft6kxx9MCfInQYCoUwKiP579c3w".to_string(),
+                y: Some("u_EMmvFmfsUjDmDY2kBhZPK0tyycAylkoY-PLAUD1WU".to_string()),
+                d: "_M90X3GfBZoFDBZHZsMQszc2a92dCorIJBlytnmkKEM".into(),
+            }),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_internal_import_jwk_invalid_key_type() {
+    let mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
+
+    let provider = InternalKeyProvider::new(
+        Arc::new(mock_key_algorithm_provider),
+        Params {
+            encryption: SecretSlice::from(vec![0; 32]),
+        },
+    );
+
+    let result = provider
+        .import(
+            Uuid::new_v4().into(),
+            KeyAlgorithmType::Ecdsa,
+            PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+                r#use: None,
+                kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
+                crv: "P-256".to_string(),
+                x: "r1U6-8dqlyj-_CwYft6kxx9MCfInQYCoUwKiP579c3w".to_string(),
+                y: Some("u_EMmvFmfsUjDmDY2kBhZPK0tyycAylkoY-PLAUD1WU".to_string()),
+                d: "_M90X3GfBZoFDBZHZsMQszc2a92dCorIJBlytnmkKEM".into(),
+            }),
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(KeyStorageError::InvalidKeyAlgorithm(_))
+    ));
 }

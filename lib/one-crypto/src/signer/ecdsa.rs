@@ -55,6 +55,22 @@ impl ECDSASigner {
         Ok(key.to_encoded_point(compressed).to_bytes().into())
     }
 
+    pub fn parse_private_key_coordinates(
+        d: &SecretSlice<u8>,
+        compressed: bool,
+    ) -> Result<(SecretSlice<u8>, Vec<u8>), SignerError> {
+        let sk = SigningKey::from_slice(d.expose_secret()).map_err(|err| {
+            SignerError::CouldNotExtractPrivateKey(format!(
+                "couldn't initialize signing key: {err}"
+            ))
+        })?;
+        let vk = sk.verifying_key();
+        Ok((
+            sk.to_bytes().to_vec().into(),
+            vk.to_encoded_point(compressed).to_bytes().into(),
+        ))
+    }
+
     pub fn parse_public_key_from_der(
         public_key_der: &[u8],
         compressed: bool,

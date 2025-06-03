@@ -6,8 +6,9 @@ use one_crypto::{CryptoProvider, SignerError};
 
 use super::dto::{
     AzureHsmGenerateKeyRequest, AzureHsmGenerateKeyResponseKey, AzureHsmGetTokenRequest,
-    AzureHsmSignRequest,
+    AzureHsmImportKeyRequest, AzureHsmSignRequest,
 };
+use crate::model::key::PrivateKeyJwk;
 use crate::provider::key_storage::error::KeyStorageError;
 
 pub(super) fn create_get_token_request(
@@ -28,6 +29,15 @@ pub(super) fn create_generate_key_request() -> AzureHsmGenerateKeyRequest {
         curve_name: "P-256".to_string(),
         key_operations: vec!["sign".to_string(), "verify".to_string()],
     }
+}
+
+pub(super) fn create_import_key_request(
+    jwk: PrivateKeyJwk,
+) -> Result<AzureHsmImportKeyRequest, KeyStorageError> {
+    Ok(AzureHsmImportKeyRequest {
+        key: jwk.try_into()?,
+        is_hsm: true,
+    })
 }
 
 pub(super) fn create_sign_request(

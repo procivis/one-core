@@ -4,12 +4,12 @@ use shared_types::KeyId;
 use time::OffsetDateTime;
 use yasna::models::ObjectIdentifier;
 
-use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile};
+use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile, KeyRequestDTO};
 use crate::model::key::{GetKeyList, Key};
 use crate::model::organisation::Organisation;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::service::error::ServiceError;
-use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO};
+use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyResponseDTO};
 
 pub(super) fn from_create_request(
     key_id: KeyId,
@@ -24,9 +24,9 @@ pub(super) fn from_create_request(
         created_date: now,
         last_modified: now,
         public_key: generated_key.public_key,
-        name: request.name.to_owned(),
+        name: request.name,
         key_reference: generated_key.key_reference,
-        storage_type: request.storage_type.to_owned(),
+        storage_type: request.storage_type,
         key_type: request.key_type,
         organisation: Some(organisation),
     }

@@ -1,6 +1,7 @@
 //! `struct`s and `enum`s for key storage provider.
 
 use serde::Serialize;
+use strum::Display;
 
 use crate::config::core_config::KeyAlgorithmType;
 
@@ -19,10 +20,13 @@ pub struct KeyStorageCapabilities {
     pub security: Vec<KeySecurity>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Features {
+    #[strum(serialize = "EXPORTABLE")]
     Exportable,
+    #[strum(serialize = "IMPORTABLE")]
+    Importable,
 }
 
 pub struct StorageGeneratedKey {

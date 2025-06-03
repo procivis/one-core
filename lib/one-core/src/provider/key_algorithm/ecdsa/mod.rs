@@ -8,10 +8,10 @@ use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
-use secrecy::SecretSlice;
+use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::PublicKeyJwk;
+use crate::model::key::{PrivateKeyJwk, PublicKeyJwk};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
@@ -127,6 +127,33 @@ impl KeyAlgorithm for Ecdsa {
             })
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+        }
+    }
+
+    fn parse_private_jwk(&self, jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
+        match jwk {
+            PrivateKeyJwk::Ec(data) => {
+                if data.crv != "P-256" {
+                    return Err(KeyAlgorithmError::Failed(format!(
+                        "unsupported crv {}",
+                        data.crv
+                    )));
+                }
+                let d: SecretSlice<u8> =
+                    Base64UrlSafeNoPadding::decode_to_vec(data.d.expose_secret(), None)
+                        .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?
+                        .into();
+
+                let (private, public) = ECDSASigner::parse_private_key_coordinates(&d, true)?;
+
+                let key = self.reconstruct_key(&public, Some(private.clone()), data.r#use)?;
+                Ok(GeneratedKey {
+                    key,
+                    public,
+                    private,
+                })
+            }
+            _ => Err(KeyAlgorithmError::Failed("invalid kty".to_string())),
         }
     }
 

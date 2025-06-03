@@ -19,7 +19,7 @@ pub(super) fn validate_generate_request(
             .key_algorithm
             .get(&key_type)
             .ok_or(ValidationError::InvalidKeyAlgorithm(
-                request.key_type.clone(),
+                request.key_type.to_string(),
             ))?;
     if algorithm_config.enabled.is_some_and(|value| !value) {
         return Err(ValidationError::InvalidKeyAlgorithm(

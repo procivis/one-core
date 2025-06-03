@@ -9,7 +9,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
-use super::dto::{GetKeyListResponseDTO, KeyCheckCertificateRequestDTO};
+use super::dto::{
+    GetKeyListResponseDTO, KeyCheckCertificateRequestDTO, KeyRequestDTO, PrivateKeyJwkDTO,
+};
 use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
@@ -23,7 +25,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::key::dto::{
-    KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO, KeyRequestDTO, KeyResponseDTO,
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO, KeyResponseDTO,
 };
 use crate::service::key::mapper::from_create_request;
 use crate::service::key::validator::{validate_generate_request, validate_key_algorithm_for_csr};
@@ -57,7 +59,7 @@ impl KeyService {
     /// # Arguments
     ///
     /// * `request` - key data
-    pub async fn generate_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
+    pub async fn create_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
         validate_generate_request(&request, &self.config)?;
 
         let organisation = self
@@ -77,10 +79,20 @@ impl KeyService {
             ))?;
 
         let key_type = KeyAlgorithmType::from_str(&request.key_type)
-            .map_err(|_| KeyStorageError::InvalidKeyAlgorithm(request.key_type.clone()))?;
+            .map_err(|_| ValidationError::InvalidKeyAlgorithm(request.key_type.to_string()))?;
 
+        if !provider.get_capabilities().algorithms.contains(&key_type) {
+            return Err(KeyStorageError::UnsupportedKeyType {
+                key_type: key_type.to_string(),
+            }
+            .into());
+        }
+        let (request, jwk) = extract_jwk(request)?;
         let key_id = Uuid::new_v4().into();
-        let key = provider.generate(key_id, key_type).await?;
+        let key = match jwk {
+            None => provider.generate(key_id, key_type).await?,
+            Some(jwk) => provider.import(key_id, key_type, jwk.into()).await?,
+        };
 
         let key_entity = from_create_request(key_id, request, organisation, key);
 
@@ -330,4 +342,20 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
     fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
         self.algorithm
     }
+}
+
+fn extract_jwk(
+    mut request: KeyRequestDTO,
+) -> Result<(KeyRequestDTO, Option<PrivateKeyJwkDTO>), ServiceError> {
+    let Some(raw_jwk) = request
+        .storage_params
+        .as_object_mut()
+        .and_then(|obj| obj.remove("jwk"))
+    else {
+        return Ok((request, None));
+    };
+
+    serde_json::from_value::<PrivateKeyJwkDTO>(raw_jwk)
+        .map(|jwk| (request, Some(jwk)))
+        .map_err(|err| ServiceError::MappingError(format!("failed to decode jwk: {err}")))
 }

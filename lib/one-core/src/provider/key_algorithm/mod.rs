@@ -3,7 +3,7 @@ use model::GeneratedKey;
 use secrecy::SecretSlice;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::PublicKeyJwk;
+use crate::model::key::{PrivateKeyJwk, PublicKeyJwk};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 
@@ -45,6 +45,7 @@ pub trait KeyAlgorithm: Send + Sync {
 
     /// parse public keys coming from an external source
     fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError>;
+    fn parse_private_jwk(&self, jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError>;
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError>;
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError>;
 }

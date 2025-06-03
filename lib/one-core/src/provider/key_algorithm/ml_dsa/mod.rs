@@ -6,10 +6,10 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::{Signer, SignerError};
-use secrecy::SecretSlice;
+use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
+use crate::model::key::{PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkMlweData};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -98,6 +98,33 @@ impl KeyAlgorithm for MlDsa {
             Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
                 Arc::new(MlDsaPublicKeyHandle::new(x, data.r#use.clone())),
             )))
+        } else {
+            Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+        }
+    }
+
+    fn parse_private_jwk(&self, jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
+        if let PrivateKeyJwk::Mlwe(data) = jwk {
+            if data.alg != "CRYDI3" {
+                return Err(KeyAlgorithmError::Failed(format!(
+                    "unsupported alg {}",
+                    data.alg
+                )));
+            }
+            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
+                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+            let d = Base64UrlSafeNoPadding::decode_to_vec(data.d.expose_secret(), None)
+                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?
+                .into();
+
+            let keys = CRYDI3Signer::parse_key_pair(&x, &d)?;
+            let key_handle =
+                self.reconstruct_key(&keys.public, Some(keys.private.clone()), data.r#use)?;
+            Ok(GeneratedKey {
+                key: key_handle,
+                public: keys.public,
+                private: keys.private,
+            })
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }

@@ -17,6 +17,19 @@ impl CRYDI3Signer {
             public: keys.public.to_vec(),
         }
     }
+
+    pub fn parse_key_pair(
+        pub_bytes: &[u8],
+        sec_bytes: &SecretSlice<u8>,
+    ) -> Result<KeyPair, SignerError> {
+        let keys =
+            pqc_dilithium::Keypair::new(pub_bytes.to_vec(), sec_bytes.expose_secret().to_vec())
+                .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+        Ok(KeyPair {
+            private: keys.expose_secret().to_vec().into(),
+            public: keys.public.to_vec(),
+        })
+    }
 }
 
 impl Signer for CRYDI3Signer {

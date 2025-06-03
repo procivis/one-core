@@ -242,10 +242,10 @@ impl TryFrom<KeyRequestBindingDTO> for KeyRequestDTO {
     fn try_from(request: KeyRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             organisation_id: into_id(&request.organisation_id)?,
-            key_type: request.key_type.to_owned(),
+            key_type: request.key_type,
             key_params: json!(request.key_params),
-            name: request.name.to_owned(),
-            storage_type: request.storage_type.to_owned(),
+            name: request.name,
+            storage_type: request.storage_type,
             storage_params: json!(request.storage_params),
         })
     }

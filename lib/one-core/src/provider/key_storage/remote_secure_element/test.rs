@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::RemoteSecureElementKeyProvider;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
+use crate::model::key::{Key, PrivateKeyJwk, PrivateKeyJwkEllipticData};
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
@@ -78,4 +78,32 @@ async fn test_sign_success() {
 
     let result = key_handle.sign("message".as_bytes()).await.unwrap();
     assert_eq!(result, b"signature");
+}
+
+#[tokio::test]
+async fn test_import_failure() {
+    let native_storage = MockNativeKeyStorage::default();
+
+    let key_id = Uuid::new_v4();
+
+    let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
+
+    let result = provider
+        .import(
+            key_id.into(),
+            KeyAlgorithmType::Eddsa,
+            PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+                r#use: None,
+                kid: None,
+                crv: "".to_string(),
+                x: "".to_string(),
+                y: None,
+                d: Default::default(),
+            }),
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(KeyStorageError::UnsupportedFeature { .. })
+    ));
 }

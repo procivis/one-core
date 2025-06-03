@@ -8,7 +8,7 @@ use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, MultiMessageSignatureKeyHandle,
@@ -110,6 +110,10 @@ impl KeyAlgorithm for BBS {
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }
+    }
+
+    fn parse_private_jwk(&self, _jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
+        Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
     }
 
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {

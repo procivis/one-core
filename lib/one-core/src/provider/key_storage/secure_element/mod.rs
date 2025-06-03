@@ -6,7 +6,7 @@ use serde::Deserialize;
 use shared_types::KeyId;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PublicKeyJwk};
+use crate::model::key::{Key, PrivateKeyJwk, PublicKeyJwk};
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
@@ -14,7 +14,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
-    KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
+    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
@@ -60,6 +60,24 @@ impl KeyStorage for SecureElementKeyProvider {
 
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
         self.native_storage.generate_key(key_alias).await
+    }
+
+    async fn import(
+        &self,
+        _key_id: KeyId,
+        _key_algorithm: KeyAlgorithmType,
+        _jwk: PrivateKeyJwk,
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
+        if !self
+            .get_capabilities()
+            .features
+            .contains(&Features::Importable)
+        {
+            return Err(KeyStorageError::UnsupportedFeature {
+                feature: Features::Importable,
+            });
+        };
+        unimplemented!("import is not supported for SecureElementKeyProvider");
     }
 
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {

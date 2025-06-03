@@ -13,7 +13,7 @@ use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::model::StorageGeneratedKey;
+use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::repository::history_repository::MockHistoryRepository;
@@ -86,6 +86,13 @@ async fn test_create_key_success() {
             .once()
             .returning(move |_, _| Ok(Some(organisation.clone())));
 
+        key_storage
+            .expect_get_capabilities()
+            .returning(|| KeyStorageCapabilities {
+                algorithms: vec![KeyAlgorithmType::Eddsa],
+                ..Default::default()
+            });
+
         key_storage.expect_generate().once().returning(|_, _| {
             Ok(StorageGeneratedKey {
                 public_key: vec![],
@@ -110,7 +117,7 @@ async fn test_create_key_success() {
     );
 
     let result = service
-        .generate_key(KeyRequestDTO {
+        .create_key(KeyRequestDTO {
             organisation_id: organisation.id,
             key_type: "EDDSA".to_string(),
             key_params: Default::default(),

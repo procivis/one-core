@@ -87,6 +87,8 @@ pub enum SignerError {
     CouldNotExtractKeyPair,
     #[error("Could not extract public key: `{0}`")]
     CouldNotExtractPublicKey(String),
+    #[error("Could not extract private key: `{0}`")]
+    CouldNotExtractPrivateKey(String),
     #[error("Could not verify: `{0}`")]
     CouldNotVerify(String),
     #[error("Invalid signature")]

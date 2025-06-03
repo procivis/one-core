@@ -9,7 +9,7 @@ use serde::Deserialize;
 use shared_types::KeyId;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::Key;
+use crate::model::key::{Key, PrivateKeyJwk};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
@@ -54,7 +54,7 @@ impl KeyStorage for InternalKeyProvider {
                 KeyAlgorithmType::BbsPlus,
             ],
             security: vec![KeySecurity::Software],
-            features: vec![Features::Exportable],
+            features: vec![Features::Exportable, Features::Importable],
         }
     }
 
@@ -68,6 +68,39 @@ impl KeyStorage for InternalKeyProvider {
             .key_algorithm_from_type(key_type)
             .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
             .generate_key()
+            .map_err(KeyStorageError::KeyAlgorithmError)?;
+
+        Ok(StorageGeneratedKey {
+            public_key: key_pair.public,
+            key_reference: encrypt_data(&key_pair.private, &self.encryption_key)
+                .map_err(KeyStorageError::Encryption)?,
+        })
+    }
+
+    async fn import(
+        &self,
+        _key_id: KeyId,
+        key_type: KeyAlgorithmType,
+        jwk: PrivateKeyJwk,
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
+        if !self
+            .get_capabilities()
+            .features
+            .contains(&Features::Importable)
+        {
+            return Err(KeyStorageError::UnsupportedFeature {
+                feature: Features::Importable,
+            });
+        }
+        if jwk.supported_key_type() != key_type {
+            return Err(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()));
+        };
+
+        let key_pair = self
+            .key_algorithm_provider
+            .key_algorithm_from_type(key_type)
+            .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
+            .parse_private_jwk(jwk)
             .map_err(KeyStorageError::KeyAlgorithmError)?;
 
         Ok(StorageGeneratedKey {

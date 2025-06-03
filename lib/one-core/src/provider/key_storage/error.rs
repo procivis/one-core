@@ -5,6 +5,7 @@ use one_crypto::encryption::EncryptionError;
 use thiserror::Error;
 
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_storage::model::Features;
 
 #[derive(Debug, Error)]
 pub enum KeyStorageProviderError {
@@ -35,4 +36,6 @@ pub enum KeyStorageError {
     InvalidKeyAlgorithm(String),
     #[error("Encryption error: `{0}`")]
     Encryption(EncryptionError),
+    #[error("Unsupported feature: `{feature}`")]
+    UnsupportedFeature { feature: Features },
 }

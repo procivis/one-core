@@ -1,14 +1,17 @@
 use one_dto_mapper::{From, Into};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::common_mapper::secret_string;
 use crate::model::common::{GetListQueryParams, GetListResponse};
 use crate::model::key::{
-    Key, PublicKeyJwk, PublicKeyJwkEllipticData, PublicKeyJwkMlweData, PublicKeyJwkOctData,
-    PublicKeyJwkRsaData, SortableKeyColumn,
+    Key, PrivateKeyJwk, PrivateKeyJwkEllipticData, PrivateKeyJwkMlweData, PublicKeyJwk,
+    PublicKeyJwkEllipticData, PublicKeyJwkMlweData, PublicKeyJwkOctData, PublicKeyJwkRsaData,
+    SortableKeyColumn,
 };
 
 pub struct KeyRequestDTO {
@@ -173,4 +176,49 @@ pub struct PublicKeyJwkEllipticDataDTO {
     pub x: String,
     #[serde(default)]
     pub y: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Into, From)]
+#[serde(rename_all = "camelCase")]
+#[serde(tag = "kty")]
+#[into(PrivateKeyJwk)]
+#[from(PrivateKeyJwk)]
+pub enum PrivateKeyJwkDTO {
+    #[serde(rename = "EC")]
+    Ec(PrivateKeyJwkEllipticDataDTO),
+    #[serde(rename = "OKP")]
+    Okp(PrivateKeyJwkEllipticDataDTO),
+    #[serde(rename = "MLWE")]
+    Mlwe(PrivateKeyJwkMlweDataDTO),
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Serialize, Into, From)]
+#[into(PrivateKeyJwkMlweData)]
+#[from(PrivateKeyJwkMlweData)]
+pub struct PrivateKeyJwkMlweDataDTO {
+    #[serde(default)]
+    pub r#use: Option<String>,
+    #[serde(default)]
+    pub kid: Option<String>,
+    pub alg: String,
+    pub x: String,
+    #[serde(with = "secret_string")]
+    pub d: SecretString,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Serialize, Into, From)]
+#[into(PrivateKeyJwkEllipticData)]
+#[from(PrivateKeyJwkEllipticData)]
+pub struct PrivateKeyJwkEllipticDataDTO {
+    #[serde(default)]
+    pub r#use: Option<String>,
+    #[serde(default)]
+    pub kid: Option<String>,
+    pub crv: String,
+    pub x: String,
+    pub y: Option<String>,
+    #[serde(with = "secret_string")]
+    pub d: SecretString,
 }
