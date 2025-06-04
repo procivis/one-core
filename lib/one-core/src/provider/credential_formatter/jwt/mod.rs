@@ -1,5 +1,6 @@
 //! Implementations for JWT credential format.
 
+use std::borrow::Cow;
 use std::fmt::Debug;
 
 use anyhow::Context;
@@ -134,7 +135,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                 .or(issuer_did)
                 .ok_or(FormatterError::Failed("missing did value".to_string()))?;
             let params = PublicKeySource::Did {
-                did: &did,
+                did: Cow::Owned(did),
                 key_id: header.key_id.as_deref(),
             };
             verification

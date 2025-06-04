@@ -39,7 +39,7 @@ use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::mapper::vc_from_credential;
 use crate::provider::credential_formatter::sdjwt::model::*;
 use crate::provider::credential_formatter::sdjwt::{
-    format_credential, model, prepare_sd_presentation,
+    SdJwtHolderBindingParams, format_credential, model, prepare_sd_presentation,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 
@@ -294,16 +294,13 @@ pub(super) async fn extract_credentials_internal(
     holder_binding_ctx: Option<HolderBindingCtx>,
     leeway: Duration,
 ) -> Result<(DetailCredential, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
-    let (jwt, key_binding_payload): (Jwt<VcClaim>, Option<JWTPayload<KeyBindingPayload>>) =
-        Jwt::build_from_token_with_disclosures(
-            token,
-            crypto,
-            verification,
-            holder_binding_ctx,
-            leeway,
-            false,
-        )
-        .await?;
+    let params = SdJwtHolderBindingParams {
+        holder_binding_context: holder_binding_ctx,
+        leeway,
+        skip_holder_binding_aud_check: false,
+    };
+    let (jwt, key_binding_payload, issuer_details): (Jwt<VcClaim>, _, _) =
+        Jwt::build_from_token_with_disclosures(token, crypto, verification, params, None).await?;
     let credential_subject = jwt
         .payload
         .custom
@@ -318,24 +315,21 @@ pub(super) async fn extract_credentials_internal(
         claims: HashMap::from_iter(credential_subject.claims),
     };
 
-    let issuer_did = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {
+    let issuer = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {
         (None, None) => {
             return Err(FormatterError::Failed(
                 "Missing issuer in SD-JWT".to_string(),
             ));
         }
-        (None, Some(iss)) => iss.to_did_value()?,
-        (Some(iss), None) => iss
-            .parse()
-            .map_err(|err| FormatterError::Failed(format!("Invalid issuer did: {err}")))?,
+        (None, Some(iss)) => IssuerDetails::Did(iss.to_did_value()?),
+        (Some(_), None) => issuer_details,
         (Some(i1), Some(i2)) => {
             if i1 != i2.as_url().as_str() {
                 return Err(FormatterError::Failed(
                     "Invalid issuer in SD-JWT".to_string(),
                 ));
             }
-
-            i2.to_did_value()?
+            IssuerDetails::Did(i2.to_did_value()?)
         }
     };
 
@@ -346,7 +340,7 @@ pub(super) async fn extract_credentials_internal(
             valid_until: jwt.payload.expires_at,
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
-            issuer: IssuerDetails::Did(issuer_did),
+            issuer,
             subject: jwt
                 .payload
                 .subject

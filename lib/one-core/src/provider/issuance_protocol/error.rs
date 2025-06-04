@@ -26,6 +26,8 @@ pub enum IssuanceProtocolError {
     TxCode(TxCodeError),
     #[error("Credential offer issuer did does not match credential issuer did")]
     DidMismatch,
+    #[error("Credential offer issuer certificate does not match credential issuer certificate")]
+    CertificateMismatch,
     #[error("Credential signature verification failed: `{0}`")]
     CredentialVerificationFailed(anyhow::Error),
 }

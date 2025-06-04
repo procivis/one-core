@@ -22,9 +22,7 @@ use time::Duration;
 use url::Url;
 
 use super::jwt::model::JWTPayload;
-use super::model::{
-    CredentialData, CredentialStatus, HolderBindingCtx, IssuerDetails, PublishedClaim,
-};
+use super::model::{CredentialData, CredentialStatus, HolderBindingCtx, PublishedClaim};
 use super::sdjwt;
 use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
@@ -45,12 +43,15 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
-use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
+use crate::provider::credential_formatter::sdjwt::{
+    SdJwtHolderBindingParams, prepare_sd_presentation,
+};
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
@@ -59,6 +60,7 @@ pub struct SDJWTVCFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
 }
 
@@ -382,12 +384,14 @@ impl SDJWTVCFormatter {
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             params,
             crypto,
             did_method_provider,
             vct_type_metadata_cache,
+            certificate_validator,
         }
     }
 
@@ -400,14 +404,18 @@ impl SDJWTVCFormatter {
         holder_binding_ctx: Option<HolderBindingCtx>,
         leeway: Duration,
     ) -> Result<(DetailCredential, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
-        let (mut jwt, proof_of_key_possession): (Jwt<SdJwtVc>, _) =
+        let params = SdJwtHolderBindingParams {
+            holder_binding_context: holder_binding_ctx,
+            leeway,
+            skip_holder_binding_aud_check: self.params.swiyu_mode, // skip holder binding aud check for SWIYU as aud is randomly populated
+        };
+        let (mut jwt, proof_of_key_possession, issuer): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 token,
                 crypto,
                 verification.as_ref(),
-                holder_binding_ctx,
-                leeway,
-                self.params.swiyu_mode, // skip holder binding aud check for SWIYU as aud is randomly populated
+                params,
+                Some(&*self.certificate_validator),
             )
             .await?;
 
@@ -434,12 +442,6 @@ impl SDJWTVCFormatter {
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
-        let issuer = DidValue::from_str(
-            &jwt.payload
-                .issuer
-                .ok_or(FormatterError::Failed("Missing issuer".to_string()))?,
-        )
-        .map_err(|err| FormatterError::Failed(format!("Failed to parse issuer did: {err}")))?;
         Ok((
             DetailCredential {
                 id: jwt.payload.jwt_id,
@@ -447,7 +449,7 @@ impl SDJWTVCFormatter {
                 valid_until: jwt.payload.expires_at,
                 update_at: None,
                 invalid_before: jwt.payload.invalid_before,
-                issuer: IssuerDetails::Did(issuer),
+                issuer,
                 subject,
                 claims: CredentialSubject {
                     claims: HashMap::from_iter(jwt.payload.custom.public_claims),

@@ -212,6 +212,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.certificate_repository.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
         );
@@ -403,6 +404,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
+            self.certificate_repository.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
         );
@@ -447,6 +449,9 @@ impl SSIHolderService {
         }
         if let Some(create_identifier) = update_response.create_identifier {
             self.identifier_repository.create(create_identifier).await?;
+        }
+        if let Some(certificate) = update_response.create_certificate {
+            self.certificate_repository.create(certificate).await?;
         }
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository

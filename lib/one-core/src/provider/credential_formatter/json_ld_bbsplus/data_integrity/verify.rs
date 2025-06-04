@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use json_ld::Loader;
 use one_crypto::Hasher;
 use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
@@ -63,7 +65,7 @@ pub async fn verify_base_proof(
 
     let did_value = vcdm.issuer.to_did_value()?;
     let params = PublicKeySource::Did {
-        did: &did_value,
+        did: Cow::Owned(did_value),
         key_id: Some(&proof.verification_method),
     };
     verifier

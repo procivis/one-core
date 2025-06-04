@@ -1,6 +1,7 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -747,7 +748,7 @@ async fn try_verify_issuer_auth(
     let signature = &cose_sign1.signature;
 
     let params = PublicKeySource::Did {
-        did: issuer_did,
+        did: Cow::Borrowed(issuer_did),
         key_id: None,
     };
     verifier
@@ -948,7 +949,7 @@ pub async fn try_verify_detached_signature_with_provider(
     let signature = &device_signature.signature;
 
     let params = PublicKeySource::Did {
-        did: issuer_did_value,
+        did: Cow::Borrowed(issuer_did_value),
         key_id: None, /* take the first one */
     };
     verifier

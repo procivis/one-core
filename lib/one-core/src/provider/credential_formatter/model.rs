@@ -1,5 +1,6 @@
 //! Methods for signing and verifying credentials, as well as `struct`s and `enum`s.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
@@ -28,7 +29,7 @@ pub type VerificationFn = Box<dyn TokenVerifier>;
 
 pub enum PublicKeySource<'a> {
     Did {
-        did: &'a DidValue,
+        did: Cow<'a, DidValue>,
         key_id: Option<&'a str>,
     },
     X5c {
@@ -65,7 +66,11 @@ pub trait SignatureProvider: Send + Sync {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum IssuerDetails {
     Did(DidValue),
-    Certificate { chain: String, fingerprint: String },
+    Certificate {
+        chain: String,
+        fingerprint: String,
+        expiry: OffsetDateTime,
+    },
 }
 
 #[derive(Debug, Clone)]

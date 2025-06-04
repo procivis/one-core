@@ -115,6 +115,7 @@ async fn test_format_credential() {
         Arc::new(crypto),
         Arc::new(did_method_provider),
         Arc::new(vct_metadata_cache),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -278,6 +279,7 @@ async fn test_format_credential_swiyu() {
         Arc::new(crypto),
         Arc::new(did_method_provider),
         Arc::new(vct_metadata_cache),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -405,6 +407,7 @@ async fn test_extract_credentials() {
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -530,6 +533,7 @@ async fn test_extract_credentials_swiyu() {
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -674,6 +678,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -756,6 +761,7 @@ async fn test_extract_presentation() {
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -826,6 +832,7 @@ fn test_schema_id() {
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
     let vct_type = "xyz some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -1008,6 +1015,7 @@ async fn test_format_extract_round_trip() {
         crypto,
         did_method_provider.clone(),
         Arc::new(vct_metadata_cache),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let mut auth_fn = MockSignatureProvider::new();

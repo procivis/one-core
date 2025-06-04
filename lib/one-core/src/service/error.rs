@@ -1396,8 +1396,9 @@ impl ErrorCodeMixin for IssuanceProtocolError {
                 TxCodeError::IncorrectCode => ErrorCode::BR_0169,
                 TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
             },
-            IssuanceProtocolError::DidMismatch
-            | IssuanceProtocolError::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
+            Self::DidMismatch
+            | Self::CertificateMismatch
+            | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
         }
     }
 }

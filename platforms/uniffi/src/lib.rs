@@ -535,6 +535,10 @@ async fn initialize(
                         OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
                     )?;
 
+                    let certificate_validator = providers.certificate_validator.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("certificate validator".to_string()),
+                    )?;
+
                     let crypto =
                         providers
                             .crypto
@@ -576,6 +580,7 @@ async fn initialize(
                                     crypto.clone(),
                                     did_method_provider.clone(),
                                     vct_type_metadata_cache.clone(),
+                                    certificate_validator.clone(),
                                 )) as _
                             }
                             FormatType::JsonLdClassic => {

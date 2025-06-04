@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
@@ -669,7 +670,7 @@ pub(super) async fn verify_proof_signature(
     };
 
     let params = PublicKeySource::Did {
-        did: issuer_did,
+        did: Cow::Borrowed(issuer_did),
         key_id: Some(key_id),
     };
     verification_fn

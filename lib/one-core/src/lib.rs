@@ -668,6 +668,7 @@ impl OneCore {
                 key_provider.clone(),
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
+                data_provider.get_certificate_repository().clone(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_claim_repository(),
                 data_provider.get_credential_repository(),

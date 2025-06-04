@@ -96,7 +96,7 @@ impl TokenVerifier for KeyVerification {
     ) -> Result<(), SignerError> {
         let public_key = match public_key_source {
             PublicKeySource::Did { did, key_id } => {
-                self.public_key_from_did(did, key_id, algorithm).await
+                self.public_key_from_did(&did, key_id, algorithm).await
             }
             PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await,
         }?;
@@ -110,6 +110,8 @@ impl TokenVerifier for KeyVerification {
 
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
+
     use mockall::predicate::*;
     use serde_json::json;
 
@@ -201,7 +203,7 @@ mod test {
 
         let did_value = "did:example:123".parse().unwrap();
         let params = PublicKeySource::Did {
-            did: &did_value,
+            did: Cow::Owned(did_value),
             key_id: None,
         };
         let result = verification
@@ -234,7 +236,7 @@ mod test {
 
         let did_value = "did:example:123".parse().unwrap();
         let params = PublicKeySource::Did {
-            did: &did_value,
+            did: Cow::Owned(did_value),
             key_id: None,
         };
         let result = verification
@@ -294,7 +296,7 @@ mod test {
 
         let did_value = "did:example:123".parse().unwrap();
         let params = PublicKeySource::Did {
-            did: &did_value,
+            did: Cow::Owned(did_value),
             key_id: None,
         };
         let result = verification

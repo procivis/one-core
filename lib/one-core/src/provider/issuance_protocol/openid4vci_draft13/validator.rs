@@ -4,6 +4,8 @@ use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::interaction::Interaction;
+use crate::provider::credential_formatter::model::{DetailCredential, IssuerDetails};
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -99,5 +101,39 @@ pub(super) fn validate_refresh_token(
         ));
     }
 
+    Ok(())
+}
+
+pub(crate) fn validate_issuer(
+    offered_credential: &Credential,
+    received_credential: &DetailCredential,
+) -> Result<(), IssuanceProtocolError> {
+    // check credential is consistent with what was offered
+    match &received_credential.issuer {
+        IssuerDetails::Did(response_did) => {
+            if offered_credential.issuer_certificate.is_some() {
+                return Err(IssuanceProtocolError::DidMismatch);
+            }
+            if let Some(credential_offer_did) = offered_credential
+                .issuer_identifier
+                .as_ref()
+                .and_then(|identifier| identifier.did.as_ref())
+            {
+                if *response_did != credential_offer_did.did {
+                    return Err(IssuanceProtocolError::DidMismatch);
+                }
+            }
+        }
+        IssuerDetails::Certificate { fingerprint, .. } => {
+            if offered_credential.issuer_identifier.is_some() {
+                return Err(IssuanceProtocolError::CertificateMismatch);
+            }
+            if let Some(credential_offer_cert) = offered_credential.issuer_certificate.as_ref() {
+                if credential_offer_cert.fingerprint != *fingerprint {
+                    return Err(IssuanceProtocolError::CertificateMismatch);
+                }
+            }
+        }
+    }
     Ok(())
 }

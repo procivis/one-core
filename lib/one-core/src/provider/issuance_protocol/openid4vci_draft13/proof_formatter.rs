@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -83,7 +85,7 @@ impl OpenID4VCIProofJWTFormatter {
                     ))?;
 
                 let params = PublicKeySource::Did {
-                    did: &did,
+                    did: Cow::Borrowed(&did),
                     key_id: fragment,
                 };
                 verifier

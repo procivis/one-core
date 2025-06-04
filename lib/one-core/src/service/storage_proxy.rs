@@ -4,6 +4,7 @@ use anyhow::Context;
 use shared_types::{DidId, DidValue, OrganisationId};
 
 use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
+use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
 use crate::model::credential_schema::{
@@ -12,8 +13,10 @@ use crate::model::credential_schema::{
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -55,6 +58,11 @@ pub(crate) trait StorageProxy: Send + Sync {
         value: &DidValue,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<Did>>;
+    async fn get_certificate_by_fingerprint(
+        &self,
+        fingerprint: &str,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Certificate>>;
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
 
@@ -72,6 +80,7 @@ pub(crate) struct StorageProxyImpl {
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub credentials: Arc<dyn CredentialRepository>,
     pub dids: Arc<dyn DidRepository>,
+    pub certificates: Arc<dyn CertificateRepository>,
     pub identifiers: Arc<dyn IdentifierRepository>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
 }
@@ -82,6 +91,7 @@ impl StorageProxyImpl {
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
         dids: Arc<dyn DidRepository>,
+        certificates: Arc<dyn CertificateRepository>,
         identifiers: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
     ) -> Self {
@@ -90,6 +100,7 @@ impl StorageProxyImpl {
             credential_schemas,
             credentials,
             dids,
+            certificates,
             identifiers,
             did_method_provider,
         }
@@ -184,6 +195,24 @@ impl StorageProxy for StorageProxyImpl {
             .get_did_by_value(value, Some(Some(organisation_id)), &Default::default())
             .await
             .context("Could not fetch did by value")
+    }
+
+    async fn get_certificate_by_fingerprint(
+        &self,
+        fingerprint: &str,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Certificate>> {
+        let list = self
+            .certificates
+            .list(CertificateListQuery {
+                filtering: Some(
+                    CertificateFilterValue::Fingerprint(fingerprint.to_owned()).condition()
+                        & CertificateFilterValue::OrganisationId(organisation_id),
+                ),
+                ..Default::default()
+            })
+            .await?;
+        Ok(list.values.into_iter().next())
     }
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier> {

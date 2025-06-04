@@ -63,6 +63,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
+use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::claim_repository::MockClaimRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -110,6 +111,7 @@ struct Repositories {
     pub organisation_repository: MockOrganisationRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
+    pub certificate_repository: MockCertificateRepository,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -119,6 +121,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.key_provider),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.certificate_repository),
         Arc::new(repositories.identifier_repository),
         Arc::new(repositories.claim_repository),
         Arc::new(repositories.credential_repository),

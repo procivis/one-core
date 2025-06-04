@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::Context;
 use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
@@ -5,11 +7,13 @@ use one_crypto::{CryptoProvider, Hasher};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use super::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use super::model::{
-    AuthenticationFn, HolderBindingCtx, PublicKeySource, TokenVerifier, VerificationFn,
+    AuthenticationFn, HolderBindingCtx, IssuerDetails, PublicKeySource, TokenVerifier,
+    VerificationFn,
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -25,8 +29,9 @@ use crate::provider::credential_formatter::sdjwt::model::{
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::util::x509::pem_chain_into_x5c;
+use crate::util::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 
 pub mod disclosures;
 pub mod mapper;
@@ -214,15 +219,27 @@ async fn append_key_binding_token(
     Ok(())
 }
 
+pub(crate) struct SdJwtHolderBindingParams {
+    pub holder_binding_context: Option<HolderBindingCtx>,
+    pub leeway: Duration,
+    pub skip_holder_binding_aud_check: bool,
+}
+
 impl<Payload: DeserializeOwned> Jwt<Payload> {
     pub(crate) async fn build_from_token_with_disclosures(
         token: &str,
         crypto: &dyn CryptoProvider,
         verification: Option<&VerificationFn>,
-        key_binding_context: Option<HolderBindingCtx>,
-        leeway: Duration,
-        skip_holder_binding_aud_check: bool,
-    ) -> Result<(Jwt<Payload>, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
+        params: SdJwtHolderBindingParams,
+        certificate_validator: Option<&dyn CertificateValidator>,
+    ) -> Result<
+        (
+            Jwt<Payload>,
+            Option<JWTPayload<KeyBindingPayload>>,
+            IssuerDetails,
+        ),
+        FormatterError,
+    > {
         let DecomposedTokenWithDisclosures {
             jwt,
             disclosures,
@@ -251,9 +268,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                     key_binding_token,
                     &*hasher,
                     verification,
-                    key_binding_context,
-                    leeway,
-                    skip_holder_binding_aud_check,
+                    params,
                 )
                 .await?
             } else {
@@ -267,45 +282,64 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 "Missing issuer in sd-jwt".to_string(),
             ))?;
 
-        let issuer_did = if issuer.starts_with("did:") {
-            issuer.clone()
-        } else {
-            let url = match decomposed_token.header.x5c.as_ref() {
-                None => issuer.clone(),
-                Some(x5c) => {
-                    let mut url = url::Url::parse(issuer)
-                        .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                    for cert in x5c {
-                        let mut query_pairs = url.query_pairs_mut();
-                        query_pairs.append_pair("x5c", cert);
-                    }
-
-                    url.into()
-                }
+        let (issuer, params, isuer_details) = if issuer.starts_with("did:") {
+            let did: DidValue = issuer
+                .parse()
+                .context("issuer did parsing error")
+                .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            let params = PublicKeySource::Did {
+                did: Cow::Owned(did.clone()),
+                key_id: decomposed_token.header.key_id.as_deref(),
             };
-
-            format!(
-                "did:sd_jwt_vc_issuer_metadata:{}",
-                urlencoding::encode(&url)
-            )
-        };
-
-        let subject = match (
-            decomposed_token.payload.subject.as_ref(),
-            decomposed_token.payload.proof_of_possession_key.as_ref(),
-        ) {
-            (Some(subject), _) => Some(subject.to_string()),
-            (None, Some(cnf)) => Some(
-                encode_to_did(cnf.jwk.jwk())
-                    .map(|did| did.to_string())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
-            ),
-            (None, None) => None,
+            (issuer.clone(), params, IssuerDetails::Did(did))
+        } else {
+            match decomposed_token.header.x5c.as_ref() {
+                None => {
+                    let issuer = format!(
+                        "did:sd_jwt_vc_issuer_metadata:{}",
+                        urlencoding::encode(issuer)
+                    );
+                    let did: DidValue = issuer
+                        .parse()
+                        .context("issuer did parsing error")
+                        .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                    let params = PublicKeySource::Did {
+                        did: Cow::Owned(did.clone()),
+                        key_id: decomposed_token.header.key_id.as_deref(),
+                    };
+                    (issuer, params, IssuerDetails::Did(did))
+                }
+                Some(x5c) => {
+                    let certificate_validator = certificate_validator.ok_or(
+                        FormatterError::Failed("x5c header param not supported".to_string()),
+                    )?;
+                    let params = PublicKeySource::X5c { x5c };
+                    let chain = x5c_into_pem_chain(x5c).map_err(|err| {
+                        FormatterError::Failed(format!("failed to parse x5c header param: {err}"))
+                    })?;
+                    let ParsedCertificate { attributes, .. } = certificate_validator
+                        .parse_pem_chain(chain.as_bytes(), true)
+                        .await
+                        .map_err(|err| {
+                            FormatterError::Failed(format!(
+                                "failed to parse x5c header param: {err}"
+                            ))
+                        })?;
+                    (
+                        issuer.clone(),
+                        params,
+                        IssuerDetails::Certificate {
+                            chain,
+                            fingerprint: attributes.fingerprint,
+                            expiry: attributes.not_after,
+                        },
+                    )
+                }
+            }
         };
 
         if let Some(verification) = verification {
-            Self::verify_token_signature(&decomposed_token, &issuer_did, verification).await?;
+            Self::verify_token_signature(&decomposed_token, params, verification).await?;
         };
 
         let disclosures_with_hashes = disclosures
@@ -332,12 +366,24 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             })?
         };
 
+        let subject = match (
+            decomposed_token.payload.subject.as_ref(),
+            decomposed_token.payload.proof_of_possession_key.as_ref(),
+        ) {
+            (Some(subject), _) => Some(subject.to_string()),
+            (None, Some(cnf)) => Some(
+                encode_to_did(cnf.jwk.jwk())
+                    .map(|did| did.to_string())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+            ),
+            (None, None) => None,
+        };
         let new_payload = JWTPayload {
             custom: expanded_payload,
             invalid_before: decomposed_token.payload.invalid_before,
             issued_at: decomposed_token.payload.issued_at,
             expires_at: decomposed_token.payload.expires_at,
-            issuer: Some(issuer_did),
+            issuer: Some(issuer),
             subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,
@@ -350,23 +396,21 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 payload: new_payload,
             },
             key_binding_payload,
+            isuer_details,
         ))
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn verify_holder_binding(
         cnf: &ProofOfPossessionKey,
         token: &str,
         key_binding_token: Option<&str>,
         hasher: &dyn Hasher,
         verification: Option<&VerificationFn>,
-        holder_binding_context: Option<HolderBindingCtx>,
-        leeway: Duration,
-        skip_holder_binding_aud_check: bool,
+        params: SdJwtHolderBindingParams,
     ) -> Result<Option<JWTPayload<KeyBindingPayload>>, FormatterError> {
         let decomposed_kb_token = key_binding_token.map(Jwt::<KeyBindingPayload>::decompose_token);
 
-        let Some(holder_binding_context) = holder_binding_context else {
+        let Some(holder_binding_context) = params.holder_binding_context else {
             if let Some(decomposed_kb_token) = decomposed_kb_token {
                 let token = decomposed_kb_token?;
                 return Ok(Some(token.payload));
@@ -388,8 +432,11 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                     "Failed to encode cnf JWK to did: {err}"
                 ))
             })?;
-            Self::verify_token_signature(&decomposed_kb_token, kb_issuer.as_str(), verification)
-                .await?;
+            let params = PublicKeySource::Did {
+                did: Cow::Borrowed(&kb_issuer),
+                key_id: decomposed_kb_token.header.key_id.as_deref(),
+            };
+            Self::verify_token_signature(&decomposed_kb_token, params, verification).await?;
         }
 
         let DecomposedToken {
@@ -422,14 +469,14 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 "Missing iat claim in key binding token".to_string(),
             ));
         };
-        if (iat - leeway) > OffsetDateTime::now_utc() {
+        if (iat - params.leeway) > OffsetDateTime::now_utc() {
             // kb token is supposedly issued in the future
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid iat claim in key binding token, token is issued in the future".to_string(),
             ));
         }
 
-        if !skip_holder_binding_aud_check {
+        if !params.skip_holder_binding_aud_check {
             let Some(ref audience) = kb_payload.audience else {
                 return Err(FormatterError::CouldNotExtractCredentials(
                     "Missing aud claim in key binding token".to_string(),
@@ -455,7 +502,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
 
     async fn verify_token_signature<AnyPayload>(
         token: &DecomposedToken<AnyPayload>,
-        issuer: &str,
+        params: PublicKeySource<'_>,
         verification_fn: &dyn TokenVerifier,
     ) -> Result<(), FormatterError> {
         let (_, algorithm) = verification_fn
@@ -466,14 +513,6 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 token.header.algorithm
             )))?;
 
-        let did = issuer
-            .parse()
-            .context("issuer did parsing error")
-            .map_err(|e| FormatterError::Failed(e.to_string()))?;
-        let params = PublicKeySource::Did {
-            did: &did,
-            key_id: token.header.key_id.as_deref(),
-        };
         verification_fn
             .verify(
                 params,
