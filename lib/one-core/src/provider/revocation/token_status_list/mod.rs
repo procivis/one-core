@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, DidValue};
+use shared_types::{CredentialId, DidId};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyFilter, KeyRole};
@@ -15,7 +15,9 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
-use crate::provider::credential_formatter::model::{CredentialStatus, TokenVerifier};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, IssuerDetails, TokenVerifier,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -172,10 +174,16 @@ impl RevocationMethod for TokenStatusList {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &DidValue,
+        issuer_details: &IssuerDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
+        let IssuerDetails::Did(issuer_did) = issuer_details else {
+            return Err(RevocationError::ValidationError(
+                "issuer did is missing".to_string(),
+            ));
+        };
+
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
                 "Invalid credential status type: {}",

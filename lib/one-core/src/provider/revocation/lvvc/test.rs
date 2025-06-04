@@ -216,7 +216,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
     let result = provider
         .check_credential_revocation_status(
             &status,
-            &did.did,
+            &IssuerDetails::Did(did.did),
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             false,
         )
@@ -272,7 +272,7 @@ async fn test_check_revocation_status_as_holder_cached() {
     let result = provider
         .check_credential_revocation_status(
             &status,
-            &did.did,
+            &IssuerDetails::Did(did.did),
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             false,
         )
@@ -341,7 +341,7 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
     let result = provider
         .check_credential_revocation_status(
             &status,
-            &did.did,
+            &IssuerDetails::Did(did.did),
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             true,
         )

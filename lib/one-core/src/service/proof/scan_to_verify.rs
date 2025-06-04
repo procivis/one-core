@@ -147,7 +147,7 @@ impl ProofService {
             let state = revocation_method
                 .check_credential_revocation_status(
                     status,
-                    issuer_did,
+                    &credential.issuer,
                     Some(additional_data.to_owned()),
                     false,
                 )

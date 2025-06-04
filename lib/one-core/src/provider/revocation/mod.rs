@@ -1,7 +1,5 @@
-use shared_types::DidValue;
-
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::model::{CredentialStatus, IssuerDetails};
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
@@ -50,7 +48,7 @@ pub trait RevocationMethod: Send + Sync {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &DidValue,
+        issuer_details: &IssuerDetails,
         additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError>;

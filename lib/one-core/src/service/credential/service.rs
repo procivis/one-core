@@ -25,6 +25,7 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::provider::credential_formatter::model::IssuerDetails;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
 use crate::provider::revocation::error::RevocationError;
@@ -888,7 +889,7 @@ impl CredentialService {
             match revocation_method
                 .check_credential_revocation_status(
                     &status,
-                    &issuer_did.did,
+                    &IssuerDetails::Did(issuer_did.did.clone()),
                     credential_data_by_role.to_owned(),
                     force_refresh,
                 )

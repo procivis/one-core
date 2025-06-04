@@ -318,10 +318,16 @@ impl RevocationMethod for LvvcProvider {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &DidValue,
+        issuer_details: &IssuerDetails,
         additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
+        let IssuerDetails::Did(issuer_did) = issuer_details else {
+            return Err(RevocationError::ValidationError(
+                "issuer did is missing".to_string(),
+            ));
+        };
+
         let additional_credential_data = additional_credential_data.ok_or(
             RevocationError::ValidationError("additional_credential_data is None".to_string()),
         )?;

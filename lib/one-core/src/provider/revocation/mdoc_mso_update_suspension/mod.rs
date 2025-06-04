@@ -1,11 +1,9 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
-use shared_types::DidValue;
-
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::model::{CredentialStatus, IssuerDetails};
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -44,7 +42,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     async fn check_credential_revocation_status(
         &self,
         _credential_status: &CredentialStatus,
-        _issuer_did: &DidValue,
+        _issuer_details: &IssuerDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {

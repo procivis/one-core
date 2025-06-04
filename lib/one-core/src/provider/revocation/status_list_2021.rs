@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use shared_types::DidValue;
-
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::model::{CredentialStatus, IssuerDetails};
 use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -60,10 +58,16 @@ impl RevocationMethod for StatusList2021 {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &DidValue,
+        issuer_details: &IssuerDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
+        let IssuerDetails::Did(issuer_did) = issuer_details else {
+            return Err(RevocationError::ValidationError(
+                "issuer did is missing".to_string(),
+            ));
+        };
+
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
                 "Invalid credential status type: {}",
