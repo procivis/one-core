@@ -6,6 +6,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
@@ -34,6 +35,7 @@ pub struct OID4VPDraft25Service {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    certificate_repository: Arc<dyn CertificateRepository>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -52,6 +54,7 @@ impl OID4VPDraft25Service {
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        certificate_repository: Arc<dyn CertificateRepository>,
     ) -> Self {
         Self {
             credential_repository,
@@ -67,6 +70,7 @@ impl OID4VPDraft25Service {
             revocation_method_provider,
             validity_credential_repository,
             certificate_validator,
+            certificate_repository,
         }
     }
 }

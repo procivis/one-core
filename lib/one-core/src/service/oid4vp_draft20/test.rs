@@ -36,6 +36,7 @@ use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
+use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
@@ -62,6 +63,7 @@ struct Mocks {
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
+    pub certificate_repository: MockCertificateRepository,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -80,6 +82,7 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.validity_credential_repository),
         Arc::new(mocks.certificate_validator),
+        Arc::new(mocks.certificate_repository),
     )
 }
 

@@ -23,7 +23,7 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, HolderBindingCtx, IssuerDetails,
+    DetailCredential, ExtractPresentationCtx, HolderBindingCtx,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -536,11 +536,6 @@ async fn accept_proof(
             .first()
             .ok_or(OpenID4VCError::MappingError("claims are empty".to_string()))?;
         let credential = &first_claim.credential;
-        let IssuerDetails::Did(ref issuer_did) = credential.issuer else {
-            return Err(OpenID4VCError::MappingError(
-                "issuer did is missing".to_string(),
-            ));
-        };
 
         let holder_did = credential
             .subject
@@ -561,7 +556,7 @@ async fn accept_proof(
             claim_schemas,
             first_claim.credential_schema.to_owned(),
             claims,
-            issuer_did,
+            &credential.issuer,
             holder_did,
             first_claim.mdoc_mso.to_owned(),
             &proof.exchange,

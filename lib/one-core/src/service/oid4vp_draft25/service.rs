@@ -331,7 +331,9 @@ impl OID4VPDraft25Service {
                         proved_credential,
                         organisation,
                         &*self.did_repository,
+                        &*self.certificate_repository,
                         &*self.identifier_repository,
+                        &*self.certificate_validator,
                         &*self.did_method_provider,
                     )
                     .await?;

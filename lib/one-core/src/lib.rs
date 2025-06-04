@@ -616,6 +616,7 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
+                data_provider.get_certificate_repository(),
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
                 data_provider.get_credential_repository(),
@@ -631,6 +632,7 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
+                data_provider.get_certificate_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),

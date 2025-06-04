@@ -1,15 +1,20 @@
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
-use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
+use crate::common_mapper::{
+    DidRole, get_or_create_certificate_identifier, get_or_create_did_and_identifier,
+};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::model::IssuerDetails;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::ServiceError;
 
 pub(super) fn parse_interaction_content(
@@ -29,18 +34,39 @@ pub(super) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,
     did_repository: &dyn DidRepository,
+    certificate_repository: &dyn CertificateRepository,
     identifier_repository: &dyn IdentifierRepository,
+    certificate_validator: &dyn CertificateValidator,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<Credential, ServiceError> {
-    let (_, issuer_identifier) = get_or_create_did_and_identifier(
-        did_method_provider,
-        did_repository,
-        identifier_repository,
-        &Some(organisation.to_owned()),
-        &proved_credential.issuer_did_value,
-        DidRole::Issuer,
-    )
-    .await?;
+    let (issuer_identifier, issuer_certificate) = match proved_credential.issuer_details {
+        IssuerDetails::Did(did) => {
+            let (_, issuer_identifier) = get_or_create_did_and_identifier(
+                did_method_provider,
+                did_repository,
+                identifier_repository,
+                &Some(organisation.to_owned()),
+                &did,
+                DidRole::Issuer,
+            )
+            .await?;
+            (issuer_identifier, None)
+        }
+        IssuerDetails::Certificate {
+            chain, fingerprint, ..
+        } => {
+            let (cert, identifier) = get_or_create_certificate_identifier(
+                certificate_repository,
+                certificate_validator,
+                identifier_repository,
+                &Some(organisation.to_owned()),
+                chain,
+                fingerprint,
+            )
+            .await?;
+            (identifier, Some(cert))
+        }
+    };
     let (_, holder_identifier) = get_or_create_did_and_identifier(
         did_method_provider,
         did_repository,
@@ -50,7 +76,6 @@ pub(super) async fn credential_from_proved(
         DidRole::Holder,
     )
     .await?;
-
     Ok(Credential {
         id: proved_credential.credential.id,
         created_date: proved_credential.credential.created_date,
@@ -64,8 +89,7 @@ pub(super) async fn credential_from_proved(
         state: proved_credential.credential.state,
         claims: convert_inner_of_inner(proved_credential.credential.claims),
         issuer_identifier: Some(issuer_identifier),
-        // TODO ONE-5920: Fill in value if issued using certificate
-        issuer_certificate: None,
+        issuer_certificate,
         holder_identifier: Some(holder_identifier),
         schema: proved_credential
             .credential

@@ -17,7 +17,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
-use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::model::{DetailCredential, IssuerDetails};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -256,7 +256,7 @@ pub(crate) struct SubmissionRequestData {
 #[derive(Clone, Debug)]
 pub(crate) struct ProvedCredential {
     pub credential: Credential,
-    pub issuer_did_value: DidValue,
+    pub issuer_details: IssuerDetails,
     pub holder_did_value: DidValue,
     pub mdoc_mso: Option<MobileSecurityObject>,
 }
