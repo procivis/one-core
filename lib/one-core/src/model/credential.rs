@@ -1,4 +1,4 @@
-use shared_types::{CredentialId, IdentifierId, KeyId};
+use shared_types::{CertificateId, CredentialId, IdentifierId, KeyId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -78,6 +78,7 @@ pub type GetCredentialQuery =
 pub struct UpdateCredentialRequest {
     pub credential: Option<Vec<u8>>,
     pub issuer_identifier_id: Option<IdentifierId>,
+    pub issuer_certificate_id: Option<CertificateId>,
     pub holder_identifier_id: Option<IdentifierId>,
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,

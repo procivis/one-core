@@ -534,6 +534,11 @@ impl CredentialRepository for CredentialProvider {
             Some(identifier_id) => Set(Some(identifier_id)),
         };
 
+        let issuer_certificate_id = match request.issuer_certificate_id {
+            None => Unchanged(Default::default()),
+            Some(certificate_id) => Set(Some(certificate_id)),
+        };
+
         let credential = match request.credential {
             None => Unchanged(Default::default()),
             Some(token) => Set(token),
@@ -572,6 +577,7 @@ impl CredentialRepository for CredentialProvider {
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_identifier_id,
             issuer_identifier_id,
+            issuer_certificate_id,
             credential,
             interaction_id,
             key_id,

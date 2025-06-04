@@ -13,7 +13,7 @@ use secrecy::ExposeSecret;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use shared_types::{CredentialId, DidValue, IdentifierId};
+use shared_types::{CertificateId, CredentialId, DidValue, IdentifierId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -823,6 +823,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 credential.id,
                 UpdateCredentialRequest {
                     issuer_identifier_id: Some(identifier_updates.issuer_identifier_id),
+                    issuer_certificate_id: identifier_updates.issuer_certificate_id,
                     redirect_uri: Some(redirect_uri),
                     suspend_end_date: Clearable::DontTouch,
                     ..Default::default()
@@ -1545,6 +1546,7 @@ fn collect_mandatory_keys(
 
 struct IdentifierUpdates {
     issuer_identifier_id: IdentifierId,
+    issuer_certificate_id: Option<CertificateId>,
     create_did: Option<Did>,
     create_identifier: Option<Identifier>,
     create_certificate: Option<Certificate>,
@@ -1569,6 +1571,7 @@ async fn prepare_did_identifier(
 
             Ok(IdentifierUpdates {
                 issuer_identifier_id: identifier.id,
+                issuer_certificate_id: None,
                 create_did: None,
                 create_identifier: None,
                 create_certificate: None,
@@ -1599,6 +1602,7 @@ async fn prepare_did_identifier(
             let id: IdentifierId = Uuid::new_v4().into();
             Ok(IdentifierUpdates {
                 issuer_identifier_id: id,
+                issuer_certificate_id: None,
                 create_did: Some(did.to_owned()),
                 create_identifier: Some(Identifier {
                     id,
@@ -1634,6 +1638,7 @@ async fn prepare_certificate_identifier(
     {
         Some(certificate) => Ok(IdentifierUpdates {
             issuer_identifier_id: certificate.identifier_id,
+            issuer_certificate_id: Some(certificate.id),
             create_did: None,
             create_identifier: None,
             create_certificate: None,
@@ -1659,6 +1664,7 @@ async fn prepare_certificate_identifier(
 
             Ok(IdentifierUpdates {
                 issuer_identifier_id: identifier_id,
+                issuer_certificate_id: Some(certificate.id),
                 create_did: None,
                 create_identifier: Some(Identifier {
                     id: identifier_id,
