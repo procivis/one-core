@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::mapper::{deserialize_with_serde_json, unix_timestamp};
+use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
@@ -22,9 +22,9 @@ use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JwePayload {
-    pub aud: Url,
-    #[serde(with = "unix_timestamp")]
-    pub exp: OffsetDateTime,
+    pub aud: Option<Url>,
+    #[serde(default, with = "unix_timestamp_option")]
+    pub exp: Option<OffsetDateTime>,
     pub vp_token: String,
     pub presentation_submission: PresentationSubmissionMappingDTO,
     pub state: Option<String>,

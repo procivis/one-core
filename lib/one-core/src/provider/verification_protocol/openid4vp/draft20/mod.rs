@@ -627,8 +627,8 @@ async fn encrypted_params(
             "nonce is None".to_string(),
         ))?;
     let payload = JwePayload {
-        aud,
-        exp: OffsetDateTime::now_utc() + Duration::minutes(10),
+        aud: Some(aud),
+        exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
         vp_token,
         presentation_submission,
         state: interaction_data.state,

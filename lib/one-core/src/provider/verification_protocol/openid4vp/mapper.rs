@@ -690,23 +690,27 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
     }
 }
 
-pub(super) mod unix_timestamp {
+pub(super) mod unix_timestamp_option {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use time::OffsetDateTime;
 
-    pub(crate) fn serialize<S>(datetime: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    pub(crate) fn serialize<S>(
+        datetime: &Option<OffsetDateTime>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        datetime.unix_timestamp().serialize(serializer)
+        datetime
+            .map(|datetime| datetime.unix_timestamp())
+            .serialize(serializer)
     }
 
-    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Option<OffsetDateTime>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let timestamp = i64::deserialize(deserializer)?;
-
-        OffsetDateTime::from_unix_timestamp(timestamp).map_err(serde::de::Error::custom)
+        let value = Option::<i64>::deserialize(deserializer)?;
+        Ok(value.and_then(|timestamp| OffsetDateTime::from_unix_timestamp(timestamp).ok()))
     }
 }
