@@ -154,7 +154,7 @@ pub(super) fn create_backup_history_event(
         entity_id: None,
         entity_type: HistoryEntityType::Backup,
         metadata,
-        organisation_id,
+        organisation_id: Some(organisation_id),
     }
 }
 

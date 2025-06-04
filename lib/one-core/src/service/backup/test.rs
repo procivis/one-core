@@ -152,7 +152,7 @@ async fn test_finalize_import() {
             assert_eq!(event.action, HistoryAction::Restored);
             assert_eq!(event.entity_id, None);
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
-            assert_eq!(event.organisation_id, organisation.id);
+            assert_eq!(event.organisation_id, Some(organisation.id));
             Ok(Uuid::new_v4().into())
         });
 
@@ -213,7 +213,7 @@ async fn test_backup_flow() {
             assert_eq!(event.action, HistoryAction::Created);
             assert_eq!(event.entity_id, None);
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
-            assert_eq!(event.organisation_id, organisation.id);
+            assert_eq!(event.organisation_id, Some(organisation.id));
             Ok(history_id)
         });
 

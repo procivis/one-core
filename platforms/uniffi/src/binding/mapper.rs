@@ -307,7 +307,7 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             entity_id: value.entity_id.map(|id| id.to_string()),
             entity_type: value.entity_type.into(),
             metadata: convert_inner(value.metadata),
-            organisation_id: value.organisation_id.to_string(),
+            organisation_id: value.organisation_id.map(|id| id.to_string()),
             target: value.target,
         }
     }

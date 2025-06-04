@@ -53,7 +53,7 @@ impl CertificateHistoryDecorator {
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Certificate,
                 metadata: None,
-                organisation_id,
+                organisation_id: Some(organisation_id),
             })
             .await;
 

@@ -39,7 +39,7 @@ pub struct History {
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub metadata: Option<HistoryMetadata>,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

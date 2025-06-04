@@ -36,7 +36,7 @@ pub struct HistoryResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     pub target: Option<String>,
 }
 
@@ -60,7 +60,7 @@ pub struct HistoryResponseDetailRestDTO {
     #[try_from(infallible)]
     pub entity_type: HistoryEntityType,
     #[try_from(infallible)]
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     #[try_from(with_fn = try_convert_inner)]
     pub metadata: Option<HistoryMetadataRestEnum>,
     #[try_from(infallible)]

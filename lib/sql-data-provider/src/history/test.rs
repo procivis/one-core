@@ -308,7 +308,7 @@ async fn test_create_history() {
             entity_id: Some(Uuid::new_v4().into()),
             entity_type: HistoryEntityType::Key,
             metadata: None,
-            organisation_id: organisation.id,
+            organisation_id: Some(organisation.id),
         })
         .await;
 

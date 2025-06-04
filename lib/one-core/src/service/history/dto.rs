@@ -33,7 +33,7 @@ pub struct HistoryResponseDTO {
     pub name: String,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     #[from(with_fn = convert_inner)]
     pub metadata: Option<HistoryMetadataResponse>,
     pub target: Option<String>,

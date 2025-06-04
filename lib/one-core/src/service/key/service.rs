@@ -223,7 +223,7 @@ impl KeyService {
                 entity_id: Some(key.id.into()),
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
-                organisation_id: key.organisation.ok_or(DataLayerError::MappingError)?.id,
+                organisation_id: Some(key.organisation.ok_or(DataLayerError::MappingError)?.id),
             })
             .await;
 

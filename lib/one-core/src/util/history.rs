@@ -27,7 +27,7 @@ pub(crate) fn history_event(
         entity_id: Some(entity_id.into()),
         entity_type,
         metadata: None,
-        organisation_id,
+        organisation_id: Some(organisation_id),
     }
 }
 

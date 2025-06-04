@@ -89,7 +89,7 @@ impl CredentialHistoryDecorator {
             entity_id: Some(credential.id.into()),
             entity_type: HistoryEntityType::Credential,
             metadata: None,
-            organisation_id: organisation.id,
+            organisation_id: Some(organisation.id),
         };
         let result = self.history_repository.create_history(entry).await;
 

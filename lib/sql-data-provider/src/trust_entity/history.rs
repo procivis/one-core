@@ -156,7 +156,7 @@ impl TrustEntityHistoryDecorator {
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
-                organisation_id: trust_entity_to_organisation_id(trust_entity)?,
+                organisation_id: trust_entity_to_organisation_id(trust_entity).ok(),
             })
             .await
     }
@@ -176,7 +176,7 @@ impl TrustEntityHistoryDecorator {
                 entity_id: Some(trust_entity_id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
-                organisation_id: trust_entity_to_organisation_id(entity)?,
+                organisation_id: trust_entity_to_organisation_id(entity).ok(),
             })
             .await
     }

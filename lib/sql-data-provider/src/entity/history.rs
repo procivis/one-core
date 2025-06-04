@@ -20,7 +20,7 @@ pub struct Model {
     pub name: String,
     pub target: Option<String>,
 
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

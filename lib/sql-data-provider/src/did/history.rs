@@ -34,7 +34,7 @@ impl DidHistoryDecorator {
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Did,
                 metadata: None,
-                organisation_id,
+                organisation_id: Some(organisation_id),
             })
             .await;
 

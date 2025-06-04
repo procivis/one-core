@@ -48,7 +48,7 @@ impl HistoriesDB {
             entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
             metadata: params.metadata,
-            organisation_id: organisation.id,
+            organisation_id: Some(organisation.id),
             name: params.name.unwrap_or_default(),
             target: params.target,
         };

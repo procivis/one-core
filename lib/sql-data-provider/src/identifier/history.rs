@@ -37,7 +37,7 @@ impl IdentifierHistoryDecorator {
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Identifier,
                 metadata: None,
-                organisation_id,
+                organisation_id: Some(organisation_id),
             })
             .await;
 

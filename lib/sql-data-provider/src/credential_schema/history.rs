@@ -52,7 +52,7 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
                 entity_id: Some(credential_schema.id.into()),
                 entity_type: HistoryEntityType::CredentialSchema,
                 metadata: None,
-                organisation_id: organisation.id,
+                organisation_id: Some(organisation.id),
             })
             .await;
 

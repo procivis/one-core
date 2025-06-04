@@ -110,8 +110,9 @@ mod m20250513_075017_rename_identifier_status_to_state;
 mod m20250526_112527_proof_verifier_certificate;
 mod m20250526_125848_add_certificate_id_to_credential;
 mod m20250528_101308_certificate_fingerprint;
-
 mod m20250602_054912_add_organization_id_to_certificate;
+mod m20250607_093448_history_optional_orgid;
+
 mod migrate_enum;
 pub struct Migrator;
 
@@ -224,6 +225,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250526_125848_add_certificate_id_to_credential::Migration),
             Box::new(m20250528_101308_certificate_fingerprint::Migration),
             Box::new(m20250602_054912_add_organization_id_to_certificate::Migration),
+            Box::new(m20250607_093448_history_optional_orgid::Migration),
         ]
     }
 }
