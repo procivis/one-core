@@ -197,7 +197,6 @@ impl ProofService {
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
             &self.certificate_validator,
-            &self.config,
         )
         .await
         {

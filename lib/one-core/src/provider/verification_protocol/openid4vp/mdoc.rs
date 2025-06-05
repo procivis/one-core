@@ -6,10 +6,9 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::provider::credential_formatter::model::FormatPresentationCtx;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 
 pub(crate) fn mdoc_presentation_context(
-    interaction_data: &OpenID4VPHolderInteractionData,
+    client_id: &str,
     response_uri: &Url,
     verifier_nonce: &str,
     mdoc_generated_nonce: &str,
@@ -19,7 +18,7 @@ pub(crate) fn mdoc_presentation_context(
             to_cbor(&SessionTranscript {
                 handover: Some(
                     OID4VPHandover::compute(
-                        interaction_data.client_id.as_str().trim_end_matches('/'),
+                        client_id.trim_end_matches('/'),
                         response_uri.as_str().trim_end_matches('/'),
                         verifier_nonce,
                         mdoc_generated_nonce,

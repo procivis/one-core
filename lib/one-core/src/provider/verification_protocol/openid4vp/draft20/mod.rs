@@ -388,7 +388,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         let holder_nonce = utilities::generate_alphanumeric(32);
         let ctx = if format == "MDOC" {
             mdoc_presentation_context(
-                &interaction_data,
+                &interaction_data.client_id,
                 &response_uri,
                 &verifier_nonce,
                 &holder_nonce,
