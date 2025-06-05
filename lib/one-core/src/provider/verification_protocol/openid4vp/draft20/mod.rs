@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -221,7 +221,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             DidType::MDL,
             DidType::WebVh,
         ];
-        let mut verifier_identifier_types = vec![];
+        let mut verifier_identifier_types = HashSet::new();
         let schemes = &self.params.verifier.supported_client_id_schemes;
 
         if [
@@ -232,25 +232,21 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         .iter()
         .any(|scheme| schemes.contains(scheme))
         {
-            verifier_identifier_types.push(IdentifierType::Did);
+            verifier_identifier_types.insert(IdentifierType::Did);
         }
 
-        if self
-            .params
-            .verifier
-            .supported_client_id_schemes
-            .contains(&ClientIdScheme::X509SanDns)
-        {
+        if schemes.contains(&ClientIdScheme::X509SanDns) {
+            verifier_identifier_types.insert(IdentifierType::Certificate);
+
+            // TODO: remove this when API tests are adapted and did:mdl is not used anymore. ONE-5918
+            verifier_identifier_types.insert(IdentifierType::Did);
             did_methods = vec![DidType::MDL];
-            verifier_identifier_types.push(IdentifierType::Certificate);
         }
-        // TODO: remove this line when API tests are adapted and did:mdl is not used anymore. ONE-5918
-        verifier_identifier_types = vec![IdentifierType::Certificate, IdentifierType::Did];
 
         VerificationProtocolCapabilities {
             supported_transports: vec![TransportType::Http],
             did_methods,
-            verifier_identifier_types,
+            verifier_identifier_types: verifier_identifier_types.into_iter().collect(),
         }
     }
 

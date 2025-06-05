@@ -639,7 +639,7 @@ async fn test_create_proof_success_with_certificate() {
         .proofs
         .create_with_identifier(
             &proof_schema.id.to_string(),
-            "OPENID4VP_DRAFT20",
+            "MDOC_OPENID4VP",
             &identifier.id,
             None,
         )
