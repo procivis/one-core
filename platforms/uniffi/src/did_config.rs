@@ -46,7 +46,7 @@ pub struct DidWebParams {
 #[serde(rename_all = "camelCase")]
 pub struct DidSdJwtVCIssuerMetadataParams {
     pub resolve_to_insecure_http: Option<bool>,
-    pub iaca_certificate: String,
+    pub iaca_certificate: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, From, Into)]
