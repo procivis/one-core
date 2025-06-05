@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use secrecy::SecretSlice;
+use serde::Deserialize;
 use serde_json::Value;
 use shared_types::CredentialId;
 use url::Url;
@@ -18,7 +20,8 @@ use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    InvitationResponseDTO, OpenID4VCIParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCIParams, OpenID4VCRedirectUriParams, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::{HandleInvitationOperationsAccess, IssuanceProtocol};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -30,8 +33,34 @@ use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::storage_proxy::StorageAccess;
+use crate::util::params::deserialize_encryption_key;
 
 pub(crate) const OID4VCI_DRAFT13_SWIYU_VERSION: &str = "draft-13-swiyu";
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCISwiyuParams {
+    pub pre_authorized_code_expires_in: u64,
+    pub token_expires_in: u64,
+    pub refresh_expires_in: u64,
+    #[serde(deserialize_with = "deserialize_encryption_key")]
+    pub encryption: SecretSlice<u8>,
+    pub redirect_uri: OpenID4VCRedirectUriParams,
+}
+
+impl From<OpenID4VCISwiyuParams> for OpenID4VCIParams {
+    fn from(value: OpenID4VCISwiyuParams) -> Self {
+        Self {
+            pre_authorized_code_expires_in: value.pre_authorized_code_expires_in,
+            token_expires_in: value.token_expires_in,
+            refresh_expires_in: value.refresh_expires_in,
+            credential_offer_by_value: true,
+            encryption: value.encryption,
+            url_scheme: "swiyu".to_string(),
+            redirect_uri: value.redirect_uri,
+        }
+    }
+}
 
 pub(crate) struct OpenID4VCI13Swiyu {
     inner: OpenID4VCI13,
@@ -53,7 +82,7 @@ impl OpenID4VCI13Swiyu {
         certificate_validator: Arc<dyn CertificateValidator>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
-        params: OpenID4VCIParams,
+        params: OpenID4VCISwiyuParams,
     ) -> Self {
         Self {
             inner: OpenID4VCI13::new_with_custom_version(
@@ -70,7 +99,7 @@ impl OpenID4VCI13Swiyu {
                 certificate_validator,
                 base_url,
                 config,
-                params,
+                params.into(),
                 OID4VCI_DRAFT13_SWIYU_VERSION,
             ),
         }

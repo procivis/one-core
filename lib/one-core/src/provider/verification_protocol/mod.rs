@@ -35,6 +35,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
+use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp20SwiyuParams;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::certificate::validator::CertificateValidator;
@@ -155,19 +156,13 @@ pub(crate) fn verification_protocol_providers_from_config(
             }
             VerificationProtocolType::OpenId4VpDraft20Swiyu => {
                 let params = fields
-                    .deserialize::<OpenID4Vp20Params>()
+                    .deserialize::<OpenID4Vp20SwiyuParams>()
                     .map_err(|source| ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
                     })?;
                 // URL schemes are used to select provider, hence must not be duplicated
-                validate_url_scheme_unique(
-                    &mut openid_url_schemes,
-                    name,
-                    params.url_scheme.to_string(),
-                )?;
-                let mut inner_params = params.clone();
-                inner_params.url_scheme = "openid4vp".to_string();
+                validate_url_scheme_unique(&mut openid_url_schemes, name, "https".to_string())?;
                 let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
                     formatter_provider.clone(),
@@ -176,14 +171,10 @@ pub(crate) fn verification_protocol_providers_from_config(
                     key_provider.clone(),
                     certificate_validator.clone(),
                     client.clone(),
-                    inner_params,
+                    params.into(),
                     config.clone(),
                 )?;
-                let protocol = Arc::new(OpenID4VP20Swiyu::new(
-                    http20,
-                    params.clone(),
-                    client.clone(),
-                ));
+                let protocol = Arc::new(OpenID4VP20Swiyu::new(http20, client.clone()));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }

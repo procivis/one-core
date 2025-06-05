@@ -28,8 +28,8 @@ use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{
-    DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
-    RevocationType, VerificationProtocolType,
+    DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
+    KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
@@ -61,6 +61,7 @@ pub struct SDJWTVCFormatter {
     did_method_provider: Arc<dyn DidMethodProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    datatype_config: DatatypeConfig,
     params: Params,
 }
 
@@ -385,6 +386,7 @@ impl SDJWTVCFormatter {
         did_method_provider: Arc<dyn DidMethodProvider>,
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        datatype_config: DatatypeConfig,
     ) -> Self {
         Self {
             params,
@@ -392,6 +394,7 @@ impl SDJWTVCFormatter {
             did_method_provider,
             vct_type_metadata_cache,
             certificate_validator,
+            datatype_config,
         }
     }
 
@@ -425,7 +428,14 @@ impl SDJWTVCFormatter {
                 credential_schema.and_then(|schema| schema.claim_schemas.as_ref())
             {
                 for claim_schema in claim_schemas {
-                    if claim_schema.schema.data_type == "SWIYU_PICTURE" {
+                    let Some(fields) = self
+                        .datatype_config
+                        .get_fields(&claim_schema.schema.data_type)
+                        .ok()
+                    else {
+                        continue;
+                    };
+                    if fields.r#type == DatatypeType::File {
                         let path = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
                         post_process_claims(path, &mut jwt.payload.custom.public_claims, |value| {
                             format!("{}{}", JPEG_DATA_URI_PREFIX, value)
@@ -483,10 +493,15 @@ impl SDJWTVCFormatter {
 
         if self.params.swiyu_mode {
             // Remove data uri prefix from image claim values when formatting for SWIYU
-            for published_claim in published_claims
-                .iter()
-                .filter(|claim| claim.datatype == Some("SWIYU_PICTURE".to_string()))
-            {
+            for published_claim in published_claims.iter().filter(|claim| {
+                let Some(ref data_type) = claim.datatype else {
+                    return false;
+                };
+                let Some(fields) = self.datatype_config.get_fields(data_type).ok() else {
+                    return false;
+                };
+                fields.r#type == DatatypeType::File
+            }) {
                 let path = published_claim.key.split(NESTED_CLAIM_MARKER).collect();
                 post_process_claims(path, object_claim, |value| {
                     value.trim_start_matches(JPEG_DATA_URI_PREFIX).to_string()

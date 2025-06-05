@@ -580,6 +580,7 @@ async fn initialize(
                                     did_method_provider.clone(),
                                     vct_type_metadata_cache.clone(),
                                     certificate_validator.clone(),
+                                    datatype_config.clone(),
                                 )) as _
                             }
                             FormatType::JsonLdClassic => {

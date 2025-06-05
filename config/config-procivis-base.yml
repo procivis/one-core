@@ -102,8 +102,6 @@ issuanceProtocol:
     type: "OPENID4VCI_DRAFT13_SWIYU"
     params:
       public:
-        urlScheme: swiyu
-        credentialOfferByValue: true
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -162,20 +160,9 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT20_SWIYU"
     params:
       public:
-        urlScheme: https
-        useRequestUri: true
-        verifier:
-          supportedClientIdSchemes: [did]
-        holder:
-          supportedClientIdSchemes: [did]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-        predefinedClientMetadata:
-          vp_formats:
-            dc+sd-jwt:
-              sd-jwt_alg_values: ["ES256"]
-              kb-jwt_alg_values: ["ES256"]
 transport:
   HTTP:
     type: "HTTP"

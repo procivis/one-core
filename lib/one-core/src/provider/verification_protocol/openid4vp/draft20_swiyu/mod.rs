@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
+use maplit::hashmap;
+use serde::Deserialize;
 use url::Url;
 
 use crate::common_mapper::PublicKeyWithJwk;
@@ -24,6 +26,8 @@ use crate::provider::verification_protocol::openid4vp::draft20::model::{
     OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
+    OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPVcSdJwtAlgs,
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::{
@@ -33,22 +37,51 @@ use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub(crate) struct OpenID4VP20Swiyu {
     inner: OpenID4VP20HTTP,
-    params: OpenID4Vp20Params,
     client: Arc<dyn HttpClient>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4Vp20SwiyuParams {
+    #[serde(default)]
+    pub allow_insecure_http_transport: bool,
+    pub redirect_uri: OpenID4VCRedirectUriParams,
+}
+
+impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
+    fn from(value: OpenID4Vp20SwiyuParams) -> Self {
+        Self {
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: value.allow_insecure_http_transport,
+            use_request_uri: true,
+            url_scheme: "openid4vp".to_string(),
+            holder: OpenID4VCPresentationHolderParams {
+                supported_client_id_schemes: vec![ClientIdScheme::Did],
+            },
+            verifier: OpenID4VCPresentationVerifierParams {
+                supported_client_id_schemes: vec![ClientIdScheme::Did],
+            },
+            redirect_uri: value.redirect_uri,
+            predefined_client_metadata: Some(OpenID4VPClientMetadata {
+                vp_formats: hashmap! {
+                    "dc+sd-jwt".to_string() =>  OpenID4VpPresentationFormat::SdJwtVcAlgs(
+                        OpenID4VPVcSdJwtAlgs {
+                            sd_jwt_algorithms: vec!["ES256".to_string()],
+                            kb_jwt_algorithms: vec!["ES256".to_string()]
+                        }
+                    )
+                },
+                ..Default::default()
+            }),
+        }
+    }
 }
 
 impl OpenID4VP20Swiyu {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        inner: OpenID4VP20HTTP,
-        params: OpenID4Vp20Params,
-        client: Arc<dyn HttpClient>,
-    ) -> Self {
-        Self {
-            inner,
-            params,
-            client,
-        }
+    pub(crate) fn new(inner: OpenID4VP20HTTP, client: Arc<dyn HttpClient>) -> Self {
+        Self { inner, client }
     }
 }
 
@@ -59,7 +92,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         Ok(())
     }
     fn holder_can_handle(&self, url: &Url) -> bool {
-        self.params.url_scheme == url.scheme() && url.query().is_none() // SWIYU invite links have no query param
+        url.scheme() == "https" && url.query().is_none() // SWIYU invite links have no query param
     }
 
     async fn holder_get_presentation_definition(

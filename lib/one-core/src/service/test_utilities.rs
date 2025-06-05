@@ -174,6 +174,16 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'OBJECT'
                 order: 300
                 params: null
+            SWIYU_PICTURE:
+                display: 'display'
+                type: 'FILE'
+                order: 403
+                params:
+                public:
+                    accept:
+                        - image/jpeg
+                    fileSize: 4194304
+                    showAs: IMAGE
         keyAlgorithm:
             EDDSA:
                 display: 'display'

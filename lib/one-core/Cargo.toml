@@ -32,6 +32,7 @@ itertools                = { version = "0.13" }
 json-ld                  = { version = "0.21" }
 json-syntax              = { version = "0.12", features = ["serde", "serde_json"] }
 jsonptr                  = { version = "0.6" }
+maplit                   = { version = "1.0" }
 mime                     = { version = "0.3" }
 mockall                  = { workspace = true, optional = true }
 mrtd                     = { version = "0.5.2" }
@@ -78,7 +79,6 @@ assert2                   = { version = "0.3" }
 hex-literal               = { version = "0.4" }
 indoc                     = { version = "2.0" }
 jsonschema                = { version = "0.26", default-features = false }
-maplit                    = { version = "1.0" }
 mockall.workspace         = true
 one-crypto                = { version = "0.1.0", path = "../one-crypto", features = ["mock"] }
 rstest                    = { version = "0.23" }
