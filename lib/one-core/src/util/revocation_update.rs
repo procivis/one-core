@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::params::convert_params;
 use crate::model::credential::{Credential, CredentialRelations};
-use crate::model::did::Did;
+use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
     StatusListCredentialFormat, StatusListType,
@@ -14,6 +14,7 @@ use crate::model::revocation_list::{
 use crate::model::validity_credential::Lvvc;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -22,6 +23,7 @@ use crate::provider::revocation::bitstring_status_list::{
     Params, format_status_list_credential, generate_bitstring_from_credentials,
     purpose_to_credential_state_enum,
 };
+use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{CredentialAdditionalData, RevocationUpdate};
 use crate::provider::revocation::token_status_list::generate_token_from_credentials;
 use crate::repository::credential_repository::CredentialRepository;
@@ -38,8 +40,8 @@ pub(crate) async fn generate_credential_additional_data(
     formatter_provider: &dyn CredentialFormatterProvider,
     key_provider: &Arc<dyn KeyProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &dyn DidMethodProvider,
     core_base_url: &Option<String>,
-    issuer_key_id: String,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
     let status_type = revocation_method.get_status_type();
     if status_type != "BitstringStatusListEntry"
@@ -67,6 +69,16 @@ pub(crate) async fn generate_credential_additional_data(
         .as_ref()
         .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
+    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
+
+    let Some(verification_method) =
+        did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
+    else {
+        return Err(ServiceError::Revocation(
+            RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod),
+        ));
+    };
+
     let credentials_by_issuer_did = convert_inner(
         credential_repository
             .get_credentials_by_issuer_did_id(&issuer_did.id, &CredentialRelations::default())
@@ -90,7 +102,7 @@ pub(crate) async fn generate_credential_additional_data(
         key_algorithm_provider,
         core_base_url,
         &*formatter,
-        issuer_key_id.clone(),
+        verification_method.id.clone(),
         &status_list_type,
         &params.format,
     )
@@ -107,7 +119,7 @@ pub(crate) async fn generate_credential_additional_data(
                 key_algorithm_provider,
                 core_base_url,
                 &*formatter,
-                issuer_key_id,
+                verification_method.id.clone(),
                 &status_list_type,
                 &params.format,
             )

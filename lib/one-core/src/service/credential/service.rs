@@ -28,7 +28,6 @@ use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::model::IssuerDetails;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
-use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
 };
@@ -612,26 +611,6 @@ impl CredentialService {
 
         verify_suspension_support(credential_schema, &revocation_state)?;
 
-        let issuer_did = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "issuer_identifier is None".to_string(),
-            ))?
-            .did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?;
-
-        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
-
-        let Some(verification_method) =
-            did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
-        else {
-            return Err(ServiceError::Revocation(
-                RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod),
-            ));
-        };
-
         let current_state = &credential.state;
 
         let valid_states: &[CredentialStateEnum] = match revocation_state {
@@ -680,8 +659,8 @@ impl CredentialService {
                     &*self.formatter_provider,
                     &self.key_provider,
                     &self.key_algorithm_provider,
+                    &*self.did_method_provider,
                     &self.base_url,
-                    verification_method.id.to_owned(),
                 )
                 .await?,
             )

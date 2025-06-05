@@ -2861,19 +2861,12 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 
     let mut history_repository = MockHistoryRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
-    let mut did_method_provider = MockDidMethodProvider::default();
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(|did| Ok(dummy_did_document(did)));
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
+    let clone = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .with(eq(clone.id), always())
+        .returning(move |_, _| Ok(Some(clone.clone())));
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -2919,7 +2912,6 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         credential_repository,
         history_repository,
         revocation_method_provider,
-        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2934,21 +2926,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     credential.state = CredentialStateEnum::Suspended;
 
     let mut credential_repository = MockCredentialRepository::default();
-    let mut did_method_provider = MockDidMethodProvider::default();
     let mut history_repository = MockHistoryRepository::default();
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(|did| Ok(dummy_did_document(did)));
-
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -2979,6 +2957,13 @@ async fn test_revoke_credential_success_with_suspended_credential() {
             Ok(())
         });
 
+    let clone = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .with(eq(clone.id), always())
+        .returning(move |_, _| Ok(Some(clone.clone())));
+
     history_repository
         .expect_create_history()
         .return_once(move |_| Ok(Uuid::new_v4().into()));
@@ -2994,7 +2979,6 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         credential_repository,
         history_repository,
         revocation_method_provider,
-        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -3013,14 +2997,7 @@ async fn test_suspend_credential_success() {
     let suspend_end_date = now.add(Duration::days(1));
 
     let mut credential_repository = MockCredentialRepository::default();
-    let mut did_method_provider = MockDidMethodProvider::default();
     let mut history_repository = MockHistoryRepository::default();
-
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(|did| Ok(dummy_did_document(did)));
-
     {
         let clone = credential.clone();
         credential_repository
@@ -3080,7 +3057,6 @@ async fn test_suspend_credential_success() {
         credential_repository,
         history_repository,
         revocation_method_provider,
-        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -3111,16 +3087,8 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
             .with(eq(clone.id), always())
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
-
-    let mut did_method_provider = MockDidMethodProvider::default();
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(|did| Ok(dummy_did_document(did)));
-
     let service = setup_service(Repositories {
         credential_repository,
-        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -3222,24 +3190,15 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
     credential.state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
-    let mut did_method_provider = MockDidMethodProvider::default();
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-
-        did_method_provider
-            .expect_resolve()
-            .once()
-            .returning(|did| Ok(dummy_did_document(did)));
-    }
+    let clone = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .with(eq(clone.id), always())
+        .returning(move |_, _| Ok(Some(clone.clone())));
 
     let service = setup_service(Repositories {
         credential_repository,
-        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
