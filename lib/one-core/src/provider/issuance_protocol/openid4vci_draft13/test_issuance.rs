@@ -726,14 +726,17 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
     );
 
-    assert2::assert!(
-        let IssuanceProtocolError::InvalidRequest(_) =
+    assert!(matches!(
         service
-        .issuer_issue_credential(&credential_id, dummy_did(), dummy_identifier(), format!("{}#0", dummy_did().did))
-        .await
-        .err()
-        .unwrap()
-    );
+            .issuer_issue_credential(
+                &credential_id,
+                dummy_did(),
+                dummy_identifier(),
+                format!("{}#0", dummy_did().did)
+            )
+            .await,
+        Err(IssuanceProtocolError::RefreshTooSoon),
+    ));
 }
 
 fn dummy_config() -> CoreConfig {

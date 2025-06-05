@@ -230,8 +230,11 @@ impl OpenID4VCI13 {
                     mdoc_validity_credential.created_date + self.mso_minimum_refresh_time()?;
 
                 if can_be_updated_at > OffsetDateTime::now_utc() {
-                    return Err(IssuanceProtocolError::InvalidRequest("expired".to_string()));
+                    return Err(IssuanceProtocolError::RefreshTooSoon);
                 }
+            }
+            (CredentialStateEnum::Suspended, "MDOC") => {
+                return Err(IssuanceProtocolError::Suspended);
             }
             (CredentialStateEnum::Offered, _) => {}
             _ => {
@@ -586,6 +589,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             interaction_data.refresh_token_expires_at = token_response
                 .refresh_token_expires_in
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+            interaction_data.nonce = token_response.c_nonce.clone();
         }
 
         let data = serialize_interaction_data(&interaction_data)?;
@@ -1236,6 +1240,7 @@ async fn handle_credential_invitation(
         cryptographic_binding_methods_supported: credential_config
             .cryptographic_binding_methods_supported
             .clone(),
+        nonce: None,
     };
     let data = utils::serialize_interaction_data(&holder_data)?;
 

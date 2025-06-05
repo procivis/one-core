@@ -30,6 +30,10 @@ pub enum IssuanceProtocolError {
     CertificateMismatch,
     #[error("Credential signature verification failed: `{0}`")]
     CredentialVerificationFailed(anyhow::Error),
+    #[error("Credential is suspended")]
+    Suspended,
+    #[error("Credential refresh is not yet possible")]
+    RefreshTooSoon,
 }
 
 #[derive(Debug, Error)]

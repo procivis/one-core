@@ -372,6 +372,7 @@ async fn test_holder_accept_expired_credential_fails() {
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
+            nonce: None,
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,

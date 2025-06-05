@@ -66,6 +66,8 @@ impl ErrorResponse {
                 IssuanceProtocolError::CredentialVerificationFailed(_),
             )
             | ServiceError::IssuanceProtocolError(IssuanceProtocolError::DidMismatch)
+            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::RefreshTooSoon)
+            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::Suspended)
             | ServiceError::DidMdlValidationError(_)
             | ServiceError::TrustManagementError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),

@@ -1154,6 +1154,8 @@ pub enum ErrorCode {
 
     #[strum(to_string = "CRL signature invalid")]
     BR_0235,
+    #[strum(to_string = "MSO refresh not possible")]
+    BR_0238,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1399,6 +1401,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::DidMismatch
             | Self::CertificateMismatch
             | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
+            Self::Suspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
         }
     }
 }

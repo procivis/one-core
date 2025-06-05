@@ -373,6 +373,11 @@ impl OID4VCIDraft13Service {
 
         match issued_credential {
             Ok(issued_credential) => Ok(issued_credential.into()),
+            Err(err @ IssuanceProtocolError::Suspended)
+            | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
+                // propagate error to client but do _not_ put credential to Errored state¬
+                Err(err.into())
+            }
             Err(error) => {
                 self.credential_repository
                     .update_credential(
@@ -459,7 +464,7 @@ impl OID4VCIDraft13Service {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
 
-        let mut interaction_data = interaction_data_to_dto(&interaction)?;
+        let interaction_data = interaction_data_to_dto(&interaction)?;
 
         let mut response = oidc_issuer_create_token(
             &interaction_data,
@@ -470,8 +475,6 @@ impl OID4VCIDraft13Service {
             access_token_expires_in,
             refresh_token_expires_in,
         )?;
-        // add nonce to interaction data so we can check it when verifying the proof
-        interaction_data.nonce = response.c_nonce.clone();
 
         let now = OffsetDateTime::now_utc();
         if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {

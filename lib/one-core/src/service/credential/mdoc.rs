@@ -111,7 +111,7 @@ impl CredentialService {
             interaction_data.issuer_url.clone(),
             Some(key_id),
             None,
-            None,
+            interaction_data.nonce.clone(),
             auth_fn,
         )
         .await
@@ -289,6 +289,7 @@ async fn check_access_token(
     interaction_data.refresh_token_expires_at = token_response
         .refresh_token_expires_in
         .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+    interaction_data.nonce = token_response.c_nonce;
 
     let mut interaction = credential
         .interaction

@@ -41,6 +41,8 @@ pub(crate) struct HolderInteractionData {
     pub access_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
     pub refresh_token: Option<Vec<u8>>,
+    #[serde(default)]
+    pub nonce: Option<String>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
