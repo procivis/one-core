@@ -20,11 +20,10 @@ use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft25::mappers::encode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VP25AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
+    OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
     OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::verification_protocol::openid4vp::service::{
@@ -46,7 +45,6 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri
         interaction_id,
         key_algorithm_provider,
         key_provider,
-        ClientIdScheme::RedirectUri,
     )?;
 
     let unsigned_jwt = Jwt {
@@ -91,7 +89,6 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         interaction_id,
         key_algorithm_provider.as_ref(),
         key_provider,
-        ClientIdScheme::VerifierAttestation,
     )?;
 
     let JWTSigner {
@@ -209,7 +206,6 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
         interaction_id,
         key_algorithm_provider.as_ref(),
         key_provider,
-        ClientIdScheme::X509SanDns,
     )?;
 
     let JWTSigner {
@@ -316,7 +312,6 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
         interaction_id,
         key_algorithm_provider.as_ref(),
         key_provider,
-        ClientIdScheme::Did,
     )?;
 
     let JWTSigner {
@@ -379,7 +374,6 @@ fn generate_authorization_request_params(
     interaction_id: &InteractionId,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
-    client_id_scheme: ClientIdScheme,
 ) -> Result<OpenID4VP25AuthorizationRequest, VerificationProtocolError> {
     let client_metadata = generate_client_metadata(proof, key_algorithm_provider, key_provider)?;
 
@@ -400,7 +394,6 @@ fn generate_authorization_request_params(
         oidc_verifier_presentation_definition(proof, presentation_definition)
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let client_id = encode_client_id_with_scheme(client_id, client_id_scheme);
     Ok(OpenID4VP25AuthorizationRequest {
         response_type: Some("vp_token".to_string()),
         response_mode: Some(determine_response_mode(proof)?),

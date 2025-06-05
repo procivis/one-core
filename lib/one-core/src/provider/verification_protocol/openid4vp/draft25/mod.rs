@@ -553,7 +553,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
             presentation_definition,
-            client_id: client_id.to_owned(),
+            client_id: encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
             encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
@@ -562,7 +562,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         let offer = create_openid4vp25_authorization_request(
             base_url,
             &self.params,
-            client_id.clone(),
+            client_id,
             interaction_id,
             &interaction_content,
             nonce,

@@ -787,13 +787,15 @@ pub(super) async fn create_presentation(
 
         ctx.mdoc_session_transcript = Some(
             to_cbor(&SessionTranscript {
-                handover: OID4VPHandover::compute(
-                    params.client_id,
-                    params.client_id,
-                    params.nonce,
-                    mdoc_generated_nonce,
-                )
-                .into(),
+                handover: Some(
+                    OID4VPHandover::compute(
+                        params.client_id,
+                        params.client_id,
+                        params.nonce,
+                        mdoc_generated_nonce,
+                    )
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+                ),
                 device_engagement_bytes: None,
                 e_reader_key_bytes: None,
             })

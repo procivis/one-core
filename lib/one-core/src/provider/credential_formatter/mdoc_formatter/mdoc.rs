@@ -365,16 +365,28 @@ impl OID4VPHandover {
         response_uri: &str,
         nonce: &str,
         mdoc_generated_nonce: &str,
-    ) -> Self {
-        let client_id_hash = Sha256::digest([client_id, mdoc_generated_nonce].concat()).to_vec();
-        let response_uri_hash =
-            Sha256::digest([response_uri, mdoc_generated_nonce].concat()).to_vec();
+    ) -> Result<Self, anyhow::Error> {
+        let client_id_to_hash = [client_id, mdoc_generated_nonce];
+        let response_uri_to_hash = [response_uri, mdoc_generated_nonce];
 
-        Self {
-            client_id_hash: Bstr(client_id_hash),
-            response_uri_hash: Bstr(response_uri_hash),
+        let client_id_hash = Self::compute_hash(&client_id_to_hash)?;
+        let response_uri_hash = Self::compute_hash(&response_uri_to_hash)?;
+
+        Ok(Self {
+            client_id_hash,
+            response_uri_hash,
             nonce: nonce.to_owned(),
-        }
+        })
+    }
+
+    fn compute_hash(values_to_hash: &[&str]) -> Result<Bstr, anyhow::Error> {
+        let cbor_value = cbor!(values_to_hash).map_err(|e| anyhow!("CBOR error: {}", e))?;
+
+        let mut buf = Vec::new();
+        ciborium::ser::into_writer(&cbor_value, &mut buf)
+            .map_err(|e| anyhow!("CBOR serialization error: {}", e))?;
+
+        Ok(Bstr(Sha256::digest(&buf).to_vec()))
     }
 }
 

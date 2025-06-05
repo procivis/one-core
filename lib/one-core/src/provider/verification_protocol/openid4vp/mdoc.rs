@@ -17,13 +17,15 @@ pub(crate) fn mdoc_presentation_context(
     Ok(FormatPresentationCtx {
         mdoc_session_transcript: Some(
             to_cbor(&SessionTranscript {
-                handover: OID4VPHandover::compute(
-                    interaction_data.client_id.as_str().trim_end_matches('/'),
-                    response_uri.as_str().trim_end_matches('/'),
-                    verifier_nonce,
-                    mdoc_generated_nonce,
-                )
-                .into(),
+                handover: Some(
+                    OID4VPHandover::compute(
+                        interaction_data.client_id.as_str().trim_end_matches('/'),
+                        response_uri.as_str().trim_end_matches('/'),
+                        verifier_nonce,
+                        mdoc_generated_nonce,
+                    )
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+                ),
                 device_engagement_bytes: None,
                 e_reader_key_bytes: None,
             })

@@ -173,12 +173,10 @@ impl MdocFormatter {
         let session_transcript = SessionTranscript {
             device_engagement_bytes: None,
             e_reader_key_bytes: None,
-            handover: Some(OID4VPHandover::compute(
-                &client_id,
-                response_uri,
-                &nonce,
-                mdoc_generated_nonce,
-            )),
+            handover: Some(
+                OID4VPHandover::compute(&client_id, response_uri, &nonce, mdoc_generated_nonce)
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+            ),
         };
 
         Ok((session_transcript, Some(nonce)))
