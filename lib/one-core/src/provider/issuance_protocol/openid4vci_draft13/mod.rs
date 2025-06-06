@@ -23,7 +23,9 @@ use super::{
 };
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
-use crate::config::core_config::{CoreConfig, DatatypeType, DidType as ConfigDidType};
+use crate::config::core_config::{
+    CoreConfig, DatatypeType, DidType as ConfigDidType, RevocationType,
+};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -254,18 +256,27 @@ impl OpenID4VCI13 {
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
     }
 
-    async fn process_revocation_method(
+    async fn prepare_issuer_revocation_data(
         &self,
         credential: &mut Credential,
         credential_schema: &CredentialSchema,
         revocation_method: &Arc<dyn RevocationMethod>,
     ) -> Result<Option<CredentialAdditionalData>, IssuanceProtocolError> {
-        if credential_schema.revocation_method != StatusListType::BitstringStatusList.to_string()
-            && credential_schema.revocation_method != StatusListType::TokenStatusList.to_string()
-        {
-            // TODO ONE-5920: Early exit to avoid mandating issuer did for MSO MDOC suspension. Clean up, once certificates are properly supported for TokenStatusList as well.
-            return Ok(None);
-        }
+        let revocation_type = self
+            .config
+            .revocation
+            .get_fields(&credential_schema.revocation_method)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .r#type;
+
+        match revocation_type {
+            RevocationType::None
+            | RevocationType::MdocMsoUpdateSuspension
+            | RevocationType::Lvvc => return Ok(None),
+            RevocationType::BitstringStatusList | RevocationType::TokenStatusList => {
+                // continue processing
+            }
+        };
 
         let issuer_identifier =
             credential
@@ -285,10 +296,7 @@ impl OpenID4VCI13 {
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
-        let credential_data = if credential_schema.revocation_method
-            == StatusListType::BitstringStatusList.to_string()
-        {
+        let credential_data = if revocation_type == RevocationType::BitstringStatusList {
             let crate::provider::revocation::bitstring_status_list::Params { format } =
                 convert_params(
                     revocation_method
@@ -347,8 +355,7 @@ impl OpenID4VCI13 {
                 ),
                 credentials_by_issuer_identifier,
             })
-        } else if credential_schema.revocation_method == StatusListType::TokenStatusList.to_string()
-        {
+        } else if revocation_type == RevocationType::TokenStatusList {
             let token_status_list::Params { format } = convert_params(
                 revocation_method
                     .get_params()
@@ -987,12 +994,10 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 credential_schema.revocation_method
             )))?;
 
-        let mut credential_additional_data = None;
-        if credential_schema.revocation_method != "NONE" {
-            credential_additional_data = self
-                .process_revocation_method(&mut credential, &credential_schema, &revocation_method)
-                .await?;
-        }
+        let credential_additional_data = self
+            .prepare_issuer_revocation_data(&mut credential, &credential_schema, &revocation_method)
+            .await?;
+
         let (update, status) = revocation_method
             .add_issued_credential(&credential, credential_additional_data)
             .await

@@ -175,12 +175,6 @@ impl RevocationMethod for TokenStatusList {
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
-        let IssuerDetails::Did(issuer_did) = issuer_details else {
-            return Err(RevocationError::ValidationError(
-                "issuer did is missing".to_string(),
-            ));
-        };
-
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
                 "Invalid credential status type: {}",
@@ -221,12 +215,17 @@ impl RevocationMethod for TokenStatusList {
             key_role: KeyRole::AssertionMethod,
             certificate_validator: self.certificate_validator.clone(),
         });
-        let jwt: Jwt<TokenStatusListContent> = Jwt::build_from_token(
-            &response_content,
-            Some(&key_verification),
-            Some(issuer_did.clone()),
-        )
-        .await?;
+
+        // TODO: ONE-6158 validate issuer certificate/CA of status-list is trusted
+
+        let issuer_did = if let IssuerDetails::Did(issuer_did) = issuer_details {
+            Some(issuer_did.to_owned())
+        } else {
+            None
+        };
+
+        let jwt: Jwt<TokenStatusListContent> =
+            Jwt::build_from_token(&response_content, Some(&key_verification), issuer_did).await?;
 
         Ok(util::extract_state_from_token(
             &jwt.payload.custom.status_list,

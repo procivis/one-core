@@ -126,21 +126,35 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                     header.algorithm
                 )))?;
 
-            let did = payload
+            let issuer_did = payload
                 .issuer
                 .as_ref()
-                .map(|did| did.parse().context("did parsing error"))
+                .map(|did| did.parse::<DidValue>().context("did parsing error"))
                 .transpose()
                 .map_err(|e| FormatterError::Failed(e.to_string()))?
-                .or(issuer_did)
-                .ok_or(FormatterError::Failed("missing did value".to_string()))?;
-            let params = PublicKeySource::Did {
-                did: Cow::Owned(did),
-                key_id: header.key_id.as_deref(),
+                .or(issuer_did);
+
+            let public_key_source = match (issuer_did, &header.x5c) {
+                (Some(issuer_did), None) => PublicKeySource::Did {
+                    did: Cow::Owned(issuer_did),
+                    key_id: header.key_id.as_deref(),
+                },
+                (None, Some(x5c)) => PublicKeySource::X5c { x5c },
+                (Some(_), Some(_)) => {
+                    return Err(FormatterError::CouldNotVerify(
+                        "x5c specified together with issuer did".to_string(),
+                    ));
+                }
+                (None, None) => {
+                    return Err(FormatterError::CouldNotVerify(
+                        "Missing public key information for JWT".to_string(),
+                    ));
+                }
             };
+
             verification
                 .verify(
-                    params,
+                    public_key_source,
                     algorithm.algorithm_type(),
                     unverified_jwt.as_bytes(),
                     &signature,

@@ -8,7 +8,9 @@ use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
+use crate::config::core_config::{
+    CoreConfig, DatatypeType, Fields, FormatType, Params, RevocationType,
+};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -754,6 +756,18 @@ fn dummy_config() -> CoreConfig {
         },
     );
 
+    config.revocation.insert(
+        "NONE".to_string(),
+        Fields {
+            r#type: RevocationType::None,
+            display: "display".into(),
+            order: None,
+            enabled: None,
+            capabilities: None,
+            params: None,
+        },
+    );
+
     config
 }
 
@@ -801,7 +815,7 @@ fn dummy_credential() -> Credential {
             external_schema: false,
             name: "schema".to_string(),
             format: "JWT".to_string(),
-            revocation_method: "revocation method".to_string(),
+            revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,

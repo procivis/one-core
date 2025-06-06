@@ -20,12 +20,12 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::IdentifierRelations;
+use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::provider::credential_formatter::model::IssuerDetails;
+use crate::provider::credential_formatter::model::{CertificateDetails, IssuerDetails};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
 use crate::provider::revocation::model::{
@@ -717,6 +717,10 @@ impl CredentialService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -850,15 +854,46 @@ impl CredentialService {
                 credential_schema.revocation_method.clone(),
             ))?;
 
-        let issuer_did = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "issuer_identifier is None".to_string(),
-            ))?
-            .did
-            .to_owned()
-            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+        let issuer_identifier =
+            credential
+                .issuer_identifier
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "issuer_identifier is None".to_string(),
+                ))?;
+
+        let issuer_details = match issuer_identifier.r#type {
+            IdentifierType::Did => {
+                let issuer_did = issuer_identifier
+                    .did
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+
+                IssuerDetails::Did(issuer_did.did.clone())
+            }
+            IdentifierType::Certificate => {
+                let certificate = issuer_identifier
+                    .certificates
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "issuer certificates is None".to_string(),
+                    ))?
+                    .first()
+                    .ok_or(ServiceError::MappingError(
+                        "issuer certificate is missing".to_string(),
+                    ))?
+                    .to_owned();
+
+                IssuerDetails::Certificate(CertificateDetails {
+                    chain: certificate.chain,
+                    fingerprint: certificate.fingerprint,
+                    expiry: certificate.expiry_date,
+                })
+            }
+            _ => {
+                return Err(BusinessLogicError::IncompatibleIssuanceIdentifier.into());
+            }
+        };
 
         let credential_data_by_role = match credential.role {
             CredentialRole::Holder => {
@@ -872,7 +907,7 @@ impl CredentialService {
             match revocation_method
                 .check_credential_revocation_status(
                     &status,
-                    &IssuerDetails::Did(issuer_did.did.clone()),
+                    &issuer_details,
                     credential_data_by_role.to_owned(),
                     force_refresh,
                 )
