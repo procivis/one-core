@@ -68,6 +68,7 @@ fn get_supported_client_id_scheme_for_identifier(
             ClientIdScheme::Did,
             ClientIdScheme::VerifierAttestation,
             ClientIdScheme::RedirectUri,
+            ClientIdScheme::X509SanDns, // TODO ONE-5919: Remove once did:mdl is removed
         ],
         IdentifierType::Certificate => vec![ClientIdScheme::X509SanDns],
     }
