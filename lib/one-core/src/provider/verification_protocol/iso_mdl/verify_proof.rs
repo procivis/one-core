@@ -5,7 +5,8 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
 
 use super::common::to_cbor;
 use crate::common_mapper::{
-    DidRole, NESTED_CLAIM_MARKER, extracted_credential_to_model, get_or_create_did_and_identifier,
+    DidRole, NESTED_CLAIM_MARKER, extracted_credential_to_model,
+    get_or_create_certificate_identifier, get_or_create_did_and_identifier,
 };
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
@@ -21,6 +22,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
@@ -239,7 +241,7 @@ fn extract_matching_requested_schema(
                                 let required_key = &required_claim_schema.schema.key;
 
                                 namespace == required_key // requesting a whole namespace
-                                ||
+                                    ||
                                     // or requesting a single element
                                     element_value.as_object().is_some_and(|value| {
                                         value.keys().any(|key| {
@@ -307,6 +309,8 @@ pub(crate) async fn accept_proof(
     did_method_provider: &dyn DidMethodProvider,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
+    certificate_validator: &dyn CertificateValidator,
+    certificate_repository: &dyn CertificateRepository,
 ) -> Result<(), ServiceError> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof schema is None".to_string(),
@@ -404,21 +408,32 @@ pub(crate) async fn accept_proof(
             .first()
             .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
 
-        let IssuerDetails::Did(ref issuer_did) = first_claim.credential.issuer else {
-            return Err(ServiceError::MappingError(
-                "issuer did is missing".to_string(),
-            ));
+        let issuer_identifier = match &first_claim.credential.issuer {
+            IssuerDetails::Did(issuer_did) => {
+                let (_, identifier) = get_or_create_did_and_identifier(
+                    did_method_provider,
+                    did_repository,
+                    identifier_repository,
+                    &proof_schema.organisation,
+                    issuer_did,
+                    DidRole::Issuer,
+                )
+                .await?;
+                identifier
+            }
+            IssuerDetails::Certificate(details) => {
+                let (_, identifier) = get_or_create_certificate_identifier(
+                    certificate_repository,
+                    certificate_validator,
+                    identifier_repository,
+                    &proof_schema.organisation,
+                    details.chain.clone(),
+                    details.fingerprint.clone(),
+                )
+                .await?;
+                identifier
+            }
         };
-
-        let (_, issuer_identifier) = get_or_create_did_and_identifier(
-            did_method_provider,
-            did_repository,
-            identifier_repository,
-            &proof_schema.organisation,
-            issuer_did,
-            DidRole::Issuer,
-        )
-        .await?;
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas =
