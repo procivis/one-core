@@ -1425,13 +1425,24 @@ async fn get_discovery_and_issuer_metadata(
             .map_err(IssuanceProtocolError::Transport)
     }
 
-    let oicd_discovery = fetch(
-        client,
-        format!("{credential_issuer_endpoint}/.well-known/openid-configuration"),
-    );
+    let append_url_path = |path: &str| {
+        let mut openid_configuration_url = credential_issuer_endpoint.to_owned();
+        openid_configuration_url
+            .path_segments_mut()
+            .map_err(|_| {
+                IssuanceProtocolError::Failed(format!(
+                    "Invalid credential_issuer_endpoint URL: {credential_issuer_endpoint}",
+                ))
+            })?
+            .extend(path.split("/"));
+
+        Ok(openid_configuration_url.to_string())
+    };
+
+    let oicd_discovery = fetch(client, append_url_path(".well-known/openid-configuration")?);
     let issuer_metadata = fetch(
         client,
-        format!("{credential_issuer_endpoint}/.well-known/openid-credential-issuer"),
+        append_url_path(".well-known/openid-credential-issuer")?,
     );
     tokio::try_join!(oicd_discovery, issuer_metadata)
 }
