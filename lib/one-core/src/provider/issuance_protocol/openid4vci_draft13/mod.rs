@@ -213,8 +213,8 @@ impl OpenID4VCI13 {
         latest_state: &CredentialStateEnum,
         credential_schema: &CredentialSchema,
     ) -> Result<(), IssuanceProtocolError> {
-        match (latest_state, credential_schema.format.as_str()) {
-            (CredentialStateEnum::Accepted, "MDOC") => {
+        match (latest_state, &credential_schema.schema_type) {
+            (CredentialStateEnum::Accepted, CredentialSchemaType::Mdoc) => {
                 let mdoc_validity_credential = self
                     .validity_credential_repository
                     .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
@@ -226,14 +226,14 @@ impl OpenID4VCI13 {
                         ))
                     })?;
 
-                let can_be_updated_at =
-                    mdoc_validity_credential.created_date + self.mso_minimum_refresh_time()?;
+                let can_be_updated_at = mdoc_validity_credential.created_date
+                    + self.mso_minimum_refresh_time(&credential_schema.format)?;
 
                 if can_be_updated_at > OffsetDateTime::now_utc() {
                     return Err(IssuanceProtocolError::RefreshTooSoon);
                 }
             }
-            (CredentialStateEnum::Suspended, "MDOC") => {
+            (CredentialStateEnum::Suspended, CredentialSchemaType::Mdoc) => {
                 return Err(IssuanceProtocolError::Suspended);
             }
             (CredentialStateEnum::Offered, _) => {}
@@ -247,10 +247,10 @@ impl OpenID4VCI13 {
         Ok(())
     }
 
-    fn mso_minimum_refresh_time(&self) -> Result<Duration, IssuanceProtocolError> {
+    fn mso_minimum_refresh_time(&self, format: &str) -> Result<Duration, IssuanceProtocolError> {
         self.config
             .format
-            .get::<mdoc_formatter::Params>("MDOC")
+            .get::<mdoc_formatter::Params>(format)
             .map(|p| p.mso_minimum_refresh_time)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
     }

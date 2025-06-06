@@ -5,14 +5,16 @@ use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
+use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
     OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
     OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
-    OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
+    OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
+    OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
@@ -298,6 +300,26 @@ pub(crate) async fn oid4vci_draft13_create_credential(
             (
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO::from(error)),
+            )
+                .into_response()
+        }
+        Err(ServiceError::IssuanceProtocolError(IssuanceProtocolError::RefreshTooSoon)) => {
+            tracing::info!("Holder tried refreshing credential too soon");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
+        Err(ServiceError::IssuanceProtocolError(IssuanceProtocolError::Suspended)) => {
+            tracing::info!("Holder tried refreshing a suspended credential");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
             )
                 .into_response()
         }
