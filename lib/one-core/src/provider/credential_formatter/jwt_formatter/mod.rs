@@ -7,36 +7,28 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use model::{EnvelopedContent, VP, VPContent, VcClaim, VerifiableCredential};
 use serde::Deserialize;
-use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
-use url::Url;
 use uuid::Uuid;
 
 use super::jwt::Jwt;
 use super::jwt::model::JWTPayload;
-use super::model::{CredentialData, Features, HolderBindingCtx, Issuer};
-use super::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use super::model::{CredentialData, Features, HolderBindingCtx};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::identifier;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt_formatter::model::{
-    TokenStatusListContent, TokenStatusListSubject,
-};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx,
     FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 #[cfg(test)]
@@ -44,6 +36,7 @@ mod test;
 
 mod mapper;
 pub(crate) mod model;
+mod status_list;
 
 pub struct JWTFormatter {
     params: Params,
@@ -122,24 +115,6 @@ impl CredentialFormatter for JWTFormatter {
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
-        if issuer_identifier.r#type != identifier::IdentifierType::Did {
-            return Err(FormatterError::Failed(
-                "Unsupported identifier type".to_string(),
-            ));
-        }
-
-        let Some(issuer_did) = issuer_identifier.did.as_ref() else {
-            return Err(FormatterError::Failed(
-                "Identifier of type DID has no related DID".to_string(),
-            ));
-        };
-
-        let issuer = Issuer::Url(
-            issuer_identifier
-                .as_url()
-                .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?,
-        );
-
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)
@@ -151,68 +126,25 @@ impl CredentialFormatter for JWTFormatter {
 
         match status_list_type {
             StatusListType::BitstringStatusList => {
-                let revocation_list_url: Url = revocation_list_url.parse().map_err(|_| {
-                    FormatterError::Failed("Invalid revocation list url".to_string())
-                })?;
-
-                let credential_id = revocation_list_url.clone();
-
-                let credential_subject_id = {
-                    let mut url = revocation_list_url;
-                    url.set_fragment(Some("list"));
-                    url
-                };
-
-                let credential_subject = VcdmCredentialSubject::new([
-                    ("type", json!("BitstringStatusList")),
-                    ("statusPurpose", json!(status_purpose)),
-                    ("encodedList", json!(encoded_list)),
-                ])
-                .with_id(credential_subject_id.clone());
-
-                let vc = VcdmCredential::new_v2(issuer, credential_subject)
-                    .add_type("BitstringStatusListCredential".to_string())
-                    .with_id(credential_id);
-
-                let vc_claim = VcClaim { vc: vc.into() };
-
-                let payload = JWTPayload {
-                    issuer: Some(issuer_did.did.to_string()),
-                    subject: Some(credential_subject_id.to_string()),
-                    custom: vc_claim,
-                    issued_at: Some(OffsetDateTime::now_utc()),
-                    ..Default::default()
-                };
-
-                let jwt = Jwt::new("JWT".to_owned(), jose_alg, None, None, payload);
-
-                jwt.tokenize(Some(auth_fn)).await
+                self.format_bitstring_status_list(
+                    revocation_list_url,
+                    issuer_identifier,
+                    encoded_list,
+                    jose_alg,
+                    auth_fn,
+                    status_purpose,
+                )
+                .await
             }
             StatusListType::TokenStatusList => {
-                let content = TokenStatusListContent {
-                    status_list: TokenStatusListSubject {
-                        bits: PREFERRED_ENTRY_SIZE,
-                        value: encoded_list,
-                    },
-                };
-
-                let payload = JWTPayload {
-                    issuer: Some(issuer_did.did.to_string()),
-                    subject: Some(revocation_list_url),
-                    custom: content,
-                    issued_at: Some(OffsetDateTime::now_utc()),
-                    ..Default::default()
-                };
-
-                let jwt = Jwt::new(
-                    "statuslist+jwt".to_owned(),
+                self.format_token_status_list(
+                    revocation_list_url,
+                    issuer_identifier,
+                    encoded_list,
                     jose_alg,
-                    auth_fn.get_key_id(),
-                    None,
-                    payload,
-                );
-
-                jwt.tokenize(Some(auth_fn)).await
+                    auth_fn,
+                )
+                .await
             }
         }
     }

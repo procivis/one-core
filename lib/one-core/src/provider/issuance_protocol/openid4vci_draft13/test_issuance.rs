@@ -109,7 +109,7 @@ async fn test_issuer_submit_succeeds() {
         });
 
     credential_repository
-        .expect_get_credentials_by_issuer_did_id()
+        .expect_get_credentials_by_issuer_identifier_id()
         .return_once(move |_, _| Ok(vec![credential]));
 
     credential_repository
@@ -313,7 +313,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         });
 
     credential_repository
-        .expect_get_credentials_by_issuer_did_id()
+        .expect_get_credentials_by_issuer_identifier_id()
         .return_once(move |_, _| Ok(vec![credential]));
 
     credential_repository
@@ -477,7 +477,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         });
 
     credential_repository
-        .expect_get_credentials_by_issuer_did_id()
+        .expect_get_credentials_by_issuer_identifier_id()
         .return_once(move |_, _| Ok(vec![credential]));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -659,7 +659,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         .return_once(move |_, _| Ok(Some(credential_copy)));
 
     credential_repository
-        .expect_get_credentials_by_issuer_did_id()
+        .expect_get_credentials_by_issuer_identifier_id()
         .return_once(move |_, _| Ok(vec![credential]));
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();

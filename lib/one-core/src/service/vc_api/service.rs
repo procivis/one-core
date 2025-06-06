@@ -159,11 +159,11 @@ impl VCAPIService {
                 issuer_identifier,
                 RevocationListPurpose::Revocation,
                 &*self.revocation_list_repository,
-                &self.key_provider,
+                &*self.key_provider,
+                &*self.did_method_provider,
                 &self.key_algorithm_provider,
                 &self.base_url,
                 &*formatter,
-                key_id.to_owned(),
                 &StatusListType::BitstringStatusList,
                 &crate::model::revocation_list::StatusListCredentialFormat::JsonLdClassic,
             )

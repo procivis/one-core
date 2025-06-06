@@ -25,7 +25,7 @@ use sea_orm::{
     PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
     Unchanged,
 };
-use shared_types::{CredentialId, CredentialSchemaId, DidId, IdentifierId};
+use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -465,25 +465,6 @@ impl CredentialRepository for CredentialProvider {
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
             .filter(credential::Column::InteractionId.eq(interaction_id.to_string()))
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        self.credentials_to_repository(credentials, relations).await
-    }
-
-    async fn get_credentials_by_issuer_did_id(
-        &self,
-        issuer_did_id: &DidId,
-        relations: &CredentialRelations,
-    ) -> Result<Vec<Credential>, DataLayerError> {
-        let credentials = credential::Entity::find()
-            .join(
-                JoinType::LeftJoin,
-                credential::Relation::IssuerIdentifier.def(),
-            )
-            .filter(identifier::Column::DidId.eq(issuer_did_id))
-            .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

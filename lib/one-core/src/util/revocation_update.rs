@@ -6,7 +6,6 @@ use uuid::Uuid;
 
 use super::params::convert_params;
 use crate::model::credential::{Credential, CredentialRelations};
-use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
@@ -21,12 +20,10 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::bitstring_status_list::{
-    Params, format_status_list_credential, generate_bitstring_from_credentials,
-    purpose_to_credential_state_enum,
+    self, Params, generate_bitstring_from_credentials, purpose_to_credential_state_enum,
 };
-use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{CredentialAdditionalData, RevocationUpdate};
-use crate::provider::revocation::token_status_list::generate_token_from_credentials;
+use crate::provider::revocation::token_status_list::{self, generate_token_from_credentials};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -39,7 +36,7 @@ pub(crate) async fn generate_credential_additional_data(
     revocation_list_repository: &dyn RevocationListRepository,
     revocation_method: &dyn RevocationMethod,
     formatter_provider: &dyn CredentialFormatterProvider,
-    key_provider: &Arc<dyn KeyProvider>,
+    key_provider: &dyn KeyProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
     core_base_url: &Option<String>,
@@ -69,21 +66,6 @@ pub(crate) async fn generate_credential_additional_data(
                 "issuer_identifier is None".to_string(),
             ))?;
 
-    let issuer_did = issuer_identifier
-        .did
-        .as_ref()
-        .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
-
-    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
-
-    let Some(verification_method) =
-        did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
-    else {
-        return Err(ServiceError::Revocation(
-            RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod),
-        ));
-    };
-
     let credentials_by_issuer_identifier = convert_inner(
         credential_repository
             .get_credentials_by_issuer_identifier_id(
@@ -107,10 +89,10 @@ pub(crate) async fn generate_credential_additional_data(
         RevocationListPurpose::Revocation,
         revocation_list_repository,
         key_provider,
+        did_method_provider,
         key_algorithm_provider,
         core_base_url,
         &*formatter,
-        verification_method.id.clone(),
         &status_list_type,
         &params.format,
     )
@@ -124,10 +106,10 @@ pub(crate) async fn generate_credential_additional_data(
                 RevocationListPurpose::Suspension,
                 revocation_list_repository,
                 key_provider,
+                did_method_provider,
                 key_algorithm_provider,
                 core_base_url,
                 &*formatter,
-                verification_method.id.clone(),
                 &status_list_type,
                 &params.format,
             )
@@ -137,7 +119,7 @@ pub(crate) async fn generate_credential_additional_data(
     };
 
     Ok(Some(CredentialAdditionalData {
-        credentials_by_issuer_did: credentials_by_issuer_identifier,
+        credentials_by_issuer_identifier,
         revocation_list_id,
         suspension_list_id,
     }))
@@ -170,11 +152,11 @@ pub(crate) async fn get_or_create_revocation_list_id(
     issuer_identifier: Identifier,
     purpose: RevocationListPurpose,
     revocation_list_repository: &dyn RevocationListRepository,
-    key_provider: &Arc<dyn KeyProvider>,
+    key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
-    key_id: String,
     status_list_type: &StatusListType,
     revocation_credential_format: &StatusListCredentialFormat,
 ) -> Result<RevocationListId, ServiceError> {
@@ -187,8 +169,6 @@ pub(crate) async fn get_or_create_revocation_list_id(
         )
         .await?;
 
-    let credential_state = purpose_to_credential_state_enum(purpose.clone());
-
     Ok(match revocation_list {
         Some(value) => value.id,
         None => {
@@ -196,7 +176,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
                 StatusListType::BitstringStatusList => {
                     generate_bitstring_from_credentials(
                         credentials_by_issuer_did,
-                        credential_state,
+                        purpose_to_credential_state_enum(purpose.clone()),
                         None,
                     )
                     .await?
@@ -207,19 +187,35 @@ pub(crate) async fn get_or_create_revocation_list_id(
             };
 
             let revocation_list_id = Uuid::new_v4();
-            let list_credential = format_status_list_credential(
-                &revocation_list_id,
-                status_list_type.clone(),
-                &issuer_identifier,
-                encoded_list,
-                purpose.to_owned(),
-                key_provider,
-                key_algorithm_provider,
-                core_base_url,
-                formatter,
-                key_id,
-            )
-            .await?;
+            let list_credential = match status_list_type {
+                StatusListType::BitstringStatusList => {
+                    bitstring_status_list::format_status_list_credential(
+                        &revocation_list_id,
+                        &issuer_identifier,
+                        encoded_list,
+                        purpose.to_owned(),
+                        key_provider,
+                        did_method_provider,
+                        key_algorithm_provider,
+                        core_base_url,
+                        formatter,
+                    )
+                    .await?
+                }
+                StatusListType::TokenStatusList => {
+                    token_status_list::format_status_list_credential(
+                        &revocation_list_id,
+                        &issuer_identifier,
+                        encoded_list,
+                        key_provider,
+                        did_method_provider,
+                        key_algorithm_provider,
+                        core_base_url,
+                        formatter,
+                    )
+                    .await?
+                }
+            };
 
             let now = OffsetDateTime::now_utc();
             revocation_list_repository

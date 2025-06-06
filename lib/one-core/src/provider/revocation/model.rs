@@ -12,7 +12,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, DetailCrede
 pub type RevocationListId = Uuid;
 
 pub struct CredentialAdditionalData {
-    pub credentials_by_issuer_did: Vec<Credential>,
+    pub credentials_by_issuer_identifier: Vec<Credential>,
     pub revocation_list_id: RevocationListId,
     pub suspension_list_id: Option<RevocationListId>,
 }

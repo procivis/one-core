@@ -1,6 +1,6 @@
 //! Enumerates errors related to revocation method provider.
 
-use shared_types::{CredentialId, DidId};
+use shared_types::{CredentialId, IdentifierId};
 use thiserror::Error;
 
 use crate::model::credential::CredentialStateEnum;
@@ -26,8 +26,8 @@ pub enum RevocationError {
     KeyWithRoleNotFound(KeyRole),
     #[error("Mapping error: `{0}`")]
     MappingError(String),
-    #[error("Missing credential index `{0}` on revocation list for did id `{1}`")]
-    MissingCredentialIndexOnRevocationList(CredentialId, DidId),
+    #[error("Missing credential index `{0}` on revocation list for identifier id `{1}`")]
+    MissingCredentialIndexOnRevocationList(CredentialId, IdentifierId),
     #[error("Operation not supported: `{0}`")]
     OperationNotSupported(String),
     #[error("Validation error: `{0}`")]

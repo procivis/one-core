@@ -6,11 +6,11 @@ use std::sync::Arc;
 
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId};
+use shared_types::{CredentialId, IdentifierId};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{KeyFilter, KeyRole};
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -129,22 +129,18 @@ impl RevocationMethod for TokenStatusList {
             "additional_data is None".to_string(),
         ))?;
 
-        let issuer_did = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer identifier is None".to_string(),
-            ))?
-            .did
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer did is None".to_string(),
-            ))?;
+        let issuer_identifier =
+            credential
+                .issuer_identifier
+                .as_ref()
+                .ok_or(RevocationError::MappingError(
+                    "issuer identifier is None".to_string(),
+                ))?;
 
         let index_on_status_list = self.get_credential_index_on_revocation_list(
-            &data.credentials_by_issuer_did,
+            &data.credentials_by_issuer_identifier,
             &credential.id,
-            &issuer_did.id,
+            &issuer_identifier.id,
         )?;
 
         let revocation_info = vec![CredentialRevocationInfo {
@@ -266,14 +262,14 @@ impl TokenStatusList {
         &self,
         credentials_by_issuer_did: &[Credential],
         credential_id: &CredentialId,
-        issuer_did_id: &DidId,
+        issuer_identifier_id: &IdentifierId,
     ) -> Result<usize, RevocationError> {
         let index = credentials_by_issuer_did
             .iter()
             .position(|credential| credential.id == *credential_id)
             .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
                 *credential_id,
-                *issuer_did_id,
+                *issuer_identifier_id,
             ))?;
 
         Ok(index)
@@ -309,32 +305,8 @@ impl TokenStatusList {
                     "issuer identifier is None".to_string(),
                 ))?;
 
-        let issuer_did = issuer_identifier
-            .did
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer did is None".to_string(),
-            ))?
-            .clone();
-
-        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
-
-        let assertion_methods =
-            did_document
-                .assertion_method
-                .ok_or(RevocationError::MappingError(
-                    "Missing assertion_method keys".to_owned(),
-                ))?;
-
-        let issuer_jwk_key_id = assertion_methods
-            .first()
-            .ok_or(RevocationError::MappingError(
-                "Issuer has empty keys".to_owned(),
-            ))
-            .cloned()?;
-
         let encoded_list = generate_token_from_credentials(
-            &data.credentials_by_issuer_did,
+            &data.credentials_by_issuer_identifier,
             Some(TokenCredentialInfo {
                 credential_id: credential.id,
                 value: new_revocation_value,
@@ -344,13 +316,13 @@ impl TokenStatusList {
 
         let list_credential = format_status_list_credential(
             &list_id,
-            issuer_identifier.clone(),
+            issuer_identifier,
             encoded_list,
-            &self.key_provider,
+            &*self.key_provider,
+            &*self.did_method_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
             &*self.get_formatter_for_issuance()?,
-            issuer_jwk_key_id,
         )
         .await?;
 
@@ -364,7 +336,7 @@ impl TokenStatusList {
     }
 }
 
-pub fn create_credential_status(
+fn create_credential_status(
     core_base_url: &Option<String>,
     revocation_list_id: &RevocationListId,
     index_on_status_list: usize,
@@ -393,7 +365,7 @@ pub fn create_credential_status(
     })
 }
 
-pub fn credential_status_from_sdjwt_status(
+pub(crate) fn credential_status_from_sdjwt_status(
     sd_jwt_status: &Option<SdJwtVcStatus>,
 ) -> Vec<CredentialStatus> {
     match sd_jwt_status {
@@ -418,21 +390,21 @@ pub fn credential_status_from_sdjwt_status(
     }
 }
 
-pub struct TokenCredentialInfo {
+pub(crate) struct TokenCredentialInfo {
     pub credential_id: CredentialId,
     pub value: CredentialRevocationState,
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn format_status_list_credential(
+pub(crate) async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
-    issuer_identifier: Identifier,
+    issuer_identifier: &Identifier,
     encoded_list: String,
-    key_provider: &Arc<dyn KeyProvider>,
+    key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
-    key_id: String,
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
@@ -443,8 +415,26 @@ pub async fn format_status_list_credential(
             KeyRole::AssertionMethod,
         ))?;
 
+    let key_id = if issuer_identifier.r#type == IdentifierType::Did {
+        let issuer_did = issuer_identifier
+            .did
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer did is None".to_string(),
+            ))?
+            .clone();
+
+        Some(
+            did_method_provider
+                .get_verification_method_id_from_did_and_key(&issuer_did, key)
+                .await?,
+        )
+    } else {
+        None
+    };
+
     let auth_fn =
-        key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;
+        key_provider.get_signature_provider(key, key_id, key_algorithm_provider.clone())?;
 
     let algorithm = key
         .key_algorithm_type()
@@ -456,7 +446,7 @@ pub async fn format_status_list_credential(
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
-            &issuer_identifier,
+            issuer_identifier,
             encoded_list,
             algorithm,
             auth_fn,
@@ -468,7 +458,7 @@ pub async fn format_status_list_credential(
     Ok(status_list)
 }
 
-pub async fn generate_token_from_credentials(
+pub(crate) async fn generate_token_from_credentials(
     credentials_by_issuer_did: &[Credential],
     additionally_changed_credential: Option<TokenCredentialInfo>,
 ) -> Result<String, RevocationError> {
@@ -480,9 +470,8 @@ pub async fn generate_token_from_credentials(
                     return Ok(changed_credential.value.clone());
                 }
             }
-            let state = credential.state;
 
-            Ok(credential_state_into_revocation_state(state))
+            Ok(credential_state_into_revocation_state(credential.state))
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 
@@ -503,7 +492,7 @@ fn credential_state_into_revocation_state(
     }
 }
 
-pub fn get_revocation_list_url(
+fn get_revocation_list_url(
     revocation_list_id: &RevocationListId,
     core_base_url: &Option<String>,
 ) -> Result<String, RevocationError> {

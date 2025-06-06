@@ -8,7 +8,6 @@ use anyhow::Context;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use one_crypto::encryption::encrypt_string;
-use one_dto_mapper::convert_inner;
 use secrecy::ExposeSecret;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -276,31 +275,16 @@ impl OpenID4VCI13 {
                 .ok_or(IssuanceProtocolError::Failed(
                     "issuer_identifier is None".to_string(),
                 ))?;
-        let issuer_did = issuer_identifier
-            .did
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "issuer_did is None".to_string(),
-            ))?;
-        let did_document = self
-            .did_method_provider
-            .resolve(&issuer_did.did)
+
+        let credentials_by_issuer_identifier = self
+            .credential_repository
+            .get_credentials_by_issuer_identifier_id(
+                issuer_identifier.id,
+                &CredentialRelations::default(),
+            )
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        let key_id = did_document
-            .find_verification_method(None, Some(KeyRole::AssertionMethod))
-            .ok_or(IssuanceProtocolError::Failed(
-                "invalid issuer did".to_string(),
-            ))?
-            .id
-            .to_owned();
 
-        let credentials_by_issuer_did = convert_inner(
-            self.credential_repository
-                .get_credentials_by_issuer_did_id(&issuer_did.id, &CredentialRelations::default())
-                .await
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-        );
         // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
         let credential_data = if credential_schema.revocation_method
             == StatusListType::BitstringStatusList.to_string()
@@ -329,17 +313,16 @@ impl OpenID4VCI13 {
                 )))?;
 
             Some(CredentialAdditionalData {
-                credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
                 revocation_list_id: get_or_create_revocation_list_id(
-                    &credentials_by_issuer_did,
+                    &credentials_by_issuer_identifier,
                     issuer_identifier.clone(),
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
-                    &self.key_provider,
+                    &*self.key_provider,
+                    &*self.did_method_provider,
                     &self.key_algorithm_provider,
                     &self.base_url,
                     &*formatter,
-                    key_id.clone(),
                     &StatusListType::BitstringStatusList,
                     &format,
                 )
@@ -347,21 +330,22 @@ impl OpenID4VCI13 {
                 .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
                 suspension_list_id: Some(
                     get_or_create_revocation_list_id(
-                        &credentials_by_issuer_did,
+                        &credentials_by_issuer_identifier,
                         issuer_identifier,
                         RevocationListPurpose::Suspension,
                         &*self.revocation_list_repository,
-                        &self.key_provider,
+                        &*self.key_provider,
+                        &*self.did_method_provider,
                         &self.key_algorithm_provider,
                         &self.base_url,
                         &*formatter,
-                        key_id,
                         &StatusListType::BitstringStatusList,
                         &format,
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
                 ),
+                credentials_by_issuer_identifier,
             })
         } else if credential_schema.revocation_method == StatusListType::TokenStatusList.to_string()
         {
@@ -380,23 +364,23 @@ impl OpenID4VCI13 {
                 )))?;
 
             Some(CredentialAdditionalData {
-                credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
                 revocation_list_id: get_or_create_revocation_list_id(
-                    &credentials_by_issuer_did,
+                    &credentials_by_issuer_identifier,
                     issuer_identifier,
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
-                    &self.key_provider,
+                    &*self.key_provider,
+                    &*self.did_method_provider,
                     &self.key_algorithm_provider,
                     &self.base_url,
                     &*formatter,
-                    key_id.clone(),
                     &StatusListType::TokenStatusList,
                     &format,
                 )
                 .await
                 .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
                 suspension_list_id: None,
+                credentials_by_issuer_identifier,
             })
         } else {
             None
@@ -958,6 +942,10 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
                         ..Default::default()

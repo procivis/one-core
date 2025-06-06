@@ -575,6 +575,10 @@ impl CredentialService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
@@ -657,7 +661,7 @@ impl CredentialService {
                     &*self.revocation_list_repository,
                     &*revocation_method,
                     &*self.formatter_provider,
-                    &self.key_provider,
+                    &*self.key_provider,
                     &self.key_algorithm_provider,
                     &*self.did_method_provider,
                     &self.base_url,
