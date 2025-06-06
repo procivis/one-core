@@ -1,6 +1,6 @@
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::DidId;
+use shared_types::{DidId, IdentifierId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -16,7 +16,7 @@ pub struct Model {
     pub format: RevocationListFormat,
     pub r#type: String,
 
-    pub issuer_did_id: DidId,
+    pub issuer_identifier_id: IdentifierId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -24,13 +24,13 @@ pub enum Relation {
     #[sea_orm(has_many = "super::credential::Entity")]
     Credential,
     #[sea_orm(
-        belongs_to = "super::did::Entity",
-        from = "Column::IssuerDidId",
-        to = "super::did::Column::Id",
+        belongs_to = "super::identifier::Entity",
+        from = "Column::IssuerIdentifierId",
+        to = "super::identifier::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    Did,
+    Identifier,
 }
 
 impl Related<super::credential::Entity> for Entity {
@@ -41,7 +41,7 @@ impl Related<super::credential::Entity> for Entity {
 
 impl Related<super::did::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Did.def()
+        Relation::Identifier.def()
     }
 }
 

@@ -22,7 +22,7 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
@@ -130,7 +130,7 @@ impl CredentialFormatter for JsonLdBbsplus {
     async fn format_status_list(
         &self,
         revocation_list_url: String,
-        issuer_did: &Did,
+        issuer_identifier: &Identifier,
         encoded_list: String,
         _algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
@@ -148,11 +148,9 @@ impl CredentialFormatter for JsonLdBbsplus {
         }
 
         let issuer = Issuer::Url(
-            issuer_did
-                .did
-                .as_str()
-                .parse()
-                .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
+            issuer_identifier
+                .as_url()
+                .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?,
         );
 
         let credential_subject_id: Url =

@@ -49,7 +49,7 @@ use crate::config::core_config::{
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchemaType;
-use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -312,7 +312,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_status_list(
         &self,
         _revocation_list_url: String,
-        _issuer_did: &Did,
+        _issuer_identifier: &Identifier,
         _encoded_list: String,
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,

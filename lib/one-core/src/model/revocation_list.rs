@@ -3,7 +3,7 @@ use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::did::{Did, DidRelations};
+use crate::model::identifier::{Identifier, IdentifierRelations};
 
 pub type RevocationListId = Uuid;
 
@@ -18,12 +18,12 @@ pub struct RevocationList {
     pub purpose: RevocationListPurpose,
 
     // Relations:
-    pub issuer_did: Option<Did>,
+    pub issuer_identifier: Option<Identifier>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct RevocationListRelations {
-    pub issuer_did: Option<DidRelations>,
+    pub issuer_identifier: Option<IdentifierRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Display, Serialize)]

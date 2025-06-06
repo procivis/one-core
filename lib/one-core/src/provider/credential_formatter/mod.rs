@@ -6,7 +6,6 @@ use model::{
 };
 use shared_types::{CredentialSchemaId, DidValue};
 
-use crate::model::did::Did;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -18,6 +17,7 @@ pub use common::nest_claims;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::model::HolderBindingCtx;
 
 // Implementation
@@ -56,7 +56,7 @@ pub trait CredentialFormatter: Send + Sync {
     async fn format_status_list(
         &self,
         revocation_list_url: String,
-        issuer_did: &Did,
+        issuer_identifier: &Identifier,
         encoded_list: String,
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,

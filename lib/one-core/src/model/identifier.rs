@@ -3,15 +3,17 @@ use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, OrganisationId};
 use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
+use url::Url;
 
-use super::certificate::{Certificate, CertificateRelations};
+use super::certificate::{Certificate, CertificateRelations, CertificateState};
 use super::common::GetListResponse;
-use super::did::{Did, DidRelations, KeyRole};
+use super::did::{Did, DidRelations, KeyFilter, KeyRole};
 use super::key::{Key, KeyRelations};
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
 use crate::config;
+use crate::service::error::ServiceError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Identifier {
@@ -29,6 +31,43 @@ pub struct Identifier {
     pub did: Option<Did>,
     pub key: Option<Key>,
     pub certificates: Option<Vec<Certificate>>,
+}
+
+impl Identifier {
+    pub(crate) fn as_url(&self) -> Option<Url> {
+        match self.r#type {
+            IdentifierType::Did => self
+                .did
+                .as_ref()
+                .map(|did| did.did.as_str())
+                .map(Url::parse)
+                .and_then(Result::ok),
+            IdentifierType::Key | IdentifierType::Certificate => None,
+        }
+    }
+
+    pub(crate) fn find_matching_key(
+        &self,
+        filter: &KeyFilter,
+    ) -> Result<Option<&Key>, ServiceError> {
+        Ok(match self.r#type {
+            IdentifierType::Key => self.key.as_ref(),
+            IdentifierType::Did => self
+                .did
+                .as_ref()
+                .and_then(|did| did.find_first_matching_key(filter).transpose())
+                .transpose()?,
+            IdentifierType::Certificate => {
+                let Some(certificates) = self.certificates.as_ref() else {
+                    return Ok(None);
+                };
+                certificates
+                    .iter()
+                    .find(|c| c.state == CertificateState::Active && c.has_matching_key(filter))
+                    .and_then(|c| c.key.as_ref())
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug)]

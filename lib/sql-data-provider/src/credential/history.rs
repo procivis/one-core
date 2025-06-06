@@ -12,7 +12,7 @@ use one_core::model::interaction::InteractionId;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
-use shared_types::{CredentialId, DidId};
+use shared_types::{CredentialId, DidId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -150,6 +150,16 @@ impl CredentialRepository for CredentialHistoryDecorator {
     ) -> Result<Vec<Credential>, DataLayerError> {
         self.inner
             .get_credentials_by_issuer_did_id(issuer_did_id, relations)
+            .await
+    }
+
+    async fn get_credentials_by_issuer_identifier_id(
+        &self,
+        issuer_identifier_id: IdentifierId,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        self.inner
+            .get_credentials_by_issuer_identifier_id(issuer_identifier_id, relations)
             .await
     }
 

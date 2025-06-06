@@ -491,6 +491,21 @@ impl CredentialRepository for CredentialProvider {
         self.credentials_to_repository(credentials, relations).await
     }
 
+    async fn get_credentials_by_issuer_identifier_id(
+        &self,
+        issuer_identifier_id: IdentifierId,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        let credentials = credential::Entity::find()
+            .filter(credential::Column::IssuerIdentifierId.eq(issuer_identifier_id))
+            .order_by_asc(credential::Column::CreatedDate)
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        self.credentials_to_repository(credentials, relations).await
+    }
+
     async fn get_credential_list(
         &self,
         query_params: GetCredentialQuery,

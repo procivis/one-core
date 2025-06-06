@@ -11,7 +11,7 @@ use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{
     ActiveEnum, ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged,
 };
-use shared_types::DidId;
+use shared_types::IdentifierId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -26,21 +26,17 @@ impl RevocationListProvider {
         revocation_list: revocation_list::Model,
         relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError> {
-        let issuer_did = match relations.issuer_did.as_ref() {
-            None => None,
-            Some(relations) => {
-                let did_id = &revocation_list.issuer_did_id;
-                let did = self
-                    .did_repository
-                    .get_did(did_id, relations)
+        let issuer_identifier = match relations.issuer_identifier.as_ref() {
+            Some(relations) => Some(
+                self.identifier_repository
+                    .get(revocation_list.issuer_identifier_id, relations)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "revocation_list-did",
-                        id: did_id.to_string(),
-                    })?;
-
-                Some(did)
-            }
+                        relation: "revocation_list-identifier",
+                        id: revocation_list.issuer_identifier_id.to_string(),
+                    })?,
+            ),
+            None => None,
         };
 
         Ok(RevocationList {
@@ -49,7 +45,7 @@ impl RevocationListProvider {
             last_modified: revocation_list.last_modified,
             credentials: revocation_list.credentials,
             purpose: revocation_list.purpose.into(),
-            issuer_did,
+            issuer_identifier,
             format: revocation_list.format.into(),
             // TODO fix in ONE-3968
             r#type: match revocation_list.r#type.as_str() {
@@ -70,7 +66,9 @@ impl RevocationListRepository for RevocationListProvider {
         &self,
         request: RevocationList,
     ) -> Result<RevocationListId, DataLayerError> {
-        let issuer_did = request.issuer_did.ok_or(DataLayerError::MappingError)?;
+        let issuer_identifier = request
+            .issuer_identifier
+            .ok_or(DataLayerError::MappingError)?;
 
         revocation_list::ActiveModel {
             id: Set(request.id.to_string()),
@@ -78,7 +76,7 @@ impl RevocationListRepository for RevocationListProvider {
             last_modified: Set(request.last_modified),
             credentials: Set(request.credentials),
             purpose: Set(request.purpose.into()),
-            issuer_did_id: Set(issuer_did.id),
+            issuer_identifier_id: Set(issuer_identifier.id),
             format: Set(request.format.into()),
             r#type: Set(request.r#type.to_string()),
         }
@@ -111,9 +109,9 @@ impl RevocationListRepository for RevocationListProvider {
         }
     }
 
-    async fn get_revocation_by_issuer_did_id(
+    async fn get_revocation_by_issuer_identifier_id(
         &self,
-        issuer_did_id: &DidId,
+        issuer_identifier_id: IdentifierId,
         purpose: RevocationListPurpose,
         status_list_type: StatusListType,
         relations: &RevocationListRelations,
@@ -122,8 +120,8 @@ impl RevocationListRepository for RevocationListProvider {
 
         let revocation_list = revocation_list::Entity::find()
             .filter(
-                revocation_list::Column::IssuerDidId
-                    .eq(issuer_did_id)
+                revocation_list::Column::IssuerIdentifierId
+                    .eq(issuer_identifier_id)
                     .and(revocation_list::Column::Purpose.eq(purpose_as_db_type.into_value()))
                     .and(revocation_list::Column::Type.eq(status_list_type.to_string())),
             )

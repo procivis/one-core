@@ -1,4 +1,4 @@
-use shared_types::DidId;
+use shared_types::IdentifierId;
 
 use super::error::DataLayerError;
 use crate::model::revocation_list::{
@@ -18,13 +18,15 @@ pub trait RevocationListRepository: Send + Sync {
         id: &RevocationListId,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
-    async fn get_revocation_by_issuer_did_id(
+
+    async fn get_revocation_by_issuer_identifier_id(
         &self,
-        issuer_did_id: &DidId,
+        issuer_identifier_id: IdentifierId,
         purpose: RevocationListPurpose,
         status_list_type: StatusListType,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
+
     async fn update_credentials(
         &self,
         revocation_list_id: &RevocationListId,

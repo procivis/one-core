@@ -268,12 +268,15 @@ impl OpenID4VCI13 {
             return Ok(None);
         }
 
-        let issuer_did = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "issuer_identifier is None".to_string(),
-            ))?
+        let issuer_identifier =
+            credential
+                .issuer_identifier
+                .as_ref()
+                .cloned()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "issuer_identifier is None".to_string(),
+                ))?;
+        let issuer_did = issuer_identifier
             .did
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
@@ -329,7 +332,7 @@ impl OpenID4VCI13 {
                 credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
                 revocation_list_id: get_or_create_revocation_list_id(
                     &credentials_by_issuer_did,
-                    issuer_did,
+                    issuer_identifier.clone(),
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &self.key_provider,
@@ -345,7 +348,7 @@ impl OpenID4VCI13 {
                 suspension_list_id: Some(
                     get_or_create_revocation_list_id(
                         &credentials_by_issuer_did,
-                        issuer_did,
+                        issuer_identifier,
                         RevocationListPurpose::Suspension,
                         &*self.revocation_list_repository,
                         &self.key_provider,
@@ -380,7 +383,7 @@ impl OpenID4VCI13 {
                 credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
                 revocation_list_id: get_or_create_revocation_list_id(
                     &credentials_by_issuer_did,
-                    issuer_did,
+                    issuer_identifier,
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &self.key_provider,

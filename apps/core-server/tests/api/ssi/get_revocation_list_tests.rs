@@ -1,3 +1,6 @@
+use one_core::model::identifier::IdentifierType;
+
+use crate::fixtures::TestingIdentifierParams;
 use crate::utils::server::run_server;
 use crate::{fixtures, utils};
 
@@ -12,9 +15,19 @@ async fn test_get_revocation_list_success() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            r#type: Some(IdentifierType::Did),
+            did: Some(did),
+            ..Default::default()
+        }),
+    )
+    .await;
     let revocation_list = fixtures::create_revocation_list(
         &db_conn,
-        &did,
+        identifier,
         Some(status_list_credential_jwt.as_bytes()),
     )
     .await;

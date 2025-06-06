@@ -111,6 +111,9 @@ mod m20250526_112527_proof_verifier_certificate;
 mod m20250526_125848_add_certificate_id_to_credential;
 mod m20250528_101308_certificate_fingerprint;
 mod m20250602_054912_add_organization_id_to_certificate;
+mod m20250605_085443_add_identifier_id_field_to_revocation_list;
+mod m20250605_085900_populate_identifier_id_column_in_revocation_list;
+mod m20250605_092053_drop_column_issuer_did_id_in_revocation_list;
 mod m20250607_093448_history_optional_orgid;
 
 mod migrate_enum;
@@ -226,6 +229,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20250528_101308_certificate_fingerprint::Migration),
             Box::new(m20250602_054912_add_organization_id_to_certificate::Migration),
             Box::new(m20250607_093448_history_optional_orgid::Migration),
+            Box::new(m20250605_085443_add_identifier_id_field_to_revocation_list::Migration),
+            Box::new(m20250605_085900_populate_identifier_id_column_in_revocation_list::Migration),
+            Box::new(m20250605_092053_drop_column_issuer_did_id_in_revocation_list::Migration),
         ]
     }
 }

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::InteractionId;
 use one_core::model::key::Key;
@@ -125,14 +125,14 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         .db
         .revocation_lists
         .create(
-            &issuer_setup.issuer_did,
+            issuer_setup.issuer_identifier.clone(),
             RevocationListPurpose::Revocation,
             None,
             Some(StatusListType::TokenStatusList),
         )
         .await;
 
-    let issuer_did_id = issuer_setup.issuer_did.id;
+    let issuer_identifier_id = issuer_setup.issuer_identifier.id;
     let params = PostCredentialTestParams {
         revocation_method: Some("BITSTRINGSTATUSLIST"),
         use_kid_in_proof: true,
@@ -144,8 +144,8 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_did_id(
-                &issuer_did_id,
+            .get_revocation_by_issuer_identifier_id(
+                issuer_identifier_id,
                 RevocationListPurpose::Revocation,
                 StatusListType::BitstringStatusList,
                 &RevocationListRelations::default()
@@ -159,8 +159,8 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_did_id(
-                &issuer_did_id,
+            .get_revocation_by_issuer_identifier_id(
+                issuer_identifier_id,
                 RevocationListPurpose::Suspension,
                 StatusListType::BitstringStatusList,
                 &RevocationListRelations::default()
@@ -174,8 +174,8 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_did_id(
-                &issuer_did_id,
+            .get_revocation_by_issuer_identifier_id(
+                issuer_identifier_id,
                 RevocationListPurpose::Revocation,
                 StatusListType::TokenStatusList,
                 &RevocationListRelations::default()
@@ -212,7 +212,6 @@ struct TestIssuerSetup {
     context: TestContext,
     organisation: Organisation,
     key: Key,
-    issuer_did: Did,
     issuer_identifier: Identifier,
 }
 
@@ -267,7 +266,6 @@ async fn issuer_setup() -> TestIssuerSetup {
         context,
         organisation,
         key,
-        issuer_did,
         issuer_identifier,
     }
 }

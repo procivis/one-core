@@ -80,7 +80,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(identifier, RevocationListPurpose::Revocation, None, None)
         .await;
 
     // WHEN

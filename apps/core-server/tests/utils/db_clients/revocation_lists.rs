@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use one_core::model::did::Did;
+use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
     StatusListType,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::DidId;
+use shared_types::IdentifierId;
 use sql_data_provider::test_utilities::get_dummy_date;
 
 pub struct RevocationListsDB {
@@ -20,7 +20,7 @@ impl RevocationListsDB {
 
     pub async fn create(
         &self,
-        issuer_did: &Did,
+        issuer_identifier: Identifier,
         purpose: RevocationListPurpose,
         credentials: Option<&[u8]>,
         status_list_type: Option<StatusListType>,
@@ -31,7 +31,7 @@ impl RevocationListsDB {
             last_modified: get_dummy_date(),
             credentials: credentials.unwrap_or_default().to_owned(),
             purpose,
-            issuer_did: Some(issuer_did.to_owned()),
+            issuer_identifier: Some(issuer_identifier),
             format: StatusListCredentialFormat::Jwt,
             r#type: status_list_type.unwrap_or(StatusListType::BitstringStatusList),
         };
@@ -44,15 +44,20 @@ impl RevocationListsDB {
         revocation_list
     }
 
-    pub async fn get_revocation_by_issuer_did_id(
+    pub async fn get_revocation_by_issuer_identifier_id(
         &self,
-        issuer_did_id: &DidId,
+        issuer_identifier_id: IdentifierId,
         purpose: RevocationListPurpose,
         status_list_type: StatusListType,
         relations: &RevocationListRelations,
     ) -> Option<RevocationList> {
         self.repository
-            .get_revocation_by_issuer_did_id(issuer_did_id, purpose, status_list_type, relations)
+            .get_revocation_by_issuer_identifier_id(
+                issuer_identifier_id,
+                purpose,
+                status_list_type,
+                relations,
+            )
             .await
             .unwrap()
     }

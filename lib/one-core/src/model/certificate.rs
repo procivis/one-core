@@ -7,6 +7,7 @@ use super::key::{Key, KeyRelations};
 use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
 use super::organisation::OrganisationRelations;
+use crate::model::did::KeyFilter;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Certificate {
@@ -23,6 +24,15 @@ pub struct Certificate {
 
     // Relations:
     pub key: Option<Key>,
+}
+
+impl Certificate {
+    pub fn has_matching_key(&self, filter: &KeyFilter) -> bool {
+        self.key
+            .as_ref()
+            .map(|k| filter.matches_unrelated_key(k))
+            .unwrap_or(false)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

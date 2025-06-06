@@ -80,18 +80,21 @@ impl KeyFilter {
             .map(|role| *role == key.role)
             .unwrap_or(true);
 
-        let algorithm_match = self
-            .algorithms
+        let algorithm_match = self.matches_unrelated_key(&key.key);
+
+        role_match && algorithm_match
+    }
+
+    pub fn matches_unrelated_key(&self, key: &Key) -> bool {
+        self.algorithms
             .as_ref()
             .map(|algorithms| {
-                let Some(algorithm_type) = key.key.key_algorithm_type() else {
+                let Some(algorithm_type) = key.key_algorithm_type() else {
                     return false;
                 };
                 algorithms.contains(&algorithm_type)
             })
-            .unwrap_or(true);
-
-        role_match && algorithm_match
+            .unwrap_or(true)
     }
 }
 

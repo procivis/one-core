@@ -22,7 +22,8 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
+use crate::model::identifier;
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -114,19 +115,29 @@ impl CredentialFormatter for JWTFormatter {
     async fn format_status_list(
         &self,
         revocation_list_url: String,
-        issuer_did: &Did,
+        issuer_identifier: &Identifier,
         encoded_list: String,
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
+        if issuer_identifier.r#type != identifier::IdentifierType::Did {
+            return Err(FormatterError::Failed(
+                "Unsupported identifier type".to_string(),
+            ));
+        }
+
+        let Some(issuer_did) = issuer_identifier.did.as_ref() else {
+            return Err(FormatterError::Failed(
+                "Identifier of type DID has no related DID".to_string(),
+            ));
+        };
+
         let issuer = Issuer::Url(
-            issuer_did
-                .did
-                .as_str()
-                .parse()
-                .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
+            issuer_identifier
+                .as_url()
+                .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?,
         );
 
         let key_algorithm = self

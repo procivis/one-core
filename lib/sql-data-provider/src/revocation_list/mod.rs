@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use one_core::repository::did_repository::DidRepository;
+use one_core::repository::identifier_repository::IdentifierRepository;
 use sea_orm::DatabaseConnection;
 
 pub mod repository;
 
 pub(crate) struct RevocationListProvider {
     pub db: DatabaseConnection,
-    pub did_repository: Arc<dyn DidRepository>,
+    pub identifier_repository: Arc<dyn IdentifierRepository>,
 }

@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 use super::params::convert_params;
 use crate::model::credential::{Credential, CredentialRelations};
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::KeyRole;
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
     StatusListCredentialFormat, StatusListType,
@@ -59,12 +60,16 @@ pub(crate) async fn generate_credential_additional_data(
 
     let params: Params = convert_params(revocation_method.get_params()?)?;
 
-    let issuer_did = credential
-        .issuer_identifier
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "issuer_identifier is None".to_string(),
-        ))?
+    let issuer_identifier =
+        credential
+            .issuer_identifier
+            .as_ref()
+            .cloned()
+            .ok_or(ServiceError::MappingError(
+                "issuer_identifier is None".to_string(),
+            ))?;
+
+    let issuer_did = issuer_identifier
         .did
         .as_ref()
         .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
@@ -79,9 +84,12 @@ pub(crate) async fn generate_credential_additional_data(
         ));
     };
 
-    let credentials_by_issuer_did = convert_inner(
+    let credentials_by_issuer_identifier = convert_inner(
         credential_repository
-            .get_credentials_by_issuer_did_id(&issuer_did.id, &CredentialRelations::default())
+            .get_credentials_by_issuer_identifier_id(
+                issuer_identifier.id,
+                &CredentialRelations::default(),
+            )
             .await?,
     );
 
@@ -94,8 +102,8 @@ pub(crate) async fn generate_credential_additional_data(
         })?;
 
     let revocation_list_id = get_or_create_revocation_list_id(
-        &credentials_by_issuer_did,
-        issuer_did,
+        &credentials_by_issuer_identifier,
+        issuer_identifier.clone(),
         RevocationListPurpose::Revocation,
         revocation_list_repository,
         key_provider,
@@ -111,8 +119,8 @@ pub(crate) async fn generate_credential_additional_data(
     let suspension_list_id = match status_list_type {
         StatusListType::BitstringStatusList => Some(
             get_or_create_revocation_list_id(
-                &credentials_by_issuer_did,
-                issuer_did,
+                &credentials_by_issuer_identifier,
+                issuer_identifier,
                 RevocationListPurpose::Suspension,
                 revocation_list_repository,
                 key_provider,
@@ -129,7 +137,7 @@ pub(crate) async fn generate_credential_additional_data(
     };
 
     Ok(Some(CredentialAdditionalData {
-        credentials_by_issuer_did,
+        credentials_by_issuer_did: credentials_by_issuer_identifier,
         revocation_list_id,
         suspension_list_id,
     }))
@@ -159,7 +167,7 @@ pub(crate) async fn process_update(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn get_or_create_revocation_list_id(
     credentials_by_issuer_did: &[Credential],
-    issuer_did: &Did,
+    issuer_identifier: Identifier,
     purpose: RevocationListPurpose,
     revocation_list_repository: &dyn RevocationListRepository,
     key_provider: &Arc<dyn KeyProvider>,
@@ -171,8 +179,8 @@ pub(crate) async fn get_or_create_revocation_list_id(
     revocation_credential_format: &StatusListCredentialFormat,
 ) -> Result<RevocationListId, ServiceError> {
     let revocation_list = revocation_list_repository
-        .get_revocation_by_issuer_did_id(
-            &issuer_did.id,
+        .get_revocation_by_issuer_identifier_id(
+            issuer_identifier.id,
             purpose.to_owned(),
             status_list_type.to_owned(),
             &RevocationListRelations::default(),
@@ -202,7 +210,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
             let list_credential = format_status_list_credential(
                 &revocation_list_id,
                 status_list_type.clone(),
-                issuer_did,
+                &issuer_identifier,
                 encoded_list,
                 purpose.to_owned(),
                 key_provider,
@@ -221,7 +229,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
                     last_modified: now,
                     credentials: list_credential.into_bytes(),
                     purpose,
-                    issuer_did: Some(issuer_did.to_owned()),
+                    issuer_identifier: Some(issuer_identifier),
                     format: revocation_credential_format.to_owned(),
                     r#type: status_list_type.to_owned(),
                 })

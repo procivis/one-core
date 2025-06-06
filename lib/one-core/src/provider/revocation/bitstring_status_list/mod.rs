@@ -10,7 +10,8 @@ use shared_types::{CredentialId, DidId};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
@@ -406,12 +407,16 @@ impl BitstringStatusList {
             }
         };
 
-        let issuer_did = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer identifier is None".to_string(),
-            ))?
+        let issuer_identifier =
+            credential
+                .issuer_identifier
+                .as_ref()
+                .cloned()
+                .ok_or(RevocationError::MappingError(
+                    "issuer identifier is None".to_string(),
+                ))?;
+
+        let issuer_did = issuer_identifier
             .did
             .as_ref()
             .ok_or(RevocationError::MappingError(
@@ -457,7 +462,7 @@ impl BitstringStatusList {
         let list_credential = format_status_list_credential(
             &list_id,
             StatusListType::BitstringStatusList,
-            &issuer_did,
+            &issuer_identifier,
             encoded_list,
             purpose,
             &self.key_provider,
@@ -533,7 +538,7 @@ pub fn purpose_to_bitstring_status_purpose(purpose: RevocationListPurpose) -> St
 pub async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
     status_list_type: StatusListType,
-    issuer_did: &Did,
+    issuer_identifier: &Identifier,
     encoded_list: String,
     purpose: RevocationListPurpose,
     key_provider: &Arc<dyn KeyProvider>,
@@ -544,8 +549,8 @@ pub async fn format_status_list_credential(
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
-    let key = issuer_did
-        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
+    let key = issuer_identifier
+        .find_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
         .ok_or(RevocationError::KeyWithRoleNotFound(
             KeyRole::AssertionMethod,
@@ -554,16 +559,19 @@ pub async fn format_status_list_credential(
     let auth_fn =
         key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;
 
+    let algorithm_type = key
+        .key_algorithm_type()
+        .ok_or(FormatterError::CouldNotFormat(format!(
+            "Unsupported algorithm: {}",
+            key.key_type
+        )))?;
+
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
-            issuer_did,
+            issuer_identifier,
             encoded_list,
-            key.key_algorithm_type()
-                .ok_or(FormatterError::CouldNotFormat(format!(
-                    "Unsupported algorithm: {}",
-                    key.key_type
-                )))?,
+            algorithm_type,
             auth_fn,
             purpose_to_bitstring_status_purpose(purpose),
             status_list_type,

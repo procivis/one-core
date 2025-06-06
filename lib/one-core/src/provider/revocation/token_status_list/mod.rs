@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -300,12 +301,15 @@ impl TokenStatusList {
     ) -> Result<RevocationUpdate, RevocationError> {
         let list_id = data.revocation_list_id;
 
-        let issuer_did = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer identifier is None".to_string(),
-            ))?
+        let issuer_identifier =
+            credential
+                .issuer_identifier
+                .as_ref()
+                .ok_or(RevocationError::MappingError(
+                    "issuer identifier is None".to_string(),
+                ))?;
+
+        let issuer_did = issuer_identifier
             .did
             .as_ref()
             .ok_or(RevocationError::MappingError(
@@ -340,7 +344,7 @@ impl TokenStatusList {
 
         let list_credential = format_status_list_credential(
             &list_id,
-            &issuer_did,
+            issuer_identifier.clone(),
             encoded_list,
             &self.key_provider,
             &self.key_algorithm_provider,
@@ -422,7 +426,7 @@ pub struct TokenCredentialInfo {
 #[allow(clippy::too_many_arguments)]
 pub async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
-    issuer_did: &Did,
+    issuer_identifier: Identifier,
     encoded_list: String,
     key_provider: &Arc<dyn KeyProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
@@ -432,8 +436,8 @@ pub async fn format_status_list_credential(
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
-    let key = issuer_did
-        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
+    let key = issuer_identifier
+        .find_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
         .ok_or(RevocationError::KeyWithRoleNotFound(
             KeyRole::AssertionMethod,
@@ -452,7 +456,7 @@ pub async fn format_status_list_credential(
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
-            issuer_did,
+            &issuer_identifier,
             encoded_list,
             algorithm,
             auth_fn,

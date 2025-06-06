@@ -529,7 +529,12 @@ async fn test_run_task_holder_check_credential_status_with_no_params() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(
+            issuer_identifier,
+            RevocationListPurpose::Revocation,
+            None,
+            None,
+        )
         .await;
 
     Mock::given(method(Method::GET))
@@ -746,7 +751,12 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(
+            issuer_identifier,
+            RevocationListPurpose::Revocation,
+            None,
+            None,
+        )
         .await;
 
     let history_previous = context

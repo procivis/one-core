@@ -171,7 +171,7 @@ async fn test_issuer_submit_succeeds() {
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
-        .expect_get_revocation_by_issuer_did_id()
+        .expect_get_revocation_by_issuer_identifier_id()
         .with(
             always(),
             eq(RevocationListPurpose::Revocation),
@@ -185,13 +185,13 @@ async fn test_issuer_submit_succeeds() {
                 last_modified: get_dummy_date(),
                 credentials: vec![],
                 purpose: RevocationListPurpose::Revocation,
-                issuer_did: None,
+                issuer_identifier: None,
                 format: StatusListCredentialFormat::Jwt,
                 r#type: StatusListType::BitstringStatusList,
             }))
         });
     revocation_list_repository
-        .expect_get_revocation_by_issuer_did_id()
+        .expect_get_revocation_by_issuer_identifier_id()
         .with(
             always(),
             eq(RevocationListPurpose::Suspension),
@@ -205,7 +205,7 @@ async fn test_issuer_submit_succeeds() {
                 last_modified: get_dummy_date(),
                 credentials: vec![],
                 purpose: RevocationListPurpose::Suspension,
-                issuer_did: None,
+                issuer_identifier: None,
                 format: StatusListCredentialFormat::Jwt,
                 r#type: StatusListType::BitstringStatusList,
             }))
@@ -354,7 +354,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
-        .expect_get_revocation_by_issuer_did_id()
+        .expect_get_revocation_by_issuer_identifier_id()
         .with(
             always(),
             eq(RevocationListPurpose::Revocation),
@@ -368,13 +368,13 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 last_modified: get_dummy_date(),
                 credentials: vec![],
                 purpose: RevocationListPurpose::Revocation,
-                issuer_did: None,
+                issuer_identifier: None,
                 format: StatusListCredentialFormat::Jwt,
                 r#type: StatusListType::BitstringStatusList,
             }))
         });
     revocation_list_repository
-        .expect_get_revocation_by_issuer_did_id()
+        .expect_get_revocation_by_issuer_identifier_id()
         .with(
             always(),
             eq(RevocationListPurpose::Suspension),
@@ -388,7 +388,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 last_modified: get_dummy_date(),
                 credentials: vec![],
                 purpose: RevocationListPurpose::Suspension,
-                issuer_did: None,
+                issuer_identifier: None,
                 format: StatusListCredentialFormat::Jwt,
                 r#type: StatusListType::BitstringStatusList,
             }))
@@ -513,7 +513,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
-        .expect_get_revocation_by_issuer_did_id()
+        .expect_get_revocation_by_issuer_identifier_id()
         .with(
             always(),
             eq(RevocationListPurpose::Revocation),
@@ -527,13 +527,13 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 last_modified: get_dummy_date(),
                 credentials: vec![],
                 purpose: RevocationListPurpose::Revocation,
-                issuer_did: None,
+                issuer_identifier: None,
                 format: StatusListCredentialFormat::Jwt,
                 r#type: StatusListType::BitstringStatusList,
             }))
         });
     revocation_list_repository
-        .expect_get_revocation_by_issuer_did_id()
+        .expect_get_revocation_by_issuer_identifier_id()
         .with(
             always(),
             eq(RevocationListPurpose::Suspension),
@@ -547,7 +547,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 last_modified: get_dummy_date(),
                 credentials: vec![],
                 purpose: RevocationListPurpose::Suspension,
-                issuer_did: None,
+                issuer_identifier: None,
                 format: StatusListCredentialFormat::Jwt,
                 r#type: StatusListType::BitstringStatusList,
             }))

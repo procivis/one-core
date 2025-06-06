@@ -27,7 +27,7 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -102,7 +102,7 @@ impl CredentialFormatter for JsonLdClassic {
     async fn format_status_list(
         &self,
         revocation_list_url: String,
-        issuer_did: &Did,
+        issuer_identifier: &Identifier,
         encoded_list: String,
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
@@ -116,13 +116,10 @@ impl CredentialFormatter for JsonLdClassic {
             ));
         }
 
-        let issuer = Issuer::Url(
-            issuer_did
-                .did
-                .as_str()
-                .parse()
-                .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
-        );
+        let issuer = issuer_identifier
+            .as_url()
+            .map(Issuer::Url)
+            .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?;
 
         let credential_subject_id: Url =
             format!("{revocation_list_url}#list").parse().map_err(|_| {

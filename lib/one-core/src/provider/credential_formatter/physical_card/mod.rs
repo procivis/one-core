@@ -13,7 +13,7 @@ use crate::config::core_config::{
     VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
@@ -51,7 +51,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
     async fn format_status_list(
         &self,
         _revocation_list_url: String,
-        _issuer_did: &Did,
+        _issuer_identifier: &Identifier,
         _encoded_list: String,
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,

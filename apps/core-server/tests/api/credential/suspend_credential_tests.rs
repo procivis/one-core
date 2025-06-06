@@ -18,7 +18,8 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 #[tokio::test]
 async fn test_suspend_credential_with_bitstring_status_list_success() {
     // GIVEN
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -43,7 +44,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(identifier, RevocationListPurpose::Revocation, None, None)
         .await;
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
     let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
@@ -173,7 +174,7 @@ async fn test_suspend_credential_with_lvvc_success() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(identifier, RevocationListPurpose::Revocation, None, None)
         .await;
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
     let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
@@ -197,7 +198,8 @@ async fn test_suspend_credential_with_lvvc_success() {
 #[tokio::test]
 async fn test_suspend_credential_with_none_fails() {
     // GIVEN
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -225,7 +227,7 @@ async fn test_suspend_credential_with_none_fails() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(identifier, RevocationListPurpose::Revocation, None, None)
         .await;
     // WHEN
     let resp = context.api.credentials.suspend(&credential.id, None).await;
@@ -238,7 +240,8 @@ async fn test_suspend_credential_with_none_fails() {
 #[tokio::test]
 async fn test_suspend_credential_fails_credential_deleted() {
     // GIVEN
-    let (context, organisation, issuer_did, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -266,7 +269,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
+        .create(identifier, RevocationListPurpose::Revocation, None, None)
         .await;
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
     // WHEN
