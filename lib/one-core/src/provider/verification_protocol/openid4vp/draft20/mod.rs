@@ -237,9 +237,12 @@ impl VerificationProtocol for OpenID4VP20HTTP {
 
         if schemes.contains(&ClientIdScheme::X509SanDns) {
             verifier_identifier_types.insert(IdentifierType::Certificate);
-
             // TODO: remove this when API tests are adapted and did:mdl is not used anymore. ONE-5918
             verifier_identifier_types.insert(IdentifierType::Did);
+        }
+
+        // TODO: remove this when API tests are adapted and did:mdl is not used anymore. ONE-5918
+        if *schemes == vec![ClientIdScheme::X509SanDns] {
             did_methods = vec![DidType::MDL];
         }
 

@@ -119,9 +119,9 @@ verificationProtocol:
       public:
         useRequestUri: true
         verifier:
-          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did]
+          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
         holder:
-          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
+          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -148,9 +148,9 @@ verificationProtocol:
       public:
         useRequestUri: true
         verifier:
-          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did]
+          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
         holder:
-          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did]
+          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
