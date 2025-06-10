@@ -1001,7 +1001,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Public key not matching key in core")]
     BR_0156,
 
-    #[strum(to_string = "Certificate not signed by MDOC")]
+    #[strum(to_string = "Certificate not signed by expected mdoc CA")]
     BR_0157,
 
     #[strum(to_string = "Key storage not supported for proof request")]
