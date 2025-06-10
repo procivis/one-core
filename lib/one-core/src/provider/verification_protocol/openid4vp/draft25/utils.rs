@@ -22,7 +22,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
     OpenID4VPHolderInteractionDataVerifierCertificate, OpenID4VpPresentationFormat,
 };
-use crate::provider::verification_protocol::openid4vp::validator::validate_against_redirect_uris;
+use crate::provider::verification_protocol::openid4vp::validator::{
+    validate_against_redirect_uris, validate_san_dns_matching_client_id,
+};
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::util::key_verification::KeyVerification;
 use crate::util::x509::{is_dns_name_matching, x5c_into_pem_chain};
@@ -83,6 +85,9 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             &request_token.signature,
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    // x509 SAN must match client_id
+    validate_san_dns_matching_client_id(&attributes, &client_id)?;
 
     // The response_uri must match client_id
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-5.7-12.2.1
