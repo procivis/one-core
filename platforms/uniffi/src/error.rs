@@ -3,9 +3,8 @@ use one_core::provider::key_storage::error::KeyStorageError;
 use one_core::service::error::ErrorCodeMixin;
 use one_crypto::SignerError;
 use one_dto_mapper::{From, Into};
+use strum::EnumMessage;
 use thiserror::Error;
-
-use super::error_code::ErrorCode;
 
 #[derive(Debug, Error)]
 pub(crate) enum SDKError {
@@ -79,8 +78,8 @@ impl<T: ErrorCodeMixin + std::error::Error> From<T> for ErrorResponseBindingDTO 
         let cause = Cause::with_message_from_error(&error);
 
         ErrorResponseBindingDTO {
-            code: ErrorCode::from(code).to_string(),
-            message: code.to_string(),
+            code: Into::<&'static str>::into(code).to_string(),
+            message: code.get_message().unwrap_or_default().to_string(),
             cause: Some(cause),
         }
     }

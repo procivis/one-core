@@ -93,7 +93,6 @@ use crate::error::{BindingError, SDKError};
 mod binding;
 mod did_config;
 mod error;
-mod error_code;
 mod utils;
 
 uniffi::setup_scaffolding!();

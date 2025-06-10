@@ -8,13 +8,13 @@ use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
 use one_core::service::error::{
-    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, ErrorCode, MissingProviderError, ServiceError, ValidationError,
 };
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
+use super::error::{Cause, ErrorResponseRestDTO};
 use crate::router::AppState;
 
 #[derive(utoipa::IntoResponses)]
@@ -34,7 +34,7 @@ pub enum ErrorResponse {
 impl ErrorResponse {
     pub fn for_panic(panic_msg: String) -> Self {
         Self::ServerError(ErrorResponseRestDTO {
-            code: ErrorCode::BR_0000,
+            code: ErrorCode::BR_0000.into(),
             message: panic_msg,
             cause: Some(Cause {
                 message: "Panic".to_string(),

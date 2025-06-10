@@ -3,13 +3,14 @@ use one_core::model::list_query::{ListPagination, ListQuery, ListSorting};
 use one_core::service::error::{ErrorCodeMixin, ServiceError};
 use one_dto_mapper::convert_inner;
 use serde::Deserialize;
+use strum::EnumMessage;
 use utoipa::openapi::path::ParameterIn;
 use utoipa::openapi::schema::ArrayItems;
 use utoipa::openapi::{RefOr, Schema};
 use utoipa::{IntoParams, ToSchema};
 
 use super::common::SortDirection;
-use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
+use super::error::{Cause, ErrorResponseRestDTO};
 use crate::dto::common::ListQueryParamsRest;
 
 impl<FilterRest, SortableColumnRest, SortableColumn, Filter, IncludeRest, Include>
@@ -96,8 +97,8 @@ impl From<&ServiceError> for ErrorResponseRestDTO {
         let cause = Cause::with_message_from_error(error);
 
         ErrorResponseRestDTO {
-            code: ErrorCode::from(code),
-            message: code.to_string(),
+            code: code.into(),
+            message: code.get_message().unwrap_or_default().to_string(),
             cause: Some(cause),
         }
     }

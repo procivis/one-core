@@ -73,7 +73,6 @@ use crate::binding::trust_entity::{
     ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
 };
 use crate::error::ErrorResponseBindingDTO;
-use crate::error_code::ErrorCode;
 use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
 impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
@@ -289,7 +288,7 @@ impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
             },
             HistoryMetadataResponse::ErrorMetadata(value) => Self::ErrorMetadata {
                 value: HistoryErrorMetadataBindingDTO {
-                    error_code: ErrorCode::from(value.error_code).to_string(),
+                    error_code: Into::<&'static str>::into(value.error_code).to_string(),
                     message: value.message,
                 },
             },

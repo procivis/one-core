@@ -1,4 +1,4 @@
-use one_core::service::history::dto::HistoryResponseDTO;
+use one_core::service::history::dto::{HistoryErrorMetadataDTO, HistoryResponseDTO};
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -12,7 +12,6 @@ use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
-use crate::dto::error::ErrorCode;
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
@@ -91,11 +90,19 @@ pub struct UnexportableEntitiesResponseRestDTO {
     pub total_dids: u64,
 }
 
-#[derive(Serialize, ToSchema, From)]
-#[from("one_core::service::history::dto::HistoryErrorMetadataDTO")]
+#[derive(Serialize, ToSchema)]
 pub struct HistoryErrorMetadataRestDTO {
-    pub error_code: ErrorCode,
+    pub error_code: &'static str,
     pub message: String,
+}
+
+impl From<HistoryErrorMetadataDTO> for HistoryErrorMetadataRestDTO {
+    fn from(value: HistoryErrorMetadataDTO) -> Self {
+        Self {
+            error_code: value.error_code.into(),
+            message: value.message,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
