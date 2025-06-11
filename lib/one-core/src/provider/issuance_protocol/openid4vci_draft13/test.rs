@@ -11,7 +11,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::CoreConfig;
@@ -55,7 +55,9 @@ use crate::repository::validity_credential_repository::MockValidityCredentialRep
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::service::storage_proxy::MockStorageProxy;
-use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation, get_dummy_date};
+use crate::service::test_utilities::{
+    dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
+};
 
 #[derive(Default)]
 struct TestInputs {
@@ -350,7 +352,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
 }
 
 #[tokio::test]
-async fn test_holder_accept_expired_credential_fails() {
+async fn test_holder_accept_credential_success() {
     let mock_server = MockServer::start().await;
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     let mut storage_access = MockStorageProxy::default();
@@ -363,6 +365,7 @@ async fn test_holder_accept_expired_credential_fails() {
             issuer_url: mock_server.uri(),
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
             grants: Some(OpenID4VCIGrants {
                 code: OpenID4VCIGrant {
                     pre_authorized_code: "code".to_string(),
@@ -409,9 +412,192 @@ async fn test_holder_accept_expired_credential_fails() {
         .and(path("/credential"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                "credential": "credential"
+                "credential": "credential",
+                "notification_id": "notification_id"
             }
         )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notification"))
+        .and(body_json(json!({
+            "notification_id": "notification_id",
+            "event": "credential_accepted"
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    formatter_provider
+        .expect_get_formatter()
+        .with(predicate::eq("JWT"))
+        .returning(move |_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_get_leeway().returning(|| 1000);
+
+            formatter
+                .expect_extract_credentials()
+                .returning(move |_, _, _, _| {
+                    Ok(DetailCredential {
+                        id: None,
+                        valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
+                        valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+                        update_at: None,
+                        invalid_before: None,
+                        issuer: IssuerDetails::Did(dummy_did().did),
+                        subject: None,
+                        claims: CredentialSubject {
+                            id: None,
+                            claims: HashMap::new(),
+                        },
+                        status: vec![],
+                        credential_schema: None,
+                    })
+                });
+
+            Some(Arc::new(formatter))
+        });
+
+    storage_access
+        .expect_update_interaction()
+        .returning(|_| Ok(()));
+
+    storage_access
+        .expect_get_did_by_value()
+        .returning(|_, _| Ok(Some(dummy_did())));
+
+    let identifier = dummy_identifier();
+    storage_access.expect_get_identifier_for_did().returning({
+        let identifier = identifier.clone();
+        move |_| Ok(identifier.clone())
+    });
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        ..Default::default()
+    });
+
+    let result = openid_provider
+        .holder_accept_credential(
+            &credential,
+            &dummy_did(),
+            &dummy_key(),
+            None,
+            "vc+sd-jwt",
+            &storage_access,
+            None,
+        )
+        .await
+        .unwrap();
+
+    let issuer_response = result.result;
+    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+
+    let update_credential = result.update_credential.unwrap();
+    assert_eq!(update_credential.0, credential.id);
+    assert_eq!(
+        update_credential.1.issuer_identifier_id.unwrap(),
+        identifier.id
+    );
+}
+
+#[tokio::test]
+async fn test_holder_accept_expired_credential_fails() {
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut storage_access = MockStorageProxy::default();
+    let mut key_provider = MockKeyProvider::default();
+
+    let credential = {
+        let mut credential = generic_credential();
+
+        let interaction_data = HolderInteractionData {
+            issuer_url: mock_server.uri(),
+            credential_endpoint: format!("{}/credential", mock_server.uri()),
+            token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+            grants: Some(OpenID4VCIGrants {
+                code: OpenID4VCIGrant {
+                    pre_authorized_code: "code".to_string(),
+                    tx_code: None,
+                },
+            }),
+            access_token: None,
+            access_token_expires_at: None,
+            refresh_token: None,
+            nonce: None,
+            refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
+        };
+
+        credential.interaction = Some(Interaction {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            host: Some(mock_server.uri().parse().unwrap()),
+            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+            organisation: None,
+        });
+
+        credential
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                   "access_token": "321",
+                   "token_type": "bearer",
+                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                   "refresh_token": "321",
+                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential": "credential",
+                "notification_id": "notification_id"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notification"))
+        .and(body_json(json!({
+            "notification_id": "notification_id",
+            "event": "credential_failure",
+            "event_description": "Issuance protocol failure: `Validation error: `Expired``"
+        })))
+        .respond_with(ResponseTemplate::new(204))
         .expect(1)
         .mount(&mock_server)
         .await;

@@ -34,6 +34,8 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub token_endpoint: Option<String>,
     #[serde(default)]
+    pub notification_endpoint: Option<String>,
+    #[serde(default)]
     pub grants: Option<OpenID4VCIGrants>,
     #[serde(default)]
     pub access_token: Option<Vec<u8>>,

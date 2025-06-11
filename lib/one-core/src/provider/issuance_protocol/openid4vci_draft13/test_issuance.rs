@@ -256,7 +256,9 @@ async fn test_issuer_submit_succeeds() {
             format!("{}#0", dummy_did().did),
         )
         .await;
+
     assert!(result.is_ok());
+    assert!(result.unwrap().notification_id.is_some());
 }
 
 fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credential {
