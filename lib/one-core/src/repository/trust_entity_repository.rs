@@ -1,4 +1,4 @@
-use shared_types::{DidId, TrustAnchorId, TrustEntityId};
+use shared_types::{TrustAnchorId, TrustEntityId};
 
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
 use crate::repository::error::DataLayerError;
@@ -9,11 +9,14 @@ use crate::service::trust_entity::dto::{GetTrustEntitiesResponseDTO, ListTrustEn
 pub trait TrustEntityRepository: Send + Sync {
     async fn create(&self, entity: TrustEntity) -> Result<TrustEntityId, DataLayerError>;
 
-    async fn get_by_did_id(&self, did_id: DidId) -> Result<Option<TrustEntity>, DataLayerError>;
-
-    async fn get_by_did_id_and_trust_anchor_id(
+    async fn get_by_entity_key(
         &self,
-        did_id: DidId,
+        entity_key: String,
+    ) -> Result<Option<TrustEntity>, DataLayerError>;
+
+    async fn get_by_entity_key_and_trust_anchor_id(
+        &self,
+        entity_key: String,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Option<TrustEntity>, DataLayerError>;
 

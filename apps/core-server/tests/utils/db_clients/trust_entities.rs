@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::did::Did;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use one_core::model::trust_entity::{
-    TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityState,
+    TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityState, TrustEntityType,
 };
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use shared_types::TrustEntityId;
@@ -31,6 +31,7 @@ impl TrustEntityDB {
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deactivated_at: None,
             name: name.into(),
             logo: Some("Logo".to_owned()),
             website: Some("Website".to_owned()),
@@ -39,7 +40,10 @@ impl TrustEntityDB {
             role,
             state,
             trust_anchor: Some(trust_anchor),
-            did: Some(did),
+            entity_key: did.did.to_string(),
+            r#type: TrustEntityType::Did,
+            content: None,
+            organisation: did.organisation,
         };
 
         self.repository.create(trust_entity.clone()).await.unwrap();

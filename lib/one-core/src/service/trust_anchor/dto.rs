@@ -1,6 +1,6 @@
 use one_dto_mapper::{From, Into};
 use serde::Deserialize;
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::{DidValue, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -8,7 +8,6 @@ use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{TrustEntityRole, TrustEntityState};
-use crate::service::did::dto::DidListItemResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustAnchorRequestDTO {
@@ -57,7 +56,7 @@ pub struct GetTrustAnchorEntityListResponseDTO {
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
 
-    pub did: DidListItemResponseDTO,
+    pub did: Option<DidValue>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

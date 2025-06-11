@@ -341,7 +341,7 @@ pub(crate) struct GetTrustEntityResponseRestDTO {
     pub role: TrustEntityRoleRest,
     pub state: TrustEntityStateRest,
 
-    pub did: DidValue,
+    pub did: Option<DidValue>,
 }
 
 #[skip_serializing_none]

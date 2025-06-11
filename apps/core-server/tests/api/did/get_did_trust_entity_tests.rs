@@ -113,7 +113,7 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
     let body = resp.json_value().await;
     body["id"].assert_eq(&entity.id);
     body["name"].assert_eq(&entity.name);
-    body["did"]["id"].assert_eq(&entity.did.unwrap().id);
+    body["did"]["did"].assert_eq(&entity.entity_key);
 }
 
 #[tokio::test]

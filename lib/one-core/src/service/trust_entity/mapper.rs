@@ -9,7 +9,9 @@ use super::dto::{
 };
 use crate::model::did::Did;
 use crate::model::trust_anchor::TrustAnchor;
-use crate::model::trust_entity::{TrustEntity, TrustEntityState, UpdateTrustEntityRequest};
+use crate::model::trust_entity::{
+    TrustEntity, TrustEntityState, TrustEntityType, UpdateTrustEntityRequest,
+};
 use crate::provider::trust_management::model::TrustEntityByDid;
 use crate::service::error::{ServiceError, ValidationError};
 
@@ -25,6 +27,7 @@ pub(super) fn trust_entity_from_request(
         id,
         created_date: now,
         last_modified: now,
+        deactivated_at: None,
         name: request.name,
         logo: convert_inner(request.logo),
         website: request.website,
@@ -32,8 +35,11 @@ pub(super) fn trust_entity_from_request(
         privacy_url: request.privacy_url,
         role: request.role,
         state: TrustEntityState::Active,
+        r#type: TrustEntityType::Did,
+        entity_key: did.did.to_string(),
         trust_anchor: Some(trust_anchor),
-        did: Some(did),
+        content: None,
+        organisation: did.organisation,
     }
 }
 
@@ -49,6 +55,7 @@ pub(super) fn trust_entity_from_did_request(
         id,
         created_date: now,
         last_modified: now,
+        deactivated_at: None,
         name: request.name,
         logo: convert_inner(request.logo),
         website: request.website,
@@ -56,8 +63,11 @@ pub(super) fn trust_entity_from_did_request(
         privacy_url: request.privacy_url,
         role: request.role,
         state: TrustEntityState::Active,
+        r#type: TrustEntityType::Did,
+        entity_key: did.did.to_string(),
         trust_anchor: Some(trust_anchor),
-        did: Some(did),
+        content: None,
+        organisation: did.organisation,
     }
 }
 
@@ -65,10 +75,6 @@ impl TryFrom<TrustEntity> for GetTrustEntityResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: TrustEntity) -> Result<Self, Self::Error> {
-        let did = value.did.ok_or(ServiceError::MappingError(format!(
-            "missing did for trust entity {}",
-            value.id
-        )))?;
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -87,11 +93,8 @@ impl TryFrom<TrustEntity> for GetTrustEntityResponseDTO {
                     value.id
                 )))?,
             state: value.state,
-            organisation_id: did
-                .organisation
-                .as_ref()
-                .map(|organisation| organisation.id),
-            did: did.into(),
+            organisation_id: value.organisation.map(|organisation| organisation.id),
+            did: None,
         })
     }
 }
@@ -119,7 +122,7 @@ pub(super) fn get_detail_trust_entity_response(
             .organisation
             .as_ref()
             .map(|organisation| organisation.id),
-        did: did.into(),
+        did: Some(did.into()),
     })
 }
 
@@ -196,7 +199,7 @@ pub(super) fn trust_entity_from_partial_and_did_and_anchor(
         privacy_url: trust_entity.privacy_url,
         role: trust_entity.role,
         state: trust_entity.state,
-        did: did.into(),
+        did: Some(did.into()),
         trust_anchor: trust_anchor.into(),
     })
 }

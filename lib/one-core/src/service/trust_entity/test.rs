@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::model::did::{Did, DidType};
 use crate::model::trust_anchor::TrustAnchor;
-use crate::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState};
+use crate::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -20,7 +20,7 @@ use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::service::test_utilities::get_dummy_date;
+use crate::service::test_utilities::{dummy_did, get_dummy_date};
 use crate::service::trust_entity::TrustEntityService;
 use crate::service::trust_entity::dto::CreateTrustEntityRequestDTO;
 
@@ -86,6 +86,7 @@ fn generic_trust_entity(id: TrustEntityId) -> TrustEntity {
         id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        deactivated_at: None,
         name: "generic trust entity".to_string(),
         logo: None,
         website: None,
@@ -93,8 +94,11 @@ fn generic_trust_entity(id: TrustEntityId) -> TrustEntity {
         privacy_url: None,
         role: TrustEntityRole::Issuer,
         state: TrustEntityState::Active,
+        r#type: TrustEntityType::Did,
+        entity_key: dummy_did().did.to_string(),
+        content: None,
         trust_anchor: None,
-        did: None,
+        organisation: None,
     }
 }
 
@@ -117,8 +121,8 @@ async fn test_create_trust_entity_success() {
 
     let mut trust_entity_repository = MockTrustEntityRepository::default();
     trust_entity_repository
-        .expect_get_by_did_id_and_trust_anchor_id()
-        .with(eq(did_id), eq(trust_anchor_id))
+        .expect_get_by_entity_key_and_trust_anchor_id()
+        .with(eq(generic_did(did_id).did.to_string()), eq(trust_anchor_id))
         .times(1)
         .return_once(|_, _| Ok(None));
     trust_entity_repository
@@ -170,14 +174,14 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
 
     let mut trust_entity_repository = MockTrustEntityRepository::default();
     trust_entity_repository
-        .expect_get_by_did_id_and_trust_anchor_id()
-        .with(eq(did_id), eq(trust_anchor_id))
+        .expect_get_by_entity_key_and_trust_anchor_id()
+        .with(eq(generic_did(did_id).did.to_string()), eq(trust_anchor_id))
         .times(1)
         .return_once(|_, _| Ok(None))
         .in_sequence(&mut seq);
     trust_entity_repository
-        .expect_get_by_did_id_and_trust_anchor_id()
-        .with(eq(did_id), eq(trust_anchor_id))
+        .expect_get_by_entity_key_and_trust_anchor_id()
+        .with(eq(generic_did(did_id).did.to_string()), eq(trust_anchor_id))
         .times(1)
         .return_once(|_, _| Ok(Some(generic_trust_entity(Uuid::new_v4().into()))))
         .in_sequence(&mut seq);

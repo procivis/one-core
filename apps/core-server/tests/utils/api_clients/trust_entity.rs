@@ -5,7 +5,7 @@ use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use one_core::model::did::Did;
 use one_core::model::trust_anchor::TrustAnchor;
 use serde_json::json;
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 
 use super::{HttpClient, Response};
 
@@ -13,10 +13,12 @@ pub struct TrustEntitiesApi {
     client: HttpClient,
 }
 
+#[derive(Default)]
 pub struct ListFilters {
     pub role: Option<TrustEntityRoleRest>,
     pub anchor_id: Option<TrustAnchorId>,
     pub name: Option<String>,
+    pub did_id: Option<DidId>,
 }
 
 impl TrustEntitiesApi {
@@ -64,6 +66,7 @@ impl TrustEntitiesApi {
             role,
             name,
             anchor_id,
+            did_id,
         } = filters;
 
         let mut url = format!("/api/trust-entity/v1?pageSize=20&page={page}");
@@ -83,6 +86,10 @@ impl TrustEntitiesApi {
 
         if let Some(anchor_id) = anchor_id {
             url += &format!("&trustAnchorId={anchor_id}")
+        }
+
+        if let Some(did_id) = did_id {
+            url += &format!("&didId={did_id}")
         }
 
         self.client.get(&url).await

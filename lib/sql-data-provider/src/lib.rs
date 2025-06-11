@@ -212,7 +212,7 @@ impl DataLayer {
         let trust_entity_repository = Arc::new(TrustEntityProvider {
             db: db.clone(),
             trust_anchor_repository: trust_anchor_repository.clone(),
-            did_repository: did_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
         let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
             inner: trust_entity_repository,

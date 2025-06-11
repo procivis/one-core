@@ -68,8 +68,7 @@ async fn test_list_trust_entities() {
             0,
             ListFilters {
                 role: Some(TrustEntityRoleRest::Issuer),
-                anchor_id: None,
-                name: None,
+                ..Default::default()
             },
         )
         .await;
@@ -174,8 +173,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
             0,
             ListFilters {
                 anchor_id: Some(ta.id),
-                role: None,
-                name: None,
+                ..Default::default()
             },
         )
         .await;
@@ -261,8 +259,8 @@ async fn test_list_trust_entities_find_by_name() {
             0,
             ListFilters {
                 role: Some(TrustEntityRoleRest::Issuer),
-                anchor_id: None,
                 name: Some("ent1".to_string()),
+                ..Default::default()
             },
         )
         .await;
@@ -281,6 +279,89 @@ async fn test_list_trust_entities_find_by_name() {
             entity2.id.to_string().as_str(),
         ]
         .contains(&entity["id"].as_str().unwrap())
+    }));
+}
+
+#[tokio::test]
+async fn test_list_trust_entities_find_by_did_id() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let ta = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    let entity1 = context
+        .db
+        .trust_entities
+        .create(
+            "ent11",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
+        .await;
+
+    let did2 = context
+        .db
+        .dids
+        .create(Some(organisation.clone()), TestingDidParams::default())
+        .await;
+    context
+        .db
+        .trust_entities
+        .create(
+            "ent12",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did2.clone(),
+        )
+        .await;
+
+    let did3 = context
+        .db
+        .dids
+        .create(Some(organisation.clone()), TestingDidParams::default())
+        .await;
+    context
+        .db
+        .trust_entities
+        .create(
+            "ent",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did3.clone(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .list(
+            0,
+            ListFilters {
+                role: Some(TrustEntityRoleRest::Issuer),
+                did_id: Some(did.id),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let body = resp.json_value().await;
+    assert_eq!(body["totalItems"], 1);
+    let values = body["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+
+    assert!(values.iter().all(|entity| {
+        [entity1.id.to_string().as_str()].contains(&entity["id"].as_str().unwrap())
     }));
 }
 

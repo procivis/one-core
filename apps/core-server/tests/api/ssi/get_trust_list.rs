@@ -83,10 +83,7 @@ async fn test_get_trust_list_success() {
             .into_iter()
             .map(|v| v.as_str().unwrap().to_owned())
             .collect::<HashSet<_>>(),
-        HashSet::from_iter([
-            entity_one.did.unwrap().did.to_string(),
-            entity_two.did.unwrap().did.to_string()
-        ])
+        HashSet::from_iter([entity_one.entity_key, entity_two.entity_key])
     );
 }
 

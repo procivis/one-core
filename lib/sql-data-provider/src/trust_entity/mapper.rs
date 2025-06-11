@@ -1,5 +1,6 @@
 use one_core::model::trust_entity::TrustEntity;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::error::DataLayerError::MappingError;
 use one_core::service::did::dto::DidListItemResponseDTO;
 use one_core::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 use one_core::service::trust_entity::dto::{
@@ -7,7 +8,6 @@ use one_core::service::trust_entity::dto::{
 };
 use sea_orm::IntoSimpleExpr;
 use sea_orm::sea_query::SimpleExpr;
-use shared_types::OrganisationId;
 
 use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole};
@@ -16,9 +16,25 @@ use crate::list_query_generic::{
 };
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
-impl From<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
-    fn from(val: TrustEntityListItemEntityModel) -> Self {
-        TrustEntitiesResponseItemDTO {
+impl TryFrom<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
+    type Error = DataLayerError;
+
+    fn try_from(val: TrustEntityListItemEntityModel) -> Result<Self, Self::Error> {
+        let did = if let Some(did_id) = val.did_id {
+            Some(DidListItemResponseDTO {
+                id: did_id,
+                created_date: val.did_created_date.ok_or(MappingError)?,
+                last_modified: val.did_last_modified.ok_or(MappingError)?,
+                name: val.did_name.ok_or(MappingError)?,
+                did: val.did.ok_or(MappingError)?,
+                did_type: val.did_type.ok_or(MappingError)?.into(),
+                did_method: val.did_method.ok_or(MappingError)?,
+                deactivated: val.did_deactivated.ok_or(MappingError)?,
+            })
+        } else {
+            None
+        };
+        Ok(TrustEntitiesResponseItemDTO {
             id: val.id,
             name: val.name,
             created_date: val.created_date,
@@ -40,17 +56,12 @@ impl From<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
                 is_publisher: val.trust_anchor_is_publisher,
                 publisher_reference: val.trust_anchor_publisher_reference,
             },
-            did: DidListItemResponseDTO {
-                id: val.did_id,
-                created_date: val.did_created_date,
-                last_modified: val.did_last_modified,
-                name: val.did_name,
-                did: val.did,
-                did_type: val.did_type.into(),
-                did_method: val.did_method,
-                deactivated: val.did_deactivated,
-            },
-        }
+            did,
+            entity_key: val.entity_key,
+            r#type: val.r#type.into(),
+            content: None,
+            organisation_id: val.organisation_id,
+        })
     }
 }
 
@@ -60,6 +71,7 @@ impl From<trust_entity::Model> for TrustEntity {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
+            deactivated_at: value.deactivated_at,
             name: value.name,
             logo: value
                 .logo
@@ -69,8 +81,11 @@ impl From<trust_entity::Model> for TrustEntity {
             privacy_url: value.privacy_url,
             role: value.role.into(),
             state: value.state.into(),
+            r#type: value.r#type.into(),
+            entity_key: value.entity_key,
+            content: value.content,
             trust_anchor: None,
-            did: None,
+            organisation: None,
         }
     }
 }
@@ -96,18 +111,10 @@ impl IntoFilterCondition for TrustEntityFilterValue {
                 get_equals_condition(trust_entity::Column::Role, TrustEntityRole::from(role))
             }
             Self::TrustAnchor(id) => get_equals_condition(trust_entity::Column::TrustAnchorId, id),
-            Self::DidId(id) => get_equals_condition(trust_entity::Column::DidId, id),
-            Self::OrganisationId(id) => get_equals_condition(did::Column::OrganisationId, id),
+            Self::DidId(id) => get_equals_condition(did::Column::Id, id),
+            Self::OrganisationId(id) => {
+                get_equals_condition(trust_entity::Column::OrganisationId, id)
+            }
         }
     }
-}
-
-pub fn trust_entity_to_organisation_id(
-    trust_entity: TrustEntity,
-) -> Result<OrganisationId, DataLayerError> {
-    trust_entity
-        .did
-        .and_then(|did| did.organisation)
-        .map(|organisation| organisation.id)
-        .ok_or(DataLayerError::MappingError)
 }

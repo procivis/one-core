@@ -18,7 +18,7 @@ use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatc
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
-use crate::model::trust_entity::{TrustEntity, TrustEntityRelations};
+use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityType};
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -64,7 +64,7 @@ impl TrustEntityService {
 
         if self
             .trust_entity_repository
-            .get_by_did_id_and_trust_anchor_id(did.id, trust_anchor.id)
+            .get_by_entity_key_and_trust_anchor_id(did.did.to_string(), trust_anchor.id)
             .await?
             .is_some()
         {
@@ -119,7 +119,7 @@ impl TrustEntityService {
 
         if self
             .trust_entity_repository
-            .get_by_did_id(did.id)
+            .get_by_entity_key(did.did.to_string())
             .await?
             .is_some()
         {
@@ -151,16 +151,30 @@ impl TrustEntityService {
                 id,
                 &TrustEntityRelations {
                     trust_anchor: Some(TrustAnchorRelations::default()),
-                    did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations {}),
-                        keys: None,
-                    }),
+                    organisation: Some(OrganisationRelations::default()),
                 },
             )
             .await?
             .ok_or(EntityNotFoundError::TrustEntity(id))?;
-
-        result.try_into()
+        let did = if result.r#type == TrustEntityType::Did {
+            let did_value = DidValue::from_did_url(&result.entity_key).map_err(|err| {
+                ServiceError::MappingError(format!(
+                    "Invalid trust entity entity_key of type DID: {err}"
+                ))
+            })?;
+            self.did_repository
+                .get_did_by_value(
+                    &did_value,
+                    Some(result.organisation.as_ref().map(|org| org.id)),
+                    &DidRelations::default(),
+                )
+                .await?
+        } else {
+            None
+        };
+        let mut result: GetTrustEntityResponseDTO = result.try_into()?;
+        result.did = did.map(Into::into);
+        Ok(result)
     }
 
     pub async fn publisher_get_trust_entity_for_did(
@@ -187,7 +201,7 @@ impl TrustEntityService {
 
         let result = self
             .trust_entity_repository
-            .get_by_did_id(did.id)
+            .get_by_entity_key(did.did.to_string())
             .await?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustEntity(did_id_as_uuid.into()),
@@ -268,7 +282,11 @@ impl TrustEntityService {
             .await?
             .ok_or(EntityNotFoundError::DidValue(did_value))?;
 
-        let Some(entity) = self.trust_entity_repository.get_by_did_id(did.id).await? else {
+        let Some(entity) = self
+            .trust_entity_repository
+            .get_by_entity_key(did.did.to_string())
+            .await?
+        else {
             return Err(BusinessLogicError::TrustEntityHasDuplicates.into());
         };
 

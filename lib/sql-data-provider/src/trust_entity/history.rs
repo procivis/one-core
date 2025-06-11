@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use one_core::model::did::DidRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::trust_entity::{
@@ -13,11 +12,9 @@ use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
     GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
-use shared_types::{DidId, HistoryId, TrustAnchorId, TrustEntityId};
+use shared_types::{HistoryId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use crate::trust_entity::mapper::trust_entity_to_organisation_id;
 
 pub struct TrustEntityHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
@@ -36,17 +33,20 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         Ok(trust_entity_id)
     }
 
-    async fn get_by_did_id(&self, did_id: DidId) -> Result<Option<TrustEntity>, DataLayerError> {
-        self.inner.get_by_did_id(did_id).await
+    async fn get_by_entity_key(
+        &self,
+        entity_key: String,
+    ) -> Result<Option<TrustEntity>, DataLayerError> {
+        self.inner.get_by_entity_key(entity_key).await
     }
 
-    async fn get_by_did_id_and_trust_anchor_id(
+    async fn get_by_entity_key_and_trust_anchor_id(
         &self,
-        did_id: DidId,
+        entity_key: String,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
         self.inner
-            .get_by_did_id_and_trust_anchor_id(did_id, trust_anchor_id)
+            .get_by_entity_key_and_trust_anchor_id(entity_key, trust_anchor_id)
             .await
     }
 
@@ -126,10 +126,7 @@ impl TrustEntityHistoryDecorator {
             .get(
                 id,
                 &TrustEntityRelations {
-                    did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
                 },
             )
@@ -156,7 +153,7 @@ impl TrustEntityHistoryDecorator {
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
-                organisation_id: trust_entity_to_organisation_id(trust_entity).ok(),
+                organisation_id: trust_entity.organisation.map(|o| o.id),
             })
             .await
     }
@@ -176,7 +173,7 @@ impl TrustEntityHistoryDecorator {
                 entity_id: Some(trust_entity_id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
-                organisation_id: trust_entity_to_organisation_id(entity).ok(),
+                organisation_id: entity.organisation.map(|o| o.id),
             })
             .await
     }

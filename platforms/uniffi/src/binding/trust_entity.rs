@@ -160,7 +160,8 @@ pub struct TrustEntitiesListItemResponseBindingDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleBindingEnum,
     pub trust_anchor: GetTrustAnchorResponseBindingDTO,
-    pub did: DidListItemBindingDTO,
+    #[from(with_fn = convert_inner)]
+    pub did: Option<DidListItemBindingDTO>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -251,7 +252,8 @@ pub struct GetTrustEntityResponseBindingDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleBindingEnum,
     pub trust_anchor: GetTrustAnchorResponseBindingDTO,
-    pub did: DidListItemBindingDTO,
+    #[from(with_fn = convert_inner)]
+    pub did: Option<DidListItemBindingDTO>,
     pub state: TrustEntityStateBindingEnum,
 }
 

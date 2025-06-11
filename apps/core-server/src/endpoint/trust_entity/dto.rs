@@ -82,7 +82,8 @@ pub struct GetTrustEntityResponseRestDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
-    pub did: DidListItemResponseRestDTO,
+    #[from(with_fn=convert_inner)]
+    pub did: Option<DidListItemResponseRestDTO>,
     pub state: TrustEntityStateRest,
 }
 
@@ -137,7 +138,8 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub trust_anchor: GetTrustAnchorResponseRestDTO,
-    pub did: DidListItemResponseRestDTO,
+    #[from(with_fn=convert_inner)]
+    pub did: Option<DidListItemResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]

@@ -40,7 +40,7 @@ async fn test_get_trust_entity_by_did_success() {
         .create(TestingTrustAnchorParams::default())
         .await;
 
-    // recreate did on server with no organsation linked
+    // recreate did on server with no organisation linked
     let did = context
         .db
         .dids

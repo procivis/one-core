@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
-use crate::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use crate::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::service::common_dto::{BoundedB64Image, KB};
 use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
@@ -75,7 +75,7 @@ pub struct GetTrustEntityResponseDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
-    pub did: DidListItemResponseDTO,
+    pub did: Option<DidListItemResponseDTO>,
     pub trust_anchor: GetTrustAnchorDetailResponseDTO,
 }
 
@@ -107,7 +107,11 @@ pub struct TrustEntitiesResponseItemDTO {
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
     pub trust_anchor: GetTrustAnchorDetailResponseDTO,
-    pub did: DidListItemResponseDTO,
+    pub did: Option<DidListItemResponseDTO>,
+    pub entity_key: String,
+    pub r#type: TrustEntityType,
+    pub content: Option<String>,
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

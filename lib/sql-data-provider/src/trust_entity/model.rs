@@ -1,9 +1,9 @@
 use sea_orm::FromQueryResult;
-use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, DidValue, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
 use crate::entity::did::DidType;
-use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState};
+use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 
 #[derive(FromQueryResult)]
 pub(super) struct TrustEntityListItemEntityModel {
@@ -19,6 +19,11 @@ pub(super) struct TrustEntityListItemEntityModel {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
+    pub entity_key: String,
+    pub r#type: TrustEntityType,
+    #[allow(unused)]
+    pub content: Option<Vec<u8>>,
+    pub organisation_id: Option<OrganisationId>,
 
     // Trust Anchor relation
     pub trust_anchor_id: TrustAnchorId,
@@ -30,12 +35,12 @@ pub(super) struct TrustEntityListItemEntityModel {
     pub trust_anchor_is_publisher: bool,
 
     // DID relation
-    pub did_id: DidId,
-    pub did: DidValue,
-    pub did_created_date: OffsetDateTime,
-    pub did_last_modified: OffsetDateTime,
-    pub did_name: String,
-    pub did_type: DidType,
-    pub did_method: String,
-    pub did_deactivated: bool,
+    pub did_id: Option<DidId>,
+    pub did: Option<DidValue>,
+    pub did_created_date: Option<OffsetDateTime>,
+    pub did_last_modified: Option<OffsetDateTime>,
+    pub did_name: Option<String>,
+    pub did_type: Option<DidType>,
+    pub did_method: Option<String>,
+    pub did_deactivated: Option<bool>,
 }
