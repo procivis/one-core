@@ -810,18 +810,25 @@ async fn test_create_credential_success() {
             .once()
             .return_once(move |_, _| Ok(vec![clone]));
 
+        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| {
+            .return_once(move |_, _| {
                 Ok(Some(dummy_interaction(
-                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    Some(interaction_id),
                     true,
                     None,
                     None,
                     None,
                 )))
             });
+
+        interaction_repository
+            .expect_update_interaction()
+            .once()
+            .withf(move |request| request.id == interaction_id)
+            .returning(|_| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -831,6 +838,7 @@ async fn test_create_credential_success() {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
+                    notification_id: Some("notification".to_string()),
                 })
             });
         exchange_provider
@@ -1027,6 +1035,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
+                    notification_id: None,
                 })
             });
         exchange_provider
@@ -1224,6 +1233,7 @@ async fn test_create_credential_success_mdoc() {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     redirect_uri: None,
+                    notification_id: None,
                 })
             });
         exchange_provider

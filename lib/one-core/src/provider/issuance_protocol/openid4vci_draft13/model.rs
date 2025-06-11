@@ -60,6 +60,7 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
+    pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
@@ -105,12 +106,6 @@ pub(crate) struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO {
-    pub id: String,
-    pub r#type: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Timestamp(pub i64);
 
@@ -162,6 +157,7 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     pub nonce: Option<String>,
+    pub notification_id: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -186,6 +182,22 @@ pub struct OpenID4VCICredentialRequestDTO {
 pub struct OpenID4VCIProofRequestDTO {
     pub proof_type: String,
     pub jwt: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenID4VCINotificationEvent {
+    CredentialAccepted,
+    CredentialFailure,
+    CredentialDeleted,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize)]
+pub struct OpenID4VCINotificationRequestDTO {
+    pub notification_id: String,
+    pub event: OpenID4VCINotificationEvent,
+    pub event_description: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -309,10 +321,11 @@ pub(crate) struct ShareResponse<T> {
 }
 
 #[derive(Clone, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct SubmitIssuerResponse {
     pub credential: String,
+    #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
+    pub notification_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]

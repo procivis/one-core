@@ -25,7 +25,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::InteractionRelations;
+use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
@@ -36,7 +36,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINotificationEvent,
+    OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
@@ -286,7 +287,12 @@ impl OID4VCIDraft13Service {
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
-            .get_interaction(&interaction_id, &InteractionRelations::default())
+            .get_interaction(
+                &interaction_id,
+                &InteractionRelations {
+                    organisation: Some(Default::default()),
+                },
+            )
             .await?
         else {
             return Err(
@@ -294,7 +300,7 @@ impl OID4VCIDraft13Service {
             );
         };
 
-        let interaction_data = interaction_data_to_dto(&interaction)?;
+        let mut interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
 
         let credentials = self
@@ -331,7 +337,7 @@ impl OID4VCIDraft13Service {
                     key_role: KeyRole::Authentication,
                     certificate_validator: self.certificate_validator.clone(),
                 }),
-                interaction_data.nonce,
+                &interaction_data.nonce,
             )
             .await
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
@@ -372,7 +378,25 @@ impl OID4VCIDraft13Service {
             .await;
 
         match issued_credential {
-            Ok(issued_credential) => Ok(issued_credential.into()),
+            Ok(issued_credential) => {
+                if let Some(notification_id) = &issued_credential.notification_id {
+                    interaction_data.notification_id = Some(notification_id.to_owned());
+
+                    let data = serde_json::to_vec(&interaction_data)
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+                    self.interaction_repository
+                        .update_interaction(UpdateInteractionRequest {
+                            id: interaction.id,
+                            data: Some(data),
+                            host: interaction.host,
+                            organisation: interaction.organisation,
+                        })
+                        .await?;
+                }
+
+                Ok(issued_credential.into())
+            }
             Err(err @ IssuanceProtocolError::Suspended)
             | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
                 // propagate error to client but do _not_ put credential to Errored state¬
@@ -391,6 +415,108 @@ impl OID4VCIDraft13Service {
                 Err(error.into())
             }
         }
+    }
+
+    pub async fn handle_notification(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+        access_token: &str,
+        request: OpenID4VCINotificationRequestDTO,
+    ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
+        let interaction_id = parse_access_token(access_token)?;
+        let Some(interaction) = self
+            .interaction_repository
+            .get_interaction(&interaction_id, &InteractionRelations::default())
+            .await?
+        else {
+            return Err(OpenID4VCIError::InvalidNotificationRequest.into());
+        };
+
+        let interaction_data = interaction_data_to_dto(&interaction)?;
+        throw_if_access_token_invalid(&interaction_data, access_token)?;
+
+        if Some(request.notification_id) != interaction_data.notification_id {
+            return Err(OpenID4VCIError::InvalidNotificationId.into());
+        }
+
+        let credentials = self
+            .credential_repository
+            .get_credentials_by_interaction_id(
+                &interaction.id,
+                &CredentialRelations {
+                    interaction: Some(InteractionRelations::default()),
+                    schema: Some(CredentialSchemaRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let Some(credential) = credentials.iter().find(|credential| {
+            credential
+                .schema
+                .as_ref()
+                .is_some_and(|schema| schema.id == *credential_schema_id)
+        }) else {
+            return Err(OpenID4VCIError::InvalidNotificationRequest.into());
+        };
+
+        match (credential.state, &request.event) {
+            (
+                CredentialStateEnum::Accepted
+                | CredentialStateEnum::Suspended
+                | CredentialStateEnum::Revoked,
+                _,
+            ) => {
+                // ok, can be processed
+            }
+            // repeated requests also allowed
+            (CredentialStateEnum::Error, OpenID4VCINotificationEvent::CredentialFailure)
+            | (CredentialStateEnum::Rejected, OpenID4VCINotificationEvent::CredentialDeleted) => {
+                return Ok(());
+            }
+            // anything else is invalid
+            _ => {
+                return Err(OpenID4VCIError::InvalidNotificationRequest.into());
+            }
+        };
+
+        tracing::debug!(
+            "Credential notified: {:?}, description: {:?}",
+            request.event,
+            request.event_description
+        );
+
+        match request.event {
+            OpenID4VCINotificationEvent::CredentialAccepted => {
+                // nothing to do
+            }
+            OpenID4VCINotificationEvent::CredentialFailure => {
+                self.credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Error),
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
+            }
+            OpenID4VCINotificationEvent::CredentialDeleted => {
+                self.credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Rejected),
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
+            }
+        };
+
+        Ok(())
     }
 
     pub async fn create_token(

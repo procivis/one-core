@@ -25,7 +25,7 @@ impl OpenID4VCIProofJWTFormatter {
     pub async fn verify_proof(
         jwt: &str,
         verifier: Box<dyn TokenVerifier>,
-        expected_nonce: Option<String>,
+        expected_nonce: &Option<String>,
     ) -> Result<(DidValue, String), FormatterError> {
         let DecomposedToken::<ProofOfPossession> {
             header,
@@ -48,7 +48,7 @@ impl OpenID4VCIProofJWTFormatter {
             }
         }
         if let Some(expected_nonce) = expected_nonce {
-            if payload.custom.nonce.as_ref() != Some(&expected_nonce) {
+            if payload.custom.nonce.as_ref() != Some(expected_nonce) {
                 return Err(FormatterError::CouldNotVerify(format!(
                     "invalid or missing nonce: expected: {expected_nonce}"
                 )));
@@ -210,7 +210,7 @@ mod test {
         .await
         .unwrap();
 
-        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier(), None)
+        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier(), &None)
             .await
             .unwrap();
     }
@@ -230,7 +230,7 @@ mod test {
         .await
         .unwrap();
 
-        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier(), Some("nonce".to_string()))
+        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier(), &Some("nonce".to_string()))
             .await
             .unwrap();
     }
@@ -253,7 +253,7 @@ mod test {
         let result = OpenID4VCIProofJWTFormatter::verify_proof(
             &proof,
             verifier(),
-            Some("invalid_nonce".to_string()),
+            &Some("invalid_nonce".to_string()),
         )
         .await;
         assert!(matches!(result, Err(FormatterError::CouldNotVerify(_))));

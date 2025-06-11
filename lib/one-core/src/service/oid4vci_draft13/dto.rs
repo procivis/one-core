@@ -6,8 +6,9 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::SubmitIssuerR
 #[derive(Clone, Debug, Deserialize, Into, From)]
 #[into(SubmitIssuerResponse)]
 #[from(SubmitIssuerResponse)]
-#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialResponseDTO {
     pub credential: String,
+    #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
+    pub notification_id: Option<String>,
 }

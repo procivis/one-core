@@ -20,6 +20,10 @@ pub enum OpenID4VCIError {
     UnsupportedCredentialType,
     #[error("credential_request_denied")]
     CredentialRequestDenied,
+    #[error("invalid_notification_id")]
+    InvalidNotificationId,
+    #[error("invalid_notification_request")]
+    InvalidNotificationRequest,
     #[error("oidc runtime error: `{0}`")]
     RuntimeError(String),
 }

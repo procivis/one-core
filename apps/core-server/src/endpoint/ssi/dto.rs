@@ -162,6 +162,8 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     UnsupportedCredentialFormat,
     UnsupportedCredentialType,
     CredentialRequestDenied,
+    InvalidNotificationId,
+    InvalidNotificationRequest,
     RuntimeError(String),
 }
 

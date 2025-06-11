@@ -17,6 +17,7 @@ use super::dto::{
     OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::endpoint::ssi::issuance::draft13::dto::OpenID4VCINotificationRequestRestDTO;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -320,6 +321,77 @@ pub(crate) async fn oid4vci_draft13_create_credential(
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
                 }),
+            )
+                .into_response()
+        }
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
+            tracing::error!("Missing credential schema");
+            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/openid4vci/draft-13/{id}/notification",
+    request_body(content = OpenID4VCINotificationRequestRestDTO, description = "Notification request"),
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 204, description = "OK"),
+        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 409, description = "Wrong credential state"),
+        (status = 500, description = "Server error"),
+    ),
+    security(
+        ("openID4VCI" = [])
+    ),
+    tag = "openid4vci-draft13",
+    summary = "OID4VC - Credential notification",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn oid4vci_draft13_credential_notification(
+    state: State<AppState>,
+    WithRejection(Path(credential_schema_id), _): WithRejection<
+        Path<CredentialSchemaId>,
+        ErrorResponseRestDTO,
+    >,
+    WithRejection(TypedHeader(token), _): WithRejection<
+        TypedHeader<headers::Authorization<Bearer>>,
+        ErrorResponseRestDTO,
+    >,
+    WithRejection(Json(request), _): WithRejection<
+        Json<OpenID4VCINotificationRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> Response {
+    let access_token = token.token();
+    let result = state
+        .core
+        .oid4vci_draft13_service
+        .handle_notification(&credential_schema_id, access_token, request.into())
+        .await;
+
+    match result {
+        Ok(_) => (StatusCode::NO_CONTENT).into_response(),
+        Err(ServiceError::OpenID4VCIError(error)) => {
+            tracing::error!("OpenID4VCI credential notification error: {:?}", error);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO::from(error)),
             )
                 .into_response()
         }

@@ -961,6 +961,7 @@ async fn test_accept_credential() {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
                     redirect_uri: None,
+                    notification_id: None,
                 },
                 create_did: None,
                 create_certificate: None,
@@ -1103,6 +1104,7 @@ async fn test_accept_credential_with_did() {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
                     redirect_uri: None,
+                    notification_id: None,
                 },
                 create_did: None,
                 create_certificate: None,

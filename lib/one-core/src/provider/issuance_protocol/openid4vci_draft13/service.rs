@@ -53,6 +53,7 @@ pub(crate) fn create_issuer_metadata_response(
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
         credential_endpoint: format!("{schema_base_url}/credential"),
+        notification_endpoint: Some(format!("{schema_base_url}/notification")),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
             name: schema

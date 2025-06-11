@@ -5,8 +5,7 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
-    OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIProofRequestDTO,
     OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
@@ -21,7 +20,7 @@ use serde_with::skip_serializing_none;
 use shared_types::DidValue;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorageTypeRestEnum};
+use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -87,13 +86,6 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
 #[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
     pub name: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO)]
-pub(crate) struct OpenID4VCIIssuerMetadataCredentialSchemaRestDTO {
-    pub id: String,
-    pub r#type: CredentialSchemaType,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -201,6 +193,8 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     UnsupportedCredentialFormat,
     UnsupportedCredentialType,
     CredentialRequestDenied,
+    InvalidNotificationId,
+    InvalidNotificationRequest,
     RuntimeError(String),
 }
 

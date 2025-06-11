@@ -8,6 +8,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use one_crypto::encryption::encrypt_string;
+use one_crypto::utilities::generate_alphanumeric;
 use secrecy::ExposeSecret;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -923,6 +924,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 refresh_token_hash: None,
                 refresh_token_expires_at: None,
                 nonce: None,
+                notification_id: None
             }),
         })
     }
@@ -1148,6 +1150,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         Ok(SubmitIssuerResponse {
             credential: token,
             redirect_uri,
+            notification_id: Some(generate_alphanumeric(32)),
         })
     }
 

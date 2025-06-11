@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use one_core::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCINotificationEvent;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
@@ -103,6 +104,23 @@ impl SSIApi {
                 "jwt": jwt
             },
             "doctype": doctype
+        });
+
+        self.client.post(&url, body).await
+    }
+
+    pub async fn openid4vci_notification(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        notification_id: &str,
+        event: OpenID4VCINotificationEvent,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/notification");
+
+        let body = json!({
+            "notification_id": notification_id,
+            "event": event
         });
 
         self.client.post(&url, body).await

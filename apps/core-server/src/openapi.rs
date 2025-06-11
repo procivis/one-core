@@ -195,22 +195,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
-                      .name("identifier_management")
-                      .description(Some(indoc::formatdoc! {"
-               Create and manage identifiers of different types for different
-               identity ecosystems.
-
-               An identifier is needed to issue, hold, or verify.
-
-               Related guide: [Identifiers](/identifiers)
-           "}))
-                      .extensions(Some(
-                          Extensions::builder()
-                              .add("x-displayName", "Identifiers")
-                              .build(),
-                      ))
-                      .build(),
-                   Tag::builder()
                        .name("did_management")
                        .description(Some(indoc::formatdoc! {"
                 These endpoints are being phased out, but they can be used to create and

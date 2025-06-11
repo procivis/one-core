@@ -854,6 +854,7 @@ impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO
                 })
                 .transpose()?,
             nonce: value.c_nonce.clone(),
+            notification_id: None,
         })
     }
 }

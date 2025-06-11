@@ -30,6 +30,7 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
         Self {
             credential_issuer: value.credential_issuer,
             credential_endpoint: value.credential_endpoint,
+            notification_endpoint: value.notification_endpoint,
             credential_configurations_supported: value
                 .credential_configurations_supported
                 .into_iter()
