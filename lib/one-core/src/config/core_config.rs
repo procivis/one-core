@@ -17,6 +17,7 @@ use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
+use crate::model::credential_schema::WalletStorageTypeEnum;
 
 type Dict<K, V> = BTreeMap<K, V>;
 
@@ -50,6 +51,7 @@ pub struct CoreConfig {
     pub(crate) did: DidConfig,
     pub(crate) datatype: DatatypeConfig,
     pub(crate) key_algorithm: KeyAlgorithmConfig,
+    pub(crate) holder_key_storage: HolderKeyStorageConfig,
     pub(crate) key_storage: KeyStorageConfig,
     pub(crate) task: TaskConfig,
     pub(crate) trust_management: TrustManagementConfig,
@@ -427,6 +429,17 @@ pub enum DatatypeType {
     #[serde(rename = "BOOLEAN")]
     #[strum(serialize = "BOOLEAN")]
     Boolean,
+}
+
+pub type HolderKeyStorageConfig = Dict<WalletStorageTypeEnum, HolderKeyStorageFields>;
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HolderKeyStorageFields {
+    pub display: ConfigEntryDisplay,
+    pub order: Option<u64>,
+    pub enabled: Option<bool>,
 }
 
 pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;

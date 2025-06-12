@@ -479,3 +479,13 @@ trustManagement:
     params:
       public:
         enablePublishing: true
+holderKeyStorage:
+  SOFTWARE:
+    display: "holderKeyStorage.software"
+    order: 10
+  HARDWARE:
+    display: "holderKeyStorage.hardware"
+    order: 14
+  REMOTE_SECURE_ELEMENT:
+    display: "holderKeyStorage.remoteSecureElement"
+    order: 20

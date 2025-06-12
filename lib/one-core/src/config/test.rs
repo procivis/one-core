@@ -114,6 +114,7 @@ rusty_fork_test! {
             task: {}
             trustManagement: {}
             cacheEntities: {}
+            holderKeyStorage: {}
         "};
 
         let config3 = indoc::indoc! {"

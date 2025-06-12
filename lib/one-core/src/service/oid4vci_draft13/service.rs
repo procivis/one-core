@@ -234,8 +234,7 @@ impl OID4VCIDraft13Service {
             .schema
             .as_ref()
             .ok_or(ServiceError::MappingError("schema missing".to_string()))?
-            .wallet_storage_type
-            .clone();
+            .wallet_storage_type;
 
         let claims = credential
             .claims

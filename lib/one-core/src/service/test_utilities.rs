@@ -203,6 +203,16 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'INTERNAL'
                 order: 0
                 params: null
+        holderKeyStorage:
+            SOFTWARE:
+                display: 'display'
+                order: 10
+            HARDWARE:
+                display: 'display'
+                order: 14
+            REMOTE_SECURE_ELEMENT:
+                display: 'display'
+                order: 20
         task: {}
         trustManagement: {}
         cacheEntities: {}

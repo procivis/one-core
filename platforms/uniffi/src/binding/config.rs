@@ -32,15 +32,21 @@ pub struct ConfigBindingDTO {
     #[from(with_fn = serialize_config_entity)]
     pub did: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
+    pub identifier: HashMap<String, String>,
+    #[from(with_fn = serialize_config_entity)]
     pub datatype: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub key_algorithm: HashMap<String, String>,
+    #[from(with_fn = serialize_config_entity)]
+    pub holder_key_storage: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub key_storage: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub trust_management: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub cache_entities: HashMap<String, String>,
+    #[from(with_fn = serialize_config_entity)]
+    pub task: HashMap<String, String>,
 }
 
 fn serialize_config_entity(input: HashMap<String, serde_json::Value>) -> HashMap<String, String> {

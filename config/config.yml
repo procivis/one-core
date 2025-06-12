@@ -11,3 +11,4 @@ task: {}
 trustManagement: {}
 transport: {}
 cacheEntities: {}
+holderKeyStorage: {}

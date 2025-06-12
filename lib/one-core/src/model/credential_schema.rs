@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::CredentialSchemaId;
-use strum::Display;
+use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
 use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -118,7 +118,20 @@ pub enum LayoutType {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Display,
+    EnumString,
+    Hash,
+    PartialOrd,
+    Ord,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WalletStorageTypeEnum {
     Hardware,

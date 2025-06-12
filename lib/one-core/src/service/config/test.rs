@@ -48,9 +48,11 @@ fn convert_internal_structure_to_dto() {
           },
           "transport": {},
           "keyAlgorithm": {},
+          "holderKeyStorage": {},
           "keyStorage": {},
           "trustManagement": {},
           "cacheEntities": {},
+          "task": {}
         }),
         output
     );
@@ -97,9 +99,11 @@ fn do_not_serialize_private_parameters() {
             }
           },
           "keyAlgorithm": {},
+          "holderKeyStorage": {},
           "keyStorage": {},
           "trustManagement": {},
           "cacheEntities": {},
+          "task": {}
         }),
         output
     );

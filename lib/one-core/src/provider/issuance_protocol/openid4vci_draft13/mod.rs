@@ -1139,8 +1139,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
-        let wallet_storage_type = credential_schema.wallet_storage_type.clone();
-
         let claims = credential
             .claims
             .as_ref()
@@ -1149,7 +1147,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let credential_subject = credentials_format(wallet_storage_type, &claims)
+        let credential_subject = credentials_format(credential_schema.wallet_storage_type, &claims)
             .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
         if self.params.credential_offer_by_value {

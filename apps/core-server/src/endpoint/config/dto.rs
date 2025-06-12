@@ -29,10 +29,14 @@ pub struct ConfigRestDTO {
     pub datatype: HashMap<String, Value>,
     /// Key algorithms used for signatures.
     pub key_algorithm: HashMap<String, Value>,
+    /// Holder binding key storage types.
+    pub holder_key_storage: HashMap<String, Value>,
     /// How keys are stored.
     pub key_storage: HashMap<String, Value>,
     /// Trust management solutions.
     pub trust_management: HashMap<String, Value>,
     /// Entities held in temporary storage.
     pub cache_entities: HashMap<String, Value>,
+    /// Maintenance tasks
+    pub task: HashMap<String, Value>,
 }
