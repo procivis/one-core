@@ -17,13 +17,14 @@ use crate::common_mapper::{
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::IssuanceProtocolType;
+use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{
     CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
 };
-use crate::model::did::KeyRole;
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
@@ -46,6 +47,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::service::{
     get_credential_schema_base_url, oidc_issuer_create_token, parse_access_token,
     parse_refresh_token,
 };
+use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -57,6 +59,7 @@ use crate::service::oid4vci_draft13::validator::{
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_to_openid4vp_format;
+use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
 impl OID4VCIDraft13Service {
     pub async fn get_issuer_metadata(
@@ -446,6 +449,17 @@ impl OID4VCIDraft13Service {
             .get_credentials_by_interaction_id(
                 &interaction.id,
                 &CredentialRelations {
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        certificates: Some(CertificateRelations {
+                            key: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(CredentialSchemaRelations::default()),
                     ..Default::default()
@@ -488,33 +502,77 @@ impl OID4VCIDraft13Service {
             request.event_description
         );
 
-        match request.event {
+        let new_state = match request.event {
             OpenID4VCINotificationEvent::CredentialAccepted => {
                 // nothing to do
+                return Ok(());
             }
-            OpenID4VCINotificationEvent::CredentialFailure => {
-                self.credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Error),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
-            }
-            OpenID4VCINotificationEvent::CredentialDeleted => {
-                self.credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Rejected),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
-            }
+            OpenID4VCINotificationEvent::CredentialFailure => CredentialStateEnum::Error,
+            OpenID4VCINotificationEvent::CredentialDeleted => CredentialStateEnum::Rejected,
         };
+
+        if credential.state == new_state {
+            // nothing to do
+            return Ok(());
+        }
+
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method(&schema.revocation_method)
+            .ok_or(MissingProviderError::RevocationMethod(
+                schema.revocation_method.to_owned(),
+            ))?;
+
+        // mark the credential as revoked (if supported and not done before)
+        if matches!(
+            credential.state,
+            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
+        ) && revocation_method
+            .get_capabilities()
+            .operations
+            .contains(&Operation::Revoke)
+        {
+            let update = revocation_method
+                .mark_credential_as(
+                    credential,
+                    CredentialRevocationState::Revoked,
+                    generate_credential_additional_data(
+                        credential,
+                        &*self.credential_repository,
+                        &*self.revocation_list_repository,
+                        &*revocation_method,
+                        &*self.formatter_provider,
+                        &*self.key_provider,
+                        &self.key_algorithm_provider,
+                        &*self.did_method_provider,
+                        &self.base_url,
+                    )
+                    .await?,
+                )
+                .await?;
+
+            process_update(
+                update,
+                &*self.validity_credential_repository,
+                &*self.revocation_list_repository,
+            )
+            .await?;
+        }
+
+        self.credential_repository
+            .update_credential(
+                credential.id,
+                UpdateCredentialRequest {
+                    state: Some(new_state),
+                    ..Default::default()
+                },
+            )
+            .await?;
 
         Ok(())
     }

@@ -39,11 +39,15 @@ use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::revocation_list_repository::MockRevocationListRepository;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::ServiceError;
 use crate::service::test_utilities::*;
@@ -53,13 +57,17 @@ struct Mocks {
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub credential_repository: MockCredentialRepository,
     pub interaction_repository: MockInteractionRepository,
+    pub revocation_list_repository: MockRevocationListRepository,
+    pub validity_credential_repository: MockValidityCredentialRepository,
     pub config: CoreConfig,
     pub exchange_provider: MockIssuanceProtocolProvider,
+    pub key_provider: MockKeyProvider,
     pub did_repository: MockDidRepository,
     pub identifier_repository: MockIdentifierRepository,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
+    pub revocation_method_provider: MockRevocationMethodProvider,
     pub certificate_validator: MockCertificateValidator,
 }
 
@@ -70,13 +78,17 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.interaction_repository),
+        Arc::new(mocks.revocation_list_repository),
+        Arc::new(mocks.validity_credential_repository),
         Arc::new(mocks.config),
         Arc::new(mocks.exchange_provider),
+        Arc::new(mocks.key_provider),
         Arc::new(mocks.did_repository),
         Arc::new(mocks.identifier_repository),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.formatter_provider),
+        Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.certificate_validator),
     )
 }
