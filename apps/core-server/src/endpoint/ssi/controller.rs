@@ -35,8 +35,7 @@ use crate::router::AppState;
     tag = "ssi",
     summary = "Retrieve did:web document",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve a `did:web` document by its UUID.
     "},
 )]
 pub(crate) async fn get_did_web_document(
@@ -62,8 +61,7 @@ pub(crate) async fn get_did_web_document(
     tag = "ssi",
     summary = "Retrieve did:webvh(did:tdw) document",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve a `did:webvh` (or `did:tdw`) document by its UUID.
     "},
 )]
 pub(crate) async fn get_did_webvh_log(
@@ -119,8 +117,7 @@ pub(crate) async fn get_did_webvh_log(
     tag = "ssi",
     summary = "Revocation - retrieve list",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve a revocation list by its UUID.
     "},
 )]
 pub(crate) async fn get_revocation_list_by_id(
@@ -173,8 +170,8 @@ pub(crate) async fn get_revocation_list_by_id(
     tag = "ssi",
     summary = "Get LVVC by credential",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve the LVVC of a credential by the credential's UUID. This is needed to
+        check the validity of credential's issued with the LVVC revocation method.
     "},
 )]
 pub(crate) async fn get_lvvc_by_credential_id(
@@ -223,8 +220,8 @@ pub(crate) async fn get_lvvc_by_credential_id(
     tag = "ssi",
     summary = "Retrieve @context",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve the `@context` of a JSON-LD credential by the UUID of the
+        credential schema.
     "},
 )]
 pub(crate) async fn get_json_ld_context(
@@ -266,8 +263,7 @@ pub(crate) async fn get_json_ld_context(
     tag = "ssi",
     summary = "Retrieve Trust List",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve a trust list by the UUID of the trust anchor.
     "},
 )]
 pub(crate) async fn ssi_get_trust_list(
@@ -298,7 +294,9 @@ pub(crate) async fn ssi_get_trust_list(
     ),
     tag = "ssi",
     summary = "Retrieve a trust entity",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        Retrieve a trust entity by the value of the DID.
+    "},
 )]
 pub(crate) async fn ssi_get_trust_entity(
     state: State<AppState>,
@@ -327,7 +325,9 @@ pub(crate) async fn ssi_get_trust_entity(
     ),
     tag = "ssi",
     summary = "Update a trust entity",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        Update a trust entity by its DID value.
+    "},
 )]
 pub(crate) async fn ssi_patch_trust_entity(
     state: State<AppState>,
@@ -366,7 +366,9 @@ pub(crate) async fn ssi_patch_trust_entity(
     ),
     tag = "ssi",
     summary = "Create a trust entity",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        Add a trust entity to a trust anchor.
+    "},
 )]
 pub(crate) async fn ssi_post_trust_entity(
     state: State<AppState>,
@@ -408,8 +410,7 @@ pub(crate) async fn ssi_post_trust_entity(
     tag = "ssi",
     summary = "Retrieve credential schema service",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve a credential schema by its UUID.
     "},
 )]
 pub(crate) async fn ssi_get_credential_schema(
@@ -439,8 +440,7 @@ pub(crate) async fn ssi_get_credential_schema(
     tag = "ssi",
     summary = "Retrieve proof schema service",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve a proof schema by its UUID.
     "},
 )]
 pub(crate) async fn ssi_get_proof_schema(
@@ -466,8 +466,7 @@ pub(crate) async fn ssi_get_proof_schema(
     tag = "ssi",
     summary = "Retrieve SD-JWT VC type metadata service",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Retrieve the type metadata of an SD-JWT VC credential.
     "},
 )]
 pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
