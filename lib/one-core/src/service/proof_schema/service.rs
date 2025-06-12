@@ -34,6 +34,7 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
 };
 use crate::service::credential_schema::import::import_credential_schema;
+use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
@@ -156,6 +157,13 @@ impl ProofSchemaService {
 
         if credential_schemas.len() != expected_credential_schemas {
             return Err(BusinessLogicError::MissingCredentialSchema.into());
+        }
+
+        for credential_schema in &credential_schemas {
+            validate_wallet_storage_type_supported(
+                credential_schema.wallet_storage_type,
+                &self.config,
+            )?;
         }
 
         throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(

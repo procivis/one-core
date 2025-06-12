@@ -2734,6 +2734,143 @@ async fn test_create_proof_with_related_key() {
 }
 
 #[tokio::test]
+async fn test_create_proof_fail_unsupported_wallet_storage_type() {
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4().into(),
+        verifier_did_id: Some(Uuid::new_v4().into()),
+        verifier_identifier_id: None,
+        exchange: exchange_type.to_string(),
+        redirect_uri: None,
+        verifier_key: None,
+        verifier_certificate: None,
+        scan_to_verify: None,
+        iso_mdl_engagement: None,
+        transport: None,
+    };
+
+    let mut proof_input_schema = generic_proof_input_schema();
+    proof_input_schema
+        .credential_schema
+        .as_mut()
+        .unwrap()
+        .wallet_storage_type = Some(WalletStorageTypeEnum::Hardware);
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .return_once(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: None,
+                input_schemas: Some(vec![proof_input_schema]),
+            }))
+        });
+
+    let verifier_did = Did {
+        id: request.verifier_did_id.to_owned().unwrap(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "did".to_string(),
+        did: "did:example:123".parse().unwrap(),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        organisation: None,
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: Key {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                public_key: vec![],
+                name: "key".to_string(),
+                key_reference: vec![],
+                storage_type: "INTERNAL".to_string(),
+                key_type: "EDDSA".to_string(),
+                organisation: None,
+            },
+        }]),
+        deactivated: false,
+        log: None,
+    };
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .return_once(|_, _| {
+            Ok(Some(Identifier {
+                did: Some(verifier_did),
+                ..dummy_identifier()
+            }))
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .times(1)
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_type],
+            verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![IdentifierType::Did],
+            ..Default::default()
+        });
+
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
+    credential_formatter_provider
+        .expect_get_formatter()
+        .times(1)
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+
+        protocol.expect_get_capabilities().times(1).returning(|| {
+            VerificationProtocolCapabilities {
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
+            }
+        });
+
+        Some(Arc::new(protocol))
+    });
+
+    let mut config = generic_config().core;
+    config
+        .holder_key_storage
+        .get_mut(&WalletStorageTypeEnum::Hardware)
+        .unwrap()
+        .enabled = Some(false);
+
+    let service = setup_service(Repositories {
+        identifier_repository,
+        proof_schema_repository,
+        credential_formatter_provider,
+        protocol_provider,
+        config,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request).await;
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::WalletStorageTypeDisabled(
+            WalletStorageTypeEnum::Hardware
+        ))
+    )));
+}
+
+#[tokio::test]
 async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
     let request = CreateProofRequestDTO {

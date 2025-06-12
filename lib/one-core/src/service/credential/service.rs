@@ -40,6 +40,7 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::{
     claims_from_create_request, credential_revocation_state_to_model_state, from_create_request,
 };
+use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -116,6 +117,8 @@ impl CredentialService {
         else {
             return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
         };
+
+        validate_wallet_storage_type_supported(schema.wallet_storage_type, &self.config)?;
 
         let claim_schemas = schema
             .claim_schemas

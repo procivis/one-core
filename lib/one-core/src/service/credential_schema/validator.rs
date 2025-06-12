@@ -7,6 +7,7 @@ use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::revocation::RevocationMethod;
@@ -432,4 +433,23 @@ fn validate_key_lengths(
 
         validate_key_lengths(&claim.claims, claim.key.len() + NESTED_CLAIM_MARKER_LENGTH)
     })
+}
+
+pub(crate) fn validate_wallet_storage_type_supported(
+    wallet_storage_type: Option<WalletStorageTypeEnum>,
+    config: &CoreConfig,
+) -> Result<(), ValidationError> {
+    if let Some(wallet_storage_type) = wallet_storage_type {
+        if config
+            .holder_key_storage
+            .get(&wallet_storage_type)
+            .is_none_or(|entry| entry.enabled == Some(false))
+        {
+            return Err(ValidationError::WalletStorageTypeDisabled(
+                wallet_storage_type,
+            ));
+        }
+    }
+
+    Ok(())
 }

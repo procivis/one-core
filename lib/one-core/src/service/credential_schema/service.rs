@@ -58,6 +58,10 @@ impl CredentialSchemaService {
         super::validator::check_claims_presence_in_layout_properties(&request)?;
         super::validator::check_background_properties(&request)?;
         super::validator::check_logo_properties(&request)?;
+        super::validator::validate_wallet_storage_type_supported(
+            request.wallet_storage_type,
+            &self.config,
+        )?;
 
         let organisation = self
             .organisation_repository

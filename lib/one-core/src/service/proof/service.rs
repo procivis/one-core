@@ -64,6 +64,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
+use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -311,6 +312,21 @@ impl ProofService {
         )?;
 
         validate_scan_to_verify_compatibility(&request, &self.config)?;
+
+        for credential_schema in proof_schema
+            .input_schemas
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "input_schemas is None".to_string(),
+            ))?
+            .iter()
+            .flat_map(|input| input.credential_schema.as_ref())
+        {
+            validate_wallet_storage_type_supported(
+                credential_schema.wallet_storage_type,
+                &self.config,
+            )?;
+        }
 
         let exchange_type = self
             .config

@@ -885,6 +885,89 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_failed_unsupported_wallet_storage_type() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
+
+    let Credential {
+        schema,
+        claims,
+        issuer_identifier,
+        ..
+    } = generic_credential();
+
+    let mut schema = schema.unwrap();
+    let claims = claims.unwrap();
+    let issuer_identifier = issuer_identifier.unwrap();
+
+    schema.wallet_storage_type = Some(WalletStorageTypeEnum::Hardware);
+    {
+        let issuer_identifier = issuer_identifier.clone();
+        let credential_schema = schema.clone();
+
+        identifier_repository
+            .expect_get()
+            .return_once(|_, _| Ok(Some(issuer_identifier)));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+    }
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some(Arc::new(key_algorithm))
+        });
+
+    let mut config = generic_config().core;
+    config
+        .holder_key_storage
+        .get_mut(&WalletStorageTypeEnum::Hardware)
+        .unwrap()
+        .enabled = Some(false);
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        identifier_repository,
+        key_algorithm_provider,
+        config,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: schema.id,
+            issuer: Some(issuer_identifier.id),
+            issuer_did: None,
+            issuer_key: None,
+            issuer_certificate: None,
+            exchange: "OPENID4VCI_DRAFT13".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: claims[0].schema.as_ref().unwrap().id.to_owned(),
+                value: claims[0].value.to_owned(),
+                path: claims[0].path.to_owned(),
+            }],
+            redirect_uri: None,
+        })
+        .await;
+
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::WalletStorageTypeDisabled(
+            WalletStorageTypeEnum::Hardware
+        ))
+    )));
+}
+
+#[tokio::test]
 async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -1162,6 +1245,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         credential_schema_repository,
         formatter_provider,
         protocol_provider,
+        config: generic_config().core,
         ..Default::default()
     });
 

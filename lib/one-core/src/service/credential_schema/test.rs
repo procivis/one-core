@@ -1264,6 +1264,107 @@ async fn test_create_credential_schema_fail_validation() {
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
+    let mut config = generic_config().core;
+    config
+        .holder_key_storage
+        .get_mut(&WalletStorageTypeEnum::Hardware)
+        .unwrap()
+        .enabled = Some(false);
+
+    let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    let organisation = dummy_organisation(None);
+
+    let response = GetCredentialSchemaList {
+        values: vec![
+            generic_credential_schema(),
+            generic_credential_schema(),
+            generic_credential_schema(),
+        ],
+        total_pages: 0,
+        total_items: 0,
+    };
+
+    {
+        let clone = response.clone();
+        repository
+            .expect_get_credential_schema_list()
+            .times(1)
+            .returning(move |_, _| Ok(clone.clone()));
+    }
+
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec![RevocationType::None],
+            ..Default::default()
+        });
+    formatter
+        .expect_credential_schema_id()
+        .returning(|_, _, _| Ok("schema id".to_string()));
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .returning(|| RevocationMethodCapabilities {
+            operations: vec![Operation::Suspend],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        formatter_provider,
+        revocation_method_provider,
+        config,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+            revocation_method: "NONE".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            external_schema: false,
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "STRING".to_string(),
+                array: Some(false),
+                required: true,
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+            allow_suspension: Some(true),
+        })
+        .await;
+
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::WalletStorageTypeDisabled(
+            WalletStorageTypeEnum::Hardware
+        ))
+    )));
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_fail_missing_organisation() {
     let mut repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();

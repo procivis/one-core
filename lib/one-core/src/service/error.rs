@@ -13,6 +13,7 @@ use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofRole, ProofStateEnum};
@@ -585,6 +586,9 @@ pub enum ValidationError {
 
     #[error("CRL signature invalid")]
     CRLSignatureInvalid,
+
+    #[error("Wallet storage type `{0}` not supported")]
+    WalletStorageTypeDisabled(WalletStorageTypeEnum),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1117,6 +1121,9 @@ pub enum ErrorCode {
     #[strum(message = "Certificate parsing failure")]
     BR_0224,
 
+    #[strum(message = "Wallet storage type not supported")]
+    BR_0225,
+
     #[strum(message = "Identifier type disabled")]
     BR_0227,
 
@@ -1355,6 +1362,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
             Self::CRLOutdated => ErrorCode::BR_0234,
             Self::CRLSignatureInvalid => ErrorCode::BR_0235,
+            Self::WalletStorageTypeDisabled(_) => ErrorCode::BR_0225,
         }
     }
 }
