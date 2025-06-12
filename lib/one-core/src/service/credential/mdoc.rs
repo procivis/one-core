@@ -13,8 +13,8 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    HolderInteractionData, OpenID4VCICredential, OpenID4VCIParams, OpenID4VCIProof,
-    OpenID4VCITokenResponseDTO,
+    HolderInteractionData, OpenID4VCICredentialRequestDTO, OpenID4VCIParams,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -122,8 +122,8 @@ impl CredentialService {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
-        let body = OpenID4VCICredential {
-            proof: OpenID4VCIProof {
+        let body = OpenID4VCICredentialRequestDTO {
+            proof: OpenID4VCIProofRequestDTO {
                 proof_type: "jwt".to_string(),
                 jwt: proof_jwt,
             },

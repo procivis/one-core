@@ -11,10 +11,10 @@ use super::error::OpenID4VCIError;
 use super::model::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaLayoutPropertiesRequestDTO,
-    CredentialSchemaLogoPropertiesRequestDTO, DidListItemResponseDTO,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialSubjectItem, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIProofTypeSupported,
+    OpenID4VCITokenResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -27,7 +27,6 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, LayoutProperties,
     LogoProperties,
 };
-use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
@@ -893,21 +892,6 @@ impl From<CredentialSchemaCodeTypeEnum> for CodeTypeEnum {
             CredentialSchemaCodeTypeEnum::Barcode => Self::Barcode,
             CredentialSchemaCodeTypeEnum::Mrz => Self::Mrz,
             CredentialSchemaCodeTypeEnum::QrCode => Self::QrCode,
-        }
-    }
-}
-
-impl From<Did> for DidListItemResponseDTO {
-    fn from(value: Did) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            did: value.did,
-            did_type: value.did_type,
-            did_method: value.did_method,
-            deactivated: value.deactivated,
         }
     }
 }

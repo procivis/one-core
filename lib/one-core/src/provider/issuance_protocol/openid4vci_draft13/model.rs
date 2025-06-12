@@ -7,19 +7,20 @@ use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue, OrganisationId};
 use strum::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common_mapper::opt_secret_string;
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::Certificate;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
     CredentialFormat, LayoutProperties, LayoutType, RevocationMethod,
     UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
 };
-use crate::model::did::{Did, DidType};
+use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::provider::credential_formatter::vcdm::ContextType;
@@ -202,7 +203,7 @@ pub struct OpenID4VCINotificationRequestDTO {
     pub event_description: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIDiscoveryResponseDTO {
     pub issuer: String,
     pub authorization_endpoint: Option<String>,
@@ -218,31 +219,6 @@ pub struct OpenID4VCIDiscoveryResponseDTO {
     pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCICredential {
-    pub format: String,
-    #[serde(default)]
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    #[serde(default)]
-    pub vct: Option<String>,
-    #[serde(default)]
-    pub doctype: Option<String>,
-    pub proof: OpenID4VCIProof,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct OpenID4VCIProof {
-    pub proof_type: String,
-    pub jwt: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct LdpVcAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub proof_type: Vec<String>,
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct InvitationResponseDTO {
     pub interaction_id: InteractionId,
@@ -251,7 +227,7 @@ pub(crate) struct InvitationResponseDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Into)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Into)]
 #[into(LayoutProperties)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaLayoutPropertiesRequestDTO {
@@ -267,7 +243,7 @@ pub(crate) struct CredentialSchemaLayoutPropertiesRequestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaLogoPropertiesRequestDTO {
     pub font_color: Option<String>,
@@ -276,43 +252,26 @@ pub(crate) struct CredentialSchemaLogoPropertiesRequestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaBackgroundPropertiesRequestDTO {
     pub color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaCodePropertiesRequestDTO {
     pub attribute: String,
     pub r#type: CredentialSchemaCodeTypeEnum,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum CredentialSchemaCodeTypeEnum {
     Barcode,
     Mrz,
     QrCode,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DidListItemResponseDTO {
-    pub id: DidId,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub did: DidValue,
-    #[serde(rename = "type")]
-    pub did_type: DidType,
-    #[serde(rename = "method")]
-    pub did_method: String,
-    pub deactivated: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -364,19 +323,6 @@ pub struct ExtendedSubjectDTO {
 pub struct ExtendedSubjectClaimsDTO {
     #[serde(flatten)]
     pub claims: IndexMap<String, OpenID4VCICredentialValueDetails>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub(crate) struct OpenID4VCICredentialOfferCredentialDTO {
-    pub format: String,
-    #[serde(default)]
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    #[serde(default)]
-    pub doctype: Option<String>,
-    #[serde(default)]
-    pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -659,6 +605,8 @@ pub(crate) struct OpenID4VCIParams {
     pub url_scheme: String,
 
     pub redirect_uri: OpenID4VCRedirectUriParams,
+
+    pub rejection_identifier: Option<OpenID4VCRejectionIdentifierParams>,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
@@ -671,4 +619,11 @@ fn default_issuance_url_scheme() -> String {
 pub(crate) struct OpenID4VCRedirectUriParams {
     pub enabled: bool,
     pub allowed_schemes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCRejectionIdentifierParams {
+    pub did_method: String,
+    pub key_algorithm: KeyAlgorithmType,
 }

@@ -58,6 +58,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIParams {
             encryption: value.encryption,
             url_scheme: "swiyu".to_string(),
             redirect_uri: value.redirect_uri,
+            rejection_identifier: None,
         }
     }
 }
@@ -135,7 +136,6 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
@@ -145,7 +145,6 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
                 holder_did,
                 key,
                 jwk_key_id,
-                format,
                 storage_access,
                 tx_code,
             )
@@ -189,6 +188,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
         IssuanceProtocolCapabilities {
+            features: vec![],
             did_methods: vec![WebVh],
         }
     }

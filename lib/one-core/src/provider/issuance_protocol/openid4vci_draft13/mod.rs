@@ -25,7 +25,7 @@ use super::{
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
-    CoreConfig, DatatypeType, DidType as ConfigDidType, RevocationType,
+    CoreConfig, DatatypeType, DidType as ConfigDidType, FormatType, RevocationType,
 };
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::{Claim, ClaimRelations};
@@ -37,7 +37,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
     UpdateCredentialSchemaRequest,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyRole};
+use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
@@ -49,11 +49,15 @@ use crate::model::revocation_list::{
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::{CertificateDetails, IssuerDetails};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, CertificateDetails, IssuerDetails,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::mapper::{
     get_issued_credential_update, interaction_from_handle_invitation,
@@ -62,14 +66,14 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     create_credential, get_credential_offer_url, map_offered_claims_to_credential_schema,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, OpenID4VCICredential,
+    ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO, OpenID4VCIParams,
-    OpenID4VCIProof, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCRejectionIdentifierParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
@@ -79,8 +83,9 @@ use crate::provider::issuance_protocol::openid4vci_draft13::utils::{
     deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::validator::validate_issuer;
+use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::key_storage::provider::{KeyProvider, SignatureProviderImpl};
 use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{RevocationMethod, token_status_list};
@@ -93,7 +98,7 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::map_from_oidc_format_to_core_detailed;
+use crate::util::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
 use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
@@ -677,6 +682,129 @@ impl OpenID4VCI13 {
 
         Ok(())
     }
+
+    async fn holder_request_credential(
+        &self,
+        interaction_data: &HolderInteractionData,
+        holder_did: &DidValue,
+        schema: &CredentialSchema,
+        nonce: Option<String>,
+        auth_fn: AuthenticationFn,
+        access_token: &str,
+    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
+        let format_type = self
+            .config
+            .format
+            .get_fields(&schema.format)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .r#type;
+
+        let oid4vc_format = map_to_openid4vp_format(&format_type)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        // Very basic support for JWK as crypto binding method for EUDI
+        let jwk = match interaction_data
+            .cryptographic_binding_methods_supported
+            .to_owned()
+        {
+            Some(methods) => {
+                // Prefer kid-based holder binding proofs instead of using jwk because
+                // that way the did does not need to be resolved.
+                if methods
+                    .iter()
+                    .any(|method| holder_did.as_str().starts_with(method.as_str()))
+                    // swiyu specific workaround: in the swiyu configuration did:jwk is specified, but jwk is expected instead
+                    && methods != vec!["did:jwk".to_string()]
+                {
+                    None
+                } else if methods.contains(&"jwk".to_string())
+                    // swiyu specific workaround
+                    || methods == vec!["did:jwk".to_string()]
+                {
+                    let resolved =
+                        self.did_method_provider
+                            .resolve(holder_did)
+                            .await
+                            .map_err(|_| {
+                                IssuanceProtocolError::Failed(
+                                    "Could not resolve did method".to_string(),
+                                )
+                            })?;
+
+                    Some(
+                        resolved
+                            .verification_method
+                            .first()
+                            .ok_or(IssuanceProtocolError::Failed(
+                                "Could find verification method in resolved did document"
+                                    .to_string(),
+                            ))?
+                            .public_key_jwk
+                            .clone()
+                            .into(),
+                    )
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+        let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
+            interaction_data.issuer_url.to_owned(),
+            auth_fn.get_key_id(),
+            jwk,
+            nonce,
+            auth_fn,
+        )
+        .await
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let (credential_definition, doctype) = match oid4vc_format {
+            "mso_mdoc" => (None, Some(schema.schema_id.to_owned())),
+            _ => (
+                Some(OpenID4VCICredentialDefinitionRequestDTO {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
+                }),
+                None,
+            ),
+        };
+
+        let body = OpenID4VCICredentialRequestDTO {
+            format: oid4vc_format.to_owned(),
+            vct: (schema.schema_type == CredentialSchemaType::SdJwtVc)
+                .then_some(schema.schema_id.to_owned()),
+            doctype,
+            proof: OpenID4VCIProofRequestDTO {
+                proof_type: "jwt".to_string(),
+                jwt: proof_jwt,
+            },
+            credential_definition,
+        };
+
+        let response = self
+            .client
+            .post(interaction_data.credential_endpoint.as_str())
+            .bearer_auth(access_token)
+            .json(&body)
+            .context("json error")
+            .map_err(IssuanceProtocolError::Transport)?
+            .send()
+            .await
+            .context("send error")
+            .map_err(IssuanceProtocolError::Transport)?;
+
+        let response = response
+            .error_for_status()
+            .context("status error")
+            .map_err(IssuanceProtocolError::Transport)?;
+
+        response
+            .json()
+            .context("parsing error")
+            .map_err(IssuanceProtocolError::Transport)
+    }
 }
 
 #[async_trait]
@@ -718,7 +846,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
@@ -726,6 +853,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .schema
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+
+        let format_type = self
+            .config
+            .format
+            .get_fields(&schema.format)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .r#type;
 
         let mut interaction = credential
             .interaction
@@ -741,7 +875,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         let token_response = self.holder_fetch_token(&interaction_data, tx_code).await?;
 
         // only mdoc credentials support refreshing, do not store the tokens otherwise
-        if format == "mso_mdoc" {
+        if format_type == FormatType::Mdoc {
             let encrypted_access_token = encrypt_string(
                 &token_response.access_token,
                 &self.params.encryption,
@@ -782,109 +916,21 @@ impl IssuanceProtocol for OpenID4VCI13 {
             )
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        // Very basic support for JWK as crypto binding method for EUDI
-        let jwk = match interaction_data.cryptographic_binding_methods_supported {
-            Some(methods) => {
-                // Prefer kid-based holder binding proofs instead of using jwk because
-                // that way the did does not need to be resolved.
-                if methods
-                    .iter()
-                    .any(|method| holder_did.did.as_str().starts_with(method.as_str()))
-                    // swiyu specific workaround: in the swiyu configuration did:jwk is specified, but jwk is expected instead
-                    && methods != vec!["did:jwk".to_string()]
-                {
-                    None
-                } else if methods.contains(&"jwk".to_string())
-                    // swiyu specific workaround
-                    || methods == vec!["did:jwk".to_string()]
-                {
-                    let resolved = self
-                        .did_method_provider
-                        .resolve(&holder_did.did)
-                        .await
-                        .map_err(|_| {
-                            IssuanceProtocolError::Failed(
-                                "Could not resolve did method".to_string(),
-                            )
-                        })?;
+        let credential_response = self
+            .holder_request_credential(
+                &interaction_data,
+                &holder_did.did,
+                schema,
+                token_response.c_nonce,
+                auth_fn,
+                token_response.access_token.expose_secret(),
+            )
+            .await?;
 
-                    Some(
-                        resolved
-                            .verification_method
-                            .first()
-                            .ok_or(IssuanceProtocolError::Failed(
-                                "Could find verification method in resolved did document"
-                                    .to_string(),
-                            ))?
-                            .public_key_jwk
-                            .clone()
-                            .into(),
-                    )
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
-
-        let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
-            interaction_data.issuer_url,
-            jwk_key_id,
-            jwk,
-            token_response.c_nonce,
-            auth_fn,
-        )
-        .await
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        let (credential_definition, doctype) = match format {
-            "mso_mdoc" => (None, Some(schema.schema_id.to_owned())),
-            _ => (
-                Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                None,
-            ),
-        };
-
-        let body = OpenID4VCICredential {
-            format: format.to_owned(),
-            vct: (schema.schema_type == CredentialSchemaType::SdJwtVc)
-                .then_some(schema.schema_id.to_owned()),
-            doctype,
-            proof: OpenID4VCIProof {
-                proof_type: "jwt".to_string(),
-                jwt: proof_jwt,
-            },
-            credential_definition,
-        };
-
-        let response = self
-            .client
-            .post(interaction_data.credential_endpoint.as_str())
-            .bearer_auth(token_response.access_token.expose_secret())
-            .json(&body)
-            .context("json error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?;
-
-        let response = response
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?;
-        let response_value: SubmitIssuerResponse = response
-            .json()
-            .context("parsing error")
-            .map_err(IssuanceProtocolError::Transport)?;
-
-        let notification_id = response_value.notification_id.to_owned();
+        let notification_id = credential_response.notification_id.to_owned();
 
         let result = self
-            .holder_process_accepted_credential(response_value, credential, storage_access)
+            .holder_process_accepted_credential(credential_response, credential, storage_access)
             .await;
 
         if let (Some(notification_id), Some(notification_endpoint)) =
@@ -920,9 +966,155 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
     async fn holder_reject_credential(
         &self,
-        _credential: &Credential,
+        credential: &Credential,
     ) -> Result<(), IssuanceProtocolError> {
-        Err(IssuanceProtocolError::OperationNotSupported)
+        let Some(OpenID4VCRejectionIdentifierParams {
+            did_method,
+            key_algorithm: key_algorithm_type,
+        }) = self.params.rejection_identifier.to_owned()
+        else {
+            return Err(IssuanceProtocolError::OperationNotSupported);
+        };
+
+        let interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "interaction is None".to_string(),
+            ))?
+            .to_owned();
+
+        let interaction_data: HolderInteractionData =
+            deserialize_interaction_data(interaction.data)?;
+
+        let Some(notification_endpoint) = &interaction_data.notification_endpoint else {
+            // if there's no notification endpoint specified by the issuer, we cannot notify the deletion
+            tracing::info!("No notification_endpoint provided by issuer");
+            return Ok(());
+        };
+
+        // issue the credential and then immediately notify its deletion to mimic user rejection
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+
+        // construct a temporary in-memory key/did
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_type(key_algorithm_type)
+            .ok_or(IssuanceProtocolError::Failed(format!(
+                "algorithm not found: {key_algorithm_type}",
+            )))?;
+
+        let GeneratedKey {
+            public: public_key,
+            key: key_handle,
+            ..
+        } = key_algorithm
+            .generate_key()
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let key = Key {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            public_key,
+            name: "temporary-rejection".to_string(),
+            key_reference: vec![],
+            storage_type: "memory".to_string(),
+            key_type: key_algorithm_type.to_string(),
+            organisation: None,
+        };
+
+        let did_method_impl = self.did_method_provider.get_did_method(&did_method).ok_or(
+            IssuanceProtocolError::Failed(format!("did method not found: {did_method}")),
+        )?;
+
+        let DidCreated {
+            did: holder_did, ..
+        } = did_method_impl
+            .create(
+                None,
+                &None,
+                Some(DidKeys {
+                    authentication: vec![key.clone()],
+                    assertion_method: vec![key.clone()],
+                    key_agreement: vec![key.clone()],
+                    capability_invocation: vec![key.clone()],
+                    capability_delegation: vec![key.clone()],
+                    update_keys: None,
+                }),
+            )
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let did = Did {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "temporary-rejection".to_string(),
+            did: holder_did.to_owned(),
+            did_type: DidType::Local,
+            did_method,
+            deactivated: false,
+            log: None,
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: key.to_owned(),
+            }]),
+            organisation: None,
+        };
+
+        let jwk_key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(&did, &key)
+            .await
+            .ok();
+
+        let auth_fn = Box::new(SignatureProviderImpl {
+            key,
+            key_handle,
+            jwk_key_id,
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+        });
+
+        let token_response = self
+            .holder_fetch_token(
+                &interaction_data,
+                // TODO: ONE-6088 rejection will fail, if tx_code is required for issuance
+                None,
+            )
+            .await?;
+
+        // request credential and then notify deletion
+        let access_token = token_response.access_token.expose_secret();
+        let response = self
+            .holder_request_credential(
+                &interaction_data,
+                &holder_did,
+                schema,
+                token_response.c_nonce,
+                auth_fn,
+                access_token,
+            )
+            .await?;
+
+        let Some(notification_id) = response.notification_id else {
+            tracing::warn!("No notification_id provided by issuer");
+            return Ok(());
+        };
+
+        self.send_notification(
+            OpenID4VCINotificationRequestDTO {
+                notification_id,
+                event: OpenID4VCINotificationEvent::CredentialDeleted,
+                event_description: None,
+            },
+            notification_endpoint,
+            access_token,
+        )
+        .await
     }
 
     async fn issuer_share_credential(
@@ -1245,7 +1437,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
+        let mut features = vec![];
+        if self.params.rejection_identifier.is_some() {
+            features.push(Features::SupportsRejection);
+        }
         IssuanceProtocolCapabilities {
+            features,
             did_methods: vec![
                 ConfigDidType::Key,
                 ConfigDidType::Jwk,

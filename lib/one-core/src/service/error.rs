@@ -398,6 +398,9 @@ pub enum BusinessLogicError {
 
     #[error("Identifier type not found")]
     IdentifierTypeNotFound,
+
+    #[error("Rejection not supported")]
+    RejectionNotSupported,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1126,6 +1129,9 @@ pub enum ErrorCode {
     #[strum(message = "CRL signature invalid")]
     BR_0235,
 
+    #[strum(message = "Rejection not supported")]
+    BR_0237,
+
     #[strum(message = "MSO refresh not possible")]
     BR_0238,
 }
@@ -1284,6 +1290,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleHolderIdentifier => ErrorCode::BR_0218,
             Self::IncompatibleHolderKeyAlgorithm => ErrorCode::BR_0218,
             Self::IdentifierTypeNotFound => ErrorCode::BR_0207,
+            Self::RejectionNotSupported => ErrorCode::BR_0237,
         }
     }
 }

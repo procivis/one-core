@@ -221,7 +221,6 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-        format: &str,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError>;

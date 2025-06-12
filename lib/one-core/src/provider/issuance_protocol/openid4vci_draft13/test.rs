@@ -14,7 +14,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -31,13 +31,14 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     get_parent_claim_paths, map_offered_claims_to_credential_schema,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
-    OpenID4VCIParams, OpenID4VCRedirectUriParams,
+    OpenID4VCIParams, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
@@ -45,6 +46,11 @@ use crate::provider::issuance_protocol::{
     BasicSchemaData, BuildCredentialSchemaResponse, IssuanceProtocol,
     MockHandleInvitationOperations,
 };
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
+use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -101,6 +107,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
+            rejection_identifier: None,
         }),
     )
 }
@@ -214,6 +221,24 @@ fn generic_credential() -> Credential {
     }
 }
 
+fn dummy_config() -> CoreConfig {
+    let mut config = CoreConfig::default();
+
+    config.format.insert(
+        "JWT".to_string(),
+        Fields {
+            r#type: FormatType::Jwt,
+            display: "display".into(),
+            order: None,
+            enabled: None,
+            capabilities: None,
+            params: None,
+        },
+    );
+
+    config
+}
+
 #[tokio::test]
 async fn test_generate_offer() {
     let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
@@ -287,6 +312,7 @@ async fn test_generate_share_credentials_offer_by_value() {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
+            rejection_identifier: None,
         }),
         ..Default::default()
     });
@@ -484,6 +510,10 @@ async fn test_holder_accept_credential_success() {
                 .returning(|| Some("EdDSA".to_string()));
 
             mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
                 .expect_sign()
                 .returning(|_| Ok(vec![0; 32]));
 
@@ -493,6 +523,7 @@ async fn test_holder_accept_credential_success() {
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
+        config: dummy_config(),
         ..Default::default()
     });
 
@@ -502,7 +533,6 @@ async fn test_holder_accept_credential_success() {
             &dummy_did(),
             &dummy_key(),
             None,
-            "vc+sd-jwt",
             &storage_access,
             None,
         )
@@ -645,6 +675,10 @@ async fn test_holder_accept_expired_credential_fails() {
                 .returning(|| Some("EdDSA".to_string()));
 
             mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
                 .expect_sign()
                 .returning(|_| Ok(vec![0; 32]));
 
@@ -654,6 +688,7 @@ async fn test_holder_accept_expired_credential_fails() {
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
+        config: dummy_config(),
         ..Default::default()
     });
 
@@ -663,7 +698,6 @@ async fn test_holder_accept_expired_credential_fails() {
             &dummy_did(),
             &dummy_key(),
             None,
-            "vc+sd-jwt",
             &storage_access,
             None,
         )
@@ -677,6 +711,159 @@ async fn test_holder_accept_expired_credential_fails() {
             .to_string()
             .contains("Validation error: `Expired`")
     );
+}
+
+#[tokio::test]
+async fn test_holder_reject_credential() {
+    let mock_server = MockServer::start().await;
+    let mut did_method_provider = MockDidMethodProvider::default();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+
+    let credential = {
+        let mut credential = generic_credential();
+
+        let interaction_data = HolderInteractionData {
+            issuer_url: mock_server.uri(),
+            credential_endpoint: format!("{}/credential", mock_server.uri()),
+            token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+            grants: Some(OpenID4VCIGrants {
+                code: OpenID4VCIGrant {
+                    pre_authorized_code: "code".to_string(),
+                    tx_code: None,
+                },
+            }),
+            access_token: None,
+            access_token_expires_at: None,
+            refresh_token: None,
+            nonce: None,
+            refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
+        };
+
+        credential.interaction = Some(Interaction {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            host: Some(mock_server.uri().parse().unwrap()),
+            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+            organisation: None,
+        });
+
+        credential
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                   "access_token": "321",
+                   "token_type": "bearer",
+                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                   "refresh_token": "321",
+                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential": "credential",
+                "notification_id": "notification_id"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notification"))
+        .and(body_json(json!({
+            "notification_id": "notification_id",
+            "event": "credential_deleted"
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(|_| {
+            let mut algorithm = MockKeyAlgorithm::new();
+            algorithm.expect_generate_key().returning(|| {
+                let mut private_key = MockSignaturePrivateKeyHandle::default();
+
+                private_key
+                    .expect_sign()
+                    .returning(|_| Ok("signature".as_bytes().to_vec()));
+
+                let public_key = MockSignaturePublicKeyHandle::default();
+                Ok(GeneratedKey {
+                    key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
+                        private: Arc::new(private_key),
+                        public: Arc::new(public_key),
+                    }),
+                    public: vec![],
+                    private: vec![].into(),
+                })
+            });
+
+            algorithm
+                .expect_issuance_jose_alg_id()
+                .returning(|| Some("ES256".to_string()));
+
+            Some(Arc::new(algorithm))
+        });
+
+    did_method_provider.expect_get_did_method().returning(|_| {
+        let mut method = MockDidMethod::new();
+        method.expect_create().returning(|_, _, _| {
+            Ok(DidCreated {
+                did: dummy_did().did,
+                log: None,
+            })
+        });
+
+        Some(Arc::new(method))
+    });
+
+    did_method_provider
+        .expect_get_verification_method_id_from_did_and_key()
+        .returning(|_, _| Ok("key-id".to_string()));
+
+    let openid_provider = setup_protocol(TestInputs {
+        did_method_provider,
+        key_algorithm_provider,
+        config: dummy_config(),
+        params: Some(OpenID4VCIParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: true,
+            refresh_expires_in: 1000,
+            encryption: SecretSlice::from(vec![0; 32]),
+            url_scheme: "openid-credential-offer".to_string(),
+            redirect_uri: OpenID4VCRedirectUriParams {
+                enabled: true,
+                allowed_schemes: vec!["https".to_string()],
+            },
+            rejection_identifier: Some(OpenID4VCRejectionIdentifierParams {
+                did_method: "KEY".to_string(),
+                key_algorithm: KeyAlgorithmType::Ecdsa,
+            }),
+        }),
+        ..Default::default()
+    });
+
+    openid_provider
+        .holder_reject_credential(&credential)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -1631,5 +1818,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIParams {
             enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
+        rejection_identifier: None,
     }
 }

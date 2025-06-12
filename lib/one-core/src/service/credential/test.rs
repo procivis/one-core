@@ -3322,6 +3322,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
 
 fn generic_capabilities() -> IssuanceProtocolCapabilities {
     IssuanceProtocolCapabilities {
+        features: vec![crate::provider::issuance_protocol::dto::Features::SupportsRejection],
         did_methods: vec![crate::config::core_config::DidType::Key],
     }
 }

@@ -934,6 +934,7 @@ async fn test_revoke_check_mdoc_update() {
             CREDENTIAL_CONTENT_VALID,
             "mso_mdoc",
             1,
+            None,
         )
         .await;
 
@@ -1083,6 +1084,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             "this is not a valid mdoc",
             "mso_mdoc",
             1,
+            None,
         )
         .await;
 
@@ -1239,6 +1241,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             CREDENTIAL_CONTENT_VALID,
             "mso_mdoc",
             2,
+            None,
         )
         .await;
 
@@ -1812,6 +1815,7 @@ async fn test_suspended_to_valid_mdoc() {
             CREDENTIAL_CONTENT_VALID,
             "mso_mdoc",
             1,
+            None,
         )
         .await;
     let history_previous = context

@@ -48,5 +48,12 @@ pub(crate) struct ProofCredentialSchema {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssuanceProtocolCapabilities {
+    pub features: Vec<Features>,
     pub did_methods: Vec<DidType>,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum Features {
+    SupportsRejection,
 }

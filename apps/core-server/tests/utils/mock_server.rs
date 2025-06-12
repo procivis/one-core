@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::json;
 use time::OffsetDateTime;
 use wiremock::http::Method;
-use wiremock::matchers::{body_string_contains, header, method, path};
+use wiremock::matchers::{body_partial_json, body_string_contains, header, method, path};
 use wiremock::{Mock, MockBuilder, ResponseTemplate};
 
 pub struct MockServer {
@@ -92,6 +92,7 @@ impl MockServer {
         credential: impl Display,
         format: impl Display,
         expected_calls: u64,
+        notification_id: Option<&str>,
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
@@ -102,7 +103,30 @@ impl MockServer {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "credential": credential.to_string(),
                 "format": format.to_string(),
+                "notification_id": notification_id
             })))
+            .expect(expected_calls)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn ssi_notification_endpoint(
+        &self,
+        schema_id: impl Display,
+        notification_id: impl Display,
+        bearer_auth: impl Display,
+        expected_calls: u64,
+    ) {
+        Mock::given(method(Method::POST))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{}/notification",
+                schema_id
+            )))
+            .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
+            .and(body_partial_json(json!({
+                "notification_id": notification_id.to_string()
+            })))
+            .respond_with(ResponseTemplate::new(204))
             .expect(expected_calls)
             .mount(&self.mock)
             .await;

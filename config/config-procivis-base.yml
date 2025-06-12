@@ -94,6 +94,10 @@ issuanceProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+      private:
+        rejectionIdentifier:
+          didMethod: KEY
+          keyAlgorithm: ECDSA
   OPENID4VCI_DRAFT13_SWIYU:
     display:
       en: "OpenID4VCI (SWIYU)"

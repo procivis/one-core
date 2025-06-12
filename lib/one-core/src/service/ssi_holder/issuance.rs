@@ -22,6 +22,7 @@ use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::issuance_protocol::IssuanceProtocol;
+use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -33,7 +34,6 @@ use crate::service::error::{
 };
 use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::oidc::map_to_openid4vp_format;
 
 impl SSIHolderService {
     pub async fn accept_credential(
@@ -239,17 +239,6 @@ impl SSIHolderService {
             self.key_algorithm_provider.as_ref(),
         )?;
 
-        let format_type = self
-            .config
-            .format
-            .get_fields(&schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            .r#type;
-
-        let format = map_to_openid4vp_format(&format_type)
-            .map(|s| s.to_string())
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
         let issuer_response = self
             .issuance_protocol_provider
             .get_protocol(&credential.exchange)
@@ -261,7 +250,6 @@ impl SSIHolderService {
                 holder_did,
                 selected_key,
                 Some(holder_jwk_key_id.to_string()),
-                &format,
                 &storage_access,
                 tx_code.clone(),
             )
@@ -367,27 +355,52 @@ impl SSIHolderService {
             .into());
         }
 
-        for credential in credentials {
-            throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
+        let mut result: Result<(), ServiceError> = Ok(());
 
-            self.issuance_protocol_provider
+        for credential in credentials {
+            throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending).or(
+                throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Offered),
+            )?;
+
+            let protocol = self
+                .issuance_protocol_provider
                 .get_protocol(&credential.exchange)
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
-                ))?
-                .holder_reject_credential(&credential)
-                .await?;
+                ))?;
 
-            self.credential_repository
-                .update_credential(
-                    credential.id,
-                    UpdateCredentialRequest {
-                        state: Some(CredentialStateEnum::Rejected),
-                        ..Default::default()
-                    },
-                )
-                .await?;
+            if !protocol
+                .get_capabilities()
+                .features
+                .contains(&Features::SupportsRejection)
+            {
+                return Err(BusinessLogicError::RejectionNotSupported.into());
+            }
+
+            if let Err(err) = self.reject_single_credential(&credential, &*protocol).await {
+                result = Err(err);
+            };
         }
+
+        result
+    }
+
+    async fn reject_single_credential(
+        &self,
+        credential: &Credential,
+        protocol: &dyn IssuanceProtocol,
+    ) -> Result<(), ServiceError> {
+        protocol.holder_reject_credential(credential).await?;
+
+        self.credential_repository
+            .update_credential(
+                credential.id,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Rejected),
+                    ..Default::default()
+                },
+            )
+            .await?;
 
         Ok(())
     }

@@ -26,6 +26,7 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
+use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     SubmitIssuerResponse, UpdateResponse,
 };
@@ -956,7 +957,7 @@ async fn test_accept_credential() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1099,7 +1100,7 @@ async fn test_accept_credential_with_did() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1196,6 +1197,12 @@ async fn test_reject_credential() {
         .returning(|_, _| Ok(()));
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
+    exchange_protocol_mock
+        .expect_get_capabilities()
+        .returning(|| IssuanceProtocolCapabilities {
+            features: vec![Features::SupportsRejection],
+            did_methods: vec![],
+        });
     exchange_protocol_mock
         .expect_holder_reject_credential()
         .once()
