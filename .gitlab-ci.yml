@@ -393,6 +393,7 @@ tests:api:
     HELM_APP_NAME: one-core
     DEPLOY_IMAGE_TAG: $APP_VERSION
     PROJECT_TITLE: $CI_PROJECT_TITLE
+    HELM_TIMEOUT: 15m
 
 deploy:dev:
   resource_group: core-dev
