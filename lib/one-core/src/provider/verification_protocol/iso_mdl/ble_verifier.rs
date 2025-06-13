@@ -148,7 +148,7 @@ pub(crate) async fn start_client(
                     message,
                 };
                 if let Err(err) =
-                    set_proof_to_error(&proof_repository, proof.id, error_metadata).await
+                    set_proof_to_error(&*proof_repository, proof.id, error_metadata).await
                 {
                     tracing::warn!("failed to set proof to error: {err}");
                 }
@@ -315,68 +315,63 @@ async fn process_proof(
                 device_response
             ),
         };
-        set_proof_to_error(&proof_repository, proof.id, error_metadata).await?;
+        set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;
         return Ok(());
     }
 
-    if empty_documents && !has_errors {
-        let error_metadata = HistoryErrorMetadata {
-            error_code: BR_0000,
-            message: "Response documents is empty but no errors are provided".to_string(),
-        };
-        set_proof_to_error(&proof_repository, proof.id, error_metadata).await?;
-        return Ok(());
-    }
-
-    let new_state = match empty_documents {
-        false => ProofStateEnum::Accepted,
-        true => ProofStateEnum::Rejected,
-    };
-    tracing::info!("mDL verification state: {new_state}");
-
-    if new_state == ProofStateEnum::Accepted {
-        if let Err(error) = fill_proof_claims_and_credentials(
-            device_response,
-            proof,
-            verifier_session.session_transcript,
-            credential_formatter_provider,
-            did_method_provider.clone(),
-            key_algorithm_provider.clone(),
-            credential_repository,
-            did_repository,
-            identifier_repository,
-            proof_repository.clone(),
-            certificate_validator,
-            certificate_repository,
-        )
-        .await
-        {
-            let message = format!("mDL proof parsing failure: {error:#?}");
-            tracing::info!(message);
+    if empty_documents {
+        if has_errors {
+            proof_repository
+                .update_proof(
+                    &proof.id,
+                    UpdateProofRequest {
+                        state: Some(ProofStateEnum::Rejected),
+                        ..Default::default()
+                    },
+                    None,
+                )
+                .await?;
+        } else {
             let error_metadata = HistoryErrorMetadata {
                 error_code: BR_0000,
-                message,
+                message: "Response documents are empty but no errors are provided".to_string(),
             };
-            set_proof_to_error(&proof_repository, proof.id, error_metadata).await?;
-            return Ok(());
+            set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;
         }
+
+        return Ok(());
     }
 
-    proof_repository
-        .update_proof(
-            &proof.id,
-            UpdateProofRequest {
-                state: Some(new_state),
-                ..Default::default()
-            },
-            None,
-        )
-        .await?;
+    if let Err(error) = fill_proof_claims_and_credentials(
+        device_response,
+        proof,
+        verifier_session.session_transcript,
+        &*credential_formatter_provider,
+        did_method_provider,
+        key_algorithm_provider,
+        credential_repository,
+        did_repository,
+        identifier_repository,
+        &*proof_repository,
+        certificate_validator,
+        certificate_repository,
+    )
+    .await
+    {
+        let message = format!("mDL proof parsing failure: {error:#?}");
+        tracing::info!(message);
+        let error_metadata = HistoryErrorMetadata {
+            error_code: BR_0000,
+            message,
+        };
+        set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;
+    }
+
     Ok(())
 }
 
 async fn set_proof_to_error(
-    proof_repository: &Arc<dyn ProofRepository>,
+    proof_repository: &dyn ProofRepository,
     proof_id: ProofId,
     error_metadata: HistoryErrorMetadata,
 ) -> Result<(), Error> {
@@ -433,13 +428,13 @@ async fn fill_proof_claims_and_credentials(
     device_response: DeviceResponse,
     proof: &Proof,
     session_transcript: SessionTranscript,
-    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: &dyn CredentialFormatterProvider,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
-    proof_repository: Arc<dyn ProofRepository>,
+    proof_repository: &dyn ProofRepository,
     certificate_validator: Arc<dyn CertificateValidator>,
     certificate_repository: Arc<dyn CertificateRepository>,
 ) -> Result<(), anyhow::Error> {
@@ -453,7 +448,7 @@ async fn fill_proof_claims_and_credentials(
         proof_schema,
         &encoded,
         session_transcript,
-        &*credential_formatter_provider,
+        credential_formatter_provider,
         key_algorithm_provider,
         did_method_provider.clone(),
         certificate_validator.clone(),
@@ -468,7 +463,7 @@ async fn fill_proof_claims_and_credentials(
         &*identifier_repository,
         &*did_method_provider,
         &*credential_repository,
-        &*proof_repository,
+        proof_repository,
         &*certificate_validator,
         &*certificate_repository,
     )
