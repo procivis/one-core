@@ -10,7 +10,7 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
     public init() {}
     
     public func generateKey(keyAlias: String) async throws -> GeneratedKeyBindingDto {
-        if (!SecureEnclave.isAvailable) {
+        if (!isSupported()) {
             throw NativeKeyStorageError.Unsupported;
         }
         
@@ -38,7 +38,7 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
     }
     
     public func sign(keyReference: Data, message: Data) async throws -> Data {
-        if (!SecureEnclave.isAvailable) {
+        if (!isSupported()) {
             throw NativeKeyStorageError.Unsupported;
         }
         
@@ -49,5 +49,13 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
         } catch {
             throw NativeKeyStorageError.SignatureFailure(reason: error.localizedDescription);
         }
+    }
+
+    private func isSupported() -> Bool {
+        #if targetEnvironment(simulator)
+            return false
+        #else
+            return SecureEnclave.isAvailable
+        #endif
     }
 }
