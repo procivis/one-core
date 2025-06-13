@@ -118,6 +118,7 @@ mod m20250607_093448_history_optional_orgid;
 mod m20250608_142503_remove_did_mdl;
 mod m20250611_110354_trust_entity_remove_did_add_org_type_content_entitykey;
 mod m20250613_090205_fix_did_did_org_unique_index;
+mod m20250613_105410_add_did_did_index;
 
 mod migrate_enum;
 pub struct Migrator;
@@ -238,6 +239,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250608_142503_remove_did_mdl::Migration),
             Box::new(m20250613_090205_fix_did_did_org_unique_index::Migration),
             Box::new(m20250611_110354_trust_entity_remove_did_add_org_type_content_entitykey::Migration),
+            Box::new(m20250613_105410_add_did_did_index::Migration),
         ]
     }
 }
