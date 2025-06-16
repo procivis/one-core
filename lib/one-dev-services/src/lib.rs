@@ -327,7 +327,6 @@ impl OneDevCore {
         let certificate_validator = Arc::new(CertificateValidatorImpl::new(
             key_algorithm_provider.clone(),
             client,
-            true,
         ));
 
         let credential_service = CredentialService::new(

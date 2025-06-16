@@ -56,9 +56,6 @@ pub struct CoreConfig {
     pub(crate) task: TaskConfig,
     pub(crate) trust_management: TrustManagementConfig,
     pub cache_entities: CacheEntitiesConfig,
-
-    // TODO: remove when ONE-5998 is fixed
-    pub unsafe_x509_crl_validity_check_enabled: Option<bool>,
 }
 
 impl CoreConfig {

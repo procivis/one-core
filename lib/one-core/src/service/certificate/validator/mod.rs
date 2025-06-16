@@ -36,19 +36,16 @@ pub trait CertificateValidator: Send + Sync {
 pub struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
-    unsafe_x509_crl_validity_check_enabled: bool,
 }
 
 impl CertificateValidatorImpl {
     pub fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
-        unsafe_x509_crl_validity_check_enabled: bool,
     ) -> Self {
         Self {
             key_algorithm_provider,
             client,
-            unsafe_x509_crl_validity_check_enabled,
         }
     }
 }

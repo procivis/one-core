@@ -115,7 +115,7 @@ pub type RevocationMethodCreator = Box<
 
 pub type CertificateValidatorCreator = Box<
     dyn FnOnce(
-            &mut CoreConfig,
+            &CoreConfig,
             &OneCoreBuilderProviders,
         ) -> Result<Arc<dyn CertificateValidator>, OneCoreBuildError>
         + Send,
@@ -268,7 +268,7 @@ impl OneCoreBuilder {
         certificate_validator_creator: CertificateValidatorCreator,
     ) -> Result<Self, OneCoreBuildError> {
         let certificate_validator =
-            certificate_validator_creator(&mut self.core_config, &self.providers)?;
+            certificate_validator_creator(&self.core_config, &self.providers)?;
         self.providers.certificate_validator = Some(certificate_validator);
         Ok(self)
     }

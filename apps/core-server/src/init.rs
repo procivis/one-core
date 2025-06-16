@@ -614,7 +614,7 @@ pub async fn initialize_core(
 
     let certificate_validator_creator: CertificateValidatorCreator = {
         let client = client.clone();
-        Box::new(move |config, providers| {
+        Box::new(move |_config, providers| {
             let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
                 OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
             )?;
@@ -622,9 +622,6 @@ pub async fn initialize_core(
             Ok(Arc::new(CertificateValidatorImpl::new(
                 key_algorithm_provider.clone(),
                 client,
-                config
-                    .unsafe_x509_crl_validity_check_enabled
-                    .unwrap_or(true),
             )))
         })
     };
