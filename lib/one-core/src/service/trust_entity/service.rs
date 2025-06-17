@@ -1,25 +1,29 @@
-use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, DidValue, IdentifierId, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use uuid::Uuid;
 
 use super::TrustEntityService;
 use super::dto::{
-    CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO,
-    GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO, ListTrustEntitiesQueryDTO,
+    CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityParamsDTO,
+    CreateTrustEntityRequestDTO, CreateTrustEntityTypeDTO, GetTrustEntitiesResponseDTO,
+    GetTrustEntityResponseDTO, ListTrustEntitiesQueryDTO, TrustEntityContent,
     UpdateTrustEntityFromDidRequestDTO,
 };
 use super::mapper::{
-    trust_entity_from_did_request, trust_entity_from_partial_and_did_and_anchor,
-    trust_entity_from_request, update_request_from_dto,
+    trust_entity_certificate_from_x509, trust_entity_from_did_request,
+    trust_entity_from_partial_and_did_and_anchor, trust_entity_from_request,
+    update_request_from_dto,
 };
-use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityType};
 use crate::repository::error::DataLayerError;
+use crate::service::certificate::validator::ParsedCertificate;
+use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -43,17 +47,94 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorMustBePublish.into());
         }
 
-        let did = self
-            .did_repository
-            .get_did(
-                &request.did_id,
-                &DidRelations {
-                    organisation: Some(OrganisationRelations {}),
-                    keys: None,
+        let (entity_type, entity_params) = request.try_into()?;
+
+        let trust_entity = match entity_type {
+            CreateTrustEntityTypeDTO::Identifier(identifier_id) => {
+                self.trust_entity_from_identifier_params(identifier_id, entity_params, trust_anchor)
+                    .await?
+            }
+            CreateTrustEntityTypeDTO::Did(did_id) => {
+                self.trust_entity_from_did_params(did_id, entity_params, trust_anchor)
+                    .await?
+            }
+            CreateTrustEntityTypeDTO::Certificate(certificate) => {
+                self.trust_entity_from_certificate_params(certificate, entity_params, trust_anchor)
+                    .await?
+            }
+        };
+
+        self.trust_entity_repository
+            .create(trust_entity)
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    BusinessLogicError::TrustEntityAlreadyPresent.into()
+                }
+                err => err.into(),
+            })
+    }
+
+    async fn trust_entity_from_certificate_params(
+        &self,
+        content: TrustEntityContent,
+        params: CreateTrustEntityParamsDTO,
+        trust_anchor: TrustAnchor,
+    ) -> Result<TrustEntity, ServiceError> {
+        let ParsedCertificate { attributes, .. } = self
+            .certificate_validator
+            .parse_pem_chain(content.as_bytes(), true)
+            .await?;
+
+        let entity_key = (&attributes).into();
+        if self
+            .trust_entity_repository
+            .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
+            .await?
+            .is_some()
+        {
+            return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
+        }
+
+        Ok(trust_entity_from_request(
+            entity_key,
+            None,
+            Some(content),
+            TrustEntityType::CertificateAuthority,
+            params,
+            trust_anchor,
+        ))
+    }
+
+    async fn trust_entity_from_identifier_params(
+        &self,
+        identifier_id: IdentifierId,
+        params: CreateTrustEntityParamsDTO,
+        trust_anchor: TrustAnchor,
+    ) -> Result<TrustEntity, ServiceError> {
+        let identifier = self
+            .identifier_repository
+            .get(
+                identifier_id,
+                &IdentifierRelations {
+                    organisation: None,
+                    did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    key: None,
+                    certificates: None,
                 },
             )
             .await?
-            .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
+            .ok_or(EntityNotFoundError::Identifier(identifier_id))?;
+
+        let Some(did) = identifier.did else {
+            return Err(BusinessLogicError::IncompatibleIdentifierType {
+                reason: "trust entity only supports did identifiers".to_string(),
+            }
+            .into());
+        };
 
         if did.did_type == DidType::Remote {
             return Err(BusinessLogicError::IncompatibleDidType {
@@ -62,25 +143,69 @@ impl TrustEntityService {
             .into());
         }
 
+        let entity_key = (&did.did).into();
         if self
             .trust_entity_repository
-            .get_by_entity_key_and_trust_anchor_id(did.did.to_string(), trust_anchor.id)
+            .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
             .await?
             .is_some()
         {
             return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
         }
 
-        let entity = trust_entity_from_request(request, trust_anchor.clone(), did);
-        self.trust_entity_repository
-            .create(entity)
-            .await
-            .map_err(|err| match err {
-                DataLayerError::AlreadyExists => {
-                    BusinessLogicError::TrustEntityAlreadyPresent.into()
-                }
-                err => err.into(),
-            })
+        Ok(trust_entity_from_request(
+            entity_key,
+            Some(did),
+            None,
+            TrustEntityType::Did,
+            params,
+            trust_anchor,
+        ))
+    }
+
+    async fn trust_entity_from_did_params(
+        &self,
+        did_id: DidId,
+        params: CreateTrustEntityParamsDTO,
+        trust_anchor: TrustAnchor,
+    ) -> Result<TrustEntity, ServiceError> {
+        let did = self
+            .did_repository
+            .get_did(
+                &did_id,
+                &DidRelations {
+                    organisation: Some(OrganisationRelations {}),
+                    keys: None,
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::Did(did_id))?;
+
+        if did.did_type == DidType::Remote {
+            return Err(BusinessLogicError::IncompatibleDidType {
+                reason: "Only local DIDs allowed".to_string(),
+            }
+            .into());
+        }
+
+        let entity_key = (&did.did).into();
+        if self
+            .trust_entity_repository
+            .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
+            .await?
+            .is_some()
+        {
+            return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
+        }
+
+        Ok(trust_entity_from_request(
+            entity_key,
+            Some(did),
+            None,
+            TrustEntityType::Did,
+            params,
+            trust_anchor,
+        ))
     }
 
     pub async fn publisher_create_trust_entity_for_did(
@@ -107,26 +232,16 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorIsDisabled.into());
         }
 
-        let (did, _) = get_or_create_did_and_identifier(
-            &*self.did_method_provider,
-            &*self.did_repository,
-            &*self.identifier_repository,
-            &None,
-            &did_value,
-            DidRole::Verifier,
-        )
-        .await?;
-
         if self
             .trust_entity_repository
-            .get_by_entity_key(did.did.to_string())
+            .get_by_entity_key(&(&did_value).into())
             .await?
             .is_some()
         {
             return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
         }
 
-        let entity = trust_entity_from_did_request(request, trust_anchor.clone(), did);
+        let entity = trust_entity_from_did_request(request, trust_anchor.clone(), did_value);
 
         trust.publish_entity(&trust_anchor, &entity).await;
 
@@ -145,7 +260,7 @@ impl TrustEntityService {
         &self,
         id: TrustEntityId,
     ) -> Result<GetTrustEntityResponseDTO, ServiceError> {
-        let result = self
+        let trust_entity = self
             .trust_entity_repository
             .get(
                 id,
@@ -156,25 +271,65 @@ impl TrustEntityService {
             )
             .await?
             .ok_or(EntityNotFoundError::TrustEntity(id))?;
-        let did = if result.r#type == TrustEntityType::Did {
-            let did_value = DidValue::from_did_url(&result.entity_key).map_err(|err| {
-                ServiceError::MappingError(format!(
-                    "Invalid trust entity entity_key of type DID: {err}"
-                ))
-            })?;
-            self.did_repository
-                .get_did_by_value(
-                    &did_value,
-                    Some(result.organisation.as_ref().map(|org| org.id)),
-                    &DidRelations::default(),
+
+        let (mut identifier, content) = match &trust_entity.r#type {
+            TrustEntityType::Did => {
+                let did_value = DidValue::from_did_url(&trust_entity.entity_key).map_err(|_| {
+                    MappingError("invalid trust_entity.entity_key for type did".to_string())
+                })?;
+                let organisation_id = trust_entity.organisation.as_ref().map(|o| o.id);
+
+                let did = self
+                    .did_repository
+                    .get_did_by_value(&did_value, Some(organisation_id), &DidRelations::default())
+                    .await?
+                    .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::DidValue(
+                        did_value,
+                    )))?;
+
+                let mut identifier = self
+                    .identifier_repository
+                    .get_from_did_id(did.id, &IdentifierRelations::default())
+                    .await?
+                    .ok_or(ServiceError::EntityNotFound(
+                        EntityNotFoundError::IdentifierByDidId(did.id),
+                    ))?;
+
+                identifier.did = Some(did);
+                (Some(identifier), None)
+            }
+            TrustEntityType::CertificateAuthority => {
+                let content = trust_entity.content.as_ref().ok_or(MappingError(
+                    "missing trust_entity.content for type certificate".to_string(),
+                ))?;
+                let (
+                    state,
+                    ParsedCertificate {
+                        attributes,
+                        public_key,
+                        ..
+                    },
+                ) = self
+                    .certificate_validator
+                    .parse_pem_chain_with_status(content.as_bytes())
+                    .await?;
+                (
+                    None,
+                    Some(trust_entity_certificate_from_x509(
+                        state,
+                        public_key.public_key_as_jwk()?.into(),
+                        attributes,
+                    )),
                 )
-                .await?
-        } else {
-            None
+            }
         };
-        let mut result: GetTrustEntityResponseDTO = result.try_into()?;
-        result.did = did.map(Into::into);
-        Ok(result)
+
+        get_detail_trust_entity_response(
+            trust_entity,
+            identifier.as_mut().and_then(|i| i.did.take()),
+            identifier,
+            content,
+        )
     }
 
     pub async fn publisher_get_trust_entity_for_did(
@@ -196,18 +351,17 @@ impl TrustEntityService {
             )
             .await?
             .ok_or(ServiceError::ValidationError("unknown did".to_string()))?;
-
-        let did_id_as_uuid = Uuid::from(did.id);
+        let entity_key: TrustEntityKey = did_value.into();
 
         let result = self
             .trust_entity_repository
-            .get_by_entity_key(did.did.to_string())
+            .get_by_entity_key(&entity_key)
             .await?
             .ok_or(ServiceError::EntityNotFound(
-                EntityNotFoundError::TrustEntity(did_id_as_uuid.into()),
+                EntityNotFoundError::TrustEntityByEntityKey(entity_key),
             ))?;
 
-        get_detail_trust_entity_response(result, did)
+        get_detail_trust_entity_response(result, Some(did), None, None)
     }
 
     pub async fn list_trust_entities(
@@ -225,6 +379,21 @@ impl TrustEntityService {
         entity: TrustEntity,
         request: UpdateTrustEntityFromDidRequestDTO,
     ) -> Result<(), ServiceError> {
+        if let Some(content) = &request.content {
+            match entity.r#type {
+                TrustEntityType::Did => return Err(ValidationError::TrustEntityTypeInvalid.into()),
+                TrustEntityType::CertificateAuthority => {
+                    let ParsedCertificate { attributes, .. } = self
+                        .certificate_validator
+                        .parse_pem_chain(content.as_bytes(), true)
+                        .await?;
+                    if entity.entity_key != (&attributes).into() {
+                        return Err(ValidationError::TrustEntityCommonNameDoesNotMatch.into());
+                    }
+                }
+            }
+        }
+
         let request = update_request_from_dto(entity.state, request)?;
 
         self.trust_entity_repository
@@ -284,7 +453,7 @@ impl TrustEntityService {
 
         let Some(entity) = self
             .trust_entity_repository
-            .get_by_entity_key(did.did.to_string())
+            .get_by_entity_key(&did.did.into())
             .await?
         else {
             return Err(BusinessLogicError::TrustEntityHasDuplicates.into());
@@ -395,15 +564,16 @@ impl TrustEntityService {
                     did_id,
                 )))?;
 
-            let maybe_entity = trust
-                .lookup_did(&trust_anchor, &did.did)
+            let trust_entity = trust
+                .lookup_entity_key(&trust_anchor, &(&did.did).into())
                 .await
                 .map_err(ServiceError::TrustManagementError)?;
 
-            if let Some(trust_entity) = maybe_entity {
+            if let Some(trust_entity) = trust_entity {
                 return trust_entity_from_partial_and_did_and_anchor(
                     trust_entity,
                     did,
+                    None,
                     trust_anchor,
                 );
             }

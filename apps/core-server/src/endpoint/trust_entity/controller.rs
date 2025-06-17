@@ -4,7 +4,8 @@ use axum_extra::extract::WithRejection;
 use shared_types::{DidId, TrustEntityId};
 
 use super::dto::{
-    CreateRemoteTrustEntityRequestRestDTO, CreateTrustEntityRequestRestDTO, ListTrustEntitiesQuery,
+    CreateRemoteTrustEntityRequestRestDTO, CreateTrustEntityRequestRestDTO,
+    GetRemoteTrustEntityResponseRestDTO, ListTrustEntitiesQuery,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetTrustEntityListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -233,7 +234,7 @@ pub(crate) async fn update_remote_trust_entity(
 pub(crate) async fn get_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<GetTrustEntityResponseRestDTO> {
+) -> OkOrErrorResponse<GetRemoteTrustEntityResponseRestDTO> {
     let result = state
         .core
         .trust_entity_service

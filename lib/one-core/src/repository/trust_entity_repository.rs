@@ -1,4 +1,4 @@
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
 
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
 use crate::repository::error::DataLayerError;
@@ -11,12 +11,12 @@ pub trait TrustEntityRepository: Send + Sync {
 
     async fn get_by_entity_key(
         &self,
-        entity_key: String,
+        entity_key: &TrustEntityKey,
     ) -> Result<Option<TrustEntity>, DataLayerError>;
 
     async fn get_by_entity_key_and_trust_anchor_id(
         &self,
-        entity_key: String,
+        entity_key: &TrustEntityKey,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Option<TrustEntity>, DataLayerError>;
 

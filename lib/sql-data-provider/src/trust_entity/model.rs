@@ -19,8 +19,9 @@ pub(super) struct TrustEntityListItemEntityModel {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
-    pub entity_key: String,
+    #[sea_orm(from_col = "type")]
     pub r#type: TrustEntityType,
+    pub entity_key: String,
     #[allow(unused)]
     pub content: Option<Vec<u8>>,
     pub organisation_id: Option<OrganisationId>,

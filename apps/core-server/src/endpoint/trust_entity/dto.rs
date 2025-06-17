@@ -1,18 +1,23 @@
-use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use one_core::service::error::ServiceError;
 use one_core::service::trust_entity::dto::{
-    CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
-    TrustEntitiesResponseItemDTO,
+    CreateRemoteTrustEntityRequestDTO, GetRemoteTrustEntityResponseDTO, GetTrustEntityResponseDTO,
+    SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
+use shared_types::{
+    DidId, IdentifierId, OrganisationId, TrustAnchorId, TrustEntityId, TrustEntityKey,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::endpoint::certificate::dto::{CertificateStateRest, CertificateX509ExtensionRestDTO};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
+use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
 use crate::endpoint::trust_anchor::dto::{
     GetTrustAnchorDetailResponseRestDTO, GetTrustAnchorResponseRestDTO,
 };
@@ -36,7 +41,10 @@ pub struct CreateTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     pub(super) trust_anchor_id: TrustAnchorId,
     /// Specify DID ID.
-    pub(super) did_id: DidId,
+    pub(super) did_id: Option<DidId>,
+    pub(super) identifier_id: Option<IdentifierId>,
+    pub(super) content: Option<String>,
+    pub(super) r#type: Option<TrustEntityTypeRest>,
 }
 
 /// Whether the trust entity issues credentials, verifies credentials, or both.
@@ -63,7 +71,7 @@ pub enum TrustEntityStateRest {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetTrustEntityResponseRestDTO {
@@ -85,6 +93,53 @@ pub struct GetTrustEntityResponseRestDTO {
     #[from(with_fn=convert_inner)]
     pub did: Option<DidListItemResponseRestDTO>,
     pub state: TrustEntityStateRest,
+    pub entity_key: TrustEntityKey,
+    pub r#type: TrustEntityTypeRest,
+    #[from(with_fn=convert_inner)]
+    pub identifier: Option<GetIdentifierListItemResponseRestDTO>,
+    pub content: Option<String>,
+    #[from(with_fn=convert_inner)]
+    pub ca: Option<TrustEntityCertificateResponseRestDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(TrustEntityCertificateResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustEntityCertificateResponseRestDTO {
+    pub state: CertificateStateRest,
+    pub key: PublicKeyJwkRestDTO,
+    pub serial_number: String,
+    pub not_before: OffsetDateTime,
+    pub not_after: OffsetDateTime,
+    pub issuer: String,
+    pub subject: String,
+    pub fingerprint: String,
+    #[from(with_fn=convert_inner)]
+    pub extensions: Vec<CertificateX509ExtensionRestDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(GetRemoteTrustEntityResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct GetRemoteTrustEntityResponseRestDTO {
+    pub id: TrustEntityId,
+    pub organisation_id: Option<OrganisationId>,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub terms_url: Option<String>,
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleRest,
+    pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
+    pub state: TrustEntityStateRest,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -105,6 +160,10 @@ pub type ListTrustEntitiesQuery =
 pub struct TrustEntityFilterQueryParamsRestDto {
     #[param(nullable = false)]
     pub name: Option<String>,
+    #[param(nullable = false)]
+    pub r#type: Option<Vec<TrustEntityTypeRest>>,
+    #[param(nullable = false)]
+    pub entity_key: Option<TrustEntityKey>,
     #[param(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
     #[param(nullable = false)]
@@ -138,8 +197,8 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub trust_anchor: GetTrustAnchorResponseRestDTO,
-    #[from(with_fn=convert_inner)]
-    pub did: Option<DidListItemResponseRestDTO>,
+    pub r#type: TrustEntityTypeRest,
+    pub entity_key: TrustEntityKey,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
@@ -175,4 +234,14 @@ pub struct CreateRemoteTrustEntityRequestRestDTO {
     pub privacy_url: Option<String>,
     #[try_into(infallible)]
     pub role: TrustEntityRoleRest,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema, Into, From)]
+#[into(TrustEntityType)]
+#[from(TrustEntityType)]
+pub enum TrustEntityTypeRest {
+    #[serde(rename = "DID")]
+    Did,
+    #[serde(rename = "CA")]
+    CertificateAuthority,
 }

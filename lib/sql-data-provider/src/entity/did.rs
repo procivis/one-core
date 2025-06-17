@@ -1,6 +1,7 @@
 use one_core::model::did::DidType as ModelDidType;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
 use shared_types::{DidId, DidValue, OrganisationId};
 use time::OffsetDateTime;
 
@@ -60,7 +61,7 @@ impl Related<super::key::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize)]
 #[from(ModelDidType)]
 #[into(ModelDidType)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]

@@ -62,6 +62,12 @@ impl DidValue {
     }
 }
 
+impl AsRef<str> for DidValue {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 #[cfg(feature = "utoipa")]
 mod utoipa_schema {
     use utoipa::openapi::{KnownFormat, ObjectBuilder, RefOr, Schema, SchemaFormat, Type};

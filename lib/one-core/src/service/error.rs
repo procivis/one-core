@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
     IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
+    TrustEntityKey,
 };
 use strum::{EnumMessage, IntoStaticStr};
 use thiserror::Error;
@@ -179,6 +180,9 @@ pub enum EntityNotFoundError {
 
     #[error("Trust entity `{0}` not found")]
     TrustEntity(TrustEntityId),
+
+    #[error("Trust entity by entity key `{0}` not found")]
+    TrustEntityByEntityKey(TrustEntityKey),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -577,6 +581,18 @@ pub enum ValidationError {
 
     #[error("Identifier type `{0}` is disabled")]
     IdentifierTypeDisabled(String),
+
+    #[error("Trust entity type not specified")]
+    TrustEntityTypeNotSpecified,
+
+    #[error("Trust entity has ambiguous ids specified")]
+    TrustEntityAmbiguousIds,
+
+    #[error("Trust entity type does not match ids or content")]
+    TrustEntityTypeInvalid,
+
+    #[error("Trust entity common name does not match")]
+    TrustEntityCommonNameDoesNotMatch,
 
     #[error("CRL check failure: `{0}`")]
     CRLCheckFailed(String),
@@ -1127,6 +1143,20 @@ pub enum ErrorCode {
     #[strum(message = "Identifier type disabled")]
     BR_0227,
 
+    #[strum(message = "Only didId or identifierId must be present when creating trust entity")]
+    BR_0228,
+
+    #[strum(
+        message = "Type mandatory when identifierId or content is used for creating trust entity"
+    )]
+    BR_0229,
+
+    #[strum(message = "Content attribute not editable for DID trust entity type")]
+    BR_0230,
+
+    #[strum(message = "Common name not matching")]
+    BR_0231,
+
     #[strum(message = "CRL check failure")]
     BR_0233,
 
@@ -1135,6 +1165,9 @@ pub enum ErrorCode {
 
     #[strum(message = "CRL signature invalid")]
     BR_0235,
+
+    #[strum(message = "Duplicate trust entity")]
+    BR_0236,
 
     #[strum(message = "Rejection not supported")]
     BR_0237,
@@ -1217,7 +1250,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Lvvc(_) => ErrorCode::BR_0000,
             Self::History(_) => ErrorCode::BR_0100,
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
-            Self::TrustEntity(_) => ErrorCode::BR_0121,
+            Self::TrustEntity(_) | Self::TrustEntityByEntityKey(_) => ErrorCode::BR_0121,
             Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
             Self::Certificate(_) => ErrorCode::BR_0223,
@@ -1359,6 +1392,10 @@ impl ErrorCodeMixin for ValidationError {
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
+            Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,
+            Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
+            Self::TrustEntityTypeInvalid => ErrorCode::BR_0230,
+            Self::TrustEntityCommonNameDoesNotMatch => ErrorCode::BR_0231,
             Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
             Self::CRLOutdated => ErrorCode::BR_0234,
             Self::CRLSignatureInvalid => ErrorCode::BR_0235,

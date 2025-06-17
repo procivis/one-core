@@ -12,7 +12,7 @@ use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
     GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
-use shared_types::{HistoryId, TrustAnchorId, TrustEntityId};
+use shared_types::{HistoryId, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -35,14 +35,14 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
 
     async fn get_by_entity_key(
         &self,
-        entity_key: String,
+        entity_key: &TrustEntityKey,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
         self.inner.get_by_entity_key(entity_key).await
     }
 
     async fn get_by_entity_key_and_trust_anchor_id(
         &self,
-        entity_key: String,
+        entity_key: &TrustEntityKey,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
         self.inner
@@ -93,14 +93,19 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         id: TrustEntityId,
         request: UpdateTrustEntityRequest,
     ) -> Result<(), DataLayerError> {
-        let history_action = request.state.clone().and_then(|state| match state {
+        let state_history_action = request.state.clone().and_then(|state| match state {
             TrustEntityState::Active => Some(HistoryAction::Activated),
             TrustEntityState::Removed => Some(HistoryAction::Removed),
             TrustEntityState::Withdrawn => Some(HistoryAction::Withdrawn),
             TrustEntityState::RemovedAndWithdrawn => None,
         });
 
-        if let Some(action) = history_action {
+        let content_history_action = request.content.as_ref().map(|_| HistoryAction::Updated);
+
+        for action in [content_history_action, state_history_action]
+            .into_iter()
+            .flatten()
+        {
             let name = self
                 .inner
                 .get(id, &TrustEntityRelations::default())

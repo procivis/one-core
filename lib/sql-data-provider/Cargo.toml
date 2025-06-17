@@ -30,7 +30,7 @@ time.workspace           = true
 tokio                    = { workspace = true, features = ["macros"] }
 tracing.workspace        = true
 url                      = { workspace = true }
-uuid.workspace           = true
+uuid                     = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 futures.workspace  = true

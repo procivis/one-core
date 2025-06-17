@@ -1,6 +1,7 @@
 use one_core::model::trust_entity::TrustEntity;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
@@ -24,11 +25,12 @@ pub struct Model {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
+    pub trust_anchor_id: TrustAnchorId,
     pub r#type: TrustEntityType,
+    #[sea_orm(column_type = "Text")]
+    pub entity_key: String,
     #[sea_orm(column_type = "Blob", nullable)]
     pub content: Option<Vec<u8>>,
-    pub entity_key: String,
-    pub trust_anchor_id: TrustAnchorId,
     #[sea_orm(nullable)]
     pub organisation_id: Option<OrganisationId>,
 }
@@ -67,7 +69,7 @@ impl Related<super::organisation::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
 #[into(one_core::model::trust_entity::TrustEntityRole)]
 #[from(one_core::model::trust_entity::TrustEntityRole)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
@@ -80,7 +82,7 @@ pub enum TrustEntityRole {
     Both,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
 #[into(one_core::model::trust_entity::TrustEntityState)]
 #[from(one_core::model::trust_entity::TrustEntityState)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
@@ -95,11 +97,13 @@ pub enum TrustEntityState {
     RemovedAndWithdrawn,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
 #[into(one_core::model::trust_entity::TrustEntityType)]
 #[from(one_core::model::trust_entity::TrustEntityType)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum TrustEntityType {
     #[sea_orm(string_value = "DID")]
     Did,
+    #[sea_orm(string_value = "CA")]
+    CertificateAuthority,
 }

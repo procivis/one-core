@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
-use shared_types::TrustEntityId;
+use shared_types::{TrustEntityId, TrustEntityKey};
 use time::OffsetDateTime;
 
 use super::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::service::trust_entity::dto::TrustEntityContent;
 
 #[derive(Clone, Debug)]
 pub struct TrustEntity {
@@ -19,18 +20,12 @@ pub struct TrustEntity {
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
     pub r#type: TrustEntityType,
-    pub entity_key: String,
-    pub content: Option<Vec<u8>>,
+    pub entity_key: TrustEntityKey,
+    pub content: Option<TrustEntityContent>,
 
     // Relations
-    pub trust_anchor: Option<TrustAnchor>,
     pub organisation: Option<Organisation>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustEntityType {
-    Did,
+    pub trust_anchor: Option<TrustAnchor>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -39,6 +34,15 @@ pub enum TrustEntityRole {
     Issuer,
     Verifier,
     Both,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrustEntityType {
+    #[serde(rename = "DID")]
+    Did,
+    #[serde(rename = "CA")]
+    CertificateAuthority,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -65,4 +69,5 @@ pub struct UpdateTrustEntityRequest {
     pub name: Option<String>,
     pub terms_url: Option<Option<String>>,
     pub role: Option<TrustEntityRole>,
+    pub content: Option<TrustEntityContent>,
 }

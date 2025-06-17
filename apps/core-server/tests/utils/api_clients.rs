@@ -142,6 +142,7 @@ impl HttpClient {
     }
 }
 
+#[derive(Debug)]
 pub struct Response {
     resp: reqwest::Response,
 }

@@ -4,7 +4,7 @@ mod model;
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::DidValue;
+use shared_types::TrustEntityKey;
 
 use super::{TrustCapabilities, TrustManagement, TrustOperations};
 use crate::model::trust_anchor::TrustAnchor;
@@ -12,7 +12,7 @@ use crate::model::trust_entity::TrustEntity;
 use crate::provider::caching_loader::trust_list::TrustListCache;
 use crate::provider::http_client::HttpClient;
 use crate::provider::trust_management::error::TrustManagementError;
-use crate::provider::trust_management::model::TrustEntityByDid;
+use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::simple_list::model::GetTrustAnchorResponseRestDTO;
 
 #[derive(Debug, Deserialize)]
@@ -42,11 +42,12 @@ impl TrustManagement for SimpleList {
     fn is_enabled(&self) -> bool {
         self.params.enable_publishing
     }
-    async fn lookup_did(
+
+    async fn lookup_entity_key(
         &self,
         anchor: &TrustAnchor,
-        did: &DidValue,
-    ) -> Result<Option<TrustEntityByDid>, TrustManagementError> {
+        entity_key: &TrustEntityKey,
+    ) -> Result<Option<TrustEntityByEntityKey>, TrustManagementError> {
         let response = self
             .trust_list_cache
             .get(&anchor.publisher_reference)
@@ -64,6 +65,6 @@ impl TrustManagement for SimpleList {
         Ok(trust_list
             .entities
             .into_iter()
-            .find(|entity| &entity.did == did))
+            .find(|entity| entity.entity_key == *entity_key))
     }
 }

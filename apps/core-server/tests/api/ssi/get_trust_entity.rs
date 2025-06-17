@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::organisation::Organisation;
-use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use one_core::provider::credential_formatter::jwt::Jwt;
 use one_core::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use one_core::provider::credential_formatter::model::SignatureProvider;
@@ -63,7 +63,10 @@ async fn test_get_trust_entity_by_did_success() {
             TrustEntityRole::Verifier,
             TrustEntityState::Active,
             trust_anchor.clone(),
-            did.clone(),
+            TrustEntityType::Did,
+            (&did.did).into(),
+            None,
+            did.organisation,
         )
         .await;
 

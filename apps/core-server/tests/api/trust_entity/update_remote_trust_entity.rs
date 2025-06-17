@@ -47,6 +47,7 @@ async fn test_update_remote_trust_entity_success() {
                 terms_url: None,
                 privacy_url: None,
                 role: None,
+                content: None,
             },
         )
         .await;
@@ -84,6 +85,7 @@ async fn test_update_remote_trust_entity_invalid_action() {
                 terms_url: None,
                 privacy_url: None,
                 role: None,
+                content: None,
             },
         )
         .await;

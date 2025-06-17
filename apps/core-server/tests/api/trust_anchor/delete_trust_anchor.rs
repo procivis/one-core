@@ -1,4 +1,4 @@
-use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
@@ -22,7 +22,10 @@ async fn test_delete_trust_anchor() {
             TrustEntityRole::Both,
             TrustEntityState::Active,
             anchor.clone(),
-            did,
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
         )
         .await;
 

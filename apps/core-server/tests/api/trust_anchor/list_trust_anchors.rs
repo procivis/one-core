@@ -1,4 +1,4 @@
-use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::api_clients::trust_anchors::ListFilters;
@@ -82,7 +82,10 @@ async fn test_list_trust_anchors_with_entities() {
                 TrustEntityRole::Both,
                 TrustEntityState::Active,
                 anchor.clone(),
-                did1.clone(),
+                TrustEntityType::Did,
+                did1.did.into(),
+                None,
+                did1.organisation,
             )
             .await;
 
@@ -94,7 +97,10 @@ async fn test_list_trust_anchors_with_entities() {
                 TrustEntityRole::Both,
                 TrustEntityState::Active,
                 anchor.clone(),
-                did2.clone(),
+                TrustEntityType::Did,
+                did2.did.into(),
+                None,
+                did2.organisation,
             )
             .await;
     }

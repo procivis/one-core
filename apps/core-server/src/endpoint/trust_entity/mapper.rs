@@ -1,4 +1,5 @@
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::trust_entity::TrustEntityType;
 use one_core::service::error::ServiceError;
 use one_core::service::trust_entity::dto::{CreateTrustEntityRequestDTO, TrustEntityFilterValue};
 use one_dto_mapper::try_convert_inner;
@@ -37,11 +38,20 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
             .organisation_id
             .map(TrustEntityFilterValue::OrganisationId);
 
+        let types = value
+            .r#type
+            .map(|v| v.into_iter().map(TrustEntityType::from).collect())
+            .map(TrustEntityFilterValue::Type);
+
+        let entity_key = value.entity_key.map(TrustEntityFilterValue::EntityKey);
+
         ListFilterCondition::<TrustEntityFilterValue>::from(did_id)
             & trust_anchor_id
             & name
             & role
             & organisation_id
+            & types
+            & entity_key
     }
 }
 
@@ -58,6 +68,11 @@ impl TryFrom<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
             role: value.role.into(),
             trust_anchor_id: value.trust_anchor_id,
             did_id: value.did_id,
+            identifier_id: value.identifier_id,
+            r#type: value.r#type.map(Into::into),
+            content: value
+                .content
+                .map(|s| String::from_utf8_lossy(s.as_bytes()).to_string()),
         })
     }
 }

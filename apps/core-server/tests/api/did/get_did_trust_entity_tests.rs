@@ -1,4 +1,4 @@
-use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -31,7 +31,10 @@ async fn test_get_trust_entity_by_did_success() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             anchor.clone(),
-            did.clone(),
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
         )
         .await;
 
@@ -70,7 +73,10 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             anchor1.clone(),
-            did1,
+            TrustEntityType::Did,
+            did1.did.into(),
+            None,
+            did1.organisation,
         )
         .await;
 
@@ -101,7 +107,10 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             anchor2.clone(),
-            did2.clone(),
+            TrustEntityType::Did,
+            did2.did.into(),
+            None,
+            did2.organisation,
         )
         .await;
 

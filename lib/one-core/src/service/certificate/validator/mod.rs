@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::model::certificate::CertificateState;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -30,6 +31,11 @@ pub trait CertificateValidator: Send + Sync {
         pem_chain: &[u8],
         validate: bool,
     ) -> Result<ParsedCertificate, ServiceError>;
+
+    async fn parse_pem_chain_with_status(
+        &self,
+        pem_chain: &[u8],
+    ) -> Result<(CertificateState, ParsedCertificate), ServiceError>;
 }
 
 #[derive(Clone)]

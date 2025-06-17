@@ -1,7 +1,8 @@
-use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use one_core::service::trust_entity::dto::{
-    CreateRemoteTrustEntityRequestDTO, CreateTrustEntityRequestDTO, GetTrustEntitiesResponseDTO,
-    GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO,
+    CreateRemoteTrustEntityRequestDTO, CreateTrustEntityRequestDTO,
+    GetRemoteTrustEntityResponseDTO, GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO,
+    SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
@@ -11,6 +12,11 @@ use super::common::SortDirection;
 use super::did::DidListItemBindingDTO;
 use super::mapper::OptionalString;
 use super::trust_anchor::GetTrustAnchorResponseBindingDTO;
+use crate::binding::identifier::{
+    CertificateStateBindingEnum, CertificateX509ExtensionBindingDTO,
+    GetIdentifierListItemBindingDTO,
+};
+use crate::binding::key::PublicKeyJwkBindingDTO;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
 
@@ -48,7 +54,7 @@ impl OneCoreBinding {
     pub async fn get_remote_trust_entity(
         &self,
         did_id: String,
-    ) -> Result<GetTrustEntityResponseBindingDTO, BindingError> {
+    ) -> Result<GetRemoteTrustEntityResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .trust_entity_service
@@ -138,6 +144,9 @@ pub struct ListTrustEntitiesFiltersBindings {
     pub did_id: Option<String>,
     pub organisation_id: Option<String>,
 
+    pub r#type: Option<Vec<TrustEntityTypeBindingEnum>>,
+    pub entity_key: Option<String>,
+
     pub exact: Option<Vec<ExactTrustEntityFilterColumnBindings>>,
 }
 
@@ -190,8 +199,14 @@ pub struct CreateTrustEntityRequestBindingDTO {
     pub role: TrustEntityRoleBindingEnum,
     #[try_into(with_fn_ref = into_id)]
     pub trust_anchor_id: String,
-    #[try_into(with_fn_ref = into_id)]
-    pub did_id: String,
+    #[try_into(with_fn = into_id_opt)]
+    pub did_id: Option<String>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub r#type: Option<TrustEntityTypeBindingEnum>,
+    #[try_into(with_fn = into_id_opt)]
+    pub identifier_id: Option<String>,
+    #[try_into(infallible)]
+    pub content: Option<String>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -225,6 +240,14 @@ pub enum TrustEntityRoleBindingEnum {
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]
+#[from(TrustEntityType)]
+#[into(TrustEntityType)]
+pub enum TrustEntityTypeBindingEnum {
+    Did,
+    CertificateAuthority,
+}
+
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(TrustEntityState)]
 #[into(TrustEntityState)]
 pub enum TrustEntityStateBindingEnum {
@@ -237,6 +260,54 @@ pub enum TrustEntityStateBindingEnum {
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustEntityResponseDTO)]
 pub struct GetTrustEntityResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn = from_id_opt)]
+    pub organisation_id: Option<String>,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub terms_url: Option<String>,
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleBindingEnum,
+    pub trust_anchor: GetTrustAnchorResponseBindingDTO,
+    #[from(with_fn = convert_inner)]
+    pub did: Option<DidListItemBindingDTO>,
+    pub state: TrustEntityStateBindingEnum,
+
+    pub entity_key: String,
+    pub r#type: TrustEntityTypeBindingEnum,
+    #[from(with_fn = convert_inner)]
+    pub identifier: Option<GetIdentifierListItemBindingDTO>,
+    pub content: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub ca: Option<TrustEntityCertificateResponseBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(TrustEntityCertificateResponseDTO)]
+pub struct TrustEntityCertificateResponseBindingDTO {
+    pub state: CertificateStateBindingEnum,
+    pub key: PublicKeyJwkBindingDTO,
+    pub serial_number: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub not_before: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub not_after: String,
+    pub issuer: String,
+    pub subject: String,
+    pub fingerprint: String,
+    #[from(with_fn=convert_inner)]
+    pub extensions: Vec<CertificateX509ExtensionBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(GetRemoteTrustEntityResponseDTO)]
+pub struct GetRemoteTrustEntityResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
     #[from(with_fn = from_id_opt)]
@@ -285,4 +356,6 @@ pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
     pub privacy_url: Option<OptionalString>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub role: Option<TrustEntityRoleBindingEnum>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub content: Option<String>,
 }

@@ -2,10 +2,11 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
 use x509_parser::pem::Pem;
-use x509_parser::prelude::X509Certificate;
+use x509_parser::prelude::{ASN1Time, X509Certificate};
 
 use super::{CertificateValidator, CertificateValidatorImpl, ParsedCertificate, x509_extension};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::model::certificate::CertificateState;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -81,6 +82,83 @@ impl CertificateValidator for CertificateValidatorImpl {
             ValidationError::CertificateParsingFailed("No certificates specified".to_string())
                 .into(),
         )
+    }
+
+    async fn parse_pem_chain_with_status(
+        &self,
+        pem_chain: &[u8],
+    ) -> Result<(CertificateState, ParsedCertificate), ServiceError> {
+        let mut result: Option<ParsedCertificate> = None;
+
+        let items = Pem::iter_from_buffer(pem_chain)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+
+        let certs = items
+            .iter()
+            .map(|pem| match pem.parse_x509() {
+                Ok(parsed) => Ok((parsed, pem)),
+                Err(err) => Err(err),
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+
+        for ((current, current_pem), (next, _)) in certs.iter().zip(
+            certs
+                .iter()
+                .skip(1)
+                .map(|(cert, pem)| (Some(cert), Some(pem)))
+                .chain(std::iter::once((None, None))),
+        ) {
+            if result.is_none() {
+                let subject_common_name = current
+                    .subject
+                    .iter_common_name()
+                    .next()
+                    .and_then(|cn| cn.as_str().ok())
+                    .map(ToString::to_string);
+
+                let res = ParsedCertificate {
+                    attributes: parse_x509_attributes(current, &current_pem.contents)?,
+                    subject_common_name,
+                    public_key: self.extract_public_key(current)?,
+                };
+                result = Some(res);
+            }
+
+            let now = ASN1Time::now();
+            if !current.validity().is_valid_at(now) {
+                let result = result.ok_or(ValidationError::CertificateParsingFailed(
+                    "No certificates specified".to_string(),
+                ))?;
+
+                return if now < current.validity.not_before {
+                    Ok((CertificateState::NotYetActive, result))
+                } else {
+                    Ok((CertificateState::Expired, result))
+                };
+            }
+
+            if let Some(next) = next {
+                // parent entry in the chain, validate signature
+                current
+                    .verify_signature(Some(next.public_key()))
+                    .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
+            }
+
+            let revoked = self.check_revocation(current, next).await?;
+            if revoked {
+                let result = result.ok_or(ValidationError::CertificateParsingFailed(
+                    "No certificates specified".to_string(),
+                ))?;
+                return Ok((CertificateState::Revoked, result));
+            }
+        }
+
+        let result = result.ok_or(ValidationError::CertificateParsingFailed(
+            "No certificates specified".to_string(),
+        ))?;
+        Ok((CertificateState::Active, result))
     }
 }
 

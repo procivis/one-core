@@ -5,14 +5,14 @@ use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
     GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner};
+use one_dto_mapper::convert_inner;
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::IntoCondition;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, JoinType, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set, Unchanged,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set, Unchanged,
 };
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
 use time::OffsetDateTime;
 
 use super::TrustEntityProvider;
@@ -42,9 +42,9 @@ impl TrustEntityRepository for TrustEntityProvider {
             role: Set(entity.role.into()),
             state: Set(entity.state.into()),
             r#type: Set(entity.r#type.into()),
-            content: Set(entity.content),
-            entity_key: Set(entity.entity_key),
             trust_anchor_id: Set(trust_anchor.id),
+            entity_key: Set(entity.entity_key.into()),
+            content: Set(entity.content.map(|s| s.as_bytes().to_vec())),
             organisation_id: Set(entity.organisation.map(|org| org.id)),
         }
         .insert(&self.db)
@@ -56,7 +56,7 @@ impl TrustEntityRepository for TrustEntityProvider {
 
     async fn get_by_entity_key(
         &self,
-        entity_key: String,
+        entity_key: &TrustEntityKey,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
         let Some((entity_model, trust_anchor)) = trust_entity::Entity::find()
             .filter(trust_entity::Column::EntityKey.eq(entity_key))
@@ -76,7 +76,7 @@ impl TrustEntityRepository for TrustEntityProvider {
 
     async fn get_by_entity_key_and_trust_anchor_id(
         &self,
-        entity_key: String,
+        entity_key: &TrustEntityKey,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
         let Some((entity_model, trust_anchor)) = trust_entity::Entity::find()
@@ -265,7 +265,7 @@ impl TrustEntityRepository for TrustEntityProvider {
             .map_err(to_data_layer_error)?;
 
         Ok(GetTrustEntitiesResponseDTO {
-            values: try_convert_inner(trust_entities)?,
+            values: convert_inner(trust_entities),
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })
@@ -285,9 +285,20 @@ impl TrustEntityRepository for TrustEntityProvider {
             Some(state) => Set(TrustEntityState::from(state)),
         };
 
+        let now = OffsetDateTime::now_utc();
+        let deactivated_at = match &state {
+            ActiveValue::Set(state) => match state {
+                TrustEntityState::Active => Set(None),
+                TrustEntityState::Removed
+                | TrustEntityState::Withdrawn
+                | TrustEntityState::RemovedAndWithdrawn => Set(Some(now)),
+            },
+            _ => Unchanged(Default::default()),
+        };
+
         let _value = trust_entity::ActiveModel {
             id: Unchanged(id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(now),
             name: option_to_active_value(request.name),
             logo: option_to_active_value(request.logo.map(|f| f.map(|v| v.into_bytes()))),
             website: option_to_active_value(request.website),
@@ -295,6 +306,8 @@ impl TrustEntityRepository for TrustEntityProvider {
             privacy_url: option_to_active_value(request.privacy_url),
             role,
             state,
+            deactivated_at,
+            content: option_to_active_value(request.content.map(|c| Some(c.into_bytes()))),
             ..Default::default()
         }
         .update(&self.db)

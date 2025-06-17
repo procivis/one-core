@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
-use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use uuid::Uuid;
 
 use crate::model::did::{Did, DidType};
@@ -95,7 +95,7 @@ fn generic_trust_entity(id: TrustEntityId) -> TrustEntity {
         role: TrustEntityRole::Issuer,
         state: TrustEntityState::Active,
         r#type: TrustEntityType::Did,
-        entity_key: dummy_did().did.to_string(),
+        entity_key: (&dummy_did().did).into(),
         content: None,
         trust_anchor: None,
         organisation: None,
@@ -122,7 +122,10 @@ async fn test_create_trust_entity_success() {
     let mut trust_entity_repository = MockTrustEntityRepository::default();
     trust_entity_repository
         .expect_get_by_entity_key_and_trust_anchor_id()
-        .with(eq(generic_did(did_id).did.to_string()), eq(trust_anchor_id))
+        .with(
+            eq::<TrustEntityKey>((&generic_did(did_id).did).into()),
+            eq(trust_anchor_id),
+        )
         .times(1)
         .return_once(|_, _| Ok(None));
     trust_entity_repository
@@ -145,7 +148,10 @@ async fn test_create_trust_entity_success() {
             privacy_url: None,
             role: TrustEntityRole::Issuer,
             trust_anchor_id,
-            did_id,
+            r#type: None,
+            did_id: Some(did_id),
+            identifier_id: None,
+            content: None,
         })
         .await
         .unwrap();
@@ -175,13 +181,19 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
     let mut trust_entity_repository = MockTrustEntityRepository::default();
     trust_entity_repository
         .expect_get_by_entity_key_and_trust_anchor_id()
-        .with(eq(generic_did(did_id).did.to_string()), eq(trust_anchor_id))
+        .with(
+            eq::<TrustEntityKey>((&generic_did(did_id).did).into()),
+            eq(trust_anchor_id),
+        )
         .times(1)
         .return_once(|_, _| Ok(None))
         .in_sequence(&mut seq);
     trust_entity_repository
         .expect_get_by_entity_key_and_trust_anchor_id()
-        .with(eq(generic_did(did_id).did.to_string()), eq(trust_anchor_id))
+        .with(
+            eq::<TrustEntityKey>((&generic_did(did_id).did).into()),
+            eq(trust_anchor_id),
+        )
         .times(1)
         .return_once(|_, _| Ok(Some(generic_trust_entity(Uuid::new_v4().into()))))
         .in_sequence(&mut seq);
@@ -207,7 +219,10 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
             privacy_url: None,
             role: TrustEntityRole::Issuer,
             trust_anchor_id,
-            did_id,
+            did_id: Some(did_id),
+            identifier_id: None,
+            r#type: None,
+            content: None,
         })
         .await
         .unwrap();
@@ -222,7 +237,10 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
                 privacy_url: None,
                 role: TrustEntityRole::Issuer,
                 trust_anchor_id,
-                did_id,
+                r#type: None,
+                did_id: Some(did_id),
+                identifier_id: None,
+                content: None,
             })
             .await
             .unwrap_err(),

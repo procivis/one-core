@@ -4,23 +4,23 @@ pub mod provider;
 pub mod simple_list;
 
 use serde::Serialize;
-use shared_types::DidValue;
+use shared_types::TrustEntityKey;
 
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::TrustEntity;
 use crate::provider::trust_management::error::TrustManagementError;
-use crate::provider::trust_management::model::TrustEntityByDid;
+use crate::provider::trust_management::model::TrustEntityByEntityKey;
 
 #[async_trait::async_trait]
 pub trait TrustManagement: Send + Sync {
     fn get_capabilities(&self) -> TrustCapabilities;
     async fn publish_entity(&self, anchor: &TrustAnchor, entity: &TrustEntity);
     fn is_enabled(&self) -> bool;
-    async fn lookup_did(
+    async fn lookup_entity_key(
         &self,
         anchor: &TrustAnchor,
-        did: &DidValue,
-    ) -> Result<Option<TrustEntityByDid>, TrustManagementError>;
+        entity_key: &TrustEntityKey,
+    ) -> Result<Option<TrustEntityByEntityKey>, TrustManagementError>;
 }
 
 #[derive(Clone, Debug, Serialize)]

@@ -60,7 +60,7 @@ pub struct CreateCertificateRequestRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetIdentifierListItemResponseDTO)]
 pub struct GetIdentifierListItemResponseRestDTO {

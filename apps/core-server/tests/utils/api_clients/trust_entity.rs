@@ -1,8 +1,7 @@
-use core_server::endpoint::ssi::dto::{
-    PatchTrustEntityActionRestDTO, PatchTrustEntityRequestRestDTO,
-};
-use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
+use core_server::endpoint::ssi::dto::PatchTrustEntityRequestRestDTO;
+use core_server::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityTypeRest};
 use one_core::model::did::Did;
+use one_core::model::identifier::Identifier;
 use one_core::model::trust_anchor::TrustAnchor;
 use serde_json::json;
 use shared_types::{DidId, TrustAnchorId, TrustEntityId};
@@ -19,6 +18,8 @@ pub struct ListFilters {
     pub anchor_id: Option<TrustAnchorId>,
     pub name: Option<String>,
     pub did_id: Option<DidId>,
+    pub r#type: Option<Vec<TrustEntityTypeRest>>,
+    pub entity_key: Option<String>,
 }
 
 impl TrustEntitiesApi {
@@ -26,34 +27,68 @@ impl TrustEntitiesApi {
         Self { client }
     }
 
-    pub async fn create(
+    pub async fn create_did(
         &self,
         name: &str,
         role: TrustEntityRoleRest,
         trust_anchor: &TrustAnchor,
+        r#type: Option<TrustEntityTypeRest>,
         did: &Did,
     ) -> Response {
-        let body = json!({
+        let mut body = json!({
           "name": name,
           "role": role,
           "trustAnchorId": trust_anchor.id,
           "didId": did.id,
         });
 
+        if let Some(t) = r#type {
+            body["type"] = json!(t);
+        }
+
         self.client.post("/api/trust-entity/v1", body).await
     }
 
-    pub async fn patch(
+    pub async fn create_identifier(
         &self,
-        id: TrustEntityId,
-        action: PatchTrustEntityActionRestDTO,
+        name: &str,
+        role: TrustEntityRoleRest,
+        trust_anchor: &TrustAnchor,
+        r#type: Option<TrustEntityTypeRest>,
+        identifier: &Identifier,
     ) -> Response {
         let body = json!({
-          "action": action,
+            "name": name,
+            "role": role,
+            "trustAnchorId": trust_anchor.id,
+            "identifierId": identifier.id,
+            "type" : r#type,
         });
-        self.client
-            .patch(&format!("/api/trust-entity/v1/{id}"), body)
-            .await
+
+        self.client.post("/api/trust-entity/v1", body).await
+    }
+
+    pub async fn create_ca(
+        &self,
+        name: &str,
+        role: TrustEntityRoleRest,
+        trust_anchor: &TrustAnchor,
+        r#type: Option<TrustEntityTypeRest>,
+        pem_certificate: impl AsRef<str>,
+    ) -> Response {
+        let body = json!({
+            "name": name,
+            "role": role,
+            "trustAnchorId": trust_anchor.id,
+            "type": r#type,
+            "content": pem_certificate.as_ref(),
+        });
+
+        self.client.post("/api/trust-entity/v1", body).await
+    }
+
+    pub async fn create(&self, body: serde_json::Value) -> Response {
+        self.client.post("/api/trust-entity/v1", body).await
     }
 
     pub async fn get(&self, id: TrustEntityId) -> Response {
@@ -67,6 +102,8 @@ impl TrustEntitiesApi {
             name,
             anchor_id,
             did_id,
+            r#type,
+            entity_key,
         } = filters;
 
         let mut url = format!("/api/trust-entity/v1?pageSize=20&page={page}");
@@ -90,6 +127,22 @@ impl TrustEntitiesApi {
 
         if let Some(did_id) = did_id {
             url += &format!("&didId={did_id}")
+        }
+
+        if let Some(r#type) = r#type {
+            url += &r#type
+                .into_iter()
+                .map(|t| match t {
+                    TrustEntityTypeRest::Did => "DID",
+                    TrustEntityTypeRest::CertificateAuthority => "CA",
+                })
+                .enumerate()
+                .map(|(i, t)| format!("&type[{i}]={t}"))
+                .collect::<String>();
+        }
+
+        if let Some(entity_key) = entity_key {
+            url += &format!("&entityKey={entity_key}")
         }
 
         self.client.get(&url).await

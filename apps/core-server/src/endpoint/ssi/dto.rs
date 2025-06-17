@@ -38,7 +38,7 @@ use one_dto_mapper::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, DidValue, TrustAnchorId, TrustEntityId};
+use shared_types::{CredentialId, DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
@@ -47,7 +47,9 @@ use utoipa::{IntoParams, ToSchema};
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, WalletStorageTypeRestEnum,
 };
-use crate::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityStateRest};
+use crate::endpoint::trust_entity::dto::{
+    TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
+};
 use crate::serialize::front_time;
 
 #[skip_serializing_none]
@@ -96,7 +98,7 @@ pub(crate) struct DidVerificationMethodRestDTO {
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kty")]
 #[from(PublicKeyJwkDTO)]
-pub(crate) enum PublicKeyJwkRestDTO {
+pub enum PublicKeyJwkRestDTO {
     #[serde(rename = "EC")]
     Ec(PublicKeyJwkEllipticDataRestDTO),
     #[serde(rename = "RSA")]
@@ -112,7 +114,7 @@ pub(crate) enum PublicKeyJwkRestDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkMlweDataDTO)]
-pub(crate) struct PublicKeyJwkMlweDataRestDTO {
+pub struct PublicKeyJwkMlweDataRestDTO {
     pub r#use: Option<String>,
     pub alg: String,
     pub x: String,
@@ -121,7 +123,7 @@ pub(crate) struct PublicKeyJwkMlweDataRestDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkOctDataDTO)]
-pub(crate) struct PublicKeyJwkOctDataRestDTO {
+pub struct PublicKeyJwkOctDataRestDTO {
     pub r#use: Option<String>,
     pub k: String,
 }
@@ -129,7 +131,7 @@ pub(crate) struct PublicKeyJwkOctDataRestDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkRsaDataDTO)]
-pub(crate) struct PublicKeyJwkRsaDataRestDTO {
+pub struct PublicKeyJwkRsaDataRestDTO {
     pub r#use: Option<String>,
     pub e: String,
     pub n: String,
@@ -138,7 +140,7 @@ pub(crate) struct PublicKeyJwkRsaDataRestDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkEllipticDataDTO)]
-pub(crate) struct PublicKeyJwkEllipticDataRestDTO {
+pub struct PublicKeyJwkEllipticDataRestDTO {
     pub r#use: Option<String>,
     pub crv: String,
     pub x: String,
@@ -340,7 +342,9 @@ pub(crate) struct GetTrustEntityResponseRestDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub state: TrustEntityStateRest,
-
+    pub r#type: TrustEntityTypeRest,
+    pub entity_key: TrustEntityKey,
+    pub content: Option<String>,
     pub did: Option<DidValue>,
 }
 
@@ -431,7 +435,7 @@ pub(crate) struct SdJwtVcClaimDisplayRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryInto)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryInto, Default)]
 #[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
@@ -464,6 +468,10 @@ pub struct PatchTrustEntityRequestRestDTO {
     #[serde(default)]
     #[schema(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
+
+    #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub content: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]

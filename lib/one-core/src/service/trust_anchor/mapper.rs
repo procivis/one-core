@@ -40,7 +40,7 @@ impl TryFrom<TrustEntity> for GetTrustAnchorEntityListResponseDTO {
 
     fn try_from(value: TrustEntity) -> Result<Self, Self::Error> {
         let did = if value.r#type == TrustEntityType::Did {
-            Some(DidValue::from_did_url(value.entity_key).map_err(|err| {
+            Some(DidValue::from_did_url(&value.entity_key).map_err(|err| {
                 ServiceError::MappingError(format!(
                     "Invalid entity_key on trust entity of type DID: {err}"
                 ))
@@ -59,6 +59,9 @@ impl TryFrom<TrustEntity> for GetTrustAnchorEntityListResponseDTO {
             privacy_url: value.privacy_url,
             role: value.role,
             state: value.state,
+            r#type: value.r#type,
+            entity_key: value.entity_key,
+            content: value.content,
             did,
         })
     }

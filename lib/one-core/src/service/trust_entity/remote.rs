@@ -5,7 +5,7 @@ use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 use super::TrustEntityService;
 use super::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityFromDidPublisherRequestDTO,
-    GetTrustEntityResponseDTO, UpdateTrustEntityFromDidRequestDTO,
+    GetRemoteTrustEntityResponseDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::key::KeyRelations;
@@ -98,7 +98,7 @@ impl TrustEntityService {
     pub async fn get_remote_trust_entity_for_did(
         &self,
         did_id: DidId,
-    ) -> Result<GetTrustEntityResponseDTO, ServiceError> {
+    ) -> Result<GetRemoteTrustEntityResponseDTO, ServiceError> {
         let RemoteOperationProperties {
             did,
             remote_anchor_base_url,
@@ -107,7 +107,7 @@ impl TrustEntityService {
         } = self.prepare_remote_operation_for_did(&did_id, None).await?;
 
         let url = format!("{remote_anchor_base_url}/ssi/trust-entity/v1/{}", did.did);
-        let response: GetTrustEntityResponseDTO = self
+        let response: GetRemoteTrustEntityResponseDTO = self
             .client
             .get(&url)
             .bearer_auth(&bearer_token)

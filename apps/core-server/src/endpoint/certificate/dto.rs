@@ -53,7 +53,7 @@ pub enum CertificateStateRest {
     Expired,
 }
 
-#[derive(Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CertificateX509AttributesDTO)]
 pub struct CertificateX509AttributesRestDTO {
@@ -71,7 +71,7 @@ pub struct CertificateX509AttributesRestDTO {
     pub extensions: Vec<CertificateX509ExtensionRestDTO>,
 }
 
-#[derive(Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CertificateX509ExtensionDTO)]
 pub struct CertificateX509ExtensionRestDTO {

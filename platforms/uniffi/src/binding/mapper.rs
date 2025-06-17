@@ -3,6 +3,7 @@ use one_core::model::list_filter::{
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::GetProofSchemaQuery;
+use one_core::model::trust_entity::TrustEntityType;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
@@ -37,7 +38,7 @@ use one_core::service::trust_entity::dto::{
 };
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde_json::json;
-use shared_types::KeyId;
+use shared_types::{KeyId, TrustEntityKey};
 use time::OffsetDateTime;
 
 use super::ble::DeviceInfoBindingDTO;
@@ -452,21 +453,26 @@ impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
             .map(|id| Ok::<_, ServiceError>(TrustEntityFilterValue::TrustAnchor(into_id(&id)?)))
             .transpose()?;
 
-        let did_id = value
-            .did_id
-            .map(|id| Ok::<_, ServiceError>(TrustEntityFilterValue::DidId(into_id(&id)?)))
-            .transpose()?;
-
         let organisation_id = value
             .organisation_id
             .map(|id| Ok::<_, ServiceError>(TrustEntityFilterValue::OrganisationId(into_id(&id)?)))
             .transpose()?;
 
+        let types = value
+            .r#type
+            .map(|v| v.into_iter().map(TrustEntityType::from).collect())
+            .map(TrustEntityFilterValue::Type);
+
+        let entity_key = value
+            .entity_key
+            .map(|k| TrustEntityFilterValue::EntityKey(TrustEntityKey::from(k)));
+
         let filtering = ListFilterCondition::<TrustEntityFilterValue>::from(name)
             & role
             & trust_anchor
-            & did_id
-            & organisation_id;
+            & organisation_id
+            & types
+            & entity_key;
 
         Ok(Self {
             pagination: Some(ListPagination {
