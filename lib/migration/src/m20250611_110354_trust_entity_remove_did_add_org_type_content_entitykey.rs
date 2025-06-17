@@ -236,7 +236,7 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 }
 
 #[derive(DeriveIden)]
-enum TrustEntityNew {
+pub enum TrustEntityNew {
     Table,
     Content,
     Type,

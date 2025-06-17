@@ -16,8 +16,8 @@ use crate::m20250605_092053_drop_column_issuer_did_id_in_revocation_list::NewRev
 pub struct Migration;
 
 #[derive(FromQueryResult)]
-struct IdResult {
-    id: String,
+pub struct IdResult {
+    pub id: String,
 }
 
 #[derive(FromQueryResult)]
@@ -45,7 +45,7 @@ impl MigrationTrait for Migration {
     }
 }
 
-pub(super) async fn remove_dids_and_related_entities(
+async fn remove_dids_and_related_entities(
     manager: &SchemaManager<'_>,
     did_ids: &[String],
 ) -> Result<(), DbErr> {
@@ -118,7 +118,7 @@ pub(super) async fn find_dids_with_method(
     Ok(dids.into_iter().map(|did| did.id).collect())
 }
 
-async fn delete_revocation_lists(
+pub async fn delete_revocation_lists(
     db: &SchemaManagerConnection<'_>,
     identifier_ids: &[String],
 ) -> Result<(), DbErr> {
@@ -168,7 +168,7 @@ async fn delete_trust_entities(
     Ok(())
 }
 
-async fn find_identifiers(
+pub async fn find_identifiers(
     db: &SchemaManagerConnection<'_>,
     did_ids: &[String],
 ) -> Result<Vec<String>, DbErr> {
@@ -186,7 +186,7 @@ async fn find_identifiers(
     Ok(identifiers_result.into_iter().map(|i| i.id).collect())
 }
 
-async fn delete_credentials(
+pub async fn delete_credentials(
     db: &SchemaManagerConnection<'_>,
     identifier_ids: &[String],
     key_ids_for_credential: &[String],
@@ -308,7 +308,7 @@ async fn find_credentials_by_identifiers(
     Ok(())
 }
 
-async fn delete_proof_claims_for_credentials(
+pub async fn delete_proof_claims_for_credentials(
     db: &SchemaManagerConnection<'_>,
     credential_ids_to_delete: &HashSet<String>,
 ) -> Result<(), DbErr> {
@@ -337,7 +337,7 @@ async fn delete_proof_claims_for_credentials(
     Ok(())
 }
 
-async fn delete_proofs(
+pub async fn delete_proofs(
     db: &SchemaManagerConnection<'_>,
     identifier_ids: &[String],
     key_ids_for_verifier: &[String],
@@ -415,7 +415,7 @@ async fn delete_proofs(
     Ok(())
 }
 
-async fn delete_interactions(
+pub async fn delete_interactions(
     db: &SchemaManagerConnection<'_>,
     interaction_ids: &HashSet<String>,
 ) -> Result<(), DbErr> {
@@ -434,7 +434,7 @@ async fn delete_interactions(
     Ok(())
 }
 
-async fn delete_identifiers(
+pub async fn delete_identifiers(
     db: &SchemaManagerConnection<'_>,
     identifier_ids: &[String],
     key_ids_of_mdl_dids: &[String],
@@ -476,7 +476,7 @@ async fn delete_identifiers(
     Ok(())
 }
 
-async fn delete_key_did_relations(
+pub async fn delete_key_did_relations(
     db: &SchemaManagerConnection<'_>,
     key_ids: &[String],
 ) -> Result<(), DbErr> {
@@ -495,7 +495,10 @@ async fn delete_key_did_relations(
     Ok(())
 }
 
-async fn delete_dids(db: &SchemaManagerConnection<'_>, did_ids: &[String]) -> Result<(), DbErr> {
+pub async fn delete_dids(
+    db: &SchemaManagerConnection<'_>,
+    did_ids: &[String],
+) -> Result<(), DbErr> {
     let query = Query::delete()
         .from_table(Did::Table)
         .and_where(Expr::col(Did::Id).is_in(did_ids))
@@ -505,7 +508,7 @@ async fn delete_dids(db: &SchemaManagerConnection<'_>, did_ids: &[String]) -> Re
     Ok(())
 }
 
-async fn delete_history_events(
+pub async fn delete_history_events(
     db: &SchemaManagerConnection<'_>,
     ids_to_delete: &HashSet<String>,
 ) -> Result<(), DbErr> {
@@ -518,7 +521,7 @@ async fn delete_history_events(
     Ok(())
 }
 
-async fn find_key_ids_for_dids(
+pub async fn find_key_ids_for_dids(
     db: &SchemaManagerConnection<'_>,
     did_ids: &[String],
 ) -> Result<Vec<String>, DbErr> {
