@@ -289,7 +289,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "COUNT".to_string(),
             "BIRTH_DATE".to_string(),
             "NUMBER".to_string(),
-            "ARRAY".to_string(),
         ];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];
@@ -304,7 +303,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13Swiyu);
             proof_exchange_protocols.push(VerificationProtocolType::OpenId4VpDraft20Swiyu)
         } else {
-            datatypes.extend_from_slice(&["PICTURE".to_string(), "OBJECT".to_string()]);
+            datatypes.extend_from_slice(&[
+                "PICTURE".to_string(),
+                "OBJECT".to_string(),
+                "ARRAY".to_string(),
+            ]);
             issuance_did_methods.extend_from_slice(&[
                 DidType::Key,
                 DidType::Web,
