@@ -85,6 +85,7 @@ async fn test_format_credential_a() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -258,6 +259,7 @@ async fn test_format_credential_with_array() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -380,6 +382,7 @@ async fn test_extract_credentials() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -510,6 +513,7 @@ async fn test_extract_credentials_with_array() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -619,6 +623,7 @@ async fn test_extract_credentials_with_array_stripped() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -683,6 +688,7 @@ async fn test_extract_presentation() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -749,6 +755,7 @@ fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(MockCryptoProvider::default()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         params: Params {
             leeway: 123u64,
             embed_layout_properties: false,

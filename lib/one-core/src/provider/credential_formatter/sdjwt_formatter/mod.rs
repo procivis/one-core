@@ -21,6 +21,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormattedPresentation,
@@ -44,11 +45,13 @@ use crate::provider::credential_formatter::sdjwt::{
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     client: Arc<dyn HttpClient>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     params: Params,
 }
 
@@ -169,10 +172,10 @@ impl CredentialFormatter for SDJWTFormatter {
     async fn format_presentation(
         &self,
         credentials: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
+        holder_did: &DidValue,
+        algorithm: KeyAlgorithmType,
+        auth_fn: AuthenticationFn,
+        context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         if credentials.len() != 1 {
             return Err(FormatterError::Failed(
@@ -184,10 +187,36 @@ impl CredentialFormatter for SDJWTFormatter {
             "Empty credential list passed to format_presentation".to_string(),
         ))?;
 
-        Ok(FormattedPresentation {
-            vp_token: credential.to_owned(),
-            oidc_format: "vc+sd-jwt".to_string(),
-        })
+        let DecomposedToken { jwt, .. } = parse_token(credential)?;
+        let decomposed_token = Jwt::<()>::decompose_token(jwt)?;
+        if decomposed_token.payload.proof_of_possession_key.is_some() {
+            return Ok(FormattedPresentation {
+                vp_token: credential.to_owned(),
+                oidc_format: "vc+sd-jwt".to_string(),
+            });
+        }
+
+        if decomposed_token.payload.subject.is_none() {
+            return Err(FormatterError::Failed(
+                "Credential has neither subject nor cnf claim. Cannot create holder binding proof."
+                    .to_string(),
+            ));
+        }
+
+        // ONE-6254: There is no cnf claim in old legacy SD-JWT credentials. Instead, there is a sub
+        // claim referring to a holder did. For legacy compatibility, wrap in W3C verifiable presentation
+        // signed by a key matching the holder did.
+        // Remove once legacy credential compatibility is no longer needed.
+        let jwt_formatter = JWTFormatter::new(
+            crate::provider::credential_formatter::jwt_formatter::Params {
+                leeway: self.params.leeway,
+                embed_layout_properties: self.params.embed_layout_properties,
+            },
+            self.key_algorithm_provider.clone(),
+        );
+        jwt_formatter
+            .format_presentation(credentials, holder_did, algorithm, auth_fn, context)
+            .await
     }
 
     async fn extract_presentation(
@@ -287,12 +316,14 @@ impl SDJWTFormatter {
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         client: Arc<dyn HttpClient>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             params,
             crypto,
             did_method_provider,
             client,
+            key_algorithm_provider,
         }
     }
 }

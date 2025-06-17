@@ -377,6 +377,7 @@ pub async fn initialize_core(
                             crypto.clone(),
                             did_method_provider.clone(),
                             client.clone(),
+                            key_algorithm_provider.clone(),
                         )) as _
                     }
                     FormatType::SdJwtVc => {
