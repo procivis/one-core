@@ -108,9 +108,12 @@ impl SSIHolderService {
             }
         };
 
-        let did = identifier.did.to_owned().ok_or(ServiceError::MappingError(
-            "missing identifier did".to_string(),
-        ))?;
+        let did = identifier
+            .did
+            .to_owned()
+            .ok_or(ServiceError::BusinessLogic(
+                BusinessLogicError::IncompatibleHolderIdentifier,
+            ))?;
 
         let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
         let selected_key = match key_id {
