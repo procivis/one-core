@@ -6,9 +6,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::TrustEntityKey;
 
-use super::{TrustCapabilities, TrustManagement, TrustOperations};
+use super::{TrustCapabilities, TrustManagement, TrustOperation};
 use crate::model::trust_anchor::TrustAnchor;
-use crate::model::trust_entity::TrustEntity;
+use crate::model::trust_entity::{TrustEntity, TrustEntityType};
 use crate::provider::caching_loader::trust_list::TrustListCache;
 use crate::provider::http_client::HttpClient;
 use crate::provider::trust_management::error::TrustManagementError;
@@ -30,18 +30,17 @@ pub struct SimpleList {
 #[async_trait::async_trait]
 impl TrustManagement for SimpleList {
     fn get_capabilities(&self) -> TrustCapabilities {
+        let mut operations = vec![TrustOperation::Lookup];
+        if self.params.enable_publishing {
+            operations.push(TrustOperation::Publish);
+        }
         TrustCapabilities {
-            operations: vec![TrustOperations::Publish],
-            formats: vec![],
-            exchange: vec![],
+            operations,
+            supported_types: vec![TrustEntityType::Did, TrustEntityType::CertificateAuthority],
         }
     }
 
     async fn publish_entity(&self, _anchor: &TrustAnchor, _entity: &TrustEntity) {}
-
-    fn is_enabled(&self) -> bool {
-        self.params.enable_publishing
-    }
 
     async fn lookup_entity_key(
         &self,

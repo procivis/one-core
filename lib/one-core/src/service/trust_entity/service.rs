@@ -21,6 +21,7 @@ use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityType};
+use crate::provider::trust_management::TrustOperation;
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::validator::ParsedCertificate;
 use crate::service::error::ServiceError::MappingError;
@@ -228,7 +229,11 @@ impl TrustEntityService {
             .get(&trust_anchor.r#type)
             .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.r#type.clone()))?;
 
-        if !trust.is_enabled() {
+        if !trust
+            .get_capabilities()
+            .operations
+            .contains(&TrustOperation::Publish)
+        {
             return Err(BusinessLogicError::TrustAnchorIsDisabled.into());
         }
 
