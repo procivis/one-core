@@ -263,7 +263,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 KeyStorageType::AzureVault,
                 KeyStorageType::SecureElement,
             ],
-            forbidden_claim_names: vec!["0".to_string()],
+            forbidden_claim_names: vec!["0".to_string(), "id".to_string()],
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],
