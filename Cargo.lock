@@ -1142,6 +1142,7 @@ dependencies = [
  "futures",
  "headers",
  "hex-literal",
+ "http-body-util",
  "indexmap 2.6.0",
  "indoc",
  "one-core",

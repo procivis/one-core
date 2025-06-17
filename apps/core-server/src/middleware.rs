@@ -2,12 +2,15 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use axum::Extension;
-use axum::body::Body;
+use axum::body::{Body, Bytes};
 use axum::extract::MatchedPath;
-use axum::http::{Request, StatusCode};
+use axum::http::{HeaderMap, Request, Response, StatusCode};
 use axum::middleware::Next;
+use axum::response::IntoResponse;
 use headers::HeaderValue;
+use http_body_util::BodyExt;
 use sentry::{Hub, SentryFutureExt};
+use tracing::trace;
 
 use crate::ServerConfig;
 
@@ -169,4 +172,89 @@ pub async fn add_x_content_type_options_no_sniff_header(
         HeaderValue::from_static("nosniff"),
     );
     Ok(response)
+}
+
+pub async fn log_request_and_response(
+    request: Request<Body>,
+    next: Next,
+) -> Result<axum::response::Response, axum::response::Response> {
+    const TRACING_LAYER_ERROR: &str = "!HTTP Tracing Layer Error!";
+
+    let (parts, body) = request.into_parts();
+    let bytes = body
+        .collect()
+        .await
+        .map_err(|err| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("{TRACING_LAYER_ERROR}: {err}"),
+            )
+                .into_response()
+        })?
+        .to_bytes();
+    let method = parts.method.clone();
+    let request_uri = parts.uri.to_string();
+    log_details(
+        "request",
+        method.as_str(),
+        &request_uri,
+        &bytes,
+        &parts.headers,
+    );
+
+    let request = Request::from_parts(parts, Body::from(bytes));
+    let response = next.run(request).await;
+
+    let (parts, body) = response.into_parts();
+    let bytes = body
+        .collect()
+        .await
+        .map_err(|err| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("{TRACING_LAYER_ERROR}: {err}"),
+            )
+                .into_response()
+        })?
+        .to_bytes();
+    log_details(
+        "response",
+        method.as_str(),
+        &request_uri,
+        &bytes,
+        &parts.headers,
+    );
+
+    Ok(Response::from_parts(parts, Body::from(bytes)))
+}
+
+fn log_details(kind: &str, method: &str, url: &str, bytes: &Bytes, headers: &HeaderMap) {
+    const NONE: &str = " None";
+
+    let resp_body = if bytes.is_empty() {
+        NONE.to_string()
+    } else {
+        format!(
+            "\n{}",
+            String::from_utf8(bytes.to_vec()).unwrap_or("Unable to parse UTF-8".to_string())
+        )
+    };
+
+    let resp_headers = if headers.is_empty() {
+        NONE.to_string()
+    } else {
+        format!(
+            "\n{}\n",
+            headers
+                .iter()
+                .map(|(k, v)| format!("{}: {}", k.as_str(), v.to_str().unwrap_or_default()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    };
+
+    trace!(
+        "{}",
+        format!("{kind} {method} {url}\nHeaders:{resp_headers}\nBody:{resp_body}",)
+    );
 }

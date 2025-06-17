@@ -483,9 +483,15 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         }
     };
 
+    let mut router = router.merge(protected).merge(unprotected);
+
+    if tracing::enabled!(target: "core_server::middleware", tracing::Level::TRACE) {
+        router = router.layer(middleware::from_fn(
+            crate::middleware::log_request_and_response,
+        ));
+    }
+
     router
-        .merge(protected)
-        .merge(unprotected)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
