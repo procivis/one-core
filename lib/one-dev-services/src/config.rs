@@ -16,6 +16,7 @@ pub struct CachingLoaderConfig {
 pub struct CachingConfig {
     pub did: CachingLoaderConfig,
     pub json_ld_context: CachingLoaderConfig,
+    pub x509_crl: CachingLoaderConfig,
 }
 
 #[derive(Clone)]
@@ -42,6 +43,11 @@ impl Default for OneCoreConfig {
                 json_ld_context: CachingLoaderConfig {
                     cache_size: 100,
                     cache_refresh_timeout: time::Duration::days(10),
+                    refresh_after: time::Duration::days(1),
+                },
+                x509_crl: CachingLoaderConfig {
+                    cache_size: 100,
+                    cache_refresh_timeout: time::Duration::days(1),
                     refresh_after: time::Duration::days(1),
                 },
             },

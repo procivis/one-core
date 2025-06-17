@@ -13,6 +13,7 @@ use one_core::config::{ConfigError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
+use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use one_core::provider::credential_formatter::CredentialFormatter;
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::JsonLdBbsplus;
@@ -461,6 +462,12 @@ async fn initialize(
                 .await,
             );
 
+            let x509_crl_cache = Arc::new(initialize_x509_crl_cache(
+                core_config.cache_entities.to_owned(),
+                data_repository.to_owned(),
+                client.clone(),
+            ));
+
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
                 let vct_type_metadata_cache = vct_type_metadata_cache.clone();
@@ -712,7 +719,6 @@ async fn initialize(
             };
 
             let certificate_validator_creator: CertificateValidatorCreator = {
-                let client = client.clone();
                 Box::new(move |_config, providers| {
                     let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
                         OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
@@ -720,7 +726,7 @@ async fn initialize(
 
                     Ok(Arc::new(CertificateValidatorImpl::new(
                         key_algorithm_provider.clone(),
-                        client,
+                        x509_crl_cache,
                     )))
                 })
             };
@@ -936,6 +942,38 @@ async fn initialize_json_schema_cache(
         })?;
 
     Ok(cache)
+}
+
+fn initialize_x509_crl_cache(
+    cache_entities_config: CacheEntitiesConfig,
+    data_provider: Arc<dyn DataRepository>,
+    client: Arc<dyn HttpClient>,
+) -> X509CrlCache {
+    let config = cache_entities_config
+        .entities
+        .get("X509_CRL")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            data_provider.get_remote_entity_cache_repository(),
+        )),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    X509CrlCache::new(
+        Arc::new(X509CrlResolver::new(client)),
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
 }
 
 async fn initialize_trust_list_cache(

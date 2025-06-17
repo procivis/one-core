@@ -7,6 +7,7 @@ use x509_parser::prelude::{
 };
 
 use super::CertificateValidatorImpl;
+use crate::provider::caching_loader::CachingLoaderError;
 use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
 
@@ -141,12 +142,13 @@ impl CertificateValidatorImpl {
         &self,
         point: &CRLDistributionPoint<'_>,
     ) -> Result<Vec<u8>, ServiceError> {
-        let point = point
-            .distribution_point
-            .as_ref()
-            .ok_or(ValidationError::CRLCheckFailed(
-                "no distribution point".to_string(),
-            ))?;
+        let point: &DistributionPointName<'_> =
+            point
+                .distribution_point
+                .as_ref()
+                .ok_or(ValidationError::CRLCheckFailed(
+                    "no distribution point".to_string(),
+                ))?;
 
         let DistributionPointName::FullName(name) = point else {
             return Err(ValidationError::CRLCheckFailed(
@@ -176,6 +178,8 @@ impl CertificateValidatorImpl {
     }
 
     async fn download_crl(&self, uri: &str) -> Result<Vec<u8>, RevocationError> {
-        Ok(self.client.get(uri).send().await?.error_for_status()?.body)
+        self.crl_cache.get(uri).await.map_err(|_err| {
+            RevocationError::CachingLoader(CachingLoaderError::UnexpectedResolveResult)
+        })
     }
 }

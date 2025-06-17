@@ -50,4 +50,7 @@ pub enum CacheType {
 
     #[sea_orm(string_value = "TRUST_LIST")]
     TrustList,
+
+    #[sea_orm(string_value = "X509_CRL")]
+    X509Crl,
 }

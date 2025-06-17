@@ -28,4 +28,5 @@ pub enum CacheTypeBindingDTO {
     VctMetadata,
     JsonSchema,
     TrustList,
+    X509Crl,
 }

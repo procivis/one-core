@@ -66,6 +66,7 @@ pub enum RemoteEntityType {
     VctMetadata,
     JsonSchema,
     TrustList,
+    X509Crl,
 }
 
 #[derive(Clone, Error, Debug)]

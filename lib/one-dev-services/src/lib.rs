@@ -96,6 +96,7 @@ use indexmap::IndexMap;
 use model::{CredentialFormat, DidMethodType, StorageType};
 use one_core::config::core_config;
 use one_core::provider::caching_loader::CachingLoader;
+use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::{
     JsonLdBbsplus, Params as JsonLdParams,
@@ -324,9 +325,18 @@ impl OneDevCore {
             SignatureService::new(crypto_provider, key_algorithm_provider.clone());
 
         let did_service = DidService::new(did_method_provider.clone(), Some(universal_resolver));
+
+        let x509_crl_cache = Arc::new(X509CrlCache::new(
+            Arc::new(X509CrlResolver::new(client)),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            config.caching_config.x509_crl.cache_size,
+            config.caching_config.x509_crl.cache_refresh_timeout,
+            config.caching_config.x509_crl.refresh_after,
+        ));
+
         let certificate_validator = Arc::new(CertificateValidatorImpl::new(
             key_algorithm_provider.clone(),
-            client,
+            x509_crl_cache,
         ));
 
         let credential_service = CredentialService::new(

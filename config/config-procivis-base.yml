@@ -436,6 +436,11 @@ task:
     display: "task.holderCheckCredentialStatus"
     order: 3
 cacheEntities:
+  X509_CRL:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
   STATUS_LIST_CREDENTIAL:
     cacheType: DB
     refreshAfter: 300

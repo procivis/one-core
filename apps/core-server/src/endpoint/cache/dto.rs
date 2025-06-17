@@ -13,6 +13,7 @@ pub enum CacheTypeRestEnum {
     VctMetadata,
     JsonSchema,
     TrustList,
+    X509Crl,
 }
 
 #[derive(Clone, Deserialize, Debug, Default, IntoParams, PartialEq, Eq)]
