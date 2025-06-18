@@ -103,6 +103,88 @@ async fn test_prepare_sd_presentation() {
     assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
 }
 
+/// Tests compatibility with malformed legacy SD-JWT credentials.
+/// ONE-6254: Remove when compatibility with legacy SD-JWT credentials is no longer needed
+#[tokio::test]
+async fn test_prepare_sd_presentation_malformed() {
+    let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.ewogICJpYXQiOiAxNjk5MjcwMjY2LAogICJleHAiOiAxNzYyMzQyMjY2LAogICJuYmYiOiAxNjk5MjcwMjIxLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICJ2YyI6IHsKICAgICJAY29udGV4dCI6IFsKICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgImh0dHBzOi8vd3d3LnRlc3Rjb250ZXh0LmNvbS92MSIKICAgIF0sCiAgICAidHlwZSI6IFsKICAgICAgIlZlcmlmaWFibGVDcmVkZW50aWFsIiwKICAgICAgIlR5cGUxIgogICAgXSwKICAgICJjcmVkZW50aWFsU3ViamVjdCI6IHsKICAgICAgIl9zZCI6IFsKICAgICAgICAiWVdKak1USXoiLAogICAgICAgICJZV0pqTVRJeiIKICAgICAgXQogICAgfSwKICAgICJjcmVkZW50aWFsU3RhdHVzIjogewogICAgICAiaWQiOiAiZGlkOnN0YXR1czppZCIsCiAgICAgICJ0eXBlIjogIlRZUEUiLAogICAgICAic3RhdHVzUHVycG9zZSI6ICJQVVJQT1NFIiwKICAgICAgIkZpZWxkMSI6ICJWYWwxIgogICAgfQogIH0sCiAgIl9zZF9hbGciOiAic2hhLTI1NiIKfQ";
+    let key_name = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
+    let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
+    let key_id = "key-id";
+    let key_alg = "ES256";
+    // malformed: no trailing ~
+    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
+    let audience = "some-aud";
+    let nonce = "nonce";
+    let hash = "test-hash";
+    let holder_binding_ctx = HolderBindingCtx {
+        nonce: nonce.to_string(),
+        audience: audience.to_string(),
+    };
+
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64_url()
+        .returning(|_| Ok(hash.to_string()));
+
+    let mut signer = MockSignatureProvider::default();
+    signer
+        .expect_get_key_id()
+        .returning(|| Some(key_id.to_string()));
+    signer
+        .expect_jose_alg()
+        .returning(|| Some(key_alg.to_string()));
+    signer.expect_sign().returning(|_| Ok(vec![0; 32]));
+
+    // Take name and age
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["name".to_string(), "age".to_string()],
+    };
+
+    let result = prepare_sd_presentation(
+        presentation,
+        &hasher,
+        Some(holder_binding_ctx),
+        Some(Box::new(signer)),
+    )
+    .await
+    .unwrap();
+    assert!(result.contains(key_name) && result.contains(key_age));
+    let (_, kb_token) = result.rsplit_once('~').unwrap();
+    assert!(kb_token.is_empty());
+
+    // Take name
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["name".to_string()],
+    };
+
+    let result = prepare_sd_presentation(presentation, &hasher, None, None)
+        .await
+        .unwrap();
+    assert!(result.contains(key_name) && !result.contains(key_age));
+    assert!(result.ends_with('~')); // no key binding token appended, if context / authn_fn is missing
+
+    // Take age
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["age".to_string()],
+    };
+
+    let result = prepare_sd_presentation(presentation, &hasher, None, None).await;
+    assert!(result.is_ok_and(|token| !token.contains(key_name) && token.contains(key_age)));
+
+    // Take none
+    let presentation = CredentialPresentation {
+        token,
+        disclosed_keys: vec![],
+    };
+
+    let result = prepare_sd_presentation(presentation, &hasher, None, None).await;
+    assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
+}
+
 #[tokio::test]
 async fn test_prepare_sd_presentation_with_kb() {
     let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5MjcwMjIxLCJpc3MiOiJkaWQ6aXNzdWVyOnRlc3QiLCJzdWIiOiJkaWQ6aG9sZGVyOnRlc3QiLCJqdGkiOiI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwidXNlIjoic2lnIiwiY3J2IjoiUC0yNTYiLCJ4IjoiMTh3SExlSWdXOXdWTjZWRDFUeGdwcXkyTHN6WWtNZjZKOG5qVkFpYnZoTSIsInkiOiItVjRkUzRVYUxNZ1BfNGZZNGo4aXI3Y2wxVFhsRmRBZ2N4NTVvN1RrY1NBIn19LCJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vd3d3LnRlc3Rjb250ZXh0LmNvbS92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVHlwZTEiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsiX3NkIjpbIllXSmpNVEl6IiwiWVdKak1USXoiXX0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJkaWQ6c3RhdHVzOmlkIiwidHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";

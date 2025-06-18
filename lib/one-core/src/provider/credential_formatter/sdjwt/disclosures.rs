@@ -155,6 +155,15 @@ pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken, FormatterError
         .map(|(token, kb_token)| (token, (!kb_token.is_empty()).then_some(kb_token)))
         .unwrap_or((token, None));
 
+    // ONE-6254: Legacy SD-JWT tokens do not have the mandatory '~' character at the end
+    // -> Check if the last element is _really_ a KB token or just a disclosure of a badly formatted credential
+    // Remove this block when compatibility with legacy SD-JWT credentials is no longer needed
+    let (token_with_disclosures, key_binding_token) = match key_binding_token {
+        // A properly formatted KB token must contain . in it
+        Some(kb_token) if kb_token.contains('.') => (token_with_disclosures, Some(kb_token)),
+        _ => (token.strip_suffix('~').unwrap_or(token), None),
+    };
+
     let mut token_parts = token_with_disclosures.split("~");
     let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
 
