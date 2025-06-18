@@ -110,7 +110,11 @@ pub struct TrustEntityCertificateResponseRestDTO {
     pub public_key: String,
     pub common_name: Option<String>,
     pub serial_number: String,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub not_before: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub not_after: OffsetDateTime,
     pub issuer: String,
     pub subject: String,
