@@ -155,6 +155,8 @@ pub enum SortableTrustEntityColumnRestEnum {
     Role,
     LastModified,
     State,
+    EntityKey,
+    Type,
 }
 
 pub type ListTrustEntitiesQuery =

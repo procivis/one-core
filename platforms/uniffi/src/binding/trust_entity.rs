@@ -339,25 +339,35 @@ pub enum TrustEntityUpdateActionBindingEnum {
     Remove,
 }
 
-#[derive(TryInto, uniffi::Record)]
-#[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ErrorResponseBindingDTO)]
+#[derive(uniffi::Record)]
 pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
-    #[try_into(skip)]
     pub did_id: String,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub action: Option<TrustEntityUpdateActionBindingEnum>,
-    #[try_into(infallible)]
     pub name: Option<String>,
-    #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<OptionalString>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub website: Option<OptionalString>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub terms_url: Option<OptionalString>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub privacy_url: Option<OptionalString>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub role: Option<TrustEntityRoleBindingEnum>,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub content: Option<String>,
+}
+
+impl TryFrom<UpdateRemoteTrustEntityFromDidRequestBindingDTO>
+    for UpdateTrustEntityFromDidRequestDTO
+{
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(
+        value: UpdateRemoteTrustEntityFromDidRequestBindingDTO,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            action: value.action.map(Into::into),
+            name: value.name,
+            logo: value.logo.map(TryInto::try_into).transpose()?,
+            website: value.website.map(Into::into),
+            terms_url: value.terms_url.map(Into::into),
+            privacy_url: value.privacy_url.map(Into::into),
+            role: value.role.map(Into::into),
+            content: None,
+        })
+    }
 }
