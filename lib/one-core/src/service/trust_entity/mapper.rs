@@ -18,7 +18,6 @@ use crate::model::trust_entity::{
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::error::{ServiceError, ValidationError};
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 impl From<&CertificateX509AttributesDTO> for TrustEntityKey {
     fn from(value: &CertificateX509AttributesDTO) -> Self {
@@ -122,12 +121,14 @@ pub(super) fn get_detail_trust_entity_response(
 
 pub(super) fn trust_entity_certificate_from_x509(
     state: CertificateState,
-    key: PublicKeyJwkDTO,
+    public_key: String,
+    common_name: Option<String>,
     x509: CertificateX509AttributesDTO,
 ) -> TrustEntityCertificateResponseDTO {
     TrustEntityCertificateResponseDTO {
         state,
-        key,
+        common_name,
+        public_key,
         serial_number: x509.serial_number,
         not_before: x509.not_before,
         not_after: x509.not_after,

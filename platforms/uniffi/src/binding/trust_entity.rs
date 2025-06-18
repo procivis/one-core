@@ -16,7 +16,6 @@ use crate::binding::identifier::{
     CertificateStateBindingEnum, CertificateX509ExtensionBindingDTO,
     GetIdentifierListItemBindingDTO,
 };
-use crate::binding::key::PublicKeyJwkBindingDTO;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
 
@@ -292,7 +291,8 @@ pub struct GetTrustEntityResponseBindingDTO {
 #[from(TrustEntityCertificateResponseDTO)]
 pub struct TrustEntityCertificateResponseBindingDTO {
     pub state: CertificateStateBindingEnum,
-    pub key: PublicKeyJwkBindingDTO,
+    pub public_key: String,
+    pub common_name: Option<String>,
     pub serial_number: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub not_before: String,

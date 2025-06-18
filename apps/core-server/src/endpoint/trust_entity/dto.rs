@@ -17,7 +17,6 @@ use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::{CertificateStateRest, CertificateX509ExtensionRestDTO};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
-use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
 use crate::endpoint::trust_anchor::dto::{
     GetTrustAnchorDetailResponseRestDTO, GetTrustAnchorResponseRestDTO,
 };
@@ -108,7 +107,8 @@ pub struct GetTrustEntityResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct TrustEntityCertificateResponseRestDTO {
     pub state: CertificateStateRest,
-    pub key: PublicKeyJwkRestDTO,
+    pub public_key: String,
+    pub common_name: Option<String>,
     pub serial_number: String,
     pub not_before: OffsetDateTime,
     pub not_after: OffsetDateTime,

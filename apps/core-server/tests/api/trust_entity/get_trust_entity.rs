@@ -105,6 +105,9 @@ JupK8gddPJ2WCw==
     body["role"].assert_eq(&"BOTH".to_owned());
     body["trustAnchor"]["id"].assert_eq(&anchor.id);
     body["ca"]["subject"].assert_eq(&"CN=*.dev.procivis-one.com".to_owned());
+    body["ca"]["commonName"].assert_eq(&"*.dev.procivis-one.com".to_owned());
+    body["ca"]["publicKey"]
+        .assert_eq(&"0cf81d4b37df243e75104e0ff21bd1c5cc2cb9501b7db9ffe97a3315b9f8193f".to_owned());
     body["ca"]["state"].assert_eq(&"ACTIVE".to_owned());
     body["ca"]["serialNumber"]
         .assert_eq(&"73:5a:43:42:c0:dd:f2:4b:21:e8:76:16:0e:cd:78:a3:fe:40:75:5c".to_owned());

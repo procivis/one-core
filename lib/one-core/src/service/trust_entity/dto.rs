@@ -15,7 +15,6 @@ use crate::service::common_dto::{BoundedB64Image, KB};
 use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::error::ValidationError;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 
 pub type TrustListLogo = BoundedB64Image<{ 50 * KB }>;
@@ -173,8 +172,9 @@ pub struct GetRemoteTrustEntityResponseDTO {
 #[derive(Clone, Debug)]
 pub struct TrustEntityCertificateResponseDTO {
     pub state: CertificateState,
-    pub key: PublicKeyJwkDTO,
+    pub public_key: String,
     pub serial_number: String,
+    pub common_name: Option<String>,
     pub not_before: OffsetDateTime,
     pub not_after: OffsetDateTime,
     pub issuer: String,

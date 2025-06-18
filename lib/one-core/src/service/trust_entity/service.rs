@@ -312,17 +312,21 @@ impl TrustEntityService {
                     ParsedCertificate {
                         attributes,
                         public_key,
-                        ..
+                        subject_common_name,
                     },
                 ) = self
                     .certificate_validator
                     .parse_pem_chain_with_status(content.as_bytes())
                     .await?;
+
+                let public_key = hex::encode(public_key.public_key_as_raw());
+
                 (
                     None,
                     Some(trust_entity_certificate_from_x509(
                         state,
-                        public_key.public_key_as_jwk()?.into(),
+                        public_key,
+                        subject_common_name,
                         attributes,
                     )),
                 )
