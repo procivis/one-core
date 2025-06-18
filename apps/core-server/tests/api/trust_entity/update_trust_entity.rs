@@ -83,6 +83,79 @@ async fn test_update_trust_entity_action_withdraw_success() {
 }
 
 #[tokio::test]
+async fn test_update_trust_entity_removed_and_withdrawn_history_success() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams {
+            name: "name".to_string(),
+            publisher_reference: format!("{}/ssi/trust/v1/{}", mock_server.uri(), Uuid::new_v4()),
+            is_publisher: false,
+            ..Default::default()
+        })
+        .await;
+
+    let entity = context
+        .db
+        .trust_entities
+        .create(
+            "name",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Withdrawn,
+            anchor,
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
+        )
+        .await;
+
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&entity.id.into())
+        .await;
+    let history_item_count = history_list.total_items;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .update(
+            entity.id,
+            PatchTrustEntityRequestRestDTO {
+                action: Some(PatchTrustEntityActionRestDTO::Remove),
+                name: None,
+                logo: None,
+                website: None,
+                terms_url: None,
+                privacy_url: None,
+                role: None,
+                content: None,
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&entity.id.into())
+        .await;
+    assert_eq!(history_item_count + 1, history_list.total_items);
+
+    let last = history_list.values.first().unwrap();
+    assert_eq!(HistoryAction::Removed, last.action);
+    assert_eq!(HistoryEntityType::TrustEntity, last.entity_type);
+}
+
+#[tokio::test]
 async fn test_patch_trust_entity_did() {
     // GIVEN
     let (context, _, did, ..) = TestContext::new_with_did(None).await;

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::trust_entity::{
@@ -93,12 +93,33 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         id: TrustEntityId,
         request: UpdateTrustEntityRequest,
     ) -> Result<(), DataLayerError> {
-        let state_history_action = request.state.clone().and_then(|state| match state {
-            TrustEntityState::Active => Some(HistoryAction::Activated),
-            TrustEntityState::Removed => Some(HistoryAction::Removed),
-            TrustEntityState::Withdrawn => Some(HistoryAction::Withdrawn),
-            TrustEntityState::RemovedAndWithdrawn => None,
-        });
+        let state_history_action = if let Some(ref state) = request.state {
+            match state {
+                TrustEntityState::Active => Some(HistoryAction::Activated),
+                TrustEntityState::Removed => Some(HistoryAction::Removed),
+                TrustEntityState::Withdrawn => Some(HistoryAction::Withdrawn),
+                TrustEntityState::RemovedAndWithdrawn => {
+                    // Load the entity before updating so that we know which one of removed and withdrawn states is new.
+                    let prev_state = self
+                        .inner
+                        .get(id, &TrustEntityRelations::default())
+                        .await?
+                        .ok_or(DataLayerError::Db(anyhow!(
+                            "trust entity with id {id} not found"
+                        )))?
+                        .state;
+                    match prev_state {
+                        TrustEntityState::Removed => Some(HistoryAction::Withdrawn),
+                        TrustEntityState::Withdrawn => Some(HistoryAction::Removed),
+                        TrustEntityState::RemovedAndWithdrawn => None,
+                        // trust entity cannot enter RemovedAndWithdrawn state from Active state
+                        TrustEntityState::Active => return Err(DataLayerError::MappingError),
+                    }
+                }
+            }
+        } else {
+            None
+        };
 
         let content_history_action = request.content.as_ref().map(|_| HistoryAction::Updated);
 
