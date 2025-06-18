@@ -20,13 +20,12 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::{IdentifierRelations, IdentifierType};
+use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::model::{CertificateDetails, IssuerDetails};
-use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
@@ -448,29 +447,34 @@ impl CredentialService {
         }
 
         match credential.state {
-            CredentialStateEnum::Created => {
-                self.credential_repository
-                    .update_credential(
-                        *credential_id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Pending),
-                            suspend_end_date: Clearable::DontTouch,
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
+            CredentialStateEnum::Created | CredentialStateEnum::Pending => {
+                // continue
             }
-            CredentialStateEnum::Pending => {}
             state => return Err(BusinessLogicError::InvalidCredentialState { state }.into()),
         }
 
+        let Some(issuer_identifier) = credential.issuer_identifier.as_ref() else {
+            return Err(ServiceError::MappingError(
+                "Missing issuer identifier".to_string(),
+            ));
+        };
+
+        if issuer_identifier.state != IdentifierState::Active {
+            return Err(BusinessLogicError::IdentifierIsDeactivated(issuer_identifier.id).into());
+        }
+
         let credential_exchange = &credential.exchange;
-        credential
-            .schema
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "credential schema missing".to_string(),
-            ))?;
+        let Some(credential_schema) = credential.schema.as_ref() else {
+            return Err(ServiceError::MappingError(
+                "Missing credential schema".to_string(),
+            ));
+        };
+
+        let Some(organisation) = &credential_schema.organisation else {
+            return Err(ServiceError::MappingError(
+                "Missing organisation".to_string(),
+            ));
+        };
 
         self.config
             .issuance_protocol
@@ -492,17 +496,17 @@ impl CredentialService {
             context,
         } = exchange.issuer_share_credential(&credential).await?;
 
-        let Some(credential_schema) = credential.schema.as_ref() else {
-            return Err(ServiceError::MappingError(
-                "Missing credential schema".to_string(),
-            ));
-        };
-
-        let Some(organisation) = &credential_schema.organisation else {
-            return Err(ServiceError::MappingError(
-                "Missing organisation".to_string(),
-            ));
-        };
+        if credential.state == CredentialStateEnum::Created {
+            self.credential_repository
+                .update_credential(
+                    *credential_id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Pending),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+        }
 
         add_new_interaction(
             interaction_id,

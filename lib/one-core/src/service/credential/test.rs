@@ -673,6 +673,34 @@ async fn test_share_credential_failed_invalid_state() {
 }
 
 #[tokio::test]
+async fn test_share_credential_failed_inactive_identifier() {
+    let mut credential_repository = MockCredentialRepository::default();
+
+    let mut credential = generic_credential();
+    credential.issuer_identifier.as_mut().unwrap().state = IdentifierState::Deactivated;
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.share_credential(&credential.id).await;
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::BusinessLogic(BusinessLogicError::IdentifierIsDeactivated(_))
+    )));
+}
+
+#[tokio::test]
 async fn test_create_credential_based_on_issuer_did_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
