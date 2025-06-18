@@ -4,7 +4,7 @@ use one_core::model::did::Did;
 use one_core::model::identifier::Identifier;
 use one_core::model::trust_anchor::TrustAnchor;
 use serde_json::json;
-use shared_types::{DidId, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 
 use super::{HttpClient, Response};
 
@@ -34,12 +34,14 @@ impl TrustEntitiesApi {
         trust_anchor: &TrustAnchor,
         r#type: Option<TrustEntityTypeRest>,
         did: &Did,
+        organisation_id: OrganisationId,
     ) -> Response {
         let mut body = json!({
           "name": name,
           "role": role,
           "trustAnchorId": trust_anchor.id,
           "didId": did.id,
+          "organisationId": organisation_id,
         });
 
         if let Some(t) = r#type {
@@ -56,6 +58,7 @@ impl TrustEntitiesApi {
         trust_anchor: &TrustAnchor,
         r#type: Option<TrustEntityTypeRest>,
         identifier: &Identifier,
+        organisation_id: OrganisationId,
     ) -> Response {
         let body = json!({
             "name": name,
@@ -63,6 +66,7 @@ impl TrustEntitiesApi {
             "trustAnchorId": trust_anchor.id,
             "identifierId": identifier.id,
             "type" : r#type,
+            "organisationId": organisation_id,
         });
 
         self.client.post("/api/trust-entity/v1", body).await
@@ -75,6 +79,7 @@ impl TrustEntitiesApi {
         trust_anchor: &TrustAnchor,
         r#type: Option<TrustEntityTypeRest>,
         pem_certificate: impl AsRef<str>,
+        organisation_id: OrganisationId,
     ) -> Response {
         let body = json!({
             "name": name,
@@ -82,6 +87,7 @@ impl TrustEntitiesApi {
             "trustAnchorId": trust_anchor.id,
             "type": r#type,
             "content": pem_certificate.as_ref(),
+            "organisationId": organisation_id,
         });
 
         self.client.post("/api/trust-entity/v1", body).await

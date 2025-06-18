@@ -33,6 +33,7 @@ pub struct CreateTrustEntityRequestDTO {
     pub did_id: Option<DidId>,
     pub identifier_id: Option<IdentifierId>,
     pub content: Option<TrustEntityContent>,
+    pub organisation_id: OrganisationId,
 }
 
 impl TryFrom<CreateTrustEntityRequestDTO>

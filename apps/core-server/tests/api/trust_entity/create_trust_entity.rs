@@ -14,7 +14,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 #[tokio::test]
 async fn test_create_default_trust_entity() {
     // GIVEN
-    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -26,7 +26,14 @@ async fn test_create_default_trust_entity() {
     let resp = context
         .api
         .trust_entities
-        .create_did("name", TrustEntityRoleRest::Both, &anchor, None, &did)
+        .create_did(
+            "name",
+            TrustEntityRoleRest::Both,
+            &anchor,
+            None,
+            &did,
+            organisation.id,
+        )
         .await;
 
     // THEN
@@ -36,7 +43,7 @@ async fn test_create_default_trust_entity() {
 #[tokio::test]
 async fn test_create_did_trust_entity() {
     // GIVEN
-    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -54,6 +61,7 @@ async fn test_create_did_trust_entity() {
             &anchor,
             Some(TrustEntityTypeRest::Did),
             &did,
+            organisation.id,
         )
         .await;
 
@@ -64,7 +72,7 @@ async fn test_create_did_trust_entity() {
 #[tokio::test]
 async fn test_create_identifier_trust_entity() {
     // GIVEN
-    let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, _) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -82,6 +90,7 @@ async fn test_create_identifier_trust_entity() {
             &anchor,
             Some(TrustEntityTypeRest::Did),
             &identifier,
+            organisation.id,
         )
         .await;
 
@@ -92,7 +101,7 @@ async fn test_create_identifier_trust_entity() {
 #[tokio::test]
 async fn test_create_ca_trust_entity() {
     // GIVEN
-    let (context, _) = TestContext::new_with_organisation(None).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let anchor = context
         .db
@@ -119,6 +128,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             &anchor,
             Some(TrustEntityTypeRest::CertificateAuthority),
             pem_certificate,
+            organisation.id,
         )
         .await;
 
@@ -129,7 +139,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_unknown_trust_id() {
     // GIVEN
-    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let ta = TrustAnchor {
         id: Uuid::new_v4().into(),
@@ -145,7 +155,14 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
     let resp = context
         .api
         .trust_entities
-        .create_did("name", TrustEntityRoleRest::Both, &ta, None, &did)
+        .create_did(
+            "name",
+            TrustEntityRoleRest::Both,
+            &ta,
+            None,
+            &did,
+            organisation.id,
+        )
         .await;
 
     // THEN
@@ -156,7 +173,7 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     // GIVEN
-    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -171,7 +188,14 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     let resp = context
         .api
         .trust_entities
-        .create_did("name", TrustEntityRoleRest::Both, &anchor, None, &did)
+        .create_did(
+            "name",
+            TrustEntityRoleRest::Both,
+            &anchor,
+            None,
+            &did,
+            organisation.id,
+        )
         .await;
 
     // THEN
@@ -182,7 +206,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_with_identifier_missing_type() {
     // GIVEN
-    let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, _) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -200,6 +224,7 @@ async fn test_fail_to_create_trust_entity_with_identifier_missing_type() {
             &anchor,
             None,
             &identifier,
+            organisation.id,
         )
         .await;
 
@@ -211,7 +236,7 @@ async fn test_fail_to_create_trust_entity_with_identifier_missing_type() {
 #[tokio::test]
 async fn test_fail_to_create_create_trust_entity_with_ca_missing_type() {
     // GIVEN
-    let (context, _) = TestContext::new_with_organisation(None).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let anchor = context
         .db
@@ -238,6 +263,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             &anchor,
             None,
             pem_certificate,
+            organisation.id,
         )
         .await;
 
@@ -249,7 +275,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_both_identifier_and_did_specified() {
     // GIVEN
-    let (context, _, did, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, identifier, _) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -268,6 +294,7 @@ async fn test_fail_to_create_trust_entity_both_identifier_and_did_specified() {
             "type": Some(TrustEntityTypeRest::Did),
             "didId": did.id,
             "identifierId": identifier.id,
+            "organisationId": organisation.id,
         }))
         .await;
 
@@ -302,7 +329,7 @@ async fn test_delete_trust_entity_fails_if_entity_not_found() {
 #[tokio::test]
 async fn test_create_trust_entity_fails_did_already_used() {
     // GIVEN
-    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db
@@ -313,7 +340,14 @@ async fn test_create_trust_entity_fails_did_already_used() {
     let resp = context
         .api
         .trust_entities
-        .create_did("name", TrustEntityRoleRest::Both, &anchor, None, &did)
+        .create_did(
+            "name",
+            TrustEntityRoleRest::Both,
+            &anchor,
+            None,
+            &did,
+            organisation.id,
+        )
         .await;
     assert_eq!(resp.status(), 201);
 
@@ -321,7 +355,14 @@ async fn test_create_trust_entity_fails_did_already_used() {
     let resp = context
         .api
         .trust_entities
-        .create_did("name2", TrustEntityRoleRest::Both, &anchor, None, &did)
+        .create_did(
+            "name2",
+            TrustEntityRoleRest::Both,
+            &anchor,
+            None,
+            &did,
+            organisation.id,
+        )
         .await;
 
     // THEN

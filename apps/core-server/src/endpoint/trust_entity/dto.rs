@@ -44,6 +44,7 @@ pub struct CreateTrustEntityRequestRestDTO {
     pub(super) identifier_id: Option<IdentifierId>,
     pub(super) content: Option<String>,
     pub(super) r#type: Option<TrustEntityTypeRest>,
+    pub(super) organisation_id: OrganisationId,
 }
 
 /// Whether the trust entity issues credentials, verifies credentials, or both.

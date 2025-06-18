@@ -73,6 +73,7 @@ impl TryFrom<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
             content: value
                 .content
                 .map(|s| String::from_utf8_lossy(s.as_bytes()).to_string()),
+            organisation_id: value.organisation_id,
         })
     }
 }

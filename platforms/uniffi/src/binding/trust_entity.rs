@@ -206,6 +206,8 @@ pub struct CreateTrustEntityRequestBindingDTO {
     pub identifier_id: Option<String>,
     #[try_into(infallible)]
     pub content: Option<String>,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

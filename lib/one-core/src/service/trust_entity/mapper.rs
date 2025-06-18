@@ -11,6 +11,7 @@ use super::dto::{
 use crate::model::certificate::CertificateState;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::model::organisation::Organisation;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{
     TrustEntity, TrustEntityState, TrustEntityType, UpdateTrustEntityRequest,
@@ -27,7 +28,7 @@ impl From<&CertificateX509AttributesDTO> for TrustEntityKey {
 
 pub(super) fn trust_entity_from_request(
     entity_key: TrustEntityKey,
-    did: Option<Did>,
+    organisation: Organisation,
     content: Option<TrustEntityContent>,
     r#type: TrustEntityType,
     params: CreateTrustEntityParamsDTO,
@@ -36,7 +37,6 @@ pub(super) fn trust_entity_from_request(
     let id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
 
-    let organisation = did.as_ref().and_then(|d| d.organisation.clone());
     TrustEntity {
         id,
         created_date: now,
@@ -52,7 +52,7 @@ pub(super) fn trust_entity_from_request(
         r#type,
         entity_key,
         content,
-        organisation,
+        organisation: Some(organisation),
         trust_anchor: Some(trust_anchor),
     }
 }

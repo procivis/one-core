@@ -18,7 +18,7 @@ use crate::model::did::{DidRelations, DidType};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityType};
 use crate::provider::trust_management::TrustOperation;
@@ -48,20 +48,36 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorMustBePublish.into());
         }
 
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
+
         let (entity_type, entity_params) = request.try_into()?;
 
         let trust_entity = match entity_type {
             CreateTrustEntityTypeDTO::Identifier(identifier_id) => {
-                self.trust_entity_from_identifier_params(identifier_id, entity_params, trust_anchor)
-                    .await?
+                self.trust_entity_from_identifier_params(
+                    identifier_id,
+                    entity_params,
+                    trust_anchor,
+                    organisation,
+                )
+                .await?
             }
             CreateTrustEntityTypeDTO::Did(did_id) => {
-                self.trust_entity_from_did_params(did_id, entity_params, trust_anchor)
+                self.trust_entity_from_did_params(did_id, entity_params, trust_anchor, organisation)
                     .await?
             }
             CreateTrustEntityTypeDTO::Certificate(certificate) => {
-                self.trust_entity_from_certificate_params(certificate, entity_params, trust_anchor)
-                    .await?
+                self.trust_entity_from_certificate_params(
+                    certificate,
+                    entity_params,
+                    trust_anchor,
+                    organisation,
+                )
+                .await?
             }
         };
 
@@ -81,6 +97,7 @@ impl TrustEntityService {
         content: TrustEntityContent,
         params: CreateTrustEntityParamsDTO,
         trust_anchor: TrustAnchor,
+        organisation: Organisation,
     ) -> Result<TrustEntity, ServiceError> {
         let ParsedCertificate { attributes, .. } = self
             .certificate_validator
@@ -99,7 +116,7 @@ impl TrustEntityService {
 
         Ok(trust_entity_from_request(
             entity_key,
-            None,
+            organisation,
             Some(content),
             TrustEntityType::CertificateAuthority,
             params,
@@ -112,6 +129,7 @@ impl TrustEntityService {
         identifier_id: IdentifierId,
         params: CreateTrustEntityParamsDTO,
         trust_anchor: TrustAnchor,
+        organisation: Organisation,
     ) -> Result<TrustEntity, ServiceError> {
         let identifier = self
             .identifier_repository
@@ -156,7 +174,7 @@ impl TrustEntityService {
 
         Ok(trust_entity_from_request(
             entity_key,
-            Some(did),
+            organisation,
             None,
             TrustEntityType::Did,
             params,
@@ -169,6 +187,7 @@ impl TrustEntityService {
         did_id: DidId,
         params: CreateTrustEntityParamsDTO,
         trust_anchor: TrustAnchor,
+        organisation: Organisation,
     ) -> Result<TrustEntity, ServiceError> {
         let did = self
             .did_repository
@@ -201,7 +220,7 @@ impl TrustEntityService {
 
         Ok(trust_entity_from_request(
             entity_key,
-            Some(did),
+            organisation,
             None,
             TrustEntityType::Did,
             params,
