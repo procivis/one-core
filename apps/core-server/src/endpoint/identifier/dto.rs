@@ -146,7 +146,7 @@ pub enum SortableIdentifierColumnRest {
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentifierFilterQueryParamsRestDTO {
-    /// Specify identifiers to be returned by their UUID.
+    /// Specify identifiers to return by their UUID.
     #[param(rename = "ids[]", nullable = false)]
     pub ids: Option<Vec<IdentifierId>>,
     /// Return only identifiers with a name starting with this string.

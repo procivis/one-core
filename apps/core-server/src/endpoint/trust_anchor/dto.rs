@@ -23,8 +23,8 @@ pub struct CreateTrustAnchorRequestRestDTO {
     #[schema(example = "SIMPLE_TRUST_LIST")]
     pub r#type: String,
     /// If true the created trust anchor will be published. If subscribing
-    /// to an existing trust anchor, omit or set to false. The remote anchor has
-    /// to be specified via `publisherReference`.
+    /// to an existing trust anchor, omit or set to false. The remote anchor must
+    /// be specified via `publisherReference`.
     #[schema(nullable = false)]
     pub is_publisher: Option<bool>,
     /// URL of the remote trust anchor to subscribe to.

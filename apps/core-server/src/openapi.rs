@@ -147,10 +147,10 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
         tags.append(& mut vec![Tag::builder()
                        .name("organisation_management")
                        .description(Some(indoc::formatdoc! {"
-                The organization is the fundamental unit of _Procivis One_. All actions
-                related to issuing, holding and verifying are taken _by_ an organization. This
-                means that keys, DIDs, credentials and proofs belong to the organization used
-                to create them and to no other.
+                The organization is the fundamental unit in Procivis One. All
+                issuing, holding, and verifying actions are performed by an
+                organization. Keys, DIDs, credentials, and proofs belong exclusively
+                to the organization that created them.
 
                 Related guide: [Organizations](/organizations)
             "}))
@@ -227,13 +227,13 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                    Tag::builder()
                        .name("credential_schema_management")
                        .description(Some(indoc::formatdoc! {"
-                A credential schema defines the structure and format of a credential, including
-                the attributes about which issuers make claims. Schemas carry information about
-                issued credentials such as how an issued credential should be presented in a
-                digital wallet, whether it was issued with a revocation method and issuer
-                preferences for wallet storage type.
+                A credential schema defines the structure and format of a credential,
+                including the attributes that issuers make claims about. Schemas also
+                specify how issued credentials should be presented in digital wallets,
+                whether revocation methods are used, and issuer preferences for wallet
+                storage type.
 
-                The system supports the creation of as many credential schemas as is needed.
+                The system supports the creation of as many credential schemas as needed.
 
                 Related guide: [Credential schemas](/credential-schemas)
             "}))
@@ -264,15 +264,14 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                    Tag::builder()
                        .name("proof_schema_management")
                        .description(Some(indoc::formatdoc! {"
-                A proof schema defines the attributes a verifier requests from a credentials holder.
-                It is the collection of items of information to be requested.
+                A proof schema defines which attributes a verifier requests from a credential holder.
+                It specifies what information will be requested.
 
-                Proof schemas are built from attributes defined in credential schemas. Each item of
-                information to be requested must first be part of a credential schema in the system.
-                Proof schemas are not restricted to pulling attributes from a single credential schema
-                or from credential schemas using a particular credential format; a single proof schema
-                can be composed of any number of attributes from any number of credential schemas within
-                the organization.
+                Proof schemas are built from attributes defined in credential schemas. Each requested
+                attribute must first exist in a credential schema within the system. A proof schema
+                can pull attributes from multiple credential schemas and is not restricted by credential
+                format—it can combine any number of attributes from any number of credential schemas
+                within the organization.
 
                 Proof schemas cannot combine hardware- and software-based credentials.
 

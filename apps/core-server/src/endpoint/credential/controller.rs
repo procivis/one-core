@@ -140,9 +140,8 @@ pub(crate) async fn get_credential_list(
     description = indoc::formatdoc! {"
     Creates a credential, which can then be issued to a wallet holder.
 
-    Choose the type of credential to issue (credential schema), the DID
-    to be used for identification, an issuance protocol, and
-    make claims about the subject.
+    Choose the type of credential to issue (credential schema), an
+    identifier, an issuance protocol, and make claims about the subject.
 
     The `exchange` value must reference a configured instance of the
     `issuanceProtocol` object of your system configuration.

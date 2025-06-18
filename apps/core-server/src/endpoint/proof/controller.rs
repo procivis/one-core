@@ -129,8 +129,8 @@ pub(crate) async fn get_proofs(
     description = indoc::formatdoc! {"
     Creates a proof request, which can then be shared with a wallet holder.
 
-    Choose what information to request (proof schema), the DID to be used
-    for identification as a verifier, and which verification protocol to use.
+    Choose what information to request (proof schema), an identifier, and
+    which verification protocol to use.
 
     The `exchange` and `transport` values must reference specific configuration
     instances from your system configuration. This is because the system allows

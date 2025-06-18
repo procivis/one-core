@@ -163,7 +163,7 @@ pub struct ProofsFilterQueryParamsRest {
     /// of UUID strings.
     #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
     pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
-    /// Specify proof requests to be returned by their UUID.
+    /// Specify proof requests to return by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofId>>,
     /// Set which filters apply in an exact way.

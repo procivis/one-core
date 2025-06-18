@@ -117,7 +117,7 @@ pub struct KeyFilterQueryParamsRest {
     /// Return only keys stored in the specified storage type.
     #[param(nullable = false)]
     pub key_storage: Option<String>,
-    /// Specify keys to be returned by their UUID.
+    /// Specify keys to return by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<KeyId>>,
     /// Set which filters apply in an exact way.
