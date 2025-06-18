@@ -40,7 +40,8 @@ use self::mdoc::{
     ValidityInfo, ValueDigests,
 };
 use super::model::{
-    CertificateDetails, CredentialData, HolderBindingCtx, IssuerDetails, PublicKeySource,
+    CertificateDetails, CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails,
+    PublicKeySource,
 };
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
@@ -346,7 +347,7 @@ impl CredentialFormatter for MdocFormatter {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         context: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         let FormatPresentationCtx {
             mdoc_session_transcript: Some(session_transcript),
             ..
@@ -385,7 +386,11 @@ impl CredentialFormatter for MdocFormatter {
             status: 0,
         };
 
-        encode_cbor_base64(device_response)
+        let vp_token = encode_cbor_base64(device_response)?;
+        Ok(FormattedPresentation {
+            vp_token,
+            oidc_format: "mso_mdoc".to_string(),
+        })
     }
 
     async fn extract_presentation(

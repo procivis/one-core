@@ -18,7 +18,7 @@ use super::model::{
     PresentationSubmissionMappingDTO,
 };
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::config::core_config::{CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType};
+use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType};
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId};
@@ -29,9 +29,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, DetailCredential, FormatPresentationCtx, HolderBindingCtx,
-};
+use crate::provider::credential_formatter::model::{AuthenticationFn, DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -47,7 +45,7 @@ use crate::provider::verification_protocol::mapper::proof_from_handle_invitation
 use crate::provider::verification_protocol::openid4vp::get_presentation_definition_with_local_credentials;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
-    map_credential_formats_to_presentation_format,
+    map_presented_credentials_to_presentation_format_type,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{verifier_flow, AsyncVerifierFlowParams};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
@@ -740,12 +738,15 @@ pub(super) async fn create_presentation(
         .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
         .collect();
 
-    let (format, oidc_format) =
-        map_credential_formats_to_presentation_format(&params.credential_presentations)?;
+    let format =
+        map_presented_credentials_to_presentation_format_type(&params.credential_presentations)?;
 
-    let presentation_formatter = params.formatter_provider.get_formatter(&format).ok_or(
-        VerificationProtocolError::Failed("Formatter not found".to_string()),
-    )?;
+    let presentation_formatter = params
+        .formatter_provider
+        .get_formatter(&format.to_string())
+        .ok_or(VerificationProtocolError::Failed(
+            "Formatter not found".to_string(),
+        ))?;
 
     let auth_fn = params
         .key_provider
@@ -760,19 +761,13 @@ pub(super) async fn create_presentation(
         .id
         .to_owned();
 
-    let presentation_submission = create_presentation_submission(
-        presentation_definition_id,
-        params.credential_presentations,
-        &oidc_format,
-    )?;
-
     let mut ctx = FormatPresentationCtx {
         nonce: Some(params.nonce.to_string()),
         token_formats: Some(token_formats),
         ..Default::default()
     };
 
-    if format == "MDOC" {
+    if format == FormatType::Mdoc {
         let mdoc_generated_nonce = params.identity_request_nonce.ok_or_else(|| {
             VerificationProtocolError::Failed(
                 "Cannot format MDOC - missing identity request nonce".to_string(),
@@ -805,10 +800,19 @@ pub(super) async fn create_presentation(
                 FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
             ))?;
 
-    let vp_token = presentation_formatter
+    let FormattedPresentation {
+        vp_token,
+        oidc_format,
+    } = presentation_formatter
         .format_presentation(&tokens, &params.holder_did.did, key_algorithm, auth_fn, ctx)
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    let presentation_submission = create_presentation_submission(
+        presentation_definition_id,
+        params.credential_presentations,
+        &oidc_format,
+    )?;
 
     Ok((vp_token, presentation_submission))
 }

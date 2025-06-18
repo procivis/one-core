@@ -18,7 +18,7 @@ pub use common::nest_claims;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
-use crate::provider::credential_formatter::model::HolderBindingCtx;
+use crate::provider::credential_formatter::model::{FormattedPresentation, HolderBindingCtx};
 
 // Implementation
 pub mod json_ld;
@@ -100,7 +100,7 @@ pub trait CredentialFormatter: Send + Sync {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         ctx: FormatPresentationCtx,
-    ) -> Result<String, FormatterError>;
+    ) -> Result<FormattedPresentation, FormatterError>;
 
     /// Parses a presentation and verifies the signature.
     async fn extract_presentation(

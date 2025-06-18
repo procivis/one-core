@@ -562,16 +562,16 @@ impl OpenID4VP20AuthorizationRequest {
     }
 }
 
-pub(crate) fn map_credential_formats_to_presentation_format(
+pub(crate) fn map_presented_credentials_to_presentation_format_type(
     presented: &[PresentedCredential],
-) -> Result<(String, String), VerificationProtocolError> {
+) -> Result<FormatType, VerificationProtocolError> {
     // MDOC credential(s) are sent as a MDOC presentation, using the MDOC formatter
     if presented.len() == 1
         && presented
             .iter()
             .all(|cred| cred.credential_schema.format == FormatType::Mdoc.to_string())
     {
-        return Ok((FormatType::Mdoc.to_string(), "mso_mdoc".to_owned()));
+        return Ok(FormatType::Mdoc);
     }
 
     // The SD_JWT presentations can contains only one credential
@@ -581,18 +581,18 @@ pub(crate) fn map_credential_formats_to_presentation_format(
                 || cred.credential_schema.schema_type == CredentialSchemaType::SdJwtVc
         })
     {
-        return Ok((FormatType::SdJwt.to_string(), "vc+sd-jwt".to_owned()));
+        return Ok(FormatType::SdJwt);
     }
 
     if presented.iter().all(|cred| {
         cred.credential_schema.format == FormatType::JsonLdClassic.to_string()
             || cred.credential_schema.format == FormatType::JsonLdBbsPlus.to_string()
     }) {
-        return Ok((FormatType::JsonLdClassic.to_string(), "ldp_vp".to_owned()));
+        return Ok(FormatType::JsonLdClassic);
     }
 
     // Fallback, handle all other formats via enveloped JWT
-    Ok((FormatType::Jwt.to_string(), "jwt_vp_json".to_owned()))
+    Ok(FormatType::Jwt)
 }
 
 pub(crate) async fn credential_from_proved(

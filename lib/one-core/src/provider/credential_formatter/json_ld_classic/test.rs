@@ -14,8 +14,8 @@ use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialSchemaMetadata, ExtractPresentationCtx,
-    FormatPresentationCtx, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
-    PublishedClaimValue,
+    FormatPresentationCtx, FormattedPresentation, Issuer, MockSignatureProvider, MockTokenVerifier,
+    PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
@@ -374,7 +374,7 @@ async fn test_format_presentation_multi_tokens() {
         .expect_get_key_id()
         .returning(|| Some("keyid".to_string()));
 
-    let formatted_presentation = formatter
+    let FormattedPresentation { vp_token, .. } = formatter
         .format_presentation(
             vec![JWT_TOKEN.to_owned(), JSONLD_TOKEN.to_owned()].as_slice(),
             &issuer_did,
@@ -388,7 +388,7 @@ async fn test_format_presentation_multi_tokens() {
         .await
         .unwrap();
 
-    let value = Value::from_str(&formatted_presentation).unwrap();
+    let value = Value::from_str(&vp_token).unwrap();
 
     assert_eq!(
         value["verifiableCredential"][0]["type"],

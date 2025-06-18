@@ -19,8 +19,8 @@ use crate::provider::credential_formatter::jwt_formatter::model::{
 };
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialStatus, ExtractPresentationCtx, Issuer, IssuerDetails, MockTokenVerifier,
-    PublicKeySource, PublishedClaim,
+    CredentialStatus, ExtractPresentationCtx, FormattedPresentation, Issuer, IssuerDetails,
+    MockTokenVerifier, PublicKeySource, PublishedClaim,
 };
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
@@ -677,9 +677,9 @@ async fn test_format_presentation() {
 
     assert!(result.is_ok());
 
-    let presentation_token = result.unwrap();
+    let FormattedPresentation { vp_token, .. } = result.unwrap();
 
-    let jwt_parts: Vec<&str> = presentation_token.splitn(3, '.').collect();
+    let jwt_parts: Vec<&str> = vp_token.splitn(3, '.').collect();
 
     assert_eq!(
         jwt_parts[0],

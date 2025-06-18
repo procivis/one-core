@@ -23,8 +23,9 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities,
-    HolderBindingCtx, IssuerDetails, Presentation, SelectiveDisclosure, VerificationFn,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormattedPresentation,
+    FormatterCapabilities, HolderBindingCtx, IssuerDetails, Presentation, SelectiveDisclosure,
+    VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -172,7 +173,7 @@ impl CredentialFormatter for SDJWTFormatter {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         if credentials.len() != 1 {
             return Err(FormatterError::Failed(
                 "SD-JWT formatter only supports single credential presentations".to_string(),
@@ -183,7 +184,10 @@ impl CredentialFormatter for SDJWTFormatter {
             "Empty credential list passed to format_presentation".to_string(),
         ))?;
 
-        Ok(credential.to_string())
+        Ok(FormattedPresentation {
+            vp_token: credential.to_owned(),
+            oidc_format: "vc+sd-jwt".to_string(),
+        })
     }
 
     async fn extract_presentation(

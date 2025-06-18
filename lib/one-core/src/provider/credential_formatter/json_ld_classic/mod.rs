@@ -20,7 +20,9 @@ use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
 use super::json_ld::{
     is_context_list_valid, json_ld_processor_options, jsonld_forbidden_claim_names,
 };
-use super::model::{CredentialData, HolderBindingCtx, IssuerDetails, PublicKeySource};
+use super::model::{
+    CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails, PublicKeySource,
+};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
     DidType, FormatType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -185,7 +187,7 @@ impl CredentialFormatter for JsonLdClassic {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         ctx: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         let context = indexset![ContextType::Url(Context::CredentialsV2.to_url())];
 
         let formats = ctx.token_formats.map(|formats| {
@@ -276,10 +278,13 @@ impl CredentialFormatter for JsonLdClassic {
         proof.context = None;
         presentation.proof = Some(proof);
 
-        let resp = serde_json::to_string(&presentation)
+        let vp_token = serde_json::to_string(&presentation)
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
-        Ok(resp)
+        Ok(FormattedPresentation {
+            vp_token,
+            oidc_format: "ldp_vp".to_string(),
+        })
     }
 
     async fn extract_presentation(

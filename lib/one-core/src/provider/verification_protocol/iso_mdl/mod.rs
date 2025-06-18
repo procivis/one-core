@@ -35,7 +35,7 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
 use crate::provider::credential_formatter::model::{
-    DetailCredential, FormatPresentationCtx, HolderBindingCtx,
+    DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -214,12 +214,12 @@ impl VerificationProtocol for IsoMdl {
                 FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
             ))?;
 
-        let device_response = formatter
+        let FormattedPresentation { vp_token, .. } = formatter
             .format_presentation(&presentaitons, &holder_did.did, key_algorithm, auth_fn, ctx)
             .await
             .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 
-        let device_response = decode_cbor_base64(&device_response)
+        let device_response = decode_cbor_base64(&vp_token)
             .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 
         send_mdl_response(&ble, device_response, interaction_data).await?;

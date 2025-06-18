@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use super::jwt::Jwt;
 use super::jwt::model::JWTPayload;
-use super::model::{CredentialData, Features, HolderBindingCtx};
+use super::model::{CredentialData, Features, FormattedPresentation, HolderBindingCtx};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
@@ -188,7 +188,7 @@ impl CredentialFormatter for JWTFormatter {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         let vp: VP = format_payload(tokens, nonce)?;
 
         let now = OffsetDateTime::now_utc();
@@ -217,7 +217,11 @@ impl CredentialFormatter for JWTFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, None, payload);
 
-        jwt.tokenize(Some(auth_fn)).await
+        let vp_token = jwt.tokenize(Some(auth_fn)).await?;
+        Ok(FormattedPresentation {
+            vp_token,
+            oidc_format: "jwt_vp_json".to_string(),
+        })
     }
 
     async fn extract_presentation(

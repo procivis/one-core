@@ -16,7 +16,7 @@ use url::Url;
 use super::CredentialFormatter;
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
-use super::model::{CredentialData, HolderBindingCtx, Issuer};
+use super::model::{CredentialData, FormattedPresentation, HolderBindingCtx, Issuer};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
@@ -272,7 +272,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         unimplemented!()
     }
 

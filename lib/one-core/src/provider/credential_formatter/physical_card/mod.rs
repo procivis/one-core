@@ -7,7 +7,7 @@ use one_crypto::CryptoProvider;
 use shared_types::{CredentialSchemaId, DidValue};
 
 use super::json_ld_classic::verify_credential_signature;
-use super::model::{CredentialData, HolderBindingCtx};
+use super::model::{CredentialData, FormattedPresentation, HolderBindingCtx};
 use crate::config::core_config::{
     DidType, IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
@@ -100,7 +100,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         todo!()
     }
 

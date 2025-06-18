@@ -401,3 +401,9 @@ pub struct LanguageValue {
     #[serde(default, rename = "@direction")]
     direction: Option<String>,
 }
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct FormattedPresentation {
+    pub vp_token: String,
+    pub oidc_format: String,
+}

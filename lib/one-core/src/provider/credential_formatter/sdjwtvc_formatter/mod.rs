@@ -22,7 +22,9 @@ use time::Duration;
 use url::Url;
 
 use super::jwt::model::JWTPayload;
-use super::model::{CredentialData, CredentialStatus, HolderBindingCtx, PublishedClaim};
+use super::model::{
+    CredentialData, CredentialStatus, FormattedPresentation, HolderBindingCtx, PublishedClaim,
+};
 use super::sdjwt;
 use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
@@ -205,7 +207,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<FormattedPresentation, FormatterError> {
         // for presentation the SD-JWT formatter is used
         unreachable!()
     }

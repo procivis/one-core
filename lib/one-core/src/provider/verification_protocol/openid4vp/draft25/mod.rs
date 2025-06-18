@@ -15,11 +15,11 @@ use utils::{
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::map_credential_formats_to_presentation_format;
+use super::mapper::map_presented_credentials_to_presentation_format_type;
 use super::mdoc::mdoc_presentation_context;
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
-    CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType,
+    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
@@ -28,7 +28,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    DetailCredential, FormatPresentationCtx, HolderBindingCtx,
+    DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -323,12 +323,12 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             .map(|presented_credential| presented_credential.presentation.to_owned())
             .collect();
 
-        let (format, oidc_format) =
-            map_credential_formats_to_presentation_format(&credential_presentations)?;
+        let format =
+            map_presented_credentials_to_presentation_format_type(&credential_presentations)?;
 
         let presentation_formatter = self
             .formatter_provider
-            .get_formatter(&format)
+            .get_formatter(&format.to_string())
             .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = self
@@ -354,12 +354,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
             .collect();
 
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
-            credential_presentations,
-            &oidc_format,
-        )?;
-
         let response_uri =
             interaction_data
                 .response_uri
@@ -376,7 +370,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 ))?;
 
         let holder_nonce = utilities::generate_alphanumeric(32);
-        let ctx = if format == "MDOC" {
+        let ctx = if format == FormatType::Mdoc {
             mdoc_presentation_context(
                 &encode_client_id_with_scheme(
                     interaction_data.client_id.clone(),
@@ -399,15 +393,24 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
             ))?;
 
-        let vp_token = presentation_formatter
+        let FormattedPresentation {
+            vp_token,
+            oidc_format,
+        } = presentation_formatter
             .format_presentation(&tokens, &holder_did.did, key_algorithm, auth_fn, ctx)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
+        let presentation_submission = create_presentation_submission(
+            presentation_definition_id,
+            credential_presentations,
+            &oidc_format,
+        )?;
+
         let encryption_info = self
             .encryption_info_from_metadata(&interaction_data)
             .await?;
-        if encryption_info.is_none() && format == "MDOC" {
+        if encryption_info.is_none() && format == FormatType::Mdoc {
             return Err(VerificationProtocolError::Failed(
                 "MDOC presentation requires encryption but no verifier EC keys are available"
                     .to_string(),
