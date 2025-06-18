@@ -174,8 +174,8 @@ pub struct HistoryFilterQueryParamsRest {
     #[param(nullable = false)]
     pub entity_id: Option<EntityId>,
     /// Return only events of the specified action(s).
-    #[param(nullable = false)]
-    pub action: Option<HistoryAction>,
+    #[param(rename = "actions[]", inline, nullable = false)]
+    pub actions: Option<Vec<HistoryAction>>,
     /// Return only events which occurred after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]

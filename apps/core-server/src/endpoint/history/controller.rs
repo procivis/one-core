@@ -14,9 +14,7 @@ use crate::router::AppState;
     get,
     path = "/api/history/v1",
     responses(OkOrErrorResponse<GetHistoryListResponseRestDTO>),
-    params(
-        GetHistoryQuery
-    ),
+    params(GetHistoryQuery),
     tag = "history_management",
     security(
         ("bearer" = [])

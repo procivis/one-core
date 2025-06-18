@@ -155,7 +155,7 @@ impl ProofService {
                 sorting: None,
                 filtering: Some(
                     HistoryFilterValue::EntityId(proof.id.into()).condition()
-                        & HistoryFilterValue::Action(HistoryAction::ClaimsRemoved),
+                        & HistoryFilterValue::Actions(vec![HistoryAction::ClaimsRemoved]),
                 ),
                 include: None,
             })

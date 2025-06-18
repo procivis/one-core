@@ -98,7 +98,7 @@ pub enum HistoryFilterValue {
     EntityTypes(Vec<HistoryEntityType>),
     EntityId(EntityId),
     EntityIds(Vec<EntityId>),
-    Action(HistoryAction),
+    Actions(Vec<HistoryAction>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     IdentifierId(IdentifierId),
     CredentialId(CredentialId),

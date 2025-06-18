@@ -1,4 +1,5 @@
 use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
+use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{
     ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
 };
@@ -42,10 +43,9 @@ impl IntoFilterCondition for HistoryFilterValue {
             Self::EntityIds(entity_ids) => {
                 history::Column::EntityId.is_in(entity_ids).into_condition()
             }
-            Self::Action(action) => get_equals_condition(
-                history::Column::Action,
-                history::HistoryAction::from(action),
-            ),
+            Self::Actions(actions) => history::Column::Action
+                .is_in::<history::HistoryAction, _>(convert_inner(actions))
+                .into_condition(),
             Self::CreatedDate(date_comparison) => {
                 get_comparison_condition(history::Column::CreatedDate, date_comparison)
             }

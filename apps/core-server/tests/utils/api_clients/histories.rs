@@ -20,6 +20,7 @@ impl HistoriesApi {
         organisation_id: &impl Display,
         credential_schema_id: Option<CredentialSchemaId>,
         entity_types: Option<Vec<String>>,
+        actions: Option<Vec<String>>,
     ) -> Response {
         let schema_param = match credential_schema_id {
             None => "".to_string(),
@@ -37,6 +38,15 @@ impl HistoriesApi {
                 .collect::<Vec<String>>()
                 .join("&");
             url.push_str(&format!("&{entity_types_as_string}"));
+        }
+        if actions.is_some() {
+            let actions_as_string = actions
+                .unwrap()
+                .into_iter()
+                .map(|e| format!("actions[]={e}"))
+                .collect::<Vec<String>>()
+                .join("&");
+            url.push_str(&format!("&{actions_as_string}"));
         }
         self.client.get(&url).await
     }

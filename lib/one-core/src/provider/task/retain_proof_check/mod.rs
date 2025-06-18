@@ -52,7 +52,7 @@ impl Task for RetainProofCheck {
             .get_history_list(ListQuery {
                 filtering: Some(
                     HistoryFilterValue::EntityTypes(vec![HistoryEntityType::Proof]).condition()
-                        & HistoryFilterValue::Action(HistoryAction::ClaimsRemoved),
+                        & HistoryFilterValue::Actions(vec![HistoryAction::ClaimsRemoved]),
                 ),
                 pagination: None,
                 sorting: None,

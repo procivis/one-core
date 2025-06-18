@@ -2,6 +2,7 @@ use one_core::model::history::{HistoryFilterValue, HistorySearchEnum};
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
 };
+use one_dto_mapper::convert_inner;
 
 use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
 
@@ -16,9 +17,9 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             )
         });
         let entity_id = value.entity_id.map(HistoryFilterValue::EntityId);
-        let action = value
-            .action
-            .map(|value| HistoryFilterValue::Action(value.into()));
+        let actions = value
+            .actions
+            .map(|values| HistoryFilterValue::Actions(convert_inner(values)));
         let created_date_from = value.created_date_from.map(|date| {
             HistoryFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::GreaterThanOrEqual,
@@ -46,7 +47,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         organisation_id
             & entity_types
             & entity_id
-            & action
+            & actions
             & created_date_from
             & created_date_to
             & identifier_id
