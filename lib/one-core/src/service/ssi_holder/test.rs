@@ -14,6 +14,7 @@ use crate::model::credential_schema::{
     CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -953,6 +954,13 @@ async fn test_accept_credential() {
         .once()
         .returning(|_, _| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|req| req.action == HistoryAction::Issued)
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
         .expect_holder_accept_credential()
@@ -1021,6 +1029,7 @@ async fn test_accept_credential() {
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
+        history_repository: Arc::new(history_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         key_provider: Arc::new(key_provider),
@@ -1096,6 +1105,13 @@ async fn test_accept_credential_with_did() {
         .once()
         .returning(|_, _| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|req| req.action == HistoryAction::Issued)
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
         .expect_holder_accept_credential()
@@ -1166,6 +1182,7 @@ async fn test_accept_credential_with_did() {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
+        history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
@@ -1243,6 +1260,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         did_repository: Arc::new(MockDidRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
         certificate_repository: Arc::new(MockCertificateRepository::new()),
+        history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),

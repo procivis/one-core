@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 
 use one_core::model::claim_schema::ClaimSchema;
@@ -191,19 +192,21 @@ async fn test_issuance_accept_openid4vc() {
         .histories
         .get_by_entity_id(&credential.id.into())
         .await;
-    assert_eq!(history.values.len(), 2); // one per state: Pending, Accepted
+    assert_eq!(history.values.len(), 3); // one per state: Pending, Accepted + Issued
     assert!(
         history
             .values
             .iter()
             .all(|entry| entry.target == Some(issuer_identifier.id.to_string())),
     );
-    assert!(
-        history
-            .values
-            .iter()
-            .take(1)
-            .any(|x| x.action == HistoryAction::Accepted)
+    let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
+    assert_eq!(
+        actions,
+        HashSet::from([
+            HistoryAction::Pending,
+            HistoryAction::Accepted,
+            HistoryAction::Issued
+        ])
     );
 }
 

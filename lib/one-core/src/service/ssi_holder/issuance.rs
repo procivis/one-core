@@ -11,12 +11,13 @@ use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
+    Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
+use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
@@ -34,6 +35,7 @@ use crate::service::error::{
 };
 use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
+use crate::util::history::log_history_event_credential;
 
 impl SSIHolderService {
     pub async fn accept_credential(
@@ -268,7 +270,6 @@ impl SSIHolderService {
                 credential.id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Accepted),
-                    suspend_end_date: Clearable::DontTouch,
                     credential: Some(issuer_response.credential.bytes().collect()),
                     holder_identifier_id: Some(holder_identifer.id),
                     key: Some(selected_key.id),
@@ -277,6 +278,9 @@ impl SSIHolderService {
                 },
             )
             .await?;
+
+        log_history_event_credential(&*self.history_repository, credential, HistoryAction::Issued)
+            .await;
 
         Ok(())
     }

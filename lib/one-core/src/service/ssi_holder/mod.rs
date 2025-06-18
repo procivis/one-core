@@ -14,6 +14,7 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -42,6 +43,7 @@ pub struct SSIHolderService {
     did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     certificate_repository: Arc<dyn CertificateRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -66,6 +68,7 @@ impl SSIHolderService {
         did_repository: Arc<dyn DidRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         certificate_repository: Arc<dyn CertificateRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -87,6 +90,7 @@ impl SSIHolderService {
             did_repository,
             identifier_repository,
             certificate_repository,
+            history_repository,
             key_provider,
             key_algorithm_provider,
             formatter_provider,

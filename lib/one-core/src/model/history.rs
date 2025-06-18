@@ -42,7 +42,7 @@ pub struct History {
     pub organisation_id: Option<OrganisationId>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum HistoryAction {
     Accepted,
     Created,

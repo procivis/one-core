@@ -716,6 +716,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_certificate_repository(),
+                data_provider.get_history_repository(),
                 key_provider,
                 key_algorithm_provider,
                 formatter_provider,

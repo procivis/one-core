@@ -74,7 +74,7 @@ pub(crate) async fn log_history_event_credential(
             credential_schema_name,
             organisation_id,
             HistoryEntityType::Credential,
-            event.clone(),
+            event,
             target_from_credential(credential),
         ))
         .await;
@@ -105,7 +105,7 @@ pub(crate) async fn log_history_event_credential_schema(
             schema.name.clone(),
             organisation.id,
             HistoryEntityType::CredentialSchema,
-            event.clone(),
+            event,
             None,
         ))
         .await;
@@ -165,7 +165,7 @@ pub(crate) async fn log_history_event_proof(
                 .unwrap_or_default(),
             organisation_id,
             HistoryEntityType::Proof,
-            event.clone(),
+            event,
             target_from_proof(proof),
         ))
         .await;
@@ -196,7 +196,7 @@ pub(crate) async fn log_history_event_proof_schema(
             proof_schema.name.clone(),
             organisation.id,
             HistoryEntityType::ProofSchema,
-            event.clone(),
+            event,
             None,
         ))
         .await;
