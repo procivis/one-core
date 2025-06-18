@@ -16,7 +16,7 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
-use crate::service::identifier::mapper::to_create_did_request;
+use crate::service::identifier::mapper::{map_already_exists_error, to_create_did_request};
 use crate::service::identifier::validator::validate_identifier_type;
 
 impl IdentifierService {
@@ -142,7 +142,8 @@ impl IdentifierService {
                         key: None,
                         certificates: None,
                     })
-                    .await?;
+                    .await
+                    .map_err(map_already_exists_error)?;
                 Ok(id)
             }
             // IdentifierType::Key
@@ -173,7 +174,8 @@ impl IdentifierService {
                         key: Some(key),
                         certificates: None,
                     })
-                    .await?;
+                    .await
+                    .map_err(map_already_exists_error)?;
 
                 Ok(id)
             }
@@ -209,10 +211,14 @@ impl IdentifierService {
                         key: None,
                         certificates: None,
                     })
-                    .await?;
+                    .await
+                    .map_err(map_already_exists_error)?;
 
                 for certificate in certificates {
-                    self.certificate_repository.create(certificate).await?;
+                    self.certificate_repository
+                        .create(certificate)
+                        .await
+                        .map_err(map_already_exists_error)?;
                 }
 
                 Ok(id)

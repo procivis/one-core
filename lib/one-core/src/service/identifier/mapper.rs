@@ -6,8 +6,9 @@ use super::dto::{
     GetIdentifierResponseDTO,
 };
 use crate::model::identifier::{GetIdentifierList, Identifier, IdentifierType};
+use crate::repository::error::DataLayerError;
 use crate::service::did::dto::CreateDidRequestDTO;
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, ServiceError};
 
 impl TryFrom<Identifier> for GetIdentifierResponseDTO {
     type Error = ServiceError;
@@ -84,5 +85,14 @@ pub(super) fn to_create_did_request(
         did_method: request.method,
         keys: request.keys,
         params: request.params,
+    }
+}
+
+pub(super) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
+    match error {
+        DataLayerError::AlreadyExists => {
+            ServiceError::BusinessLogic(BusinessLogicError::IdentifierAlreadyExists)
+        }
+        e => e.into(),
     }
 }

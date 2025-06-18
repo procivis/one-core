@@ -406,6 +406,9 @@ pub enum BusinessLogicError {
 
     #[error("Rejection not supported")]
     RejectionNotSupported,
+
+    #[error("Identifier already exists")]
+    IdentifierAlreadyExists,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1174,6 +1177,9 @@ pub enum ErrorCode {
 
     #[strum(message = "MSO refresh not possible")]
     BR_0238,
+
+    #[strum(message = "Identifier already exists")]
+    BR_0240,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1331,6 +1337,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleHolderKeyAlgorithm => ErrorCode::BR_0218,
             Self::IdentifierTypeNotFound => ErrorCode::BR_0207,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
+            Self::IdentifierAlreadyExists => ErrorCode::BR_0240,
         }
     }
 }
