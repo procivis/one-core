@@ -131,7 +131,11 @@ impl IntoFilterCondition for TrustEntityFilterValue {
             }
             Self::TrustAnchor(id) => get_equals_condition(trust_entity::Column::TrustAnchorId, id),
             Self::OrganisationId(id) => Condition::any()
-                .add(trust_entity::Column::OrganisationId.eq(id))
+                .add(
+                    Condition::all()
+                        .add(trust_entity::Column::OrganisationId.eq(id))
+                        .add(did::Column::OrganisationId.is_null()),
+                )
                 .add(did::Column::OrganisationId.eq(id)),
             Self::Type(r#type) => trust_entity::Column::Type
                 .is_in(r#type.into_iter().map(TrustEntityType::from))
