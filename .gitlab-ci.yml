@@ -1,7 +1,6 @@
 image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.86.0-0.1
 
 include:
-  - local: "docs/docs.gitlab-ci.yml"
   - project: "procivis/one/one-operations"
     file:
       - 'gitlab/client-matrix.yml'
@@ -117,6 +116,7 @@ before_script:
     when: always
     paths:
       - lcov.info
+      - cobertura.xml
     reports:
       coverage_report:
         coverage_format: cobertura
