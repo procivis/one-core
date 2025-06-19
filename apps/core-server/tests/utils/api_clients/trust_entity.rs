@@ -20,6 +20,7 @@ pub struct ListFilters {
     pub did_id: Option<DidId>,
     pub r#type: Option<Vec<TrustEntityTypeRest>>,
     pub entity_key: Option<String>,
+    pub organisation_id: Option<OrganisationId>,
 }
 
 impl TrustEntitiesApi {
@@ -110,6 +111,7 @@ impl TrustEntitiesApi {
             did_id,
             r#type,
             entity_key,
+            organisation_id,
         } = filters;
 
         let mut url = format!("/api/trust-entity/v1?pageSize=20&page={page}");
@@ -149,6 +151,10 @@ impl TrustEntitiesApi {
 
         if let Some(entity_key) = entity_key {
             url += &format!("&entityKey={entity_key}")
+        }
+
+        if let Some(organisation_id) = organisation_id {
+            url += &format!("&organisationId={organisation_id}")
         }
 
         self.client.get(&url).await

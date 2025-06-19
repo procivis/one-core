@@ -478,7 +478,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             TrustEntityType::CertificateAuthority,
             "CN=*.dev.procivis-one.com".to_string().into(),
             Some(pem_certificate.to_string()),
-            Some(organisation),
+            Some(organisation.clone()),
         )
         .await;
 
@@ -490,6 +490,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             0,
             ListFilters {
                 r#type: Some(vec![TrustEntityTypeRest::Did]),
+                organisation_id: Some(organisation.id),
                 ..Default::default()
             },
         )

@@ -5,7 +5,7 @@ use one_core::service::trust_entity::dto::{
     SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityFilterValue,
 };
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
 
 use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole, TrustEntityType};
@@ -130,7 +130,9 @@ impl IntoFilterCondition for TrustEntityFilterValue {
                 get_equals_condition(trust_entity::Column::Role, TrustEntityRole::from(role))
             }
             Self::TrustAnchor(id) => get_equals_condition(trust_entity::Column::TrustAnchorId, id),
-            Self::OrganisationId(id) => get_equals_condition(did::Column::OrganisationId, id),
+            Self::OrganisationId(id) => Condition::any()
+                .add(trust_entity::Column::OrganisationId.eq(id))
+                .add(did::Column::OrganisationId.eq(id)),
             Self::Type(r#type) => trust_entity::Column::Type
                 .is_in(r#type.into_iter().map(TrustEntityType::from))
                 .into_condition(),
