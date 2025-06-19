@@ -10,18 +10,11 @@ use crate::provider::revocation::error::RevocationError;
 const SUSPEND_END_DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
     time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
 
-// The status claim should be at the root of the `credentialSubject` object.
-// We previously issued the LVVC with all claims nested in an inner `LvvcSubject` object.
-// We no longer do this since ONE-3309, but we still support the old format.
-// See ONE-3528 for more details.
 pub fn status_from_lvvc_claims(
     lvvc_claims: &HashMap<String, serde_json::Value>,
 ) -> Result<LvvcStatus, RevocationError> {
-    let status = lvvc_claims.get("status").or(lvvc_claims
-        .get("LvvcSubject")
-        .and_then(|claims| claims.get("status")));
-
-    let status = status
+    let status = lvvc_claims
+        .get("status")
         .ok_or(RevocationError::ValidationError(
             "missing status claim in LVVC".to_string(),
         ))?
