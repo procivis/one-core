@@ -4,7 +4,7 @@ use crate::m20240110_000001_initial::{
     ProofSchema, UNIQUE_PROOF_SCHEMA_ORGANISATION_ID_NAME_INDEX,
 };
 
-const UNIQUE_INDEX_PROOF_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT: &str =
+pub const UNIQUE_INDEX_PROOF_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT: &str =
     "index-ProofSchema-OrganisationId-Name-DeletedAt_Unique";
 
 #[derive(DeriveMigrationName)]

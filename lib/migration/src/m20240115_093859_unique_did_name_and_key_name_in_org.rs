@@ -6,7 +6,7 @@ use crate::m20240110_000001_initial::{Did, Key};
 pub struct Migration;
 
 pub const UNIQUE_DID_NAME_IN_ORGANISATION_INDEX: &str = "index-Did-Name-OrganisationId-Unique";
-const UNIQUE_KEY_NAME_IN_ORGANISATION_INDEX: &str = "index-Key-Name-OrganisationId-Unique";
+pub const UNIQUE_KEY_NAME_IN_ORGANISATION_INDEX: &str = "index-Key-Name-OrganisationId-Unique";
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {

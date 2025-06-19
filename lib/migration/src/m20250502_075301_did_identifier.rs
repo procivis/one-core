@@ -9,7 +9,7 @@ use crate::m20250429_142011_add_identifier::{
 };
 use crate::m20250502_114600_add_deleted_at_to_identifier::Identifier as IdentifierWithDeletedAt;
 
-const UNIQUE_IDENTIFIER_NAME_IN_ORGANISATION_INDEX: &str =
+pub const UNIQUE_IDENTIFIER_NAME_IN_ORGANISATION_INDEX: &str =
     "index-Identifier-Name-OrganisationId-Unique";
 
 #[derive(DeriveMigrationName)]

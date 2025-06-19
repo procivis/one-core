@@ -122,6 +122,7 @@ mod m20250613_105410_add_did_did_index;
 mod m20250616_053001_remove_sd_jwt_vc_issuer_metadata;
 mod m20250616_054713_add_x509_crl_remote_entity_type;
 mod m20250617_055001_forbid_id_claim_name_jwt_formats;
+mod m20250619_083023_name_deleted_at_unique;
 
 mod migrate_enum;
 pub struct Migrator;
@@ -246,6 +247,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250616_053001_remove_sd_jwt_vc_issuer_metadata::Migration),
             Box::new(m20250616_054713_add_x509_crl_remote_entity_type::Migration),
             Box::new(m20250617_055001_forbid_id_claim_name_jwt_formats::Migration),
+            Box::new(m20250619_083023_name_deleted_at_unique::Migration),
         ]
     }
 }
