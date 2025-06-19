@@ -479,8 +479,7 @@ pub async fn initialize_core(
     let x509_crl_cache = Arc::new(initialize_x509_crl_cache(
         &app_config.core.cache_entities,
         data_repository.to_owned(),
-        client.clone(),
-    ));
+    )?);
 
     let trust_list_cache = Arc::new(
         initialize_trust_list_cache(
@@ -902,8 +901,7 @@ pub async fn initialize_json_schema_loader(
 fn initialize_x509_crl_cache(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
-    client: Arc<dyn HttpClient>,
-) -> X509CrlCache {
+) -> Result<X509CrlCache, OneCoreBuildError> {
     let config: CacheEntityConfig = cache_entities_config
         .entities
         .get("X509_CRL")
@@ -922,13 +920,21 @@ fn initialize_x509_crl_cache(
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 
-    X509CrlCache::new(
+    let client: Arc<dyn HttpClient> = {
+        let client = reqwest::Client::builder()
+            .build()
+            .expect("Failed to create reqwest::Client");
+
+        Arc::new(ReqwestClient::new(client))
+    };
+
+    Ok(X509CrlCache::new(
         Arc::new(X509CrlResolver::new(client)),
         storage,
         config.cache_size as usize,
         config.cache_refresh_timeout,
         config.refresh_after,
-    )
+    ))
 }
 
 pub async fn initialize_trust_list_cache(

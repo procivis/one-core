@@ -465,8 +465,7 @@ async fn initialize(
             let x509_crl_cache = Arc::new(initialize_x509_crl_cache(
                 core_config.cache_entities.to_owned(),
                 data_repository.to_owned(),
-                client.clone(),
-            ));
+            )?);
 
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
@@ -948,8 +947,7 @@ async fn initialize_json_schema_cache(
 fn initialize_x509_crl_cache(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
-    client: Arc<dyn HttpClient>,
-) -> X509CrlCache {
+) -> Result<X509CrlCache, SDKError> {
     let config = cache_entities_config
         .entities
         .get("X509_CRL")
@@ -968,13 +966,21 @@ fn initialize_x509_crl_cache(
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 
-    X509CrlCache::new(
+    let client: Arc<dyn HttpClient> = {
+        let client = reqwest::Client::builder()
+            .build()
+            .expect("Failed to create reqwest::Client");
+
+        Arc::new(ReqwestClient::new(client))
+    };
+
+    Ok(X509CrlCache::new(
         Arc::new(X509CrlResolver::new(client)),
         storage,
         config.cache_size as usize,
         config.cache_refresh_timeout,
         config.refresh_after,
-    )
+    ))
 }
 
 async fn initialize_trust_list_cache(
