@@ -8,8 +8,8 @@ use crate::m20250113_115815_trust_entity_unique_did::UNIQUE_DID_ID_TRUST_ANCHOR_
 
 pub const UNIQUE_ENTITY_KEY_STATE_TRUST_ANCHOR_DEACTIVATED_IN_TRUST_ENTITY: &str =
     "idx-EntityKey-AnchorId-State-DeactivatedAt-Unique";
-pub const UNIQUE_NAME_TRUST_ANCHOR_ID_ORGANISATION_ID_IN_TRUST_ENTITY: &str =
-    "idx-Name-TrustAnchorId-OrganisationId-Unique";
+pub const UNIQUE_NAME_ORGANISATION_DEACTIVATED_IN_TRUST_ENTITY: &str =
+    "idx-TrustEntity-Name-OrganisationId-DeactivatedAt-Unique";
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -78,6 +78,41 @@ async fn migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     )
     .await?;
 
+    // Set all ACTIVE trust entities to removed that would clash with the unique name per org index
+    // that will be created later.
+    // We set deactivated_at to the last_modified timestamp in order to have different deactivated_at
+    // values. The deactivated_at must be different for these rows because otherwise they would again
+    // clash on that index.
+    db.execute_unprepared(
+        r#"
+                UPDATE trust_entity
+                SET
+                    state = 'REMOVED',
+                    deactivated_at = last_modified
+                WHERE (name, organisation_id) IN (
+                        SELECT name, organisation_id
+                        FROM trust_entity
+                        WHERE organisation_id is not null
+                          AND state='ACTIVE'
+                        GROUP BY name, organisation_id
+                        HAVING COUNT(*) > 1
+                    );
+                "#,
+    )
+    .await?;
+    // Set deactivated_at on all WITHDRAWN, REMOVED or REMOVED_AND_WITHDRAWN trust entities
+    db.execute_unprepared(
+        r#"
+                UPDATE trust_entity
+                SET
+                    deactivated_at = last_modified
+                WHERE state='WITHDRAWN' 
+                    OR state = 'REMOVED'
+                    OR state='REMOVED_AND_WITHDRAWN';
+                "#,
+    )
+    .await?;
+
     manager
         .alter_table(
             Table::alter()
@@ -116,17 +151,15 @@ async fn migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     db.execute_unprepared(&add_generated_column_deactivated_at)
         .await?;
 
-    let add_generated_column_org_id = "ALTER TABLE trust_entity ADD COLUMN organisation_id_materialized VARCHAR(50) AS (COALESCE(TRIM(organisation_id), 'no_organisation')) PERSISTENT;".to_string();
-    db.execute_unprepared(&add_generated_column_org_id).await?;
-
     let create_unique_index_entity_key = format!(
         "CREATE UNIQUE INDEX `{UNIQUE_ENTITY_KEY_STATE_TRUST_ANCHOR_DEACTIVATED_IN_TRUST_ENTITY}` ON trust_entity(`entity_key`, `trust_anchor_id`, `state`, `deactivated_at_materialized`);"
     );
     db.execute_unprepared(&create_unique_index_entity_key)
         .await?;
 
+    // we explicitly want the nullable column organisation_id here so that names for trust entities without org can be duplicated
     let create_unique_index_name = format!(
-        "CREATE UNIQUE INDEX `{UNIQUE_NAME_TRUST_ANCHOR_ID_ORGANISATION_ID_IN_TRUST_ENTITY}` ON trust_entity(`name`, `trust_anchor_id`, `organisation_id_materialized`);"
+        "CREATE UNIQUE INDEX `{UNIQUE_NAME_ORGANISATION_DEACTIVATED_IN_TRUST_ENTITY}` ON trust_entity(`name`, `organisation_id`, `deactivated_at_materialized`);"
     );
     db.execute_unprepared(&create_unique_index_name).await?;
     Ok(())
@@ -223,8 +256,9 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     db.execute_unprepared(&create_unique_index_entity_key)
         .await?;
 
+    // we explicitly want the nullable column organisation_id here so that names for trust entities without org can be duplicated
     let create_unique_index_name = format!(
-        "CREATE UNIQUE INDEX `{UNIQUE_NAME_TRUST_ANCHOR_ID_ORGANISATION_ID_IN_TRUST_ENTITY}` ON trust_entity(`name`, `trust_anchor_id`, COALESCE(organisation_id, 'no_organisation'));"
+        "CREATE UNIQUE INDEX `{UNIQUE_NAME_ORGANISATION_DEACTIVATED_IN_TRUST_ENTITY}` ON trust_entity(`name`, `organisation_id`, COALESCE(deactivated_at, 'not_deactivated'));"
     );
     db.execute_unprepared(&create_unique_index_name).await?;
 
