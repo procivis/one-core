@@ -221,7 +221,7 @@ pub struct CredentialsFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
-    /// Specify credentials to be returned by their UUID.
+    /// Specify credentials to return by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialId>>,
     /// Return only credentials with the specified credential state.

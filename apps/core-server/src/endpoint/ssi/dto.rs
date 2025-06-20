@@ -439,6 +439,7 @@ pub(crate) struct SdJwtVcClaimDisplayRestDTO {
 #[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
+    /// Update the entity's status on the trust anchor.
     #[try_into(with_fn = convert_inner, infallible)]
     #[schema(nullable = false)]
     pub action: Option<PatchTrustEntityActionRestDTO>,
@@ -469,6 +470,7 @@ pub struct PatchTrustEntityRequestRestDTO {
     #[schema(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
 
+    /// When adding a new certificate, put the PEM content here.
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub content: Option<String>,

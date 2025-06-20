@@ -35,14 +35,20 @@ pub struct CreateTrustEntityRequestRestDTO {
     pub(super) terms_url: Option<String>,
     /// Specify the Privacy Policy URL.
     pub(super) privacy_url: Option<String>,
-    /// Whether the entity is a trusted issuer, verifier, or both.
+    /// Whether the entity is a trusted issuer, verifier, or both. For certificates,
+    /// whether the CA is trusted to sign for an issuer, a verifier, or both.
     pub(super) role: TrustEntityRoleRest,
-    /// Specify trust anchor ID.
+    /// Specify which trust anchor to add the entity to.
     pub(super) trust_anchor_id: TrustAnchorId,
     /// Specify DID ID.
     pub(super) did_id: Option<DidId>,
+    /// Specify the identifier to add to the trust list.
     pub(super) identifier_id: Option<IdentifierId>,
+    /// For certificates, put the PEM content here.
     pub(super) content: Option<String>,
+    /// If passing an identifier via `identifierId` or a certificate via `content`,
+    /// specify the type of entity. If no type is specified the system expects a
+    /// `didId`.
     pub(super) r#type: Option<TrustEntityTypeRest>,
     pub(super) organisation_id: OrganisationId,
 }
@@ -88,16 +94,23 @@ pub struct GetTrustEntityResponseRestDTO {
     pub website: Option<String>,
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
+    /// The role the entity is trusted to perform.
     pub role: TrustEntityRoleRest,
     pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
+    /// DID details.
     #[from(with_fn=convert_inner)]
     pub did: Option<DidListItemResponseRestDTO>,
+    /// The entity's status on the trust anchor.
     pub state: TrustEntityStateRest,
+    /// DID value or certificate's `subject`.
     pub entity_key: TrustEntityKey,
     pub r#type: TrustEntityTypeRest,
+    /// Identifier details.
     #[from(with_fn=convert_inner)]
     pub identifier: Option<GetIdentifierListItemResponseRestDTO>,
+    /// If `type` is `CA`, the certificate in PEM format.
     pub content: Option<String>,
+    /// Human-readable X.509 certificate details.
     #[from(with_fn=convert_inner)]
     pub ca: Option<TrustEntityCertificateResponseRestDTO>,
 }
@@ -165,18 +178,25 @@ pub type ListTrustEntitiesQuery =
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustEntityFilterQueryParamsRestDto {
+    /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return only entities of the specified type.
     #[param(nullable = false)]
     pub r#type: Option<Vec<TrustEntityTypeRest>>,
+    /// Specify entities to return by their DID value or their certificate `subject`.
     #[param(nullable = false)]
     pub entity_key: Option<TrustEntityKey>,
+    /// Return only entities that are issuers, or verifiers, or both.
     #[param(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
+    /// Return only entities from the specified trust anchor.
     #[param(nullable = false)]
     pub trust_anchor_id: Option<TrustAnchorId>,
+    /// Specify entities to return by their DID UUID.
     #[param(nullable = false)]
     pub did_id: Option<DidId>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
     pub organisation_id: Option<OrganisationId>,
