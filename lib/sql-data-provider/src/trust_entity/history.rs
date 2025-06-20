@@ -123,15 +123,14 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
 
         let content_history_action = request
             .content
-            .iter()
+            .as_ref()
             .map(|_| ())
-            .chain(request.name.iter().map(|_| ()))
-            .chain(request.logo.iter().map(|_| ()))
-            .chain(request.privacy_url.iter().map(|_| ()))
-            .chain(request.terms_url.iter().map(|_| ()))
-            .chain(request.website.iter().map(|_| ()))
-            .chain(request.role.iter().map(|_| ()))
-            .next()
+            .or(request.name.as_ref().map(|_| ()))
+            .or(request.logo.as_ref().map(|_| ()))
+            .or(request.privacy_url.as_ref().map(|_| ()))
+            .or(request.terms_url.as_ref().map(|_| ()))
+            .or(request.website.as_ref().map(|_| ()))
+            .or(request.role.as_ref().map(|_| ()))
             .map(|_| HistoryAction::Updated);
 
         for action in [content_history_action, state_history_action]
