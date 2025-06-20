@@ -460,7 +460,6 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             crate::config::core_config::DidType::Key,
             crate::config::core_config::DidType::Web,
             crate::config::core_config::DidType::Jwk,
-            crate::config::core_config::DidType::X509,
             crate::config::core_config::DidType::WebVh,
         ],
         issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],

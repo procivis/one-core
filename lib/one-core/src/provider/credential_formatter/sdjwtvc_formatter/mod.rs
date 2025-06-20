@@ -310,12 +310,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ]);
-            issuance_did_methods.extend_from_slice(&[
-                DidType::Key,
-                DidType::Web,
-                DidType::Jwk,
-                DidType::X509,
-            ]);
+            issuance_did_methods.extend_from_slice(&[DidType::Key, DidType::Web, DidType::Jwk]);
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciDraft13);
             issuance_identifier_types.push(IdentifierType::Certificate);
             proof_exchange_protocols.extend_from_slice(&[

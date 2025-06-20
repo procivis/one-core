@@ -32,7 +32,6 @@ use one_core::provider::did_method::resolver::DidCachingLoader;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::webvh::DidWebVh;
-use one_core::provider::did_method::x509::X509Method;
 use one_core::provider::http_client::HttpClient;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -358,7 +357,6 @@ async fn initialize(
                                     ))?;
                                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
                             }
-                            DidType::X509 => Arc::new(X509Method::new()) as _,
                             DidType::Universal => {
                                 let params: DidUniversalParams = config
                                     .get(name)

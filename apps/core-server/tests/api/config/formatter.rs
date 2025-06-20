@@ -177,7 +177,7 @@ async fn test_config_formatter_issuance_did_methods_capability() {
             &resp,
             format,
             "issuanceDidMethods",
-            json!(["KEY", "WEB", "JWK", "X509", "WEBVH"]),
+            json!(["KEY", "WEB", "JWK", "WEBVH"]),
         );
     }
 
@@ -186,7 +186,7 @@ async fn test_config_formatter_issuance_did_methods_capability() {
         &resp,
         "SD_JWT_VC",
         "issuanceDidMethods",
-        json!(["WEBVH", "KEY", "WEB", "JWK", "X509"]),
+        json!(["WEBVH", "KEY", "WEB", "JWK"]),
     );
     check(
         &resp,

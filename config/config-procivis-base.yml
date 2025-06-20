@@ -245,12 +245,6 @@ did:
     display: "did.jwk"
     order: 2
     params: null
-  X509:
-    type: "X509"
-    display: "did.x509"
-    order: 3
-    enabled: false
-    params: null
   ION:
     display: "did.ion"
     order: 4

@@ -45,16 +45,6 @@ async fn test_capabilities_are_present_in_config() {
         })
     );
     assert_eq!(
-        resp["did"]["X509"]["capabilities"],
-        json!({
-            "keyAlgorithms": ["ECDSA", "EDDSA"],
-            "operations": ["RESOLVE", "CREATE"],
-            "methodNames": ["x509"],
-            "features": [],
-            "supportedUpdateKeyTypes": [],
-        })
-    );
-    assert_eq!(
         resp["did"]["ION"]["capabilities"],
         json!({
             "keyAlgorithms": [],
