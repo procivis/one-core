@@ -1,7 +1,6 @@
 use std::ops::Add;
 use std::sync::Arc;
 
-use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
@@ -228,30 +227,9 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
     let (x5c, issuer) =
         match verifier_identifier.r#type {
             IdentifierType::Did => {
-                let verifier_did =
-                    verifier_identifier
-                        .did
-                        .as_ref()
-                        .ok_or(VerificationProtocolError::Failed(
-                            "verifier_did is None".to_string(),
-                        ))?;
-
-                let x5c = if let Some(certificate) = verifier_did
-                    .did
-                    .as_str()
-                    .strip_prefix("did:mdl:certificate:")
-                {
-                    let der = Base64UrlSafeNoPadding::decode_to_vec(certificate, None)
-                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-                    Base64::encode_to_string(der)
-                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-                } else {
-                    return Err(VerificationProtocolError::Failed(
-                        "Invalid verifier did".to_string(),
-                    ));
-                };
-
-                (vec![x5c], Some(verifier_did.did.to_string()))
+                return Err(VerificationProtocolError::Failed(
+                    "invalid verifier identifier type".to_string(),
+                ));
             }
             IdentifierType::Certificate => {
                 let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
