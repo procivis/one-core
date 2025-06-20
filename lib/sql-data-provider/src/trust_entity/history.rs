@@ -121,7 +121,18 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
             None
         };
 
-        let content_history_action = request.content.as_ref().map(|_| HistoryAction::Updated);
+        let content_history_action = request
+            .content
+            .iter()
+            .map(|_| ())
+            .chain(request.name.iter().map(|_| ()))
+            .chain(request.logo.iter().map(|_| ()))
+            .chain(request.privacy_url.iter().map(|_| ()))
+            .chain(request.terms_url.iter().map(|_| ()))
+            .chain(request.website.iter().map(|_| ()))
+            .chain(request.role.iter().map(|_| ()))
+            .next()
+            .map(|_| HistoryAction::Updated);
 
         for action in [content_history_action, state_history_action]
             .into_iter()
