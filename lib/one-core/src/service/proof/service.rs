@@ -48,7 +48,6 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, ShareResponse,
 };
@@ -77,6 +76,7 @@ use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_acti
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
+use crate::util::mdoc::EmbeddedCbor;
 
 impl ProofService {
     /// Returns details of a proof

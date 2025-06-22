@@ -5,20 +5,14 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use ciborium::Value;
 use coset::iana::{self, EnumI64};
-use coset::{
-    CoseKey, CoseKeyBuilder, Header, HeaderBuilder, Label, ProtectedHeader,
-    RegisteredLabelWithPrivate, SignatureContext,
-};
+use coset::{CoseKey, CoseKeyBuilder, Header, HeaderBuilder, SignatureContext};
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
-use mdoc::{DataElementValue, DeviceNamespaces};
 use one_crypto::SignerError;
 use one_crypto::utilities::generate_random_bytes;
-use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
@@ -28,20 +22,9 @@ use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
-use url::Url;
-use uuid::Uuid;
 
-use self::cose::CoseSign1Builder;
-use self::mdoc::{
-    Bstr, CoseSign1, DateTime, DeviceAuth, DeviceAuthentication, DeviceKey, DeviceKeyInfo,
-    DeviceResponse, DeviceResponseVersion, DeviceSigned, DigestAlgorithm, DigestIDs, Document,
-    EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
-    MobileSecurityObjectVersion, Namespace, Namespaces, OID4VPHandover, SessionTranscript,
-    ValidityInfo, ValueDigests,
-};
 use super::model::{
-    CertificateDetails, CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails,
-    PublicKeySource,
+    CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails, PublicKeySource,
 };
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
@@ -58,18 +41,23 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
     CredentialSubject, DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
-    FormatterCapabilities, Presentation, PublishedClaim, SelectiveDisclosure, SignatureProvider,
-    TokenVerifier, VerificationFn,
+    FormatterCapabilities, Presentation, PublishedClaim, SelectiveDisclosure, TokenVerifier,
+    VerificationFn,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::util::cose::{CoseSign1, CoseSign1Builder};
+use crate::util::mdoc::{
+    Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
+    EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
+    MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
+    extract_algorithm_from_header, extract_certificate_from_x5chain_header, jwk_to_did,
+    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
+};
 use crate::util::x509::pem_chain_into_x5c;
-
-mod cose;
-pub mod mdoc;
 
 #[cfg(test)]
 mod test;
@@ -83,7 +71,6 @@ pub struct MdocFormatter {
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    base_url: Option<String>,
     datatype_config: DatatypeConfig,
 }
 
@@ -107,7 +94,6 @@ impl MdocFormatter {
         certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        base_url: Option<String>,
         datatype_config: DatatypeConfig,
     ) -> Self {
         Self {
@@ -115,72 +101,8 @@ impl MdocFormatter {
             params,
             did_method_provider,
             key_algorithm_provider,
-            base_url,
             datatype_config,
         }
-    }
-
-    fn extract_presentation_context(
-        &self,
-        context: &ExtractPresentationCtx,
-    ) -> Result<(SessionTranscript, Option<String>), FormatterError> {
-        // ISO mDL:
-        if let Some(session_transcript) = context.mdoc_session_transcript.as_ref() {
-            let session_transcript = ciborium::from_reader(session_transcript.as_slice())
-                .context("session_transcript deserialization error")
-                .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-            return Ok((session_transcript, None));
-        }
-
-        // OpenID4VP:
-        let nonce = context
-            .nonce
-            .as_ref()
-            .ok_or(FormatterError::CouldNotExtractPresentation(
-                "Missing nonce".to_owned(),
-            ))?
-            .to_string();
-
-        let mdoc_generated_nonce =
-            context
-                .format_nonce
-                .as_ref()
-                .ok_or(FormatterError::CouldNotExtractPresentation(
-                    "Missing mdoc_generated_nonce".to_owned(),
-                ))?;
-
-        let client_id = context
-            .client_id
-            .clone()
-            .or_else(|| {
-                // fallback for backwards compatibility (also note "base_url" is not available on mobile verifier)
-                let base_url = self.base_url.as_ref()?;
-                Url::parse(&format!("{base_url}/ssi/openid4vp/draft-20/response"))
-                    .map(|u| u.to_string())
-                    .ok()
-            })
-            .ok_or_else(|| {
-                FormatterError::CouldNotExtractPresentation(
-                    "Could not create client_id for validation".to_owned(),
-                )
-            })?;
-
-        let response_uri = context
-            .response_uri
-            .as_deref()
-            .unwrap_or(client_id.as_str());
-
-        let session_transcript = SessionTranscript {
-            device_engagement_bytes: None,
-            e_reader_key_bytes: None,
-            handover: Some(
-                OID4VPHandover::compute(&client_id, response_uri, &nonce, mdoc_generated_nonce)
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
-            ),
-        };
-
-        Ok((session_transcript, Some(nonce)))
     }
 }
 
@@ -342,131 +264,22 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn format_presentation(
         &self,
-        tokens: &[String],
+        _tokens: &[String],
         _holder_did: &DidValue,
-        algorithm: KeyAlgorithmType,
-        auth_fn: AuthenticationFn,
-        context: FormatPresentationCtx,
+        _algorithm: KeyAlgorithmType,
+        _auth_fn: AuthenticationFn,
+        _context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        let FormatPresentationCtx {
-            mdoc_session_transcript: Some(session_transcript),
-            ..
-        } = context
-        else {
-            return Err(FormatterError::Failed(format!(
-                "Cannot format mdoc presentation invalid context `{context:?}`"
-            )));
-        };
-
-        let mut documents = Vec::with_capacity(tokens.len());
-        for token in tokens {
-            let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
-            let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
-            let doc_type = mso.doc_type;
-
-            let device_signed =
-                try_build_device_signed(&*auth_fn, algorithm, &doc_type, &session_transcript)
-                    .await?;
-
-            let document = Document {
-                doc_type,
-                issuer_signed,
-                device_signed,
-                errors: None,
-            };
-
-            documents.push(document);
-        }
-
-        let device_response = DeviceResponse {
-            version: DeviceResponseVersion::V1_0,
-            documents: Some(documents),
-            document_errors: None,
-            // this will be != 0 if document errors is not None
-            status: 0,
-        };
-
-        let vp_token = encode_cbor_base64(device_response)?;
-        Ok(FormattedPresentation {
-            vp_token,
-            oidc_format: "mso_mdoc".to_string(),
-        })
+        unimplemented!()
     }
 
     async fn extract_presentation(
         &self,
-        token: &str,
-        verification: VerificationFn,
-        context: ExtractPresentationCtx,
+        _token: &str,
+        _verification: VerificationFn,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let device_response_signed: DeviceResponse = decode_cbor_base64(token)?;
-
-        let documents =
-            device_response_signed
-                .documents
-                .ok_or(FormatterError::CouldNotExtractPresentation(
-                    "Missing docs".to_string(),
-                ))?;
-
-        let mut tokens: Vec<String> = Vec::with_capacity(documents.len());
-
-        let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
-
-        let mut presentation_issuer_jwk = None;
-        // can we have more than one document?
-        for document in documents {
-            let issuer_signed = document.issuer_signed;
-
-            let cert_details = extract_certificate_from_x5chain_header(
-                &*self.certificate_validator,
-                &issuer_signed.issuer_auth,
-                true,
-            )
-            .await?;
-
-            let x5c = pem_chain_into_x5c(&cert_details.chain).map_err(|err| {
-                FormatterError::CouldNotExtractPresentation(format!("Failed to create x5c: {err}"))
-            })?;
-            try_verify_issuer_auth(&issuer_signed.issuer_auth, &x5c, &verification).await?;
-
-            let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
-
-            //try verify device signed
-            let device_signed = document.device_signed;
-            let doc_type = document.doc_type;
-
-            let signature: coset::CoseSign1 = device_signed
-                .device_auth
-                .device_signature
-                .ok_or(FormatterError::CouldNotExtractPresentation(
-                    "Missing device signature".to_owned(),
-                ))?
-                .0;
-
-            try_verify_device_signed(
-                session_transcript.to_owned(),
-                &doc_type,
-                &signature,
-                &holder_jwk,
-                &verification,
-            )
-            .await?;
-
-            presentation_issuer_jwk = Some(holder_jwk);
-            tokens.push(encode_cbor_base64(issuer_signed)?)
-        }
-
-        // todo transfer issued and expires from the token
-        Ok(Presentation {
-            id: Some(Uuid::new_v4().to_string()),
-            issued_at: context.issuance_date,
-            expires_at: context.expiration_date,
-            issuer_did: presentation_issuer_jwk
-                .map(|jwk| jwk_to_did(&jwk, &*self.key_algorithm_provider))
-                .transpose()?,
-            nonce,
-            credentials: tokens,
-        })
+        unimplemented!()
     }
 
     // Extract issuer_signed, keep only the claims that the verifier asked for, re-encode issuer_signed that back to the same format
@@ -592,32 +405,10 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn extract_presentation_unverified(
         &self,
-        token: &str,
-        context: ExtractPresentationCtx,
+        _token: &str,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let device_response_signed: DeviceResponse = decode_cbor_base64(token)?;
-
-        let documents =
-            device_response_signed
-                .documents
-                .ok_or(FormatterError::CouldNotExtractPresentation(
-                    "Missing docs".to_string(),
-                ))?;
-
-        let tokens = documents
-            .into_iter()
-            .map(|doc| encode_cbor_base64(doc.issuer_signed))
-            .collect::<Result<Vec<String>, FormatterError>>()?;
-
-        // todo transfer issued and expires from the token
-        Ok(Presentation {
-            id: Some(Uuid::new_v4().to_string()),
-            issued_at: context.issuance_date,
-            expires_at: context.expiration_date,
-            issuer_did: None,
-            nonce: context.nonce,
-            credentials: tokens,
-        })
+        unimplemented!()
     }
 
     fn credential_schema_id(
@@ -631,115 +422,6 @@ impl CredentialFormatter for MdocFormatter {
             .clone()
             .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
     }
-}
-
-fn try_extract_holder_public_key(
-    CoseSign1(issuer_auth): &CoseSign1,
-) -> Result<PublicKeyJwk, FormatterError> {
-    let mso = issuer_auth
-        .payload
-        .as_ref()
-        .ok_or_else(|| FormatterError::Failed("Issuer auth missing mso object".to_owned()))?;
-
-    let mso: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&mso[..])
-        .map_err(|err| FormatterError::Failed(format!("Failed deserializing MSO: {err}")))?;
-
-    let DeviceKey(cose_key) = mso.into_inner().device_key_info.device_key;
-
-    let get_param_value = |key| {
-        cose_key
-            .params
-            .iter()
-            .find_map(|(k, v)| (k == &key).then_some(v))
-    };
-
-    match cose_key.kty {
-        coset::RegisteredLabel::Assigned(iana::KeyType::EC2) => (|| -> anyhow::Result<_> {
-            let _crv = get_param_value(Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))
-                .and_then(|v| v.as_integer())
-                .filter(|v| v == &iana::EllipticCurve::P_256.to_i64().into())
-                .context("Missing P-256 curve in params")?;
-
-            let x = get_param_value(Label::Int(iana::Ec2KeyParameter::X.to_i64()))
-                .and_then(|v| v.as_bytes())
-                .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
-                .context("Missing P-256 X value in params")?;
-
-            let y = get_param_value(Label::Int(iana::Ec2KeyParameter::Y.to_i64()))
-                .and_then(|v| v.as_bytes())
-                .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
-                .context("Missing P-256  Y value in params")?;
-
-            let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                r#use: None,
-                kid: None,
-                crv: "P-256".to_owned(),
-                x,
-                y: Some(y),
-            });
-
-            Ok(key)
-        })()
-        .map_err(|err| {
-            FormatterError::Failed(format!("Cannot build P-256 public key from CoseKey: {err}"))
-        }),
-
-        coset::RegisteredLabel::Assigned(iana::KeyType::OKP) => (|| -> anyhow::Result<_> {
-            let _crv = get_param_value(Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))
-                .and_then(|v| v.as_integer())
-                .filter(|v| v == &iana::EllipticCurve::Ed25519.to_i64().into())
-                .context("Missing Ed25519 curve in params")?;
-
-            let x = get_param_value(Label::Int(iana::Ec2KeyParameter::X.to_i64()))
-                .and_then(|v| v.as_bytes())
-                .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
-                .context("Missing Ed25519 X value in params")?;
-
-            let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-                r#use: None,
-                kid: None,
-                crv: "Ed25519".to_owned(),
-                x,
-                y: None,
-            });
-
-            Ok(key)
-        })()
-        .map_err(|err| {
-            FormatterError::Failed(format!(
-                "Cannot build Ed25519 public key from CoseKey: {err}"
-            ))
-        }),
-        other => Err(FormatterError::Failed(format!(
-            "CoseKey contains invalid kty `{other:?}`, only EC2 and OKP keys are supported"
-        ))),
-    }
-}
-
-async fn try_verify_issuer_auth(
-    CoseSign1(cose_sign1): &CoseSign1,
-    chain: &[String],
-    verifier: &dyn TokenVerifier,
-) -> Result<(), FormatterError> {
-    let token = coset::sig_structure_data(
-        SignatureContext::CoseSign1,
-        cose_sign1.protected.clone(),
-        None,
-        &[],
-        cose_sign1.payload.as_ref().unwrap_or(&vec![]),
-    );
-
-    let algorithm = extract_algorithm_from_header(cose_sign1).ok_or_else(|| {
-        FormatterError::CouldNotVerify("IssuerAuth is missing algorithm information".to_owned())
-    })?;
-
-    let signature = &cose_sign1.signature;
-
-    let params = PublicKeySource::X5c { x5c: chain };
-    verifier
-        .verify(params, algorithm, &token, signature)
-        .await
-        .map_err(|err| FormatterError::CouldNotVerify(err.to_string()))
 }
 
 async fn extract_credentials_internal(
@@ -825,90 +507,6 @@ async fn extract_credentials_internal(
             metadata,
         }),
     })
-}
-
-async fn try_build_device_signed(
-    auth_fn: &dyn SignatureProvider,
-    algorithm: KeyAlgorithmType,
-    doctype: &str,
-    session_transcript_bytes: &[u8],
-) -> Result<DeviceSigned, FormatterError> {
-    let session_transcript = ciborium::from_reader(session_transcript_bytes)
-        .map_err(|err| FormatterError::Failed(format!("invalid session transcript: {err}")))?;
-    let device_namespaces = EmbeddedCbor::<DeviceNamespaces>::new([].into()).map_err(|err| {
-        FormatterError::Failed(format!(
-            "CBOR serialization failed for DeviceNamespaces: {err}"
-        ))
-    })?;
-
-    let device_auth = DeviceAuthentication {
-        session_transcript,
-        doctype: doctype.to_owned(),
-        device_namespaces: device_namespaces.clone(),
-    };
-    let device_auth_bytes = EmbeddedCbor::new(device_auth)
-        .map_err(|err| {
-            FormatterError::Failed(format!(
-                "CBOR serialization failed for DeviceAuthentication: {err}"
-            ))
-        })?
-        .into_bytes();
-
-    let algorithm_header = try_build_algorithm_header(algorithm)?;
-    let cose_sign1 = CoseSign1Builder::new()
-        .protected(algorithm_header)
-        .try_create_detached_signature_with_provider(&device_auth_bytes, &[], auth_fn)
-        .await
-        .map_err(|err| FormatterError::CouldNotSign(err.to_string()))?
-        .build();
-
-    let device_auth = DeviceAuth {
-        device_signature: Some(cose_sign1.into()),
-    };
-
-    let device_signed = DeviceSigned {
-        name_spaces: device_namespaces,
-        device_auth,
-    };
-
-    Ok(device_signed)
-}
-
-async fn try_verify_device_signed(
-    session_transcript: SessionTranscript,
-    doctype: &str,
-    signature: &coset::CoseSign1,
-    holder_key: &PublicKeyJwk,
-    verify_fn: &VerificationFn,
-) -> Result<(), FormatterError> {
-    let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
-        FormatterError::Failed(format!(
-            "CBOR serialization failed for DeviceNamespaces: {err}"
-        ))
-    })?;
-
-    let device_auth = DeviceAuthentication {
-        session_transcript,
-        doctype: doctype.to_owned(),
-        device_namespaces,
-    };
-    let device_auth_bytes = EmbeddedCbor::new(device_auth)
-        .map_err(|err| {
-            FormatterError::Failed(format!(
-                "CBOR serialization failed for DeviceAuthentication: {err}"
-            ))
-        })?
-        .into_bytes();
-
-    try_verify_detached_signature_with_provider(
-        signature,
-        &device_auth_bytes,
-        &[],
-        holder_key,
-        verify_fn,
-    )
-    .await
-    .map_err(|e| FormatterError::CouldNotSign(e.to_string()))
 }
 
 pub async fn try_verify_detached_signature_with_provider(
@@ -1158,108 +756,6 @@ fn build_x5chain_header(x5c: &[String]) -> Result<Header, FormatterError> {
         .build())
 }
 
-fn try_build_algorithm_header(
-    algorithm: KeyAlgorithmType,
-) -> Result<ProtectedHeader, FormatterError> {
-    let algorithm = match algorithm {
-        KeyAlgorithmType::Ecdsa => iana::Algorithm::ES256,
-        KeyAlgorithmType::Eddsa => iana::Algorithm::EdDSA,
-        _ => {
-            return Err(FormatterError::Failed(format!(
-                "Failed mapping algorithm `{algorithm}` to name compatible with allowed COSE Algorithms"
-            )));
-        }
-    };
-    let algorithm_header = coset::HeaderBuilder::new().algorithm(algorithm).build();
-
-    Ok(ProtectedHeader {
-        original_data: None,
-        header: algorithm_header,
-    })
-}
-
-async fn extract_certificate_from_x5chain_header(
-    certificate_validator: &dyn CertificateValidator,
-    CoseSign1(cose_sign1): &CoseSign1,
-    verify: bool,
-) -> Result<CertificateDetails, FormatterError> {
-    let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
-
-    let (_, x5c) = cose_sign1
-        .unprotected
-        .rest
-        .iter()
-        .find(|(label, _)| label == &x5chain_label)
-        .ok_or(FormatterError::Failed("Missing x5chain header".to_string()))?;
-
-    let pem_chain_bytes = match x5c {
-        Value::Bytes(single_cert) => {
-            vec![single_cert.clone()]
-        }
-        Value::Array(many_certs) => many_certs
-            .iter()
-            .flat_map(|val| val.as_bytes().into_iter().cloned())
-            .collect(),
-        val => {
-            return Err(FormatterError::Failed(format!(
-                "Unexpected value in x5chain header: {val:?}"
-            )));
-        }
-    };
-    let pems: Vec<Pem> =
-        pem_chain_bytes
-            .into_iter()
-            .try_fold(Vec::new(), |mut aggr, der_bytes| {
-                aggr.push(Pem::new("CERTIFICATE", der_bytes));
-                Ok::<_, FormatterError>(aggr)
-            })?;
-    let chain = encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF));
-
-    let ParsedCertificate { attributes, .. } = certificate_validator
-        .parse_pem_chain(chain.as_bytes(), verify)
-        .await
-        .map_err(|err| FormatterError::Failed(format!("Failed to validate pem chain: {err}")))?;
-
-    Ok(CertificateDetails {
-        chain,
-        fingerprint: attributes.fingerprint,
-        expiry: attributes.not_after,
-    })
-}
-
-fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<KeyAlgorithmType> {
-    let alg = &cose_sign1.protected.header.alg;
-
-    if let Some(RegisteredLabelWithPrivate::Assigned(algorithm)) = alg {
-        match algorithm {
-            iana::Algorithm::ES256 => Some(KeyAlgorithmType::Ecdsa),
-            iana::Algorithm::EdDSA => Some(KeyAlgorithmType::Eddsa),
-            _ => None,
-        }
-    } else {
-        None
-    }
-}
-
-fn try_extract_mobile_security_object(
-    CoseSign1(cose_sign1): &CoseSign1,
-) -> Result<MobileSecurityObject, FormatterError> {
-    let Some(payload) = &cose_sign1.payload else {
-        return Err(FormatterError::Failed(
-            "IssuerAuth doesn't contain payload".to_owned(),
-        ));
-    };
-
-    let mso: EmbeddedCbor<MobileSecurityObject> =
-        ciborium::from_reader(&payload[..]).map_err(|err| {
-            FormatterError::Failed(format!(
-                "IssuerAuth payload cannot be converted to MSO: {err}"
-            ))
-        })?;
-
-    Ok(mso.into_inner())
-}
-
 fn try_build_value_digests(
     namespaces: &Namespaces,
     digest_alg: DigestAlgorithm,
@@ -1472,35 +968,4 @@ pub async fn try_extracting_mso_from_token(
 ) -> Result<MobileSecurityObject, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
     try_extract_mobile_security_object(&issuer_signed.issuer_auth)
-}
-
-fn jwk_to_did(
-    jwk: &PublicKeyJwk,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<DidValue, FormatterError> {
-    let algorithm = match jwk {
-        PublicKeyJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
-        PublicKeyJwk::Okp(_) => KeyAlgorithmType::Eddsa,
-        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
-            return Err(FormatterError::Failed(format!(
-                "Key `{key:?}` should not be available for mdoc",
-            )));
-        }
-    };
-
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_type(algorithm)
-        .ok_or(FormatterError::CouldNotVerify(format!(
-            "Key algorithm `{algorithm}` not configured"
-        )))?;
-    let multibase = key_algorithm
-        .parse_jwk(jwk)
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?
-        .public_key_as_multibase()
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
-
-    format!("did:key:{multibase}")
-        .parse()
-        .context("did parsing error")
-        .map_err(|e| FormatterError::Failed(e.to_string()))
 }

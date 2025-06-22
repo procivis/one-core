@@ -19,7 +19,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, HolderBindingCtx,
 };
@@ -40,6 +39,7 @@ use crate::provider::verification_protocol::openid4vp::validator::{
 };
 use crate::service::certificate::validator::CertificateValidator;
 use crate::util::key_verification::KeyVerification;
+use crate::util::mdoc::MobileSecurityObject;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
 pub(crate) fn create_open_id_for_vp_client_metadata(

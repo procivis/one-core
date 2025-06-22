@@ -11,7 +11,6 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::DidType;
 use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, HolderBindingCtx, Presentation, TokenVerifier,
@@ -29,6 +28,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::vec_last_position
 use crate::provider::verification_protocol::openid4vp::model::ValidatedProofClaimDTO;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::util::key_verification::KeyVerification;
+use crate::util::mdoc::MobileSecurityObject;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 use crate::util::x509::is_dns_name_matching;
 

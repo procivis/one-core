@@ -7,13 +7,13 @@ use maplit::hashmap;
 use serde_json::json;
 use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
+use uuid::Uuid;
 
-use super::mdoc::*;
 use super::*;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::provider::credential_formatter::model::{
-    Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
+    CertificateDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -23,8 +23,9 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, OID4VPHandover};
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::certificate::validator::MockCertificateValidator;
+use crate::service::certificate::validator::{MockCertificateValidator, ParsedCertificate};
 use crate::service::test_utilities::{generic_config, get_dummy_date};
 
 #[test]
@@ -337,7 +338,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(MockCertificateValidator::new()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        None,
         config.datatype,
     );
 
@@ -593,7 +593,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        None,
         config.datatype,
     );
 
@@ -871,7 +870,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        None,
         config.datatype,
     );
 
@@ -912,7 +910,6 @@ fn test_credential_schema_id() {
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
-        None,
         generic_config().core.datatype,
     );
     let schema_id = "schema_id_name".to_string();

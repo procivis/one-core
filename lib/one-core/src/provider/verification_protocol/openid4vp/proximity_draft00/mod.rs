@@ -26,9 +26,6 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    OID4VPHandover, SessionTranscript,
-};
 use crate::provider::credential_formatter::model::{AuthenticationFn, DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx};
 use crate::provider::presentation_formatter::model::CredentialToPresent;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -36,6 +33,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::MqttClient;
+use crate::provider::presentation_formatter::mso_mdoc::model::{OID4VPHandover, SessionTranscript};
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
     UpdateResponse, VerificationProtocolCapabilities,

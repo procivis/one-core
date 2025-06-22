@@ -22,9 +22,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, EmbeddedCbor,
-};
+use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
 };
@@ -33,6 +31,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{ErrorCodeMixin, ServiceError};
 use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
+use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct MdocBleHolderInteractionData {

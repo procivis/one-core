@@ -22,12 +22,10 @@ use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, EmbeddedCbor, SessionTranscript,
-};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, SessionTranscript};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -38,6 +36,7 @@ use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
+use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {

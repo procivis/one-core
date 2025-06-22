@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use uuid::Uuid;
 
 use super::common::EDeviceKey;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
+use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {

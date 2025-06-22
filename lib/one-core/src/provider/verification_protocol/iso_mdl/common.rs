@@ -17,10 +17,9 @@ use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::device_engagement::DeviceEngagement;
 use crate::common_mapper::secret_slice;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    EmbeddedCbor, SessionTranscript,
-};
+use crate::provider::presentation_formatter::mso_mdoc::model::SessionTranscript;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::util::mdoc::EmbeddedCbor;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Chunk {

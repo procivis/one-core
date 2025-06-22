@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use super::common::EReaderKey;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
+use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
@@ -52,7 +52,7 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
-    use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
+    use crate::provider::presentation_formatter::mso_mdoc::model::SessionTranscript;
     use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
     use crate::provider::verification_protocol::iso_mdl::device_engagement::{
         BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,

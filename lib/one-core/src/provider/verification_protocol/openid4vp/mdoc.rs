@@ -1,9 +1,7 @@
 use url::Url;
 
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    OID4VPHandover, SessionTranscript,
-};
 use crate::provider::credential_formatter::model::FormatPresentationCtx;
+use crate::provider::presentation_formatter::mso_mdoc::model::{OID4VPHandover, SessionTranscript};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 

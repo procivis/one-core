@@ -31,9 +31,6 @@ use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
-};
 use crate::provider::credential_formatter::model::{
     DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
 };
@@ -41,11 +38,15 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::presentation_formatter::mso_mdoc::model::{
+    DeviceResponse, DeviceResponseVersion, DocumentError, SessionTranscript,
+};
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
+use crate::util::mdoc::EmbeddedCbor;
 
 mod ble;
 pub(crate) mod ble_holder;

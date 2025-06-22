@@ -16,9 +16,9 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{DetailCredential, IssuerDetails};
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::util::mdoc::MobileSecurityObject;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JwePayload {

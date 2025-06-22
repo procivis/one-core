@@ -1,20 +1,21 @@
-use coset::{CoseSign1, Header, ProtectedHeader, SignatureContext};
+use coset::{AsCborValue, CoseSign1 as CosetCoseSign1, Header, ProtectedHeader, SignatureContext};
 use one_crypto::SignerError;
+use serde::{Deserialize, Serialize, Serializer, de, ser};
 
 use crate::provider::credential_formatter::model::SignatureProvider;
 
 /// Adaptation of the [`coset::CoseSign1Builder`] to allow signing with async signer
 #[derive(Debug, Default)]
-pub struct CoseSign1Builder(CoseSign1);
+pub struct CoseSign1Builder(CosetCoseSign1);
 
 impl CoseSign1Builder {
     #[must_use]
     pub fn new() -> Self {
-        Self(CoseSign1::default())
+        Self(CosetCoseSign1::default())
     }
 
     #[must_use]
-    pub fn build(self) -> CoseSign1 {
+    pub fn build(self) -> CosetCoseSign1 {
         self.0
     }
 
@@ -86,5 +87,40 @@ impl CoseSign1Builder {
         let sig_data = signer.sign(&sig_data).await?;
 
         Ok(self.signature(sig_data))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct CoseSign1(pub coset::CoseSign1);
+
+impl From<coset::CoseSign1> for CoseSign1 {
+    fn from(cose_sign1: coset::CoseSign1) -> Self {
+        Self(cose_sign1)
+    }
+}
+
+impl Serialize for CoseSign1 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0
+            .clone()
+            .to_cbor_value()
+            .map_err(ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CoseSign1 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let value = ciborium::Value::deserialize(deserializer)?;
+
+        coset::CoseSign1::from_cbor_value(value)
+            .map(CoseSign1)
+            .map_err(de::Error::custom)
     }
 }

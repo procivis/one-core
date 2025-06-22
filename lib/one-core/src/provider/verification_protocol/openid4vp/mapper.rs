@@ -32,7 +32,6 @@ use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CertificateDetails, ExtractPresentationCtx, IssuerDetails,
 };
@@ -60,6 +59,7 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::util::mdoc::MobileSecurityObject;
 use crate::util::oidc::map_to_openid4vp_format;
 
 pub(super) fn presentation_definition_from_interaction_data(

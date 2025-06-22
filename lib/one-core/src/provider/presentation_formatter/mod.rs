@@ -12,6 +12,7 @@ use crate::provider::presentation_formatter::model::{
 
 pub mod adapter;
 pub mod model;
+pub mod mso_mdoc;
 
 /// PresentationFormatter is a trait that defines the methods for formatting and extracting presentations.
 #[async_trait]
