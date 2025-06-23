@@ -17,8 +17,7 @@ use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
-    create_claims_from_credential_definition, map_offered_claims_to_credential_schema,
-    parse_mdoc_schema_claims,
+    create_claims_from_credential_definition, extract_offered_claims, parse_mdoc_schema_claims,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     CreateCredentialSchemaRequestDTO, OpenID4VCICredentialValueDetails,
@@ -159,8 +158,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
 
-                let claims =
-                    map_offered_claims_to_credential_schema(&schema, *credential_id, claim_keys)?;
+                let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
                 BuildCredentialSchemaResponse { claims, schema }
             }
@@ -224,11 +222,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
 
                 if claims_specified {
-                    let claims = map_offered_claims_to_credential_schema(
-                        &credential_schema,
-                        *credential_id,
-                        claim_keys,
-                    )?;
+                    let claims =
+                        extract_offered_claims(&credential_schema, *credential_id, claim_keys)?;
 
                     BuildCredentialSchemaResponse {
                         claims,

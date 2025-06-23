@@ -241,7 +241,7 @@ pub(crate) struct ExtendedSubjectClaimsRestDTO {
 #[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
 #[from(OpenID4VCICredentialValueDetails)]
 pub(crate) struct ProcivisSubjectClaimValueRestDTO {
-    pub value: String,
+    pub value: Option<String>,
     pub value_type: String,
 }
 

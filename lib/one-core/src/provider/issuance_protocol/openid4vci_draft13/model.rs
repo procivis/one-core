@@ -527,7 +527,7 @@ pub struct CredentialSubjectDisplay {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VCICredentialValueDetails {
-    pub value: String,
+    pub value: Option<String>,
     pub value_type: String,
 }
 

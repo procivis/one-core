@@ -695,7 +695,7 @@ impl OID4VCIDraft13Service {
     }
 }
 
-pub fn credentials_format(
+pub(crate) fn credentials_format(
     wallet_storage_type: Option<WalletStorageTypeEnum>,
     claims: &[Claim],
 ) -> Result<ExtendedSubjectDTO, OpenIDIssuanceError> {
@@ -707,7 +707,7 @@ pub fn credentials_format(
                     (
                         claim.path.clone(),
                         OpenID4VCICredentialValueDetails {
-                            value: claim.value.clone(),
+                            value: Some(claim.value.clone()),
                             value_type: schema.data_type.clone(),
                         },
                     )

@@ -25,10 +25,10 @@ use super::{
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
-    CoreConfig, DatatypeType, DidType as ConfigDidType, FormatType, RevocationType,
+    CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
 };
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
-use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
@@ -63,7 +63,7 @@ use crate::provider::issuance_protocol::mapper::{
     get_issued_credential_update, interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
-    create_credential, get_credential_offer_url, map_offered_claims_to_credential_schema,
+    create_credential, extract_offered_claims, get_credential_offer_url,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
@@ -1552,53 +1552,12 @@ async fn handle_credential_invitation(
             }
 
             let claims_with_values = claims_with_opt_values.and_then(|claim_keys| {
-                map_offered_claims_to_credential_schema(
-                    &credential_schema,
-                    credential_id,
-                    &claim_keys,
-                )
+                extract_offered_claims(&credential_schema, credential_id, &claim_keys)
             });
 
             let claims = match (claims_with_values, credential_schema.external_schema) {
                 (Ok(claims_with_values), _) => claims_with_values,
-                (Err(_), true) => {
-                    let claim_schemas = credential_schema.claim_schemas.as_ref().ok_or(
-                        IssuanceProtocolError::Failed(
-                            "Missing claim schemas for existing credential schema".to_string(),
-                        ),
-                    )?;
-
-                    claim_schemas
-                        .iter()
-                        .filter_map(|claim_schema| {
-                            let default_value = if claim_schema.schema.data_type
-                                == DatatypeType::Boolean.to_string()
-                            {
-                                "false"
-                            } else if claim_schema.schema.data_type
-                                == DatatypeType::Number.to_string()
-                            {
-                                "0"
-                            } else {
-                                ""
-                            };
-
-                            if claim_schema.schema.data_type != DatatypeType::Object.to_string() {
-                                Some(Claim {
-                                    id: Uuid::new_v4(),
-                                    credential_id,
-                                    created_date: OffsetDateTime::now_utc(),
-                                    last_modified: OffsetDateTime::now_utc(),
-                                    value: default_value.to_string(),
-                                    path: claim_schema.schema.key.clone(),
-                                    schema: Some(claim_schema.schema.clone()),
-                                })
-                            } else {
-                                None
-                            }
-                        })
-                        .collect()
-                }
+                (Err(_), true) => vec![],
                 (Err(e), false) => Err(e)?,
             };
 
@@ -1784,27 +1743,23 @@ fn build_claim_keys(
     if !keys.claims.is_empty() {
         return Ok(keys.claims);
     }
-    // WORKAROUND
-    // Logic somewhere later expects values to be provided at this point. We don't have them for e.g. external credentials
-    // hence we fulfill mandatory fields with empty values. The logic will later be reworked to provide no claims in case
-    // there is no credential definition
-    let missing_keys = collect_mandatory_keys(claim_object, None);
-    Ok(missing_keys
+
+    let keys = collect_keys(claim_object, None);
+    Ok(keys
         .into_iter()
-        .map(|(missing_claim_path, value_type)| {
+        .map(|(path, value_type)| {
             (
-                missing_claim_path,
+                path,
                 OpenID4VCICredentialValueDetails {
-                    value: "".to_owned(),
+                    value: None,
                     value_type,
                 },
             )
         })
         .collect())
-    //END OF WORKAROUND
 }
 
-fn collect_mandatory_keys(
+fn collect_keys(
     claim_object: &OpenID4VCICredentialSubjectItem,
     item_path: Option<&str>,
 ) -> Vec<(String, String)> {
@@ -1817,7 +1772,7 @@ fn collect_mandatory_keys(
             } else {
                 key.to_owned()
             };
-            let paths = collect_mandatory_keys(object, Some(&path));
+            let paths = collect_keys(object, Some(&path));
 
             item_paths.extend(paths);
         }
@@ -1834,7 +1789,7 @@ fn collect_mandatory_keys(
                 } else {
                     format!("{key}{}0", NESTED_CLAIM_MARKER)
                 };
-                let paths = collect_mandatory_keys(object_fields, Some(&path));
+                let paths = collect_keys(object_fields, Some(&path));
 
                 item_paths.extend(paths);
             }

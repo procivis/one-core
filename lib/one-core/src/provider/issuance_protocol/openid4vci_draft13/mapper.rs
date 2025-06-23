@@ -257,18 +257,21 @@ pub(super) fn create_claims_from_credential_definition(
             required: false,
         };
 
-        let claim = Claim {
-            id: Uuid::new_v4(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: value_details.value.to_string(),
-            path: new_schema_claim.schema.key.to_owned(),
-            schema: Some(new_schema_claim.schema.to_owned()),
-        };
+        if let Some(value) = value_details.value.to_owned() {
+            let claim = Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value,
+                path: new_schema_claim.schema.key.to_owned(),
+                schema: Some(new_schema_claim.schema.to_owned()),
+            };
+
+            claims.push(claim);
+        }
 
         claim_schemas.push(new_schema_claim);
-        claims.push(claim);
 
         if key.contains(NESTED_CLAIM_MARKER) {
             for parent_claim in get_parent_claim_paths(key) {
@@ -539,7 +542,7 @@ fn unnest_claim_schemas_inner(
     result
 }
 
-pub(crate) fn map_offered_claims_to_credential_schema(
+pub(crate) fn extract_offered_claims(
     credential_schema: &CredentialSchema,
     credential_id: CredentialId,
     claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
@@ -591,15 +594,21 @@ fn visit_nested_field_field(
     nested_claim_view: &ClaimsNestedFieldView,
 ) -> Result<Vec<Claim>, IssuanceProtocolError> {
     match nested_claim_view {
-        ClaimsNestedFieldView::Leaf { key, value } => Ok(vec![Claim {
-            id: Uuid::new_v4(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: value.value.clone(),
-            path: key.clone(),
-            schema: Some(claim.schema.clone()),
-        }]),
+        ClaimsNestedFieldView::Leaf { key, value } => {
+            let mut res = vec![];
+            if let Some(value) = value.value.to_owned() {
+                res.push(Claim {
+                    id: Uuid::new_v4(),
+                    credential_id,
+                    created_date: now,
+                    last_modified: now,
+                    value,
+                    path: key.clone(),
+                    schema: Some(claim.schema.clone()),
+                });
+            }
+            Ok(res)
+        }
         ClaimsNestedFieldView::Nodes(_) => Err(IssuanceProtocolError::Failed(format!(
             "Validation Error. Claim key {} has wrong type",
             claim.schema.key,

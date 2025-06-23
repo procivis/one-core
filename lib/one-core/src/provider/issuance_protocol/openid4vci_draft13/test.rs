@@ -34,7 +34,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
-    get_parent_claim_paths, map_offered_claims_to_credential_schema,
+    extract_offered_claims, get_parent_claim_paths,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
@@ -1345,29 +1345,27 @@ fn generic_schema_object_hell() -> CredentialSchema {
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_success_missing_optional_object() {
+fn test_extract_offered_claims_success_missing_optional_object() {
     let schema = generic_schema();
 
     let claim_keys = IndexMap::from([
         (
             "Last Name".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Last Name Value".to_string(),
+                value: Some("Last Name Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "First Name".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "First Name Value".to_string(),
+                value: Some("First Name Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    let result =
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
     assert_eq!(2, result.len());
 
     let result = result
@@ -1375,376 +1373,368 @@ fn test_map_offered_claims_to_credential_schema_success_missing_optional_object(
         .map(|v| (v.path, v.value))
         .collect::<HashMap<_, _>>();
 
-    assert_eq!(claim_keys["First Name"].value, result["First Name"]);
-    assert_eq!(claim_keys["Last Name"].value, result["Last Name"]);
+    assert_eq!(
+        *claim_keys["First Name"].value.as_ref().unwrap(),
+        result["First Name"]
+    );
+    assert_eq!(
+        *claim_keys["Last Name"].value.as_ref().unwrap(),
+        result["Last Name"]
+    );
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_failed_partially_missing_optional_object() {
+fn test_extract_offered_claims_failed_partially_missing_optional_object() {
     let schema = generic_schema();
 
     let claim_keys = IndexMap::from([
         (
             "Last Name".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Last Name Value".to_string(),
+                value: Some("Last Name Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "First Name".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "First Name Value".to_string(),
+                value: Some("First Name Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Street Value".to_string(),
+                value: Some("Street Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    let result =
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys);
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys);
     assert!(matches!(result, Err(IssuanceProtocolError::Failed(_))));
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_success_object_array() {
+fn test_extract_offered_claims_success_object_array() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "111".to_string(),
+                value: Some("111".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_string/1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "222".to_string(),
+                value: Some("222".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_string/2".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "333".to_string(),
+                value: Some("333".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "optional_array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "opt111".to_string(),
+                value: Some("opt111".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "01".to_string(),
+                value: Some("01".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "02".to_string(),
+                value: Some("02".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field array/0".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "0array0".to_string(),
+                value: Some("0array0".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field array/1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "0array1".to_string(),
+                value: Some("0array1".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/1/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "11".to_string(),
+                value: Some("11".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Street Value".to_string(),
+                value: Some("Street Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         // Field 2 and array is missing for array object 2
     ]);
 
-    let result =
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
     assert_eq!(10, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        assert_eq!(
+            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
+            claim.value
+        )
     }
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_success_optional_array_missing() {
+fn test_extract_offered_claims_success_optional_array_missing() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "1".to_string(),
+                value: Some("1".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "01".to_string(),
+                value: Some("01".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "02".to_string(),
+                value: Some("02".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Street Value".to_string(),
+                value: Some("Street Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    let result =
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
     assert_eq!(4, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        assert_eq!(
+            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
+            claim.value
+        )
     }
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_mandatory_array_missing_error() {
+fn test_extract_offered_claims_mandatory_array_missing_error() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "01".to_string(),
+                value: Some("01".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "02".to_string(),
+                value: Some("02".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Street Value".to_string(),
+                value: Some("Street Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    assert!(
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .is_err()
-    )
+    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_mandatory_array_object_field_missing_error() {
+fn test_extract_offered_claims_mandatory_array_object_field_missing_error() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "1".to_string(),
+                value: Some("1".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "02".to_string(),
+                value: Some("02".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "Street Value".to_string(),
+                value: Some("Street Value".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    assert!(
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .is_err()
-    )
+    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_mandatory_object_error() {
+fn test_extract_offered_claims_mandatory_object_error() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "1".to_string(),
+                value: Some("1".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "02".to_string(),
+                value: Some("02".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "02".to_string(),
+                value: Some("02".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    assert!(
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .is_err()
-    )
+    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present() {
+fn test_extract_offered_claims_opt_object_opt_obj_present() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([
         (
             "opt_obj/obj_str".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "os".to_string(),
+                value: Some("os".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "opt_obj/opt_obj/field_man".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "oofm".to_string(),
+                value: Some("oofm".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    let result =
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
     assert_eq!(2, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        assert_eq!(
+            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
+            claim.value
+        )
     }
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_missing() {
+fn test_extract_offered_claims_opt_object_opt_obj_missing() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([(
         "opt_obj/obj_str".to_string(),
         OpenID4VCICredentialValueDetails {
-            value: "os".to_string(),
+            value: Some("os".to_string()),
             value_type: "STRING".to_string(),
         },
     )]);
 
-    let result =
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
     assert_eq!(1, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        assert_eq!(
+            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
+            claim.value
+        )
     }
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_field_missing_error()
-{
+fn test_extract_offered_claims_opt_object_opt_obj_present_man_field_missing_error() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([
         (
             "opt_obj/obj_str".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "os".to_string(),
+                value: Some("os".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
         (
             "opt_obj/opt_obj/field_opt".to_string(),
             OpenID4VCICredentialValueDetails {
-                value: "oofm".to_string(),
+                value: Some("oofm".to_string()),
                 value_type: "STRING".to_string(),
             },
         ),
     ]);
 
-    assert!(
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .is_err()
-    )
+    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
 }
 
 #[test]
-fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_root_field_missing_error()
- {
+fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing_error() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([(
         "opt_obj/opt_obj/field_man".to_string(),
         OpenID4VCICredentialValueDetails {
-            value: "oofm".to_string(),
+            value: Some("oofm".to_string()),
             value_type: "STRING".to_string(),
         },
     )]);
 
-    assert!(
-        map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
-            .is_err()
-    )
+    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
 }
 
 #[tokio::test]

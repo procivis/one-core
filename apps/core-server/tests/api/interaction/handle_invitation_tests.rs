@@ -2101,10 +2101,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
         .await;
 
     let claims = credential.claims.unwrap();
-
-    // Actually second operation may avoid putting anything here
-    // and just create the claims on credential accept
-    assert!(!claims.is_empty());
+    assert!(claims.is_empty());
 }
 
 #[tokio::test]
@@ -2287,5 +2284,6 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
         "https://betelgeuse.example.com/public/education-logo.png",
         resp["schema"]["layoutProperties"]["logo"]["image"]
     );
-    assert_eq!("name", resp["claims"][0]["path"]);
+
+    assert!(resp["claims"].as_array().unwrap().is_empty());
 }

@@ -1,13 +1,9 @@
 use std::collections::HashMap;
 
-use indexmap::IndexMap;
 use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
 use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
-use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialValueDetails,
-};
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use one_core::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -44,9 +40,7 @@ use time::OffsetDateTime;
 use url::Url;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::endpoint::credential_schema::dto::{
-    CredentialSchemaLayoutPropertiesRestDTO, WalletStorageTypeRestEnum,
-};
+use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRestDTO;
 use crate::endpoint::trust_entity::dto::{
     TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
 };
@@ -204,41 +198,6 @@ pub(crate) struct PostSsiIssuerRejectQueryParams {
 pub(crate) struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: CredentialId,
     pub did_value: DidValue,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
-#[from(ExtendedSubjectDTO)]
-pub(crate) struct ExtendedSubjectRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub keys: Option<ExtendedSubjectClaimsRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
-pub(crate) struct ExtendedSubjectClaimsRestDTO {
-    #[serde(flatten)]
-    pub claims: IndexMap<String, ProcivisSubjectClaimValueRestDTO>,
-}
-
-impl From<ExtendedSubjectClaimsDTO> for ExtendedSubjectClaimsRestDTO {
-    fn from(value: ExtendedSubjectClaimsDTO) -> Self {
-        Self {
-            claims: value
-                .claims
-                .into_iter()
-                .map(|(key, value)| (key, value.into()))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
-#[from(OpenID4VCICredentialValueDetails)]
-pub(crate) struct ProcivisSubjectClaimValueRestDTO {
-    pub value: String,
-    pub value_type: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
