@@ -1,22 +1,29 @@
+use std::ops::Add;
 use std::str::FromStr;
 
 use core_server::ServerConfig;
 use one_core::config::core_config::AppConfig;
+use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
+use rcgen::CertificateParams;
 use shared_types::DidValue;
+use time::{Duration, OffsetDateTime};
 use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use uuid::Uuid;
 
 use super::api_clients::Client;
 use super::db_clients::DbClient;
 use super::db_clients::keys::ecdsa_testing_params;
 use super::mock_server::MockServer;
 use super::server::run_server;
+use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 use crate::fixtures::{self, TestingConfigParams, TestingDidParams, TestingIdentifierParams};
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 
 pub struct TestContext {
     pub db: DbClient,
@@ -142,5 +149,59 @@ impl TestContext {
             .await;
 
         (context, organisation, did, identifier, key)
+    }
+
+    pub async fn new_with_certificate_identifier(
+        additional_config: Option<String>,
+    ) -> (Self, Organisation, Identifier, Certificate, Key) {
+        let (context, organisation) = Self::new_with_organisation(additional_config).await;
+        let key = context
+            .db
+            .keys
+            .create(&organisation, ecdsa_testing_params())
+            .await;
+        let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+        let cert = create_cert(
+            CertificateParams::default(),
+            ecdsa::key(),
+            &ca_cert,
+            eddsa::key(),
+        );
+
+        let identifier_id = Uuid::new_v4().into();
+        let now = OffsetDateTime::now_utc();
+        let certificate = Certificate {
+            id: Uuid::new_v4().into(),
+            identifier_id,
+            organisation_id: Some(organisation.id),
+            created_date: now,
+            last_modified: now,
+            expiry_date: now.add(Duration::minutes(10)),
+            name: "test cert".to_string(),
+            chain: format!("{}{}", cert.pem(), ca_cert.pem()),
+            fingerprint: "fingerprint".to_string(),
+            state: CertificateState::Active,
+            key: Some(key.clone()),
+        };
+
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                &organisation,
+                TestingIdentifierParams {
+                    r#type: Some(IdentifierType::Certificate),
+                    certificates: Some(vec![certificate.clone()]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let certificate = context
+            .db
+            .certificates
+            .create(identifier.id, TestingCertificateParams::from(certificate))
+            .await;
+        (context, organisation, identifier, certificate, key)
     }
 }

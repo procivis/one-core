@@ -1,3 +1,5 @@
+pub(crate) mod certificate;
+
 use std::str::FromStr;
 
 use core_server::ServerConfig;
@@ -129,6 +131,7 @@ pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
             url.set_path("");
             let conn = sea_orm::Database::connect(url.clone()).await.unwrap();
             let db_name: String = ulid::Ulid::new().to_string();
+            println!("USING DATABASE {}", db_name);
 
             conn.execute_unprepared(&format!("CREATE DATABASE {db_name};"))
                 .await

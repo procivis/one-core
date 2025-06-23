@@ -233,6 +233,7 @@ pub(crate) struct OpenID4VCICredentialOfferRestDTO {
     pub credential_subject: Option<ExtendedSubjectRestDTO>,
     #[from(with_fn = convert_inner)]
     pub issuer_did: Option<DidValue>,
+    pub issuer_certificate: Option<String>,
 }
 
 #[skip_serializing_none]

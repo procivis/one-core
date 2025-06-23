@@ -186,6 +186,7 @@ impl OID4VCIDraft13Service {
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations::default()),
+                    issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -238,6 +239,7 @@ impl OID4VCIDraft13Service {
 
         let claims = credential
             .claims
+            .as_ref()
             .ok_or(ServiceError::MappingError("claims missing".to_string()))?
             .iter()
             .map(|claim| claim.to_owned())
@@ -249,13 +251,7 @@ impl OID4VCIDraft13Service {
         Ok(create_credential_offer(
             url,
             &interaction.id.to_string(),
-            credential
-                .issuer_identifier
-                .ok_or(ServiceError::MappingError(
-                    "issuer_identifier missing".to_string(),
-                ))?
-                .did
-                .map(|did| did.did),
+            &credential,
             &credential_schema_id,
             &credential_schema.schema_id,
             credential_subject,

@@ -479,17 +479,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .certificates
         .create(
             issuer_identifier.id,
-            TestingCertificateParams {
-                id: Some(certificate_model.id),
-                created_date: Some(certificate_model.created_date),
-                last_modified: Some(certificate_model.last_modified),
-                expiry_date: Some(certificate_model.expiry_date),
-                name: Some(certificate_model.name),
-                chain: Some(certificate_model.chain),
-                fingerprint: Some(certificate_model.fingerprint),
-                state: Some(certificate_model.state),
-                key: certificate_model.key,
-            },
+            TestingCertificateParams::from(certificate_model),
         )
         .await;
 

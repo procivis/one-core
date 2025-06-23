@@ -310,6 +310,8 @@ pub struct OpenID4VCICredentialOfferDTO {
     pub credential_subject: Option<ExtendedSubjectDTO>,
     // This is a custom field with the issuer did
     pub issuer_did: Option<DidValue>,
+    // This is a custom field with the issuer certificate
+    pub issuer_certificate: Option<String>,
 }
 
 #[skip_serializing_none]

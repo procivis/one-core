@@ -69,6 +69,69 @@ async fn test_get_credential_offer_success_jwt() {
 }
 
 #[tokio::test]
+async fn test_get_credential_offer_success_certificate_identifier() {
+    // GIVEN
+    let (context, organisation, identifier, certificate, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_credential_offer(credential_schema.id, credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let offer = resp.json_value().await;
+
+    assert_eq!(
+        offer["credential_issuer"],
+        format!(
+            "{}/ssi/openid4vci/draft-13/{}",
+            context.config.app.core_base_url, credential_schema.id
+        )
+    );
+    assert_eq!(offer["issuer_certificate"], certificate.chain,);
+    offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
+        .assert_eq(&interaction.id);
+
+    let credential_id = &offer["credential_configuration_ids"][0];
+
+    assert_eq!(
+        credential_id.as_str(),
+        Some(credential_schema.schema_id.as_str())
+    );
+}
+
+#[tokio::test]
 async fn test_get_credential_offer_success_mdoc() {
     // GIVEN
     let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;

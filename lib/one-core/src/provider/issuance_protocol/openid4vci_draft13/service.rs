@@ -3,7 +3,7 @@ use std::str::FromStr;
 use indexmap::IndexMap;
 use one_crypto::utilities;
 use secrecy::SecretString;
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::CredentialSchemaId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -26,6 +26,7 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
 };
+use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCICredentialConfigurationData;
 use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
@@ -257,14 +258,36 @@ pub(crate) fn get_credential_schema_base_url(
 pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
     pre_authorized_code: &str,
-    issuer_did: Option<DidValue>,
+    credential: &Credential,
     credential_schema_uuid: &CredentialSchemaId,
     credential_schema_id: &str,
     credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenIDIssuanceError> {
+    let issuer_identifier =
+        credential
+            .issuer_identifier
+            .as_ref()
+            .ok_or(OpenID4VCIError::RuntimeError(
+                "Missing issuer_identifier".to_owned(),
+            ))?;
+    let (issuer_did, issuer_certificate) = match issuer_identifier.r#type {
+        IdentifierType::Key => (None, None),
+        IdentifierType::Did => (
+            issuer_identifier.did.as_ref().map(|did| did.did.clone()),
+            None,
+        ),
+        IdentifierType::Certificate => (
+            None,
+            credential
+                .issuer_certificate
+                .as_ref()
+                .map(|issuer_certificate| issuer_certificate.chain.clone()),
+        ),
+    };
     Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
         issuer_did,
+        issuer_certificate,
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants {
             code: OpenID4VCIGrant {

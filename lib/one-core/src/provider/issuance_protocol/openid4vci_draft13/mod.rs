@@ -1151,19 +1151,10 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
         if self.params.credential_offer_by_value {
-            let issuer_did = credential
-                .issuer_identifier
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing issuer_identifier".to_owned(),
-                ))?
-                .did
-                .as_ref()
-                .map(|did| did.did.clone());
             let offer = create_credential_offer(
                 protocol_base_url,
                 &interaction_id.to_string(),
-                issuer_did,
+                credential,
                 &credential_schema.id,
                 &credential_schema.schema_id,
                 credential_subject,

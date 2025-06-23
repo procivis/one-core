@@ -15,6 +15,7 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
+use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -112,23 +113,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
     )
 }
 
-fn generic_credential() -> Credential {
+fn generic_credential_did() -> Credential {
     let now = OffsetDateTime::now_utc();
-
-    let claim_schema = ClaimSchema {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-            .unwrap()
-            .into(),
-        key: "NUMBER".to_string(),
-        data_type: "NUMBER".to_string(),
-        created_date: now,
-        last_modified: now,
-        array: false,
-    };
-
-    let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-        .unwrap()
-        .into();
     let issuer_did = Did {
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
@@ -160,6 +146,63 @@ fn generic_credential() -> Credential {
         key: None,
         certificates: None,
     };
+    generic_credential(issuer_identifier)
+}
+
+fn generic_credential_certificate() -> Credential {
+    let now = OffsetDateTime::now_utc();
+    let id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        .unwrap()
+        .into();
+    let issuer_identifier = Identifier {
+        id,
+        created_date: now,
+        last_modified: now,
+        name: "certificate identifier 1".to_string(),
+        r#type: IdentifierType::Certificate,
+        is_remote: true,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: None,
+        did: None,
+        key: None,
+        certificates: Some(vec![Certificate {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+                .unwrap()
+                .into(),
+            identifier_id: id,
+            organisation_id: None,
+            created_date: now,
+            last_modified: now,
+            expiry_date: now + Duration::hours(12),
+            name: "certificate 1".to_string(),
+            chain: "<dummy test cert chain>".to_string(),
+            fingerprint: "123456".to_string(),
+            state: CertificateState::Active,
+            key: None,
+        }]),
+    };
+    generic_credential(issuer_identifier)
+}
+
+fn generic_credential(issuer_identifier: Identifier) -> Credential {
+    let now = OffsetDateTime::now_utc();
+
+    let claim_schema = ClaimSchema {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        key: "NUMBER".to_string(),
+        data_type: "NUMBER".to_string(),
+        created_date: now,
+        last_modified: now,
+        array: false,
+    };
+
+    let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        .unwrap()
+        .into();
+
     Credential {
         id: credential_id,
         created_date: now,
@@ -181,8 +224,11 @@ fn generic_credential() -> Credential {
             path: claim_schema.key.to_owned(),
             schema: Some(claim_schema.clone()),
         }]),
+        issuer_certificate: issuer_identifier
+            .certificates
+            .as_ref()
+            .and_then(|certs| certs.first().cloned()),
         issuer_identifier: Some(issuer_identifier),
-        issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -240,12 +286,12 @@ fn dummy_config() -> CoreConfig {
 }
 
 #[tokio::test]
-async fn test_generate_offer() {
+async fn test_generate_offer_did() {
     let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
-    let credential = generic_credential();
+    let credential = generic_credential_did();
 
-    let keys = credential.claims.unwrap_or_default();
+    let keys = credential.claims.clone().unwrap_or_default();
 
     let credential_subject =
         credentials_format(Some(WalletStorageTypeEnum::Software), &keys).unwrap();
@@ -253,7 +299,7 @@ async fn test_generate_offer() {
     let offer = create_credential_offer(
         &protocol_base_url,
         &interaction_id.to_string(),
-        Some(credential.issuer_identifier.unwrap().did.unwrap().did),
+        &credential,
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,
@@ -285,8 +331,53 @@ async fn test_generate_offer() {
 }
 
 #[tokio::test]
+async fn test_generate_offer_certificate() {
+    let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
+    let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
+    let credential = generic_credential_certificate();
+
+    let keys = credential.claims.clone().unwrap_or_default();
+
+    let credential_subject =
+        credentials_format(Some(WalletStorageTypeEnum::Software), &keys).unwrap();
+
+    let offer = create_credential_offer(
+        &protocol_base_url,
+        &interaction_id.to_string(),
+        &credential,
+        &credential.schema.as_ref().unwrap().id,
+        &credential.schema.as_ref().unwrap().schema_id,
+        credential_subject,
+    )
+    .unwrap();
+
+    assert_eq!(
+        json!(&offer),
+        json!({
+            "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
+            "issuer_certificate": "<dummy test cert chain>",
+            "credential_configuration_ids" : [
+                credential.schema.as_ref().unwrap().schema_id,
+            ],
+            "grants": {
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
+            },
+            "credential_subject": {
+                "keys": {
+                    "NUMBER": {
+                        "value": "123",
+                        "value_type": "NUMBER"
+                    }
+                },
+                "wallet_storage_type": "SOFTWARE"
+            }
+        })
+    )
+}
+
+#[tokio::test]
 async fn test_generate_share_credentials() {
-    let credential = generic_credential();
+    let credential = generic_credential_did();
     let protocol = setup_protocol(Default::default());
 
     let result = protocol.issuer_share_credential(&credential).await.unwrap();
@@ -298,7 +389,7 @@ async fn test_generate_share_credentials() {
 
 #[tokio::test]
 async fn test_generate_share_credentials_offer_by_value() {
-    let credential = generic_credential();
+    let credential = generic_credential_did();
 
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4VCIParams {
@@ -332,7 +423,7 @@ async fn test_generate_share_credentials_offer_by_value() {
 
 #[tokio::test]
 async fn test_handle_invitation_credential_by_ref_with_did_success() {
-    let credential = generic_credential();
+    let credential = generic_credential_did();
 
     let mut storage_proxy = MockStorageProxy::default();
     let credential_clone = credential.clone();
@@ -385,7 +476,7 @@ async fn test_holder_accept_credential_success() {
     let mut key_provider = MockKeyProvider::default();
 
     let credential = {
-        let mut credential = generic_credential();
+        let mut credential = generic_credential_did();
 
         let interaction_data = HolderInteractionData {
             issuer_url: mock_server.uri(),
@@ -559,7 +650,7 @@ async fn test_holder_accept_expired_credential_fails() {
     let mut key_provider = MockKeyProvider::default();
 
     let credential = {
-        let mut credential = generic_credential();
+        let mut credential = generic_credential_did();
 
         let interaction_data = HolderInteractionData {
             issuer_url: mock_server.uri(),
@@ -720,7 +811,7 @@ async fn test_holder_reject_credential() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let credential = {
-        let mut credential = generic_credential();
+        let mut credential = generic_credential_did();
 
         let interaction_data = HolderInteractionData {
             issuer_url: mock_server.uri(),
@@ -870,7 +961,7 @@ async fn test_holder_reject_credential() {
 async fn test_handle_invitation_credential_by_ref_without_did_success() {
     inner_test_handle_invitation_credential_by_ref_success(
         MockStorageProxy::default(),
-        generic_credential(),
+        generic_credential_did(),
         None,
     )
     .await;
@@ -1785,7 +1876,7 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
 
 #[tokio::test]
 async fn test_generate_share_credentials_custom_scheme() {
-    let credential = generic_credential();
+    let credential = generic_credential_did();
     let url_scheme = "my-custom-scheme";
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params(url_scheme)),
