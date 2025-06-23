@@ -11,6 +11,7 @@ use crate::model::trust_entity::{TrustEntity, TrustEntityType};
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait TrustManagement: Send + Sync {
     fn get_capabilities(&self) -> TrustCapabilities;
