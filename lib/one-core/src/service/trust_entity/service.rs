@@ -13,6 +13,7 @@ use super::mapper::{
     trust_entity_from_partial_and_did_and_anchor, trust_entity_from_request,
     update_request_from_dto,
 };
+use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
 use crate::model::identifier::IdentifierRelations;
@@ -20,7 +21,9 @@ use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatc
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
-use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityType};
+use crate::model::trust_entity::{
+    TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityType,
+};
 use crate::provider::trust_management::TrustOperation;
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::validator::ParsedCertificate;
@@ -264,6 +267,23 @@ impl TrustEntityService {
         {
             return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
         }
+
+        let did_role = match request.role {
+            TrustEntityRole::Issuer => DidRole::Issuer,
+            TrustEntityRole::Verifier => DidRole::Verifier,
+            TrustEntityRole::Both => DidRole::Issuer,
+        };
+
+        // See: ONE-6304, we expect the remote DID to be available at a later stage
+        let (_did, _identifier) = get_or_create_did_and_identifier(
+            &*self.did_method_provider,
+            &*self.did_repository,
+            &*self.identifier_repository,
+            &None,
+            &did_value,
+            did_role,
+        )
+        .await?;
 
         let entity = trust_entity_from_did_request(request, trust_anchor.clone(), did_value);
 
