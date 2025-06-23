@@ -461,6 +461,7 @@ impl OID4VCIDraft13Service {
                     }),
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(CredentialSchemaRelations::default()),
+                    key: Some(Default::default()),
                     ..Default::default()
                 },
             )
