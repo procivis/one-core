@@ -412,6 +412,15 @@ pub enum BusinessLogicError {
 
     #[error("Identifier already exists")]
     IdentifierAlreadyExists,
+
+    #[error("Certificate `{certificate_id}` is not associated with identifier `{identifier_id}`")]
+    IdentifierCertificateIdMismatch {
+        identifier_id: String,
+        certificate_id: String,
+    },
+
+    #[error("Certificate id not specified")]
+    CertificateIdNotSpecified,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -611,6 +620,12 @@ pub enum ValidationError {
 
     #[error("Wallet storage type `{0}` not supported")]
     WalletStorageTypeDisabled(WalletStorageTypeEnum),
+
+    #[error("Invalid CA chain: {0}")]
+    InvalidCaCertificateChain(String),
+
+    #[error("Missing authority key identifier")]
+    MissingAuthorityKeyIdentifier,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1186,6 +1201,15 @@ pub enum ErrorCode {
 
     #[strum(message = "Organisation is deactivated")]
     BR_0241,
+
+    #[strum(message = "Certificate must be specified for identifiers of type certificate")]
+    BR_0242,
+
+    #[strum(message = "Certificate is missing authority key identifier")]
+    BR_0243,
+
+    #[strum(message = "Invalid CA trust entity certificate chain")]
+    BR_0244,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1345,6 +1369,9 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IdentifierTypeNotFound => ErrorCode::BR_0207,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::IdentifierAlreadyExists => ErrorCode::BR_0240,
+            Self::IdentifierCertificateIdMismatch { .. } | Self::CertificateIdNotSpecified => {
+                ErrorCode::BR_0242
+            }
         }
     }
 }
@@ -1414,6 +1441,8 @@ impl ErrorCodeMixin for ValidationError {
             Self::CRLOutdated => ErrorCode::BR_0234,
             Self::CRLSignatureInvalid => ErrorCode::BR_0235,
             Self::WalletStorageTypeDisabled(_) => ErrorCode::BR_0225,
+            Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
+            Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
         }
     }
 }

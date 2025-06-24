@@ -13,6 +13,7 @@ pub struct TrustEntityByEntityKey {
     pub identifier_id: Option<IdentifierId>,
     pub entity_key: TrustEntityKey,
     pub r#type: TrustEntityType,
+    pub content: Option<String>,
 
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub created_date: OffsetDateTime,

@@ -37,6 +37,15 @@ pub trait CertificateValidator: Send + Sync {
         &self,
         pem_chain: &[u8],
     ) -> Result<(CertificateState, ParsedCertificate), ServiceError>;
+
+    /// Validates the pem_chain starting from a leaf certificate against a ca_chain starting
+    /// from an intermediary or root CA.
+    /// Returns the parsed lowest level certificate in the CA chain.
+    async fn validate_chain_against_ca_chain(
+        &self,
+        pem_chain: &[u8],
+        ca_pem_chain: &[u8],
+    ) -> Result<ParsedCertificate, ServiceError>;
 }
 
 #[derive(Clone)]

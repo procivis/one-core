@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use shared_types::{DidId, DidValue, IdentifierId, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use uuid::Uuid;
 
@@ -5,18 +7,20 @@ use super::TrustEntityService;
 use super::dto::{
     CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityParamsDTO,
     CreateTrustEntityRequestDTO, CreateTrustEntityTypeDTO, GetTrustEntitiesResponseDTO,
-    GetTrustEntityResponseDTO, ListTrustEntitiesQueryDTO, TrustEntityContent,
-    UpdateTrustEntityFromDidRequestDTO,
+    GetTrustEntityResponseDTO, ListTrustEntitiesQueryDTO, ResolveTrustEntitiesRequestDTO,
+    ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
+    TrustEntityCertificateResponseDTO, TrustEntityContent, UpdateTrustEntityFromDidRequestDTO,
 };
 use super::mapper::{
     trust_entity_certificate_from_x509, trust_entity_from_did_request,
-    trust_entity_from_partial_and_did_and_anchor, trust_entity_from_request,
-    update_request_from_dto,
+    trust_entity_from_identifier_and_anchor, trust_entity_from_partial_and_did_and_anchor,
+    trust_entity_from_request, update_request_from_dto,
 };
 use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
+use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, DidType};
-use crate::model::identifier::IdentifierRelations;
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -24,9 +28,11 @@ use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{
     TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityType,
 };
-use crate::provider::trust_management::TrustOperation;
+use crate::provider::trust_management::model::TrustEntityByEntityKey;
+use crate::provider::trust_management::{TrustEntityKeyBatch, TrustOperation};
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::validator::ParsedCertificate;
+use crate::service::error::BusinessLogicError::IdentifierCertificateIdMismatch;
 use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -35,6 +41,7 @@ use crate::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFil
 use crate::service::trust_entity::dto::UpdateTrustEntityActionFromDidRequestDTO;
 use crate::service::trust_entity::mapper::get_detail_trust_entity_response;
 use crate::util::bearer_token::validate_bearer_token;
+use crate::util::x509::pem_chain_to_authority_key_identifiers;
 
 impl TrustEntityService {
     pub async fn create_trust_entity(
@@ -639,5 +646,244 @@ impl TrustEntityService {
         Err(ServiceError::BusinessLogic(
             BusinessLogicError::MissingTrustEntity(did_id),
         ))
+    }
+
+    pub async fn resolve_identifiers(
+        &self,
+        request: ResolveTrustEntitiesRequestDTO,
+    ) -> Result<ResolveTrustEntitiesResponseDTO, ServiceError> {
+        let (mut batches, mut identifier_map) = self.prepare_lookup_batches(request).await?;
+
+        let trust_anchor_list = self
+            .trust_anchor_repository
+            .list(ListTrustAnchorsQueryDTO {
+                pagination: None,
+                sorting: None,
+                filtering: Some(
+                    TrustAnchorFilterValue::Type(StringMatch::equals(SimpleTrustList.to_string()))
+                        .condition(),
+                ),
+                include: None,
+            })
+            .await?;
+
+        let mut result = HashMap::new();
+        for trust_anchor in trust_anchor_list.values.into_iter().map(TrustAnchor::from) {
+            let trust = self
+                .trust_provider
+                .get(&trust_anchor.r#type)
+                .ok_or_else(|| {
+                    MissingProviderError::TrustManager(trust_anchor.r#type.to_owned())
+                })?;
+
+            let trust_entities = trust
+                .lookup_entity_keys(&trust_anchor, &batches)
+                .await
+                .map_err(ServiceError::TrustManagementError)?;
+            // no need to look up trust entities in the next anchor if they have already been found
+            batches.retain(|batch| !trust_entities.contains_key(&batch.batch_id));
+
+            for (batch_id, trust_entity) in trust_entities {
+                let Some((identifier, certificate)) = identifier_map.remove(&batch_id) else {
+                    return Err(ServiceError::Other(format!(
+                        "failed to retrieve identifier and certificate for batch {}",
+                        &batch_id
+                    )));
+                };
+
+                let identifier_id = identifier.id;
+                let validated_trust_entity = match identifier.r#type {
+                    IdentifierType::Key => {
+                        // not supported at all -> fail hard
+                        return Err(BusinessLogicError::IncompatibleIdentifierType {
+                            reason: "Key identifier not supported".to_string(),
+                        }
+                        .into());
+                    }
+                    IdentifierType::Did => Ok(trust_entity_from_identifier_and_anchor(
+                        trust_entity,
+                        identifier,
+                        trust_anchor.clone(),
+                        None,
+                    )),
+                    IdentifierType::Certificate => {
+                        if let Some(certificate) = certificate {
+                            self.validate_ca(&trust_entity, &certificate)
+                                .await
+                                .map(|ca_cert| {
+                                    trust_entity_from_identifier_and_anchor(
+                                        trust_entity,
+                                        identifier,
+                                        trust_anchor.clone(),
+                                        Some(ca_cert),
+                                    )
+                                })
+                        } else {
+                            return Err(ServiceError::Other(format!(
+                                "failed to retrieve certificate for identifier {}",
+                                identifier.id
+                            )));
+                        }
+                    }
+                };
+
+                // validation is allowed to fail, silently ignore and drop it from the results
+                if let Ok(validated_trust_entity) = validated_trust_entity {
+                    result.insert(identifier_id, validated_trust_entity);
+                }
+            }
+        }
+        Ok(ResolveTrustEntitiesResponseDTO {
+            identifier_to_trust_entity: result,
+        })
+    }
+
+    async fn validate_ca(
+        &self,
+        trust_entity: &TrustEntityByEntityKey,
+        certificate: &Certificate,
+    ) -> Result<TrustEntityCertificateResponseDTO, ServiceError> {
+        if trust_entity.r#type != TrustEntityType::CertificateAuthority {
+            return Err(ServiceError::ValidationError(format!(
+                "Cannot validate CA: trust_entity {} is not a CA",
+                trust_entity.id
+            )));
+        }
+
+        let Some(ca_chain) = &trust_entity.content else {
+            return Err(ServiceError::ValidationError(format!(
+                "Invalid trust_entity {}: content is missing",
+                trust_entity.id
+            )));
+        };
+
+        // validate whole chain
+        let ParsedCertificate {
+            attributes,
+            public_key,
+            subject_common_name,
+            ..
+        } = self
+            .certificate_validator
+            .validate_chain_against_ca_chain(certificate.chain.as_bytes(), ca_chain.as_bytes())
+            .await?;
+
+        let public_key = hex::encode(public_key.public_key_as_raw());
+        Ok(trust_entity_certificate_from_x509(
+            // Only active CAs pass validation
+            CertificateState::Active,
+            public_key,
+            subject_common_name,
+            attributes,
+        ))
+    }
+
+    async fn prepare_lookup_batches(
+        &self,
+        requests: ResolveTrustEntitiesRequestDTO,
+    ) -> Result<
+        (
+            Vec<TrustEntityKeyBatch>,
+            HashMap<String, (Identifier, Option<Certificate>)>,
+        ),
+        ServiceError,
+    > {
+        let mut batches = vec![];
+        let mut identifier_to_certs = HashMap::new();
+
+        // This could be optimized to use batch lookup but that would require to implement the option
+        // to include dids and certificates in the list lookup.
+        for request in requests.identifiers {
+            let identifier = self
+                .identifier_repository
+                .get(
+                    request.id,
+                    &IdentifierRelations {
+                        certificates: Some(CertificateRelations::default()),
+                        did: Some(DidRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::EntityNotFound(
+                    EntityNotFoundError::Identifier(request.id),
+                ))?;
+            let (batch, certificate) = prepare_batch(&request, &identifier)?;
+            batches.push(batch);
+            identifier_to_certs.insert(identifier.id.to_string(), (identifier, certificate));
+        }
+        Ok((batches, identifier_to_certs))
+    }
+}
+
+fn prepare_batch(
+    identifier_request: &ResolveTrustEntityRequestDTO,
+    identifier: &Identifier,
+) -> Result<(TrustEntityKeyBatch, Option<Certificate>), ServiceError> {
+    match identifier.r#type {
+        IdentifierType::Key => Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleIdentifierType {
+                reason: "Key identifier not supported".to_string(),
+            },
+        )),
+        IdentifierType::Did => {
+            if let Some(certificate_id) = identifier_request.certificate_id {
+                return Err(IdentifierCertificateIdMismatch {
+                    identifier_id: identifier_request.id.to_string(),
+                    certificate_id: certificate_id.to_string(),
+                }
+                .into());
+            }
+            identifier
+                .did
+                .as_ref()
+                .map(|did| {
+                    (
+                        TrustEntityKeyBatch {
+                            batch_id: identifier.id.to_string(),
+                            trust_entity_keys: vec![TrustEntityKey::from(did.did.clone())],
+                        },
+                        None,
+                    )
+                })
+                .ok_or(MappingError(format!(
+                    "missing did on did identifier {}",
+                    identifier.id
+                )))
+        }
+        IdentifierType::Certificate => {
+            let Some(certificate_id) = identifier_request.certificate_id else {
+                return Err(BusinessLogicError::CertificateIdNotSpecified)?;
+            };
+            let certificates = identifier
+                .certificates
+                .as_ref()
+                .ok_or(MappingError(format!(
+                    "missing certificates on certificate identifier {}",
+                    identifier.id
+                )))?;
+            let certificate = certificates
+                .iter()
+                .find(|cert| cert.id == certificate_id)
+                .ok_or(BusinessLogicError::IdentifierCertificateIdMismatch {
+                    identifier_id: identifier_request.id.to_string(),
+                    certificate_id: certificate_id.to_string(),
+                })?;
+            let trust_entity_keys = pem_chain_to_authority_key_identifiers(&certificate.chain)
+                .map_err(|err| {
+                    ServiceError::Other(format!(
+                        "failed to extract authority key identifiers for certificate {}: {err}",
+                        certificate.id
+                    ))
+                })?
+                .into_iter()
+                .map(TrustEntityKey::from)
+                .collect();
+            let batch = TrustEntityKeyBatch {
+                batch_id: identifier.id.to_string(),
+                trust_entity_keys,
+            };
+            Ok((batch, Some(certificate.clone())))
+        }
     }
 }

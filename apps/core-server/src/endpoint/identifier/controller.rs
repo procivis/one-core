@@ -6,7 +6,8 @@ use shared_types::IdentifierId;
 
 use super::dto::{
     CreateIdentifierRequestRestDTO, GetIdentifierListResponseRestDTO, GetIdentifierQuery,
-    GetIdentifierResponseRestDTO,
+    GetIdentifierResponseRestDTO, ResolveTrustEntitiesRequestRestDTO,
+    ResolveTrustEntitiesResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -125,4 +126,31 @@ pub(crate) async fn get_identifier_list(
         .get_identifier_list(query.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "getting identifiers")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/identifier/v1/resolve-trust-entity",
+    request_body = ResolveTrustEntitiesRequestRestDTO,
+    responses(OkOrErrorResponse<ResolveTrustEntitiesResponseRestDTO>),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Resolve the trust entity of each of the supplied identifiers",
+    description = "Returns a list of identifiers within an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+)]
+pub(crate) async fn resolve_trust_entity(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ResolveTrustEntitiesRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<ResolveTrustEntitiesResponseRestDTO> {
+    let result = state
+        .core
+        .trust_entity_service
+        .resolve_identifiers(request.into())
+        .await;
+    OkOrErrorResponse::from_result(result, state, "resolving trust entities for identifiers")
 }

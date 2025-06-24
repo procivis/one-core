@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    DidId, DidValue, IdentifierId, OrganisationId, TrustAnchorId, TrustEntityId, TrustEntityKey,
+    CertificateId, DidId, DidValue, IdentifierId, OrganisationId, TrustAnchorId, TrustEntityId,
+    TrustEntityKey,
 };
 use time::OffsetDateTime;
 
@@ -259,4 +262,20 @@ pub enum UpdateTrustEntityActionFromDidRequestDTO {
     Activate,
     Withdraw,
     Remove,
+}
+
+#[derive(Debug)]
+pub struct ResolveTrustEntitiesRequestDTO {
+    pub identifiers: Vec<ResolveTrustEntityRequestDTO>,
+}
+
+#[derive(Debug)]
+pub struct ResolveTrustEntityRequestDTO {
+    pub id: IdentifierId,
+    pub certificate_id: Option<CertificateId>,
+}
+
+#[derive(Debug)]
+pub struct ResolveTrustEntitiesResponseDTO {
+    pub identifier_to_trust_entity: HashMap<IdentifierId, GetTrustEntityResponseDTO>,
 }

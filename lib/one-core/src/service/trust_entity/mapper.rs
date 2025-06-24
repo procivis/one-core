@@ -201,6 +201,34 @@ pub(super) fn update_request_from_dto(
     })
 }
 
+pub(super) fn trust_entity_from_identifier_and_anchor(
+    trust_entity: TrustEntityByEntityKey,
+    identifier: Identifier,
+    trust_anchor: TrustAnchor,
+    ca: Option<TrustEntityCertificateResponseDTO>,
+) -> GetTrustEntityResponseDTO {
+    GetTrustEntityResponseDTO {
+        id: trust_entity.id,
+        organisation_id: trust_entity.organisation_id,
+        name: trust_entity.name,
+        created_date: trust_entity.created_date,
+        last_modified: trust_entity.last_modified,
+        logo: trust_entity.logo,
+        website: trust_entity.website,
+        terms_url: trust_entity.terms_url,
+        privacy_url: trust_entity.privacy_url,
+        role: trust_entity.role,
+        state: trust_entity.state,
+        r#type: trust_entity.r#type,
+        did: convert_inner(identifier.did.clone()),
+        content: trust_entity.content,
+        ca,
+        trust_anchor: trust_anchor.into(),
+        entity_key: trust_entity.entity_key,
+        identifier: Some(identifier.into()),
+    }
+}
+
 pub(super) fn trust_entity_from_partial_and_did_and_anchor(
     trust_entity: TrustEntityByEntityKey,
     did: Did,

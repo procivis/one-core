@@ -206,6 +206,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                     .post(identifier::controller::post_identifier),
             )
             .route(
+                "/api/identifier/v1/resolve-trust-entity",
+                post(identifier::controller::resolve_trust_entity),
+            )
+            .route(
                 "/api/identifier/v1/{id}",
                 get(identifier::controller::get_identifier)
                     .delete(identifier::controller::delete_identifier),

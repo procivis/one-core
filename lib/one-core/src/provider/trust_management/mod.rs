@@ -3,6 +3,8 @@ pub mod model;
 pub mod provider;
 pub mod simple_list;
 
+use std::collections::HashMap;
+
 use serde::Serialize;
 use shared_types::TrustEntityKey;
 
@@ -23,6 +25,19 @@ pub trait TrustManagement: Send + Sync {
         anchor: &TrustAnchor,
         entity_key: &TrustEntityKey,
     ) -> Result<Option<TrustEntityByEntityKey>, TrustManagementError>;
+
+    /// Look up many trust entities at once, expecting at most one result per batch.
+    /// Returns a map of batch_id -> trust entity for all batches that yielded a result.
+    async fn lookup_entity_keys(
+        &self,
+        anchor: &TrustAnchor,
+        entity_key_batches: &[TrustEntityKeyBatch],
+    ) -> Result<HashMap<String, TrustEntityByEntityKey>, TrustManagementError>;
+}
+
+pub struct TrustEntityKeyBatch {
+    pub batch_id: String,
+    pub trust_entity_keys: Vec<TrustEntityKey>,
 }
 
 #[derive(Clone, Debug, Serialize)]

@@ -1,2 +1,3 @@
 mod create_certificate_tests;
 mod full_identifier_tests;
+mod resolve_trust_entities_tests;

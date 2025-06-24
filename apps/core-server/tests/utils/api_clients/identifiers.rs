@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::{IdentifierId, KeyId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
 
 use super::{HttpClient, Response};
 
@@ -110,5 +110,33 @@ impl IdentifiersApi {
     ) -> Response {
         self.client.get(
             &format!("/api/identifier/v1?page=0&pageSize=30&keyStorages%5B%5D={key_storage_type}&organisationId={organisation_id}")).await
+    }
+
+    pub async fn resolve_trust_entities(
+        &self,
+        identifiers: &[(IdentifierId, Option<CertificateId>)],
+    ) -> Response {
+        let identifiers: Vec<_> = identifiers
+            .iter()
+            .map(|(identifier, cert)| {
+                let mut value = json!( {
+                    "id": identifier,
+                });
+                if let Some(cert) = cert {
+                    value["certificateId"] = json!(cert);
+                }
+                value
+            })
+            .collect();
+
+        self.client
+            .post(
+                "/api/identifier/v1/resolve-trust-entity",
+                json!( {
+                    "identifiers": identifiers,
+                    }
+                ),
+            )
+            .await
     }
 }
