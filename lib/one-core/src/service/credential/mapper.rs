@@ -75,7 +75,7 @@ pub fn credential_detail_response_from_model(
         mdoc_mso_validity,
         holder_did: convert_inner(holder_did),
         holder: convert_inner(value.holder_identifier),
-        exchange: value.exchange,
+        protocol: value.protocol,
     })
 }
 
@@ -307,7 +307,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             credential: value.credential,
             role: value.role.into(),
             suspend_end_date: value.suspend_end_date,
-            exchange: value.exchange,
+            protocol: value.protocol,
         })
     }
 }
@@ -343,7 +343,7 @@ pub(super) fn from_create_request(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: request.exchange,
+        protocol: request.protocol,
         claims: Some(claims),
         issuer_identifier: Some(issuer_identifier),
         issuer_certificate,

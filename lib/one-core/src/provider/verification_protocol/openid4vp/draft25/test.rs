@@ -219,7 +219,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT25".to_string(),
+        protocol: "OPENID4VP_DRAFT25".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,

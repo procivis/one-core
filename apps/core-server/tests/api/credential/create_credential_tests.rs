@@ -58,7 +58,7 @@ async fn test_create_credential_success() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(2, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.exchange);
+    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
 }
 
 #[tokio::test]
@@ -231,7 +231,7 @@ async fn test_create_credential_success_with_nested_claims() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(3, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.exchange);
+    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
 }
 
 #[tokio::test]
@@ -781,7 +781,7 @@ async fn test_create_credential_with_big_picture_success() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(1, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.exchange);
+    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
 }
 
 #[tokio::test]

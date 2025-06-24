@@ -37,7 +37,7 @@ pub struct CredentialListItemResponseDTO {
     pub credential: Vec<u8>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub exchange: String,
+    pub protocol: String,
 }
 
 #[skip_serializing_none]
@@ -67,7 +67,7 @@ pub struct CredentialDetailResponseDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
     pub holder_did: Option<DidListItemResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
-    pub exchange: String,
+    pub protocol: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -198,7 +198,7 @@ pub struct CreateCredentialRequestDTO {
     pub issuer_did: Option<DidId>,
     pub issuer_key: Option<KeyId>,
     pub issuer_certificate: Option<CertificateId>,
-    pub exchange: String,
+    pub protocol: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,
 }

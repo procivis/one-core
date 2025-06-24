@@ -100,7 +100,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
-            exchange: value.exchange,
+            protocol: value.protocol,
         }
     }
 }
@@ -131,7 +131,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
-            exchange: value.exchange,
+            protocol: value.protocol,
         }
     }
 }
@@ -148,7 +148,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             verifier: value.verifier.map(Into::into),
             holder_did: value.holder_did.map(Into::into),
             holder: value.holder.map(Into::into),
-            exchange: value.exchange,
+            protocol: value.protocol,
             transport: value.transport,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),

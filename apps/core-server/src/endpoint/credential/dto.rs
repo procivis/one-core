@@ -54,7 +54,7 @@ pub struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub exchange: String,
+    pub protocol: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -114,7 +114,7 @@ pub struct GetCredentialResponseRestDTO {
     pub holder_did: Option<DidListItemResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
-    pub exchange: String,
+    pub protocol: String,
 }
 
 /// The role the system has in relation to the credential.
@@ -284,11 +284,11 @@ pub struct CreateCredentialRequestRestDTO {
     /// an active certificate will be used.
     #[schema(nullable = false)]
     pub issuer_certificate: Option<CertificateId>,
-    /// Exchange protocol to use for issuing the credential to a wallet. Check
-    /// the `exchange` object of the configuration for supported options and
+    /// Issuance protocol to use for issuing the credential to a wallet. Check
+    /// the `issuanceProtocol` object of the configuration for supported options and
     /// reference the configuration instance.
     #[schema(example = "OPENID4VCI_DRAFT13")]
-    pub exchange: String,
+    pub protocol: String,
     /// Attribute from the credential schema, together with the
     /// corresponding claim being made.
     #[into(with_fn = convert_inner)]

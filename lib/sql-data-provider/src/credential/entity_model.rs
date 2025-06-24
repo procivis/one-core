@@ -14,7 +14,7 @@ pub(super) struct CredentialListEntityModel {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
-    pub exchange: String,
+    pub protocol: String,
     pub credential: Option<Vec<u8>>,
     pub redirect_uri: Option<String>,
     pub role: credential::CredentialRole,

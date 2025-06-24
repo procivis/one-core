@@ -76,7 +76,7 @@ async fn test_create_proof_success_without_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.exchange, "OPENID4VP_DRAFT20");
+    assert_eq!(proof.protocol, "OPENID4VP_DRAFT20");
     assert_eq!(proof.transport, "HTTP");
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
@@ -196,7 +196,7 @@ async fn test_create_proof_success_with_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.exchange, "OPENID4VP_DRAFT20");
+    assert_eq!(proof.protocol, "OPENID4VP_DRAFT20");
 }
 
 #[tokio::test]
@@ -263,7 +263,7 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
         .bearer_auth("test")
         .json(&json!({
           "proofSchemaId": proof_schema.id,
-          "exchange": "OPENID4VP_DRAFT20",
+          "verificationProtocol": "OPENID4VP_DRAFT20",
           "verifierDid": did.id,
         }))
         .send()
@@ -342,7 +342,7 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
         .bearer_auth("test")
         .json(&json!({
           "proofSchemaId": proof_schema.id,
-          "exchange": "SCAN_TO_VERIFY",
+          "protocol": "SCAN_TO_VERIFY",
           "scanToVerify": {
             "barcode": "invalid",
             "barcodeType": "MRZ",
@@ -363,7 +363,7 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
     let db = DbClient::new(db_conn);
 
     let proof = db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.exchange, "SCAN_TO_VERIFY");
+    assert_eq!(proof.protocol, "SCAN_TO_VERIFY");
     assert_eq!(proof.state, ProofStateEnum::Error);
 }
 

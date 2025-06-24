@@ -132,9 +132,9 @@ pub(crate) async fn get_proofs(
     Choose what information to request (proof schema), an identifier, and
     which verification protocol to use.
 
-    The `exchange` and `transport` values must reference specific configuration
+    The `protocol` and `transport` values must reference specific configuration
     instances from your system configuration. This is because the system allows
-    multiple configurations of the same type. For `exchange`, reference a configured
+    multiple configurations of the same type. For `protocol`, reference a configured
     instance of `verificationProtocol`.
 
     Related guide: [Verify workflow](/verify)

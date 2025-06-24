@@ -524,7 +524,7 @@ async fn accept_proof(
             &credential.issuer,
             holder_did,
             first_claim.mdoc_mso.to_owned(),
-            &proof.exchange,
+            &proof.protocol,
         )?;
 
         proof_claims.append(

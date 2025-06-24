@@ -18,7 +18,7 @@ pub struct UnexportableCredentialModel {
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
     pub credential: Vec<u8>,
-    pub exchange: String,
+    pub protocol: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
     pub state: CredentialState,

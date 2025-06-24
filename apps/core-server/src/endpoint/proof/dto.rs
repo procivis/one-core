@@ -74,11 +74,11 @@ pub struct CreateProofRequestRestDTO {
     #[schema(example = "<uuid; identifier id>", nullable = false)]
     /// Choose an identifier to use when making the request.
     pub verifier: Option<IdentifierId>,
-    /// Specify the exchange protocol to use for credential exchange. Check
-    /// the `exchange` object of the configuration for supported options and
+    /// Specify the verification protocol to use for credential exchange. Check
+    /// the `verificationProtocol` object of the configuration for supported options and
     /// reference the configuration instance.
     #[schema(example = "OPENID4VP_DRAFT20")]
-    pub exchange: String,
+    pub protocol: String,
     /// When a shared proof is accepted, the holder will be redirected to
     /// the resource specified here, if redirects are enabled in the system
     /// configuration. The URI must use a scheme (for example `https`, `myapp`)
@@ -218,7 +218,7 @@ pub struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
 
-    pub exchange: String,
+    pub protocol: String,
     /// Exchange protocol being used.
     pub transport: String,
     pub state: ProofStateRestEnum,
@@ -344,7 +344,7 @@ pub struct ProofDetailResponseRestDTO {
     pub holder_did: Option<DidListItemResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
-    pub exchange: String,
+    pub protocol: String,
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub role: ProofRoleRestEnum,

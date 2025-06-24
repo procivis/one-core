@@ -96,7 +96,7 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_type(
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
-            &proof.exchange,
+            &proof.protocol,
         )?;
 
         let interaction = proof
@@ -191,7 +191,7 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_type(
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
-            &proof.exchange,
+            &proof.protocol,
         )?;
 
         let formats = create_open_id_for_vp_formats();
@@ -417,7 +417,7 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_type(
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
-            &proof.exchange,
+            &proof.protocol,
         )?;
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 

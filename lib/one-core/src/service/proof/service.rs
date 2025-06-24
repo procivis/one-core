@@ -22,8 +22,8 @@ use super::validator::{
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
-use crate::config::validator::exchange::{
-    validate_exchange_type, validate_identifier, validate_protocol_did_compatibility,
+use crate::config::validator::protocol::{
+    validate_identifier, validate_protocol_did_compatibility, validate_protocol_type,
 };
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
@@ -217,8 +217,8 @@ impl ProofService {
 
         throw_if_latest_proof_state_not_eq(&proof, Requested)?;
 
-        let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
-            MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
         )?;
         let interaction_data = proof
             .interaction
@@ -267,15 +267,15 @@ impl ProofService {
         &self,
         request: CreateProofRequestDTO,
     ) -> Result<ProofId, ServiceError> {
-        validate_exchange_type(&request.exchange, &self.config.verification_protocol)?;
+        validate_protocol_type(&request.protocol, &self.config.verification_protocol)?;
         validate_mdl_exchange(
-            &request.exchange,
+            &request.protocol,
             request.iso_mdl_engagement.as_deref(),
             request.redirect_uri.as_deref(),
             &self.config.verification_protocol,
         )?;
         validate_redirect_uri(
-            &request.exchange,
+            &request.protocol,
             request.redirect_uri.as_deref(),
             &self.config.verification_protocol,
         )?;
@@ -306,7 +306,7 @@ impl ProofService {
         }
 
         validate_format_and_exchange_protocol_compatibility(
-            &request.exchange,
+            &request.protocol,
             &self.config,
             &proof_schema,
             &*self.credential_formatter_provider,
@@ -332,14 +332,14 @@ impl ProofService {
         let exchange_type = self
             .config
             .verification_protocol
-            .get_fields(&request.exchange)?
+            .get_fields(&request.protocol)?
             .r#type;
 
         if exchange_type == VerificationProtocolType::ScanToVerify {
             return self
                 .handle_scan_to_verify(
                     proof_schema,
-                    request.exchange,
+                    request.protocol,
                     request
                         .scan_to_verify
                         .ok_or(ValidationError::InvalidScanToVerifyParameters)?,
@@ -349,7 +349,7 @@ impl ProofService {
             return self
                 .handle_iso_mdl_verifier(
                     proof_schema,
-                    request.exchange,
+                    request.protocol,
                     request
                         .iso_mdl_engagement
                         .ok_or(ValidationError::InvalidMdlParameters)?,
@@ -357,8 +357,8 @@ impl ProofService {
                 .await;
         }
 
-        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
-            return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
+        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.protocol) else {
+            return Err(MissingProviderError::ExchangeProtocol(request.protocol.to_owned()).into());
         };
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
 
@@ -536,8 +536,8 @@ impl ProofService {
             }
         }
 
-        let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
-            MissingProviderError::ExchangeProtocol(proof.exchange.to_owned()),
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.protocol.to_owned()),
         )?;
 
         let formats = create_open_id_for_vp_formats();
@@ -649,7 +649,7 @@ impl ProofService {
         exchange: String,
         organisation_id: OrganisationId,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
-        validate_exchange_type(&exchange, &self.config.verification_protocol)?;
+        validate_protocol_type(&exchange, &self.config.verification_protocol)?;
         let exchange_type = self
             .config
             .verification_protocol
@@ -726,7 +726,7 @@ impl ProofService {
                 created_date: now,
                 last_modified: now,
                 issuance_date: now,
-                exchange,
+                protocol: exchange,
                 redirect_uri: None,
                 state: Pending,
                 role: ProofRole::Holder,
@@ -813,7 +813,7 @@ impl ProofService {
     async fn exchange_retract_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
         // If the configuration is changed such that the exchange protocol of the proof no longer
         // exists we can simply skip the retracting.
-        if let Some(exchange_protocol) = self.protocol_provider.get_protocol(&proof.exchange) {
+        if let Some(exchange_protocol) = self.protocol_provider.get_protocol(&proof.protocol) {
             exchange_protocol.retract_proof(proof).await?;
         };
         Ok(())

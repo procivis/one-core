@@ -81,7 +81,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .return_once(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                exchange: protocol.to_string(),
+                protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
@@ -152,7 +152,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
             .return_once(move |_, _| {
                 Ok(Some(Proof {
                     id: proof_id,
-                    exchange: protocol.to_string(),
+                    protocol: protocol.to_string(),
                     state,
                     interaction: Some(Interaction {
                         id: interaction_id,
@@ -201,7 +201,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
         .return_once(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                exchange: protocol.to_string(),
+                protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
@@ -294,7 +294,7 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                exchange: protocol.to_string(),
+                protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
@@ -491,7 +491,7 @@ async fn test_submit_proof_succeeds_with_did() {
         .returning(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                exchange: protocol.to_string(),
+                protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
@@ -685,7 +685,7 @@ async fn test_submit_proof_repeating_claims() {
         .returning(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                exchange: protocol.to_string(),
+                protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
@@ -1288,7 +1288,7 @@ fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        exchange: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Pending,

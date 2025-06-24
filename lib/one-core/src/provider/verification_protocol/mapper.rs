@@ -51,7 +51,7 @@ pub(crate) fn proof_from_handle_invitation(
         created_date: now,
         last_modified: now,
         issuance_date: now,
-        exchange: protocol.to_owned(),
+        protocol: protocol.to_owned(),
         redirect_uri,
         transport: transport.to_owned(),
         state,

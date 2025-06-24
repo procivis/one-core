@@ -248,9 +248,9 @@ impl SSIHolderService {
 
         let issuer_response = self
             .issuance_protocol_provider
-            .get_protocol(&credential.exchange)
+            .get_protocol(&credential.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
-                credential.exchange.clone(),
+                credential.protocol.clone(),
             ))?
             .holder_accept_credential(
                 credential,
@@ -373,9 +373,9 @@ impl SSIHolderService {
 
             let protocol = self
                 .issuance_protocol_provider
-                .get_protocol(&credential.exchange)
+                .get_protocol(&credential.protocol)
                 .ok_or(MissingProviderError::ExchangeProtocol(
-                    credential.exchange.clone(),
+                    credential.protocol.clone(),
                 ))?;
 
             if !protocol
@@ -454,7 +454,7 @@ impl SSIHolderService {
         };
 
         for mut credential in credentials {
-            credential.exchange = exchange.to_owned();
+            credential.protocol = exchange.to_owned();
             self.credential_repository
                 .create_credential(credential)
                 .await?;

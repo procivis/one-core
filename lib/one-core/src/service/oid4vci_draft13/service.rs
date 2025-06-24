@@ -202,7 +202,7 @@ impl OID4VCIDraft13Service {
         let issuance_protocol_type = self
             .config
             .issuance_protocol
-            .get_fields(&credential.exchange)?
+            .get_fields(&credential.protocol)?
             .r#type;
 
         if issuance_protocol_type != IssuanceProtocolType::OpenId4VciDraft13 {
@@ -324,7 +324,7 @@ impl OID4VCIDraft13Service {
             );
         };
 
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.exchange)?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
 
         let (holder_did, holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
             let (holder_did_value, key_id) = OpenID4VCIProofJWTFormatter::verify_proof(
@@ -368,7 +368,7 @@ impl OID4VCIDraft13Service {
 
         let issued_credential = self
             .protocol_provider
-            .get_protocol(&credential.exchange)
+            .get_protocol(&credential.protocol)
             .ok_or(ServiceError::MappingError(
                 "issuance protocol not found".to_string(),
             ))?
@@ -619,7 +619,7 @@ impl OID4VCIDraft13Service {
             .first()
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.exchange)?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
 
         let mut interaction = credential
             .interaction
@@ -638,11 +638,11 @@ impl OID4VCIDraft13Service {
         };
 
         let pre_authorization_expires_in =
-            get_exchange_param_pre_authorization_expires_in(&self.config, &credential.exchange)?;
+            get_exchange_param_pre_authorization_expires_in(&self.config, &credential.protocol)?;
         let access_token_expires_in =
-            get_exchange_param_token_expires_in(&self.config, &credential.exchange)?;
+            get_exchange_param_token_expires_in(&self.config, &credential.protocol)?;
         let refresh_token_expires_in =
-            get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
+            get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
 
         let interaction_data = interaction_data_to_dto(&interaction)?;
 

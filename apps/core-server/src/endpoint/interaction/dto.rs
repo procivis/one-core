@@ -129,7 +129,7 @@ pub struct PresentationSubmitCredentialRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ProposeProofRequestRestDTO {
-    pub exchange: String,
+    pub protocol: String,
     pub organisation_id: OrganisationId,
 }
 

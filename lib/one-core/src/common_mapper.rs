@@ -373,7 +373,7 @@ pub(crate) fn extracted_credential_to_model(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange,
+        protocol: exchange,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(model_claims),

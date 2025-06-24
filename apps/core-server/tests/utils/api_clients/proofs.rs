@@ -28,14 +28,14 @@ impl ProofsApi {
     pub async fn create(
         &self,
         proof_schema_id: &str,
-        exchange: &str,
+        protocol: &str,
         verifier_did: &str,
         redirect_uri: Option<&str>,
         verifier_key: Option<&str>,
     ) -> Response {
         let mut body = json!({
           "proofSchemaId": proof_schema_id,
-          "exchange": exchange,
+          "protocol": protocol,
           "verifierDid": verifier_did
         });
 
@@ -53,13 +53,13 @@ impl ProofsApi {
     pub async fn create_with_identifier(
         &self,
         proof_schema_id: &str,
-        exchange: &str,
+        protocol: &str,
         verifier_identifier_id: &IdentifierId,
         redirect_uri: Option<&str>,
     ) -> Response {
         let mut body = json!({
           "proofSchemaId": proof_schema_id,
-          "exchange": exchange,
+          "protocol": protocol,
           "verifier": verifier_identifier_id
         });
 

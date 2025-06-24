@@ -238,7 +238,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::RequestedDate,
             proof::Column::CompletedDate,
         ])
-        .column_as(proof::Column::Exchange, "exchange")
+        .column_as(proof::Column::Protocol, "protocol")
         .column_as(proof::Column::Transport, "transport")
         // add related verifierIdentifier
         .join(

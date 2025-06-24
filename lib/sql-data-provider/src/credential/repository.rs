@@ -256,7 +256,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::Role,
             credential::Column::State,
             credential::Column::SuspendEndDate,
-            credential::Column::Exchange,
+            credential::Column::Protocol,
         ])
         .join(
             sea_orm::JoinType::InnerJoin,

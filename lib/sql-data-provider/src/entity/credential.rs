@@ -21,7 +21,7 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
 
-    pub exchange: String,
+    pub protocol: String,
     pub redirect_uri: Option<String>,
 
     #[sea_orm(column_type = "Blob")]

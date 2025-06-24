@@ -226,7 +226,7 @@ impl ProofService {
             claims,
             issuer_identifier,
             None,
-            proof.exchange.to_owned(),
+            proof.protocol.to_owned(),
         )?;
 
         let proof_claims = credential

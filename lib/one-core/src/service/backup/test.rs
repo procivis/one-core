@@ -49,7 +49,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             credential: vec![],
-            exchange: "foo".into(),
+            protocol: "foo".into(),
             redirect_uri: None,
             role: CredentialRole::Holder,
             state: CredentialStateEnum::Created,

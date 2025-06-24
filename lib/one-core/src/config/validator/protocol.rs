@@ -27,7 +27,7 @@ pub fn validate_identifier(
     Ok(())
 }
 
-pub fn validate_exchange_type<T: Serialize + Clone>(
+pub fn validate_protocol_type<T: Serialize + Clone>(
     exchange: &str,
     config: &ConfigBlock<T>,
 ) -> Result<(), ValidationError> {

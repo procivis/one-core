@@ -192,7 +192,7 @@ pub(crate) async fn propose_proof(
     let result = state
         .core
         .proof_service
-        .propose_proof(request.exchange, request.organisation_id)
+        .propose_proof(request.protocol, request.organisation_id)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "proposing proof")
 }

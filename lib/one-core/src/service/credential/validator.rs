@@ -8,7 +8,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
-use crate::config::validator::exchange::validate_exchange_type;
+use crate::config::validator::protocol::validate_protocol_type;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
@@ -23,7 +23,7 @@ pub(crate) fn validate_create_request(
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    validate_exchange_type(exchange, &config.issuance_protocol)?;
+    validate_protocol_type(exchange, &config.issuance_protocol)?;
     validate_format_and_exchange_protocol_compatibility(exchange, formatter_capabilities, config)?;
 
     // ONE-843: cannot create credential based on deleted schema

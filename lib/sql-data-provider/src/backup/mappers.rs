@@ -44,7 +44,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             last_modified: value.last_modified,
             deleted_at: value.deleted_at,
             credential: value.credential,
-            exchange: value.exchange,
+            protocol: value.protocol,
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
             state: value.state.into(),

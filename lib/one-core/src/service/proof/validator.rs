@@ -120,7 +120,7 @@ pub(super) fn validate_scan_to_verify_compatibility(
 ) -> Result<(), ServiceError> {
     let exchange_type = config
         .verification_protocol
-        .get_fields(&request.exchange)?
+        .get_fields(&request.protocol)?
         .r#type;
     match exchange_type {
         VerificationProtocolType::ScanToVerify => {

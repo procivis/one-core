@@ -8,7 +8,7 @@ use super::validator::{
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
 use crate::config::core_config::RevocationType;
-use crate::config::validator::exchange::validate_protocol_did_compatibility;
+use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -134,9 +134,9 @@ impl CredentialService {
 
         let exchange_capabilities = self
             .protocol_provider
-            .get_protocol(&request.exchange)
+            .get_protocol(&request.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
-                request.exchange.to_owned(),
+                request.protocol.to_owned(),
             ))?
             .get_capabilities();
 
@@ -177,14 +177,14 @@ impl CredentialService {
         };
 
         super::validator::validate_create_request(
-            &request.exchange,
+            &request.protocol,
             &request.claim_values,
             &schema,
             &formatter_capabilities,
             &self.config,
         )?;
         validate_redirect_uri(
-            &request.exchange,
+            &request.protocol,
             request.redirect_uri.as_deref(),
             &self.config,
         )?;
@@ -463,7 +463,7 @@ impl CredentialService {
             return Err(BusinessLogicError::IdentifierIsDeactivated(issuer_identifier.id).into());
         }
 
-        let credential_exchange = &credential.exchange;
+        let credential_exchange = &credential.protocol;
         let Some(credential_schema) = credential.schema.as_ref() else {
             return Err(ServiceError::MappingError(
                 "Missing credential schema".to_string(),

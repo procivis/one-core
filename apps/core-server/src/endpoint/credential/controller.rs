@@ -143,7 +143,7 @@ pub(crate) async fn get_credential_list(
     Choose the type of credential to issue (credential schema), an
     identifier, an issuance protocol, and make claims about the subject.
 
-    The `exchange` value must reference a configured instance of the
+    The `protocol` value must reference a configured instance of the
     `issuanceProtocol` object of your system configuration.
 
     Related guide: [Issuance workflow](/issue)

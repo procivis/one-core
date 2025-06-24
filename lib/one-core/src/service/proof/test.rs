@@ -175,7 +175,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state,
@@ -257,7 +257,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Pending,
         redirect_uri: None,
@@ -382,7 +382,7 @@ async fn test_get_proof_exists() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -544,7 +544,7 @@ async fn test_get_proof_exists() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.id, proof.id);
-    assert_eq!(result.exchange, proof.exchange);
+    assert_eq!(result.protocol, proof.protocol);
 }
 
 #[tokio::test]
@@ -592,7 +592,7 @@ async fn test_get_proof_with_array_holder() {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        exchange: "".into(),
+        protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Accepted,
@@ -631,7 +631,7 @@ async fn test_get_proof_with_array_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -829,7 +829,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        exchange: "".into(),
+        protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Accepted,
@@ -868,7 +868,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1071,7 +1071,7 @@ async fn test_get_proof_with_object_array_holder() {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        exchange: "".into(),
+        protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Accepted,
@@ -1110,7 +1110,7 @@ async fn test_get_proof_with_object_array_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1296,7 +1296,7 @@ async fn test_get_proof_with_array() {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        exchange: "".into(),
+        protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Accepted,
@@ -1335,7 +1335,7 @@ async fn test_get_proof_with_array() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1547,7 +1547,7 @@ async fn test_get_proof_with_array_in_object() {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        exchange: "".into(),
+        protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Accepted,
@@ -1586,7 +1586,7 @@ async fn test_get_proof_with_array_in_object() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1804,7 +1804,7 @@ async fn test_get_proof_with_object_array() {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        exchange: "".into(),
+        protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Accepted,
@@ -1843,7 +1843,7 @@ async fn test_get_proof_with_object_array() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -2041,7 +2041,7 @@ async fn test_get_proof_list_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
@@ -2140,7 +2140,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2231,7 +2231,7 @@ async fn test_create_proof_using_invalid_did_method() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2355,7 +2355,7 @@ async fn test_create_proof_using_identifier() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: None,
         verifier_identifier_id: Some(Uuid::new_v4().into()),
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2441,7 +2441,7 @@ async fn test_create_proof_using_identifier() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.exchange == exchange_type.to_string())
+        .withf(move |proof| proof.protocol == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -2480,7 +2480,7 @@ async fn test_create_proof_without_related_key() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2572,7 +2572,7 @@ async fn test_create_proof_without_related_key() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.exchange == exchange_type.to_string())
+        .withf(move |proof| proof.protocol == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -2612,7 +2612,7 @@ async fn test_create_proof_with_related_key() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
         verifier_certificate: None,
@@ -2701,7 +2701,7 @@ async fn test_create_proof_with_related_key() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.exchange == exchange_type.to_string())
+        .withf(move |proof| proof.protocol == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -2740,7 +2740,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2877,7 +2877,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2982,7 +2982,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange.to_owned(),
+        protocol: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -3042,7 +3042,7 @@ async fn test_create_proof_did_deactivated_error() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -3174,7 +3174,7 @@ async fn test_create_proof_schema_deleted() {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Some(Uuid::new_v4().into()),
             verifier_identifier_id: None,
-            exchange: "OPENID4VP_DRAFT20".to_string(),
+            protocol: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
@@ -3235,7 +3235,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Some(Uuid::new_v4().into()),
             verifier_identifier_id: None,
-            exchange: "OPENID4VP_DRAFT20".to_string(),
+            protocol: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
@@ -3260,7 +3260,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
         verifier_identifier_id: None,
-        exchange: exchange_type.to_string(),
+        protocol: exchange_type.to_string(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -3389,7 +3389,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Some(Uuid::new_v4().into()),
             verifier_identifier_id: None,
-            exchange: "OPENID4VP_DRAFT20".to_string(),
+            protocol: "OPENID4VP_DRAFT20".to_string(),
             redirect_uri: Some("invalid://domain.com".to_string()),
             verifier_key: None,
             verifier_certificate: None,
@@ -3683,7 +3683,7 @@ async fn test_delete_proof_ok_for_allowed_state(
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, state);
-    proof.exchange = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3754,7 +3754,7 @@ async fn test_delete_proof_ok_for_requested_state() {
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Requested);
-    proof.exchange = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3828,7 +3828,7 @@ async fn test_delete_proof_fails_for_invalid_state(
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, state.clone());
-    proof.exchange = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3879,7 +3879,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let device_address = "00000001-5026-444A-9E0E-F6F2450F3A77";
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    proof.exchange = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "BLE".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
@@ -3998,7 +3998,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     let proof_id = ProofId::from(Uuid::new_v4());
     let interaction_id = InteractionId::from(Uuid::new_v4());
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    proof.exchange = "ISO_MDL".to_string();
+    proof.protocol = "ISO_MDL".to_string();
     proof.schema = None;
     proof.role = ProofRole::Holder;
     proof.interaction = Some(Interaction {

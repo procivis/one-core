@@ -160,7 +160,7 @@ pub struct CreateProofRequestBindingDTO {
     #[try_into(with_fn = into_id_opt)]
     pub verifier_identifier_id: Option<String>,
     #[try_into(infallible)]
-    pub exchange: String,
+    pub protocol: String,
     #[try_into(with_fn = convert_inner, infallible)]
     pub redirect_uri: Option<String>,
     #[try_into(with_fn = into_id_opt)]
@@ -240,7 +240,7 @@ pub struct ProofListItemBindingDTO {
     pub verifier_did: Option<String>,
     #[from(with_fn = optional_identifier_id_string)]
     pub verifier: Option<String>,
-    pub exchange: String,
+    pub protocol: String,
     pub transport: String,
     pub state: ProofStateBindingEnum,
     pub role: ProofRoleBindingEnum,
@@ -262,7 +262,7 @@ pub struct ProofResponseBindingDTO {
     pub state: ProofStateBindingEnum,
     pub role: ProofRoleBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
-    pub exchange: String,
+    pub protocol: String,
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,

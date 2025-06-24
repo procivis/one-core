@@ -70,9 +70,9 @@ impl SSIHolderService {
 
         let (state, error_metadata) = if let Err(err) = self
             .verification_protocol_provider
-            .get_protocol(&proof.exchange)
+            .get_protocol(&proof.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.exchange.clone(),
+                proof.protocol.clone(),
             ))?
             .holder_reject_proof(&proof)
             .await
@@ -186,9 +186,9 @@ impl SSIHolderService {
 
         let verification_protocol = self
             .verification_protocol_provider
-            .get_protocol(&proof.exchange)
+            .get_protocol(&proof.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.exchange.clone(),
+                proof.protocol.clone(),
             ))?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
@@ -507,7 +507,7 @@ impl SSIHolderService {
             .holder_handle_invitation(url, organisation, &storage_access, transport)
             .await?;
 
-        proof.exchange = verification_exchange;
+        proof.protocol = verification_exchange;
 
         self.fill_verifier_in_proof(&mut proof).await?;
 

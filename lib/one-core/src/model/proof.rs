@@ -20,7 +20,7 @@ pub struct Proof {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
-    pub exchange: String,
+    pub protocol: String,
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub state: ProofStateEnum,

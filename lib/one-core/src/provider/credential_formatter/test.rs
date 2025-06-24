@@ -75,7 +75,7 @@ fn generate_credential_detail_response(
             deactivated: false,
         }),
         holder: None,
-        exchange: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_DRAFT13".to_string(),
     }
 }
 

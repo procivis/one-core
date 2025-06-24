@@ -38,7 +38,7 @@ async fn test_get_credential_success() {
     assert!(resp["revocationDate"].is_null());
     assert_eq!(resp["state"], "CREATED");
     assert_eq!(resp["role"], "ISSUER");
-    assert_eq!(resp["exchange"], "OPENID4VCI_DRAFT13");
+    assert_eq!(resp["protocol"], "OPENID4VCI_DRAFT13");
 }
 
 #[tokio::test]

@@ -83,7 +83,7 @@ pub(super) async fn credential_from_proved(
         last_modified: proved_credential.credential.last_modified,
         deleted_at: proved_credential.credential.deleted_at,
         credential: proved_credential.credential.credential,
-        exchange: proved_credential.credential.exchange,
+        protocol: proved_credential.credential.protocol,
         redirect_uri: proved_credential.credential.redirect_uri,
         role: proved_credential.credential.role,
         state: proved_credential.credential.state,

@@ -251,7 +251,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Created,

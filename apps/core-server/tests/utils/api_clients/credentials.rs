@@ -27,7 +27,7 @@ impl CredentialsApi {
     pub async fn create(
         &self,
         credential_schema_id: impl Into<Uuid>,
-        exchange: impl Into<String>,
+        protocol: impl Into<String>,
         issuer: impl Into<Option<IdentifierId>>,
         claims: serde_json::Value,
         issuer_did: impl Into<Option<DidId>>,
@@ -36,7 +36,7 @@ impl CredentialsApi {
     ) -> Response {
         let body = json!({
           "credentialSchemaId": credential_schema_id.into(),
-          "exchange": exchange.into(),
+          "protocol": protocol.into(),
           "issuer": issuer.into(),
           "issuerDid": issuer_did.into(),
           "issuerKey": issuer_key.into(),

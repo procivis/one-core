@@ -433,7 +433,7 @@ fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        exchange: "protocol".to_string(),
+        protocol: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Pending,

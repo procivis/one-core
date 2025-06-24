@@ -53,7 +53,7 @@ async fn test_get_list_credential_success() {
     assert_eq!(resp["totalPages"], 2);
     assert_eq!(resp["values"].as_array().unwrap().len(), 8);
     assert!(resp["values"][0]["schema"]["layoutProperties"].is_null());
-    assert_eq!(resp["values"][0]["exchange"], "OPENID4VCI_DRAFT13")
+    assert_eq!(resp["values"][0]["protocol"], "OPENID4VCI_DRAFT13")
 }
 
 #[tokio::test]

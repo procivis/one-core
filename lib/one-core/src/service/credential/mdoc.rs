@@ -195,7 +195,7 @@ fn encryption_key_from_config(
 ) -> Result<SecretSlice<u8>, ServiceError> {
     let params: OpenID4VCIParams = config
         .issuance_protocol
-        .get(&credential.exchange)
+        .get(&credential.protocol)
         .map_err(ServiceError::ConfigValidationError)?;
     Ok(params.encryption)
 }

@@ -801,7 +801,7 @@ pub(crate) fn create_credential(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "OPENID4VCI_DRAFT13".to_string(), // this will be rewritten later in SSIHolderService
+        protocol: "OPENID4VCI_DRAFT13".to_string(), // this will be rewritten later in SSIHolderService
         redirect_uri,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Pending,

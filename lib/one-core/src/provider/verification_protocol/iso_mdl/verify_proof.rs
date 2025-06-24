@@ -450,7 +450,7 @@ pub(crate) async fn accept_proof(
             claims,
             issuer_identifier,
             Some(holder_identifier.clone()),
-            proof.exchange.to_owned(),
+            proof.protocol.to_owned(),
         )?;
 
         proof_claims.append(

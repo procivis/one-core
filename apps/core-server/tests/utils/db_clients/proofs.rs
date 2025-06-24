@@ -64,7 +64,7 @@ impl ProofsDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             issuance_date: get_dummy_date(),
-            exchange: exchange.to_owned(),
+            protocol: exchange.to_owned(),
             transport: "HTTP".to_string(),
             redirect_uri: None,
             state,

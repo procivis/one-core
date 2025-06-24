@@ -188,7 +188,7 @@ impl BackupRepository for BackupProvider {
                 credential::Column::State,
                 credential::Column::SuspendEndDate,
             ])
-            .column_as(credential::Column::Exchange, "exchange")
+            .column_as(credential::Column::Protocol, "protocol")
             .column_as(credential_schema::Column::Id, "credential_schema_id")
             .column_as(
                 credential_schema::Column::DeletedAt,

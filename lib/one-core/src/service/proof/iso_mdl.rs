@@ -50,7 +50,7 @@ impl ProofService {
             created_date: now,
             last_modified: now,
             issuance_date: now,
-            exchange: exchange.to_owned(),
+            protocol: exchange.to_owned(),
             redirect_uri: None,
             state: ProofStateEnum::Pending,
             role: ProofRole::Verifier,
