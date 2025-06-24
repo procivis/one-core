@@ -207,6 +207,7 @@ impl SSIHolderService {
             self.credential_repository.clone(),
             self.did_repository.clone(),
             self.certificate_repository.clone(),
+            self.certificate_validator.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
         );
@@ -481,6 +482,7 @@ impl SSIHolderService {
             self.credential_repository.clone(),
             self.did_repository.clone(),
             self.certificate_repository.clone(),
+            self.certificate_validator.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
         );

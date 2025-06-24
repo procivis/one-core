@@ -1,3 +1,6 @@
+use asn1_rs::nom::AsBytes;
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, CertificateRevocationList,
     CertificateRevocationListParams, DistinguishedName, DnType, IsCa, KeyPair, RemoteKeyPair,
@@ -171,4 +174,8 @@ pub(crate) fn create_crl(
 ) -> CertificateRevocationList {
     let issuer_key = KeyPair::from_remote(issuer_key).unwrap();
     params.signed_by(issuer, &issuer_key).unwrap()
+}
+
+pub(crate) fn fingerprint(cert: &Certificate) -> String {
+    hex::encode(SHA256.hash(cert.der().as_bytes()).unwrap())
 }

@@ -18,6 +18,7 @@ use super::model::{
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -789,6 +790,7 @@ pub(crate) fn create_credential(
     interaction: Interaction,
     redirect_uri: Option<String>,
     issuer_identifier: Option<Identifier>,
+    issuer_certificate: Option<Certificate>,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -806,8 +808,7 @@ pub(crate) fn create_credential(
         suspend_end_date: None,
         claims: Some(claims),
         issuer_identifier,
-        // TODO ONE-5920: Fill in value if issued using certificate
-        issuer_certificate: None,
+        issuer_certificate,
         holder_identifier: None,
         schema: Some(credential_schema),
         key: None,

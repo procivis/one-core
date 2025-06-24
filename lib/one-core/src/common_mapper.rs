@@ -217,6 +217,13 @@ pub(crate) async fn get_or_create_certificate_identifier(
         .parse_pem_chain(chain.as_bytes(), false)
         .await?;
 
+    if attributes.fingerprint != fingerprint {
+        return Err(ServiceError::MappingError(format!(
+            "Fingerprint {} doesn't match provided certificate",
+            fingerprint
+        )));
+    }
+
     let identifier_id = Uuid::new_v4().into();
     let name = format!("Remote {identifier_id}");
 

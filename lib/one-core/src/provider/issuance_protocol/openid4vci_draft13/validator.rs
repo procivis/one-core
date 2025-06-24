@@ -3,6 +3,7 @@ use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::identifier::IdentifierType;
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, DetailCredential, IssuerDetails,
@@ -106,35 +107,43 @@ pub(super) fn validate_refresh_token(
     Ok(())
 }
 
+/// Check that the issued credential issuer is consistent with what was promised in the credential offer.
 pub(crate) async fn validate_issuer(
     offered_credential: &Credential,
     received_credential: &DetailCredential,
 ) -> Result<(), IssuanceProtocolError> {
-    // check credential is consistent with what was offered
+    let Some(offer_identifier) = &offered_credential.issuer_identifier else {
+        // the offer did not make any promises about the issuer, hence consistency is given anyway
+        return Ok(());
+    };
+
     match &received_credential.issuer {
         IssuerDetails::Did(response_did) => {
-            if offered_credential.issuer_certificate.is_some() {
+            if offer_identifier.r#type != IdentifierType::Did {
                 return Err(IssuanceProtocolError::DidMismatch);
             }
-            if let Some(credential_offer_did) = offered_credential
-                .issuer_identifier
-                .as_ref()
-                .and_then(|identifier| identifier.did.as_ref())
-            {
-                if *response_did != credential_offer_did.did {
-                    return Err(IssuanceProtocolError::DidMismatch);
-                }
+            let Some(credential_offer_did) = &offer_identifier.did else {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Missing did on identifier {}",
+                    offer_identifier.id
+                )));
+            };
+            if *response_did != credential_offer_did.did {
+                return Err(IssuanceProtocolError::DidMismatch);
             }
         }
         IssuerDetails::Certificate(CertificateDetails { fingerprint, .. }) => {
-            if offered_credential.issuer_identifier.is_some() {
+            if offer_identifier.r#type != IdentifierType::Certificate {
                 return Err(IssuanceProtocolError::CertificateMismatch);
-            } else if let Some(credential_offer_cert) =
-                offered_credential.issuer_certificate.as_ref()
-            {
-                if credential_offer_cert.fingerprint != *fingerprint {
-                    return Err(IssuanceProtocolError::CertificateMismatch);
-                }
+            }
+            let Some(offer_cert) = &offered_credential.issuer_certificate else {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Missing issuer_certificate on credential {} offered by issuer with certificate identifier {}",
+                    offered_credential.id, offer_identifier.id
+                )));
+            };
+            if offer_cert.fingerprint != *fingerprint {
+                return Err(IssuanceProtocolError::CertificateMismatch);
             }
         }
     }

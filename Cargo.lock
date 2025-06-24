@@ -1141,6 +1141,7 @@ dependencies = [
  "ct-codecs",
  "futures",
  "headers",
+ "hex",
  "hex-literal",
  "http-body-util",
  "indexmap 2.6.0",

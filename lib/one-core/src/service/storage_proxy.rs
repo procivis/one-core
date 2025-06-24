@@ -3,7 +3,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{DidId, DidValue, OrganisationId};
 
-use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
+use crate::common_mapper::{
+    DidRole, get_or_create_certificate_identifier, get_or_create_did_and_identifier,
+};
 use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
@@ -22,6 +24,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::service::certificate::validator::CertificateValidator;
 
 /// Interface to be implemented in order to use an exchange protocol.
 ///
@@ -72,6 +75,13 @@ pub(crate) trait StorageProxy: Send + Sync {
         did_value: &DidValue,
         did_role: DidRole,
     ) -> anyhow::Result<(Did, Identifier)>;
+
+    async fn get_or_create_certificate_and_identifier(
+        &self,
+        organisation: &Option<Organisation>,
+        chain: String,
+        fingerprint: String,
+    ) -> anyhow::Result<(Certificate, Identifier)>;
 }
 pub(crate) type StorageAccess = dyn StorageProxy;
 
@@ -81,17 +91,20 @@ pub(crate) struct StorageProxyImpl {
     pub credentials: Arc<dyn CredentialRepository>,
     pub dids: Arc<dyn DidRepository>,
     pub certificates: Arc<dyn CertificateRepository>,
+    pub certificate_validator: Arc<dyn CertificateValidator>,
     pub identifiers: Arc<dyn IdentifierRepository>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
 }
 
 impl StorageProxyImpl {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         interactions: Arc<dyn InteractionRepository>,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
         dids: Arc<dyn DidRepository>,
         certificates: Arc<dyn CertificateRepository>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         identifiers: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
     ) -> Self {
@@ -101,6 +114,7 @@ impl StorageProxyImpl {
             credentials,
             dids,
             certificates,
+            certificate_validator,
             identifiers,
             did_method_provider,
         }
@@ -241,5 +255,23 @@ impl StorageProxy for StorageProxyImpl {
         )
         .await
         .context("get or create did and identifier")
+    }
+
+    async fn get_or_create_certificate_and_identifier(
+        &self,
+        organisation: &Option<Organisation>,
+        chain: String,
+        fingerprint: String,
+    ) -> anyhow::Result<(Certificate, Identifier)> {
+        get_or_create_certificate_identifier(
+            &*self.certificates,
+            &*self.certificate_validator,
+            &*self.identifiers,
+            organisation,
+            chain,
+            fingerprint,
+        )
+        .await
+        .context("get or create certificate and identifier")
     }
 }

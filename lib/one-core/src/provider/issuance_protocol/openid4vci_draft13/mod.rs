@@ -93,7 +93,8 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::certificate::validator::CertificateValidator;
+use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::util::history::log_history_event_credential;
@@ -833,7 +834,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
         handle_credential_invitation(
             url,
             organisation,
-            &self.client,
+            &*self.client,
+            &*self.certificate_validator,
             storage_access,
             handle_invitation_operations,
         )
@@ -1445,14 +1447,18 @@ impl IssuanceProtocol for OpenID4VCI13 {
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
-    client: &Arc<dyn HttpClient>,
+    client: &dyn HttpClient,
+    certificate_validator: &dyn CertificateValidator,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
 ) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
-    let issuer = match credential_offer.issuer_did {
-        Some(issuer_did) => {
+    let (issuer, issuer_cert) = match (
+        credential_offer.issuer_did,
+        credential_offer.issuer_certificate,
+    ) {
+        (Some(issuer_did), None) => {
             let (_, identifier) = storage_access
                 .get_or_create_did_and_identifier(
                     &Some(organisation.clone()),
@@ -1461,9 +1467,36 @@ async fn handle_credential_invitation(
                 )
                 .await
                 .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-            Some(identifier)
+            (Some(identifier), None)
         }
-        None => None,
+        (None, Some(issuer_certificate)) => {
+            let ParsedCertificate {
+                attributes: CertificateX509AttributesDTO { fingerprint, .. },
+                ..
+            } = certificate_validator
+                .parse_pem_chain(issuer_certificate.as_bytes(), true)
+                .await
+                .map_err(|err| {
+                    IssuanceProtocolError::Failed(format!("Invalid issuer certificate: {err}"))
+                })?;
+
+            let (cert, identifier) = storage_access
+                .get_or_create_certificate_and_identifier(
+                    &Some(organisation.clone()),
+                    issuer_certificate,
+                    fingerprint,
+                )
+                .await
+                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+            (Some(identifier), Some(cert))
+        }
+        (Some(_), Some(_)) => {
+            return Err(IssuanceProtocolError::InvalidRequest(
+                "Invalid credential offer: issuer_did and issuer_certificate both present"
+                    .to_string(),
+            ));
+        }
+        (None, None) => (None, None),
     };
 
     let tx_code = credential_offer.grants.code.tx_code.clone();
@@ -1477,7 +1510,7 @@ async fn handle_credential_invitation(
         })?;
 
     let (oicd_discovery, issuer_metadata) =
-        get_discovery_and_issuer_metadata(client.as_ref(), &credential_issuer_endpoint).await?;
+        get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
     // We only support one credential at the time now
     let configuration_id = credential_offer
@@ -1576,6 +1609,7 @@ async fn handle_credential_invitation(
         interaction,
         None,
         issuer,
+        issuer_cert,
     );
 
     Ok(InvitationResponseDTO {
@@ -1586,7 +1620,7 @@ async fn handle_credential_invitation(
 }
 
 async fn resolve_credential_offer(
-    client: &Arc<dyn HttpClient>,
+    client: &dyn HttpClient,
     invitation_url: Url,
 ) -> Result<OpenID4VCICredentialOfferDTO, IssuanceProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();

@@ -637,6 +637,7 @@ pub struct TestingCredentialParams<'a> {
     pub deleted_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
     pub key: Option<Key>,
+    pub issuer_certificate: Option<Certificate>,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub random_claims: bool,
     pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, ClaimValue<'a>)>>,

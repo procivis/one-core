@@ -1,22 +1,26 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
+use one_core::model::certificate::CertificateState;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
+use rcgen::CertificateParams;
 use serde_json::json;
 use shared_types::DidValue;
 use time::macros::datetime;
 use uuid::Uuid;
 
+use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
 use crate::fixtures::{
     TestingCredentialParams, TestingDidParams, TestingIdentifierParams, TestingKeyParams,
     encrypted_token,
 };
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 
@@ -335,6 +339,171 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(credential_schema.id, "123", RANDOM_DOCUMENT, "JWT", 1, None)
+        .await;
+
+    context
+        .server_mock
+        .token_endpoint(credential_schema.schema_id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0173")
+}
+
+#[tokio::test]
+async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                is_remote: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
+    let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let cert = create_cert(
+        CertificateParams::default(),
+        ecdsa::key(),
+        &ca_cert,
+        eddsa::key(),
+    );
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+    let issuer_cert = context
+        .db
+        .certificates
+        .create(
+            issuer_identifier.id,
+            TestingCertificateParams {
+                name: Some("issuer certificate".to_string()),
+                chain: Some(chain),
+                fingerprint: Some(fingerprint(&cert)),
+                state: Some(CertificateState::Active),
+                organisation_id: Some(organisation.id),
+                ..Default::default()
+            },
+        )
+        .await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let schema_id = Uuid::new_v4();
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: schema_id.into(),
+                        key: "string".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                    },
+                    required: true,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": "http://127.0.0.1",
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": null,
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+    }))
+        .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &issuer_identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                issuer_certificate: Some(issuer_cert),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
