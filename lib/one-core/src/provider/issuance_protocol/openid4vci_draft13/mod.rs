@@ -57,6 +57,7 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::BuildCredentialSchemaResponse;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::mapper::{
@@ -1561,9 +1562,6 @@ async fn handle_credential_invitation(
     .await?;
     let interaction_id = interaction.id;
 
-    let claims_with_opt_values =
-        build_claim_keys(credential_config, &credential_offer.credential_subject);
-
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match storage_access
         .get_schema(&schema_data.id, &schema_data.r#type, organisation.id)
@@ -1575,30 +1573,47 @@ async fn handle_credential_invitation(
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
 
-            let claims_with_values = claims_with_opt_values.and_then(|claim_keys| {
-                extract_offered_claims(&credential_schema, credential_id, &claim_keys)
-            });
+            let claims_with_values =
+                build_claim_keys(credential_config, &credential_offer.credential_subject).and_then(
+                    |claim_keys| {
+                        extract_offered_claims(&credential_schema, credential_id, &claim_keys)
+                    },
+                );
 
-            let claims = match (claims_with_values, credential_schema.external_schema) {
-                (Ok(claims_with_values), _) => claims_with_values,
-                (Err(_), true) => vec![],
-                (Err(e), false) => Err(e)?,
+            let claims = match claims_with_values {
+                Ok(claims_with_values) => claims_with_values,
+                Err(e) => {
+                    if credential_schema.external_schema {
+                        tracing::warn!(%e, "failed to parse offered claims for external schema");
+                        // For external (predefined) schemas we accept failure.
+                        // The claim schemas could be not specified in the offer and metadata
+                        // The offered credential will have no claims, but we will receive them
+                        // when the offer is accepted.
+                        vec![]
+                    } else {
+                        // for procivis schemas this should not happen
+                        return Err(e);
+                    }
+                }
             };
 
             (claims, credential_schema)
         }
         None => {
-            let response = handle_invitation_operations
+            let claim_keys =
+                build_claim_keys(credential_config, &credential_offer.credential_subject)?;
+
+            let BuildCredentialSchemaResponse { claims, schema } = handle_invitation_operations
                 .create_new_schema(
                     schema_data,
-                    &claims_with_opt_values?,
+                    &claim_keys,
                     &credential_id,
                     credential_config,
                     &issuer_metadata,
                     organisation.clone(),
                 )
                 .await?;
-            (response.claims, response.schema)
+            (claims, schema)
         }
     };
 
