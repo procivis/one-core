@@ -27,9 +27,19 @@ impl OrganisationsApi {
         self.client.post("/api/organisation/v1", body).await
     }
 
-    pub async fn upsert(&self, id: &impl Display, name: &str) -> Response {
+    pub async fn upsert(
+        &self,
+        id: &impl Display,
+        name: &str,
+        deactivate: Option<bool>,
+    ) -> Response {
+        let mut body = json!({"name": name});
+
+        if let Some(deactivate) = deactivate {
+            body["deactivate"] = json!(deactivate);
+        }
         self.client
-            .put(&format!("/api/organisation/v1/{id}"), json!({"name": name}))
+            .put(&format!("/api/organisation/v1/{id}"), body)
             .await
     }
 

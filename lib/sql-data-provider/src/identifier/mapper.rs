@@ -49,6 +49,7 @@ impl From<entity::identifier::Model> for Identifier {
                 name: "".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                deactivated_at: None,
             }),
             did: None,
             key: None,

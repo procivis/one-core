@@ -324,6 +324,7 @@ pub async fn insert_organisation_to_database(
         name: Set(name.unwrap_or(id.to_string())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
+        deactivated_at: NotSet,
     }
     .insert(database)
     .await?;
@@ -556,6 +557,7 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        deactivated_at: None,
     }
 }
 

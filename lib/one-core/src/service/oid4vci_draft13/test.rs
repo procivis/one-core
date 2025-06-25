@@ -100,6 +100,7 @@ fn generic_organisation() -> Organisation {
         name: "organisation name".to_string(),
         created_date: now,
         last_modified: now,
+        deactivated_at: None,
     }
 }
 

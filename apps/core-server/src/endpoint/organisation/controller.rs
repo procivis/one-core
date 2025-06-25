@@ -125,6 +125,7 @@ pub(crate) async fn put_organisation(
     let request = UpsertOrganisationRequestDTO {
         id,
         name: request.name,
+        deactivate: request.deactivate,
     };
     let result = state
         .core

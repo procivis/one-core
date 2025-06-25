@@ -400,6 +400,7 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        deactivated_at: None,
     }
 }
 

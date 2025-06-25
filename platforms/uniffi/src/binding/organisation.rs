@@ -39,4 +39,5 @@ pub struct CreateOrganisationRequestBindingDTO {
 pub struct UpsertOrganisationRequestBindingDTO {
     pub id: String,
     pub name: String,
+    pub deactivate: Option<bool>,
 }

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::{
+    Organisation, OrganisationRelations, UpdateOrganisationRequest,
+};
 use one_core::repository::organisation_repository::OrganisationRepository;
 use shared_types::OrganisationId;
 use sql_data_provider::test_utilities::dummy_organisation;
@@ -31,5 +33,16 @@ impl OrganisationsDB {
             .unwrap();
 
         self.get(&organisation.id).await
+    }
+
+    pub async fn deactivate(&self, id: &OrganisationId) {
+        self.repository
+            .update_organisation(UpdateOrganisationRequest {
+                id: *id,
+                name: id.to_string(),
+                deactivate: Some(true),
+            })
+            .await
+            .unwrap();
     }
 }

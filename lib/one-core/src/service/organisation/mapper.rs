@@ -15,6 +15,7 @@ impl From<CreateOrganisationRequestDTO> for Organisation {
             id,
             created_date: now,
             last_modified: now,
+            deactivated_at: None,
         }
     }
 }

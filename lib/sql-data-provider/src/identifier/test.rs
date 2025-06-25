@@ -122,6 +122,7 @@ async fn test_create_and_delete_identifier() {
                 name: "test_organisation".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
+                deactivated_at: None,
             }))
         });
 
@@ -178,6 +179,7 @@ async fn test_get_identifier() {
                 name: "test_organisation".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
+                deactivated_at: None,
             }))
         });
 
@@ -255,6 +257,7 @@ async fn test_get_identifier_list() {
                 name: "test_organisation".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
+                deactivated_at: None,
             }))
         });
 

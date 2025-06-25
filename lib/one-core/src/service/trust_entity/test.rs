@@ -156,6 +156,7 @@ async fn test_create_trust_entity_success() {
                 name: "test".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                deactivated_at: None,
             }))
         });
 
@@ -242,6 +243,7 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
                 name: "test".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                deactivated_at: None,
             }))
         });
 
@@ -482,6 +484,7 @@ async fn test_publisher_get_remote_trust_entity_success() {
         name: "test organisation".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        deactivated_at: None,
     });
 
     test_data
@@ -500,6 +503,7 @@ async fn test_publisher_get_remote_trust_entity_success() {
         name: "test organisation".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        deactivated_at: None,
     });
 
     test_data

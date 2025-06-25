@@ -15,6 +15,7 @@ pub struct CreateOrganisationRequestDTO {
 pub struct UpsertOrganisationRequestDTO {
     pub id: OrganisationId,
     pub name: String,
+    pub deactivate: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, From)]
@@ -24,4 +25,5 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deactivated_at: Option<OffsetDateTime>,
 }

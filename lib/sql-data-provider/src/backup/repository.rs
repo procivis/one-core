@@ -233,6 +233,10 @@ impl BackupRepository for BackupProvider {
                 organisation::Column::LastModified,
                 "organisation_last_modified",
             )
+            .column_as(
+                organisation::Column::DeactivatedAt,
+                "organisation_deactivated_at",
+            )
             .expr_as_(
                 coalesce_to_empty_array(
                     credential_schema_claim_schema::Entity::find()

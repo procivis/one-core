@@ -71,6 +71,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                     name: value.organisation_name,
                     created_date: value.organisation_created_date,
                     last_modified: value.organisation_last_modified,
+                    deactivated_at: value.organisation_deactivated_at,
                 }),
                 // todo: this should be fixed in another ticket
                 layout_type: LayoutType::Card,

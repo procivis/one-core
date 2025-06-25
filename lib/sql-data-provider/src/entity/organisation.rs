@@ -16,6 +16,7 @@ pub struct Model {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deactivated_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

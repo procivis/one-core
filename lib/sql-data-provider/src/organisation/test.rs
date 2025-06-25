@@ -35,6 +35,7 @@ async fn test_create_organisation() {
         name: org_id.to_string(),
         created_date: now,
         last_modified: now,
+        deactivated_at: None,
     };
 
     let result = repository.create_organisation(organisation).await;
@@ -108,6 +109,7 @@ async fn test_update_organisation() {
     let request = UpdateOrganisationRequest {
         id: org_id,
         name: "name".to_string(),
+        deactivate: None,
     };
 
     let result = repository.update_organisation(request).await;

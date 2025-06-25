@@ -40,6 +40,7 @@ pub struct UnexportableCredentialModel {
     pub organisation_name: String,
     pub organisation_created_date: OffsetDateTime,
     pub organisation_last_modified: OffsetDateTime,
+    pub organisation_deactivated_at: Option<OffsetDateTime>,
 
     pub claims: String,
     pub credential_schema_claim_schemas: String,

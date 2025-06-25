@@ -704,6 +704,7 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
         Ok(Self {
             id: into_id(&value.id)?,
             name: value.name,
+            deactivate: value.deactivate,
         })
     }
 }

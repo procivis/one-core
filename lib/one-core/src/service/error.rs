@@ -190,6 +190,9 @@ pub enum BusinessLogicError {
     #[error("Organisation already exists")]
     OrganisationAlreadyExists,
 
+    #[error("Organisation {0} is deactivated")]
+    OrganisationIsDeactivated(OrganisationId),
+
     #[error("Incompatible DID type, reason: {reason}")]
     IncompatibleDidType { reason: String },
 
@@ -1180,6 +1183,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Identifier already exists")]
     BR_0240,
+
+    #[strum(message = "Organisation is deactivated")]
+    BR_0241,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1268,6 +1274,7 @@ impl ErrorCodeMixin for BusinessLogicError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::OrganisationAlreadyExists => ErrorCode::BR_0023,
+            Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
             Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
             Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
             Self::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
