@@ -18,11 +18,19 @@ use crate::model::trust_entity::{
 };
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::service::certificate::validator::ParsedCertificate;
 use crate::service::error::{ServiceError, ValidationError};
 
-impl From<&CertificateX509AttributesDTO> for TrustEntityKey {
-    fn from(value: &CertificateX509AttributesDTO) -> Self {
-        value.subject.to_string().into()
+impl TryFrom<&ParsedCertificate> for TrustEntityKey {
+    type Error = ServiceError;
+    fn try_from(value: &ParsedCertificate) -> Result<Self, Self::Error> {
+        value
+            .subject_key_identifier
+            .clone()
+            .ok_or(ServiceError::MappingError(
+                "missing subject key identifier".to_string(),
+            ))
+            .map(TrustEntityKey::from)
     }
 }
 

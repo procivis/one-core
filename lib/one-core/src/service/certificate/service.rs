@@ -46,6 +46,7 @@ impl CertificateService {
             attributes,
             subject_common_name,
             public_key,
+            ..
         } = self
             .validator
             .parse_pem_chain(request.chain.as_bytes(), true)

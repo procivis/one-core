@@ -321,7 +321,9 @@ JupK8gddPJ2WCw==
             TrustEntityState::Active,
             anchor,
             TrustEntityType::CertificateAuthority,
-            "CN=*.dev.procivis-one.com".to_string().into(),
+            "6c:9d:88:06:a8:da:3f:d1:8a:da:a6:de:fd:81:dc:dc:db:9f:21:6d"
+                .to_string()
+                .into(),
             Some(old_certificate.to_string()),
             Some(organisation),
         )

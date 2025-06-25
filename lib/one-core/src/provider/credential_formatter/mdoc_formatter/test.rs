@@ -582,6 +582,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     extensions: vec![],
                 },
                 subject_common_name: Some("common name".to_string()),
+                subject_key_identifier: None,
                 public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
                     public_key_handle,
                 ))),
@@ -859,6 +860,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     extensions: vec![],
                 },
                 subject_common_name: Some("common name".to_string()),
+                subject_key_identifier: None,
                 public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
                     public_key_handle,
                 ))),

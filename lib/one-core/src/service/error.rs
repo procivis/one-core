@@ -594,8 +594,8 @@ pub enum ValidationError {
     #[error("Trust entity type does not match ids or content")]
     TrustEntityTypeInvalid,
 
-    #[error("Trust entity common name does not match")]
-    TrustEntityCommonNameDoesNotMatch,
+    #[error("Trust entity subject key identifier does not match")]
+    TrustEntitySubjectKeyIdentifierDoesNotMatch,
 
     #[error("CRL check failure: `{0}`")]
     CRLCheckFailed(String),
@@ -1157,7 +1157,7 @@ pub enum ErrorCode {
     #[strum(message = "Content attribute not editable for DID trust entity type")]
     BR_0230,
 
-    #[strum(message = "Common name not matching")]
+    #[strum(message = "Subject key identifier not matching")]
     BR_0231,
 
     #[strum(message = "CRL check failure")]
@@ -1402,7 +1402,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,
             Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
             Self::TrustEntityTypeInvalid => ErrorCode::BR_0230,
-            Self::TrustEntityCommonNameDoesNotMatch => ErrorCode::BR_0231,
+            Self::TrustEntitySubjectKeyIdentifierDoesNotMatch => ErrorCode::BR_0231,
             Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
             Self::CRLOutdated => ErrorCode::BR_0234,
             Self::CRLSignatureInvalid => ErrorCode::BR_0235,

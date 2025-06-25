@@ -102,12 +102,12 @@ impl TrustEntityService {
         trust_anchor: TrustAnchor,
         organisation: Organisation,
     ) -> Result<TrustEntity, ServiceError> {
-        let ParsedCertificate { attributes, .. } = self
+        let cert = self
             .certificate_validator
             .parse_pem_chain(content.as_bytes(), true)
             .await?;
 
-        let entity_key = (&attributes).into();
+        let entity_key = TrustEntityKey::try_from(&cert)?;
         if self
             .trust_entity_repository
             .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
@@ -352,6 +352,7 @@ impl TrustEntityService {
                         attributes,
                         public_key,
                         subject_common_name,
+                        ..
                     },
                 ) = self
                     .certificate_validator
@@ -431,12 +432,14 @@ impl TrustEntityService {
             match entity.r#type {
                 TrustEntityType::Did => return Err(ValidationError::TrustEntityTypeInvalid.into()),
                 TrustEntityType::CertificateAuthority => {
-                    let ParsedCertificate { attributes, .. } = self
+                    let cert = self
                         .certificate_validator
                         .parse_pem_chain(content.as_bytes(), true)
                         .await?;
-                    if entity.entity_key != (&attributes).into() {
-                        return Err(ValidationError::TrustEntityCommonNameDoesNotMatch.into());
+                    if entity.entity_key != TrustEntityKey::try_from(&cert)? {
+                        return Err(
+                            ValidationError::TrustEntitySubjectKeyIdentifierDoesNotMatch.into()
+                        );
                     }
                 }
             }

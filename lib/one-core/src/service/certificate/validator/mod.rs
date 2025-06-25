@@ -15,6 +15,7 @@ mod x509_extension;
 pub struct ParsedCertificate {
     pub attributes: CertificateX509AttributesDTO,
     pub subject_common_name: Option<String>,
+    pub subject_key_identifier: Option<String>,
     pub public_key: KeyHandle,
 }
 

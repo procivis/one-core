@@ -1,6 +1,9 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
+use x509_parser::extensions::ParsedExtension;
+use x509_parser::oid_registry::{
+    OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519, OID_X509_EXT_SUBJECT_KEY_IDENTIFIER,
+};
 use x509_parser::pem::Pem;
 use x509_parser::prelude::{ASN1Time, X509Certificate};
 
@@ -52,6 +55,7 @@ impl CertificateValidator for CertificateValidatorImpl {
                 let res = ParsedCertificate {
                     attributes: parse_x509_attributes(current, &current_pem.contents)?,
                     subject_common_name,
+                    subject_key_identifier: subject_key_identifier(current)?,
                     public_key: self.extract_public_key(current)?,
                 };
                 if validate {
@@ -121,6 +125,7 @@ impl CertificateValidator for CertificateValidatorImpl {
                 let res = ParsedCertificate {
                     attributes: parse_x509_attributes(current, &current_pem.contents)?,
                     subject_common_name,
+                    subject_key_identifier: subject_key_identifier(current)?,
                     public_key: self.extract_public_key(current)?,
                 };
                 result = Some(res);
@@ -225,6 +230,26 @@ pub fn parse_chain_to_x509_attributes(
         .parse_x509()
         .map_err(|e| ValidationError::CertificateParsingFailed(e.to_string()))?;
     parse_x509_attributes(&x509_cert, &pem.contents)
+}
+
+fn subject_key_identifier(cert: &X509Certificate) -> Result<Option<String>, ValidationError> {
+    Ok(cert
+        .get_extension_unique(&OID_X509_EXT_SUBJECT_KEY_IDENTIFIER)
+        .map_err(|err| {
+            ValidationError::CertificateParsingFailed(format!(
+                "failed to get subject key identifier: {err}"
+            ))
+        })?
+        .map(|ext| ext.parsed_extension())
+        .map(|ext| match ext {
+            ParsedExtension::SubjectKeyIdentifier(key_identifier) => Ok(key_identifier),
+            _ => Err(ValidationError::CertificateParsingFailed(
+                "Encountered unexpected extension while looking for subject key identifier"
+                    .to_string(),
+            )),
+        })
+        .transpose()?
+        .map(|key_id| format!("{key_id:x}")))
 }
 
 fn parse_x509_attributes(
