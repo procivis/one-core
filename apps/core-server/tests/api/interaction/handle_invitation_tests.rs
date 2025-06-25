@@ -2287,3 +2287,35 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
 
     assert!(resp["claims"].as_array().unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn test_handle_invitation_fails_deactivated_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+
+    // WHEN
+    let credential_offer = json!({
+        "credential_issuer": "https://betelgeuse.example.com/education_credential",
+        "credential_configuration_ids": [
+            "https://betelgeuse.example.com/education_credential"
+        ],
+    });
+
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}

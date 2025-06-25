@@ -143,6 +143,74 @@ async fn test_import_proof_schema_ok() {
 }
 
 #[tokio::test]
+async fn test_import_proof_schema_fails_deactivated_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-credential-schema",
+            &organisation,
+            "NONE",
+            Default::default(),
+        )
+        .await;
+
+    let mut claim_schemas = credential_schema.claim_schemas.clone().unwrap();
+    let requested_claim_schema = claim_schemas.swap_remove(0);
+
+    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+    let proof_schema = json!({
+        "id": Uuid::new_v4(),
+        "createdDate": now,
+        "lastModified": now,
+        "name": "test-proof-schema",
+        "importedSourceUrl": "TEST",
+        "organisationId": organisation.id,
+        "expireDuration": 1000,
+        "proofInputSchemas": [
+            {
+                "claimSchemas": [{
+                    "id": requested_claim_schema.schema.id,
+                    "requested": true,
+                    "required": requested_claim_schema.required,
+                    "key": requested_claim_schema.schema.key,
+                    "dataType": requested_claim_schema.schema.data_type,
+                    "claims": [],
+                    "array": false,
+                }],
+                "credentialSchema": {
+                    "id": credential_schema.id,
+                    "createdDate": now,
+                    "lastModified": now,
+                    "importedSourceUrl": "invalid_should_not_be_needed",
+                    "name": credential_schema.name,
+                    "format": credential_schema.format,
+                    "revocationMethod": credential_schema.format,
+                    "walletStorageType": credential_schema.wallet_storage_type,
+                    "schemaId": credential_schema.schema_id,
+                    "schemaType": credential_schema.schema_type,
+                }
+            }
+        ]
+    });
+
+    // WHEN
+    let resp = context
+        .api
+        .proof_schemas
+        .import(proof_schema, organisation.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}
+
+#[tokio::test]
 async fn test_import_proof_schema_for_existing_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

@@ -3,7 +3,7 @@ use url::Url;
 
 use super::SSIHolderService;
 use super::dto::HandleInvitationResultDTO;
-use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -17,6 +17,10 @@ impl SSIHolderService {
             .get_organisation(&organisation_id, &Default::default())
             .await?
             .ok_or(EntityNotFoundError::Organisation(organisation_id))?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(BusinessLogicError::OrganisationIsDeactivated(organisation_id).into());
+        }
 
         if let Some((issuance_exchange, issuance_protocol)) =
             self.issuance_protocol_provider.detect_protocol(&url)

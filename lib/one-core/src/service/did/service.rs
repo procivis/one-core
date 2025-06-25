@@ -204,6 +204,12 @@ impl DidService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
+
         let keys = request.keys.to_owned();
 
         let key_ids = HashSet::<KeyId>::from_iter(

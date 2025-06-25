@@ -394,3 +394,34 @@ async fn test_fail_create_remote_trust_entity_logo_too_big() {
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0193")
 }
+
+#[tokio::test]
+async fn test_fail_create_trust_entity_organisation_is_deactivated() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    context.db.organisations.deactivate(&organisation.id).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create_did(
+            "name",
+            TrustEntityRoleRest::Both,
+            &anchor,
+            None,
+            &did,
+            organisation.id,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}

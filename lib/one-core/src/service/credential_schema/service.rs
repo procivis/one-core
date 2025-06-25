@@ -72,6 +72,12 @@ impl CredentialSchemaService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
+
         let format_type = &self.config.format.get_fields(&request.format)?.r#type;
         let id = CredentialSchemaId::from(Uuid::new_v4());
         let schema_id = formatter.credential_schema_id(id, &request, core_base_url)?;
@@ -199,6 +205,12 @@ impl CredentialSchemaService {
             .ok_or(ServiceError::BusinessLogic(
                 BusinessLogicError::MissingOrganisation(request.organisation_id),
             ))?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
 
         let credential_schema = import_credential_schema(
             request.schema,

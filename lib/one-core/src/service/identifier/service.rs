@@ -15,7 +15,9 @@ use crate::model::identifier::{
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
-use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
 use crate::service::identifier::mapper::{map_already_exists_error, to_create_did_request};
 use crate::service::identifier::validator::validate_identifier_type;
 
@@ -109,6 +111,12 @@ impl IdentifierService {
             .get_organisation(&request.organisation_id, &Default::default())
             .await?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
 
         let now = OffsetDateTime::now_utc();
         match (request.did, request.key_id, request.certificates) {

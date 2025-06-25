@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use serde_json::json;
+use shared_types::OrganisationId;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -103,5 +104,23 @@ impl CredentialSchemasApi {
     pub async fn share(&self, schema_id: &impl Display) -> Response {
         let url = format!("/api/credential-schema/v1/{schema_id}/share");
         self.client.post(&url, None).await
+    }
+
+    pub async fn import(
+        &self,
+        organisation_id: OrganisationId,
+        credential_schema: impl Into<serde_json::Value>,
+    ) -> Response {
+        let schema = credential_schema.into();
+
+        self.client
+            .post(
+                "/api/credential-schema/v1/import",
+                Some(json!({
+                    "schema": schema,
+                    "organisationId": organisation_id
+                })),
+            )
+            .await
     }
 }

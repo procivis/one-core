@@ -123,6 +123,12 @@ impl ProofSchemaService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
+
         let credential_schema_ids: Vec<CredentialSchemaId> = request
             .proof_input_schemas
             .iter()
@@ -270,6 +276,12 @@ impl ProofSchemaService {
             .ok_or::<ServiceError>(
                 BusinessLogicError::MissingOrganisation(request.organisation_id).into(),
             )?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
 
         let schema = request.schema;
         validate_imported_proof_schema(&schema, &self.config)?;

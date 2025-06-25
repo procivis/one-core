@@ -68,6 +68,12 @@ impl KeyService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
+
         let provider = self
             .key_provider
             .get_key_storage(&request.storage_type)

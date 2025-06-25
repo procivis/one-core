@@ -436,3 +436,27 @@ async fn test_fail_create_credential_schema_invalid_logo() {
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0193");
 }
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_deactivated_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(CreateSchemaParams {
+            name: "some credential schema".into(),
+            organisation_id: organisation.id.into(),
+            format: "JWT".into(),
+            claim_name: "firstName".into(),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}

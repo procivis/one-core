@@ -128,3 +128,21 @@ async fn test_fail_to_create_key_with_same_name_in_same_organisation() {
     // THEN
     assert_eq!(resp.status(), 400);
 }
+
+#[tokio::test]
+async fn test_fail_to_create_key_deactivated_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .create(organisation.id, "EDDSA", "TEST")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}

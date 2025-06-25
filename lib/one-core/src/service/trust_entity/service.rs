@@ -57,6 +57,12 @@ impl TrustEntityService {
             .await?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
+        if organisation.deactivated_at.is_some() {
+            return Err(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
+            );
+        }
+
         let (entity_type, entity_params) = request.try_into()?;
 
         let trust_entity = match entity_type {

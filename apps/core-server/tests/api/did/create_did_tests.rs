@@ -465,3 +465,32 @@ async fn test_create_did_webvh_success() {
     assert_eq!(log.lines().count(), 1);
     assert!(serde_json::Value::from_str(&log).unwrap().is_array());
 }
+
+#[tokio::test]
+async fn test_fail_to_create_did_deactivated_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .dids
+        .create(
+            organisation.id,
+            DidKeys::single(key.id),
+            "JWK",
+            "test",
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}

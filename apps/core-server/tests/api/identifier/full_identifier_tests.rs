@@ -143,6 +143,30 @@ qzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
 }
 
 #[tokio::test]
+async fn test_create_certificate_identifier_fails_deactivated_organisation() {
+    // Given
+    let (context, organisation, _, _, _) = TestContext::new_with_did(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, TestingKeyParams::default())
+        .await;
+
+    // When
+    let result = context
+        .api
+        .identifiers
+        .create_key_identifier("test-identifier", key.id, organisation.id)
+        .await;
+
+    // Then
+    assert_eq!(result.status(), 400);
+    let resp = result.json_value().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0241");
+}
+
+#[tokio::test]
 async fn test_certificate_identifier_invalid_signature() {
     let (context, organisation, ..) = TestContext::new_with_did(None).await;
 

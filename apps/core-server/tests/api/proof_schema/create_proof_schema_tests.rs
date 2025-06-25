@@ -49,6 +49,42 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_schema_fails_deactivated_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context.db.organisations.deactivate(&organisation.id).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claims = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|v| (v.schema.id, v.required));
+
+    // WHEN
+    let resp = context
+        .api
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            organisation.id,
+            claims,
+            credential_schema.id,
+            Some(10),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0241", resp.error_code().await);
+}
+
+#[tokio::test]
 async fn test_create_nested_proof_schema_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
