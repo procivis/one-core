@@ -386,6 +386,136 @@ dCxE50eAQeDCDQ==
 }
 
 #[tokio::test]
+async fn test_patch_trust_entity_remove_logo_with_empty_string() {
+    // GIVEN
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    let entity = context
+        .db
+        .trust_entities
+        .create(
+            "trust-entity",
+            TrustEntityRole::Both,
+            TrustEntityState::Active,
+            anchor,
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
+        )
+        .await;
+
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&entity.id.into())
+        .await;
+    let history_item_count = history_list.total_items;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .update(
+            entity.id,
+            PatchTrustEntityRequestRestDTO {
+                logo: Some(Some("".to_owned())),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    assert_eq!(
+        context.db.trust_entities.get(entity.id).await.unwrap().logo,
+        None
+    );
+
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&entity.id.into())
+        .await;
+    assert_eq!(history_item_count + 1, history_list.total_items);
+
+    let last = history_list.values.first().unwrap();
+    assert_eq!(HistoryAction::Updated, last.action);
+    assert_eq!(HistoryEntityType::TrustEntity, last.entity_type);
+}
+
+#[tokio::test]
+async fn test_patch_trust_entity_remove_logo_with_none() {
+    // GIVEN
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    let entity = context
+        .db
+        .trust_entities
+        .create(
+            "trust-entity",
+            TrustEntityRole::Both,
+            TrustEntityState::Active,
+            anchor,
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
+        )
+        .await;
+
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&entity.id.into())
+        .await;
+    let history_item_count = history_list.total_items;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .update(
+            entity.id,
+            PatchTrustEntityRequestRestDTO {
+                logo: Some(None),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    assert_eq!(
+        context.db.trust_entities.get(entity.id).await.unwrap().logo,
+        None
+    );
+
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&entity.id.into())
+        .await;
+    assert_eq!(history_item_count + 1, history_list.total_items);
+
+    let last = history_list.values.first().unwrap();
+    assert_eq!(HistoryAction::Updated, last.action);
+    assert_eq!(HistoryEntityType::TrustEntity, last.entity_type);
+}
+
+#[tokio::test]
 async fn test_fail_to_patch_trust_entity_with_did_type() {
     // GIVEN
     let (context, _, did, ..) = TestContext::new_with_did(None).await;

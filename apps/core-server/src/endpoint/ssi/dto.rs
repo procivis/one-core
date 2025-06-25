@@ -394,45 +394,52 @@ pub(crate) struct SdJwtVcClaimDisplayRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryInto, Default)]
-#[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ServiceError)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
     /// Update the entity's status on the trust anchor.
-    #[try_into(with_fn = convert_inner, infallible)]
     #[schema(nullable = false)]
     pub action: Option<PatchTrustEntityActionRestDTO>,
     /// Specify the entity name.
     #[serde(default)]
     #[schema(nullable = false)]
-    #[try_into(with_fn = convert_inner, infallible)]
     pub name: Option<String>,
     /// base64 encoded image. Maximum size = 50kb.
     #[serde(default, with = "::serde_with::rust::double_option")]
-    #[try_into(with_fn = try_convert_inner_of_inner)]
     pub logo: Option<Option<String>>,
     /// Specify the entity's domain name.
     #[serde(default, with = "::serde_with::rust::double_option")]
-    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub website: Option<Option<String>>,
     /// Specify a Terms of Service URL.
     #[serde(default, with = "::serde_with::rust::double_option")]
-    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub terms_url: Option<Option<String>>,
     /// Specify the Privacy Policy URL.
     #[serde(default, with = "::serde_with::rust::double_option")]
-    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub privacy_url: Option<Option<String>>,
     /// Whether the entity is a trusted issuer, verifier, or both.
-    #[try_into(with_fn = convert_inner, infallible)]
     #[serde(default)]
     #[schema(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
-
     /// When adding a new certificate, put the PEM content here.
     #[serde(default)]
-    #[try_into(with_fn = convert_inner, infallible)]
     pub content: Option<String>,
+}
+
+impl TryFrom<PatchTrustEntityRequestRestDTO> for UpdateTrustEntityFromDidRequestDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: PatchTrustEntityRequestRestDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            action: convert_inner(value.action),
+            name: convert_inner(value.name),
+            logo: try_convert_inner_of_inner(value.logo.map(|i| i.filter(|s| !s.is_empty())))?,
+            website: convert_inner_of_inner(value.website),
+            terms_url: convert_inner_of_inner(value.terms_url),
+            privacy_url: convert_inner_of_inner(value.privacy_url),
+            role: convert_inner(value.role),
+            content: convert_inner(value.content),
+        })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
