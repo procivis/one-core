@@ -91,6 +91,9 @@ mod did_config;
 mod error;
 mod utils;
 
+#[cfg(test)]
+mod test;
+
 uniffi::setup_scaffolding!();
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -1022,7 +1025,7 @@ fn build_config(config: &str) -> Result<AppConfig<MobileConfig>, SDKError> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::build_config;
 
     #[test]

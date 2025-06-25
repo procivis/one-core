@@ -125,7 +125,7 @@ impl OneCoreBinding {
     }
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Enum)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
 #[from(HistoryAction)]
 #[into(HistoryAction)]
 pub enum HistoryActionBindingEnum {
@@ -155,7 +155,7 @@ pub enum HistoryActionBindingEnum {
     Expired,
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Enum)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
 #[from(HistoryEntityType)]
 #[into(HistoryEntityType)]
 pub enum HistoryEntityTypeBindingEnum {
