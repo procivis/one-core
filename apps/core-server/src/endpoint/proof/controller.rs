@@ -43,7 +43,7 @@ pub(crate) async fn get_proof_presentation_definition(
         .proof_service
         .get_proof_presentation_definition(&id)
         .await;
-    OkOrErrorResponse::from_result(result, state, "getting presentation definition")
+    OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition")
 }
 
 #[utoipa::path(
@@ -65,7 +65,7 @@ pub(crate) async fn get_proof_details(
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<ProofDetailResponseRestDTO> {
     let result = state.core.proof_service.get_proof(&id).await;
-    OkOrErrorResponse::from_result(result, state, "getting proof")
+    OkOrErrorResponse::from_result_fallible(result, state, "getting proof")
 }
 
 #[utoipa::path(

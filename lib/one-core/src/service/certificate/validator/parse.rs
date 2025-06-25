@@ -210,6 +210,23 @@ impl CertificateValidatorImpl {
     }
 }
 
+pub fn parse_chain_to_x509_attributes(
+    pem_chain: &[u8],
+) -> Result<CertificateX509AttributesDTO, ValidationError> {
+    let Some(pem) = Pem::iter_from_buffer(pem_chain).next() else {
+        return Err(ValidationError::CertificateParsingFailed(
+            "No certificates specified".to_string(),
+        ));
+    };
+
+    let pem = pem.map_err(|e| ValidationError::CertificateParsingFailed(e.to_string()))?;
+
+    let x509_cert = pem
+        .parse_x509()
+        .map_err(|e| ValidationError::CertificateParsingFailed(e.to_string()))?;
+    parse_x509_attributes(&x509_cert, &pem.contents)
+}
+
 fn parse_x509_attributes(
     certificate: &X509Certificate,
     der: &[u8],

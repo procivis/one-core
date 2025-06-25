@@ -5,7 +5,7 @@ use one_core::service::credential::dto::{
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
 };
-use one_dto_mapper::{From, Into, convert_inner};
+use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
     CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO, CredentialSchemaType,
@@ -24,6 +25,7 @@ use crate::endpoint::credential_schema::dto::{
 };
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
+use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
 
 #[skip_serializing_none]
@@ -73,47 +75,79 @@ pub struct MdocMsoValidityResponseRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, ToSchema, From)]
-#[from(CredentialDetailResponseDTO)]
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
+#[try_from(T = CredentialDetailResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub struct GetCredentialResponseRestDTO {
+    #[try_from(infallible)]
     pub id: Uuid,
+
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
+
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
+
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
+
+    #[try_from(infallible)]
     pub state: CredentialStateRestEnum,
+
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
+
+    #[try_from(infallible)]
     pub schema: CredentialDetailSchemaResponseRestDTO,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = try_convert_inner)]
+    pub issuer_certificate: Option<CertificateResponseRestDTO>,
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub redirect_uri: Option<String>,
+
     /// The role the system has in relation to the credential.
+    #[try_from(infallible)]
     pub role: CredentialRoleRestEnum,
+
     /// When the current LVVC was issued.
+    #[try_from(with_fn = convert_inner, infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
+
+    #[try_from(with_fn = convert_inner, infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub holder_did: Option<DidListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
+
+    #[try_from(infallible)]
     pub protocol: String,
 }
 

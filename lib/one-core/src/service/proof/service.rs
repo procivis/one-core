@@ -116,6 +116,7 @@ impl ProofService {
                                 did: Some(Default::default()),
                                 ..Default::default()
                             }),
+                            issuer_certificate: Some(CertificateRelations::default()),
                             holder_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -128,6 +129,7 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
+                    verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         organisation: Some(Default::default()),
@@ -205,6 +207,7 @@ impl ProofService {
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
+                    verifier_certificate: Some(CertificateRelations::default()),
                     ..Default::default()
                 },
             )

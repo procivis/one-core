@@ -16,6 +16,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
+use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
     CredentialSchemaListItemResponseDTO,
@@ -57,6 +58,8 @@ pub struct CredentialDetailResponseDTO {
     pub schema: DetailCredentialSchemaResponseDTO,
     pub issuer_did: Option<DidListItemResponseDTO>,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
+    #[serde(skip)]
+    pub issuer_certificate: Option<CertificateResponseDTO>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,

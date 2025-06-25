@@ -52,6 +52,12 @@ pub fn credential_detail_response_from_model(
         .as_ref()
         .and_then(|identifier| identifier.did.to_owned());
 
+    let issuer_certificate = value
+        .issuer_certificate
+        .clone()
+        .map(TryInto::try_into)
+        .transpose()?;
+
     let holder_did = value
         .holder_identifier
         .as_ref()
@@ -76,6 +82,7 @@ pub fn credential_detail_response_from_model(
         holder_did: convert_inner(holder_did),
         holder: convert_inner(value.holder_identifier),
         protocol: value.protocol,
+        issuer_certificate,
     })
 }
 

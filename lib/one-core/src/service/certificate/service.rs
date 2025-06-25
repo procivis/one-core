@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use super::CertificateService;
 use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
-use super::mapper::create_response_dto;
 use super::validator::ParsedCertificate;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::key::Key;
@@ -28,12 +27,7 @@ impl CertificateService {
             .await?
             .ok_or(EntityNotFoundError::Certificate(id))?;
 
-        let ParsedCertificate { attributes, .. } = self
-            .validator
-            .parse_pem_chain(certificate.chain.as_bytes(), false)
-            .await?;
-
-        Ok(create_response_dto(certificate, attributes))
+        Ok(certificate.try_into()?)
     }
 
     pub(crate) async fn validate_and_prepare_certificate(

@@ -10,6 +10,7 @@ use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
+use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
@@ -60,6 +61,7 @@ pub struct ProofDetailResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
     pub verifier: Option<GetIdentifierListItemResponseDTO>,
+    pub verifier_certificate: Option<CertificateResponseDTO>,
     pub holder_did: Option<DidListItemResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,

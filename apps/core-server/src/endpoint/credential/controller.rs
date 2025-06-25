@@ -73,7 +73,7 @@ pub(crate) async fn get_credential(
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state.core.credential_service.get_credential(&id).await;
-    OkOrErrorResponse::from_result(result, state, "getting credential")
+    OkOrErrorResponse::from_result_fallible(result, state, "getting credential")
 }
 
 #[utoipa::path(

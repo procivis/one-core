@@ -305,6 +305,7 @@ impl CredentialService {
                         did: Some(Default::default()),
                         ..Default::default()
                     }),
+                    issuer_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         ..Default::default()

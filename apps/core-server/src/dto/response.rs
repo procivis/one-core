@@ -145,6 +145,24 @@ impl<T> OkOrErrorResponse<T> {
             )),
         }
     }
+
+    #[track_caller]
+    pub(crate) fn from_result_fallible(
+        result: Result<impl TryInto<T, Error = impl Into<ServiceError>>, ServiceError>,
+        state: State<AppState>,
+        action_description: &str,
+    ) -> Self {
+        let result = result.and_then(|r| r.try_into().map_err(Into::into));
+
+        match result {
+            Ok(value) => Self::ok(value),
+            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+                error,
+                state,
+                action_description,
+            )),
+        }
+    }
 }
 
 impl<T: Serialize> IntoResponse for OkOrErrorResponse<T> {

@@ -58,6 +58,7 @@ fn generate_credential_detail_response(
             deactivated: false,
         }),
         issuer: None,
+        issuer_certificate: None,
         claims,
         redirect_uri: None,
         role: CredentialRole::Holder,

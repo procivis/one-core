@@ -1,6 +1,7 @@
 use std::fmt;
 
 use one_core::model::common::GetListResponse;
+use one_core::service::error::ServiceError;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::Serialize;
 use thiserror::Error;
@@ -38,4 +39,10 @@ where
         total_pages: value.total_pages,
         total_items: value.total_items,
     })
+}
+
+impl From<MapperError> for ServiceError {
+    fn from(value: MapperError) -> Self {
+        ServiceError::MappingError(value.to_string())
+    }
 }

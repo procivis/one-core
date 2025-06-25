@@ -1,21 +1,25 @@
 use one_dto_mapper::convert_inner;
 
-use super::dto::{CertificateResponseDTO, CertificateX509AttributesDTO};
+use super::dto::CertificateResponseDTO;
 use crate::model::certificate::Certificate;
+use crate::service::certificate::validator::parse::parse_chain_to_x509_attributes;
+use crate::service::error::ValidationError;
 
-pub(super) fn create_response_dto(
-    certificate: Certificate,
-    x509_attributes: CertificateX509AttributesDTO,
-) -> CertificateResponseDTO {
-    CertificateResponseDTO {
-        id: certificate.id,
-        created_date: certificate.created_date,
-        last_modified: certificate.last_modified,
-        name: certificate.name,
-        state: certificate.state,
-        chain: certificate.chain,
-        key: convert_inner(certificate.key),
-        x509_attributes,
-        organisation_id: certificate.organisation_id,
+impl TryFrom<Certificate> for CertificateResponseDTO {
+    type Error = ValidationError;
+
+    fn try_from(certificate: Certificate) -> Result<Self, Self::Error> {
+        let x509_attributes = parse_chain_to_x509_attributes(certificate.chain.as_bytes())?;
+        Ok(Self {
+            id: certificate.id,
+            created_date: certificate.created_date,
+            last_modified: certificate.last_modified,
+            state: certificate.state,
+            name: certificate.name,
+            chain: certificate.chain,
+            key: convert_inner(certificate.key),
+            x509_attributes,
+            organisation_id: certificate.organisation_id,
+        })
     }
 }

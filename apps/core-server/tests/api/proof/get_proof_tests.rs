@@ -1163,3 +1163,108 @@ async fn test_get_proof_with_deleted_claims() {
     let resp = resp.json_value().await;
     assert!(!resp["claimsRemovedAt"].is_null())
 }
+
+#[tokio::test]
+async fn test_get_proof_with_verifier_and_issuer_certificates() {
+    // GIVEN
+    let (context, organisation, identifier, certificate, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_claims("test", &organisation, "NONE", Default::default())
+        .await;
+
+    // Select a root claim.
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VP_DRAFT20",
+            None,
+            key,
+        )
+        .await;
+
+    context
+        .db
+        .proofs
+        .set_proof_claims(&proof.id, credential.claims.unwrap())
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.get(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&proof.id);
+    resp["organisationId"].assert_eq(&organisation.id);
+    resp["transport"].assert_eq(&"HTTP".to_string());
+    resp["schema"]["id"].assert_eq(&proof_schema.id);
+    resp["role"].assert_eq(&proof.role.to_string().to_ascii_uppercase());
+
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        resp["proofInputs"][0]["claims"].as_array().unwrap().len(),
+        1
+    );
+    let claim_item = &resp["proofInputs"][0]["claims"][0];
+    claim_item["schema"]["id"].assert_eq(&claim_schema.id);
+    assert_eq!(claim_item["value"].as_array().length(), Some(2));
+
+    assert_eq!(
+        resp["verifierCertificate"]["id"],
+        certificate.id.to_string()
+    );
+    assert_eq!(resp["verifierCertificate"]["name"], certificate.name);
+    assert_eq!(
+        resp["proofInputs"][0]["credential"]["issuerCertificate"]["id"],
+        certificate.id.to_string()
+    );
+    assert_eq!(
+        resp["proofInputs"][0]["credential"]["issuerCertificate"]["name"],
+        certificate.name
+    );
+}

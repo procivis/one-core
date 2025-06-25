@@ -12,7 +12,7 @@ use one_core::service::proof::dto::{
     ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
     ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
-use one_dto_mapper::{From, Into, convert_inner};
+use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
@@ -28,6 +28,7 @@ use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::{
     GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
 };
+use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
 
 /// The state representation of the proof request in the system.
@@ -176,6 +177,8 @@ pub type GetProofQuery =
 
 use serde_with::skip_serializing_none;
 
+use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
+
 #[skip_serializing_none]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]
@@ -227,13 +230,13 @@ pub struct ProofListItemResponseRestDTO {
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
 
-#[derive(Debug, Serialize, ToSchema, From)]
-#[from(PresentationDefinitionResponseDTO)]
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
+#[try_from(T = PresentationDefinitionResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionResponseRestDTO {
-    #[from(with_fn = convert_inner)]
+    #[try_from(with_fn = convert_inner, infallible)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+    #[try_from(with_fn = try_convert_inner)]
     pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
@@ -306,55 +309,83 @@ pub struct PresentationDefinitionRuleRestDTO {
 
 // detail endpoint
 #[skip_serializing_none]
-#[derive(Debug, Serialize, ToSchema, From)]
-#[from(ProofDetailResponseDTO)]
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
+#[try_from(T = ProofDetailResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofDetailResponseRestDTO {
+    #[try_from(infallible)]
     pub id: ProofId,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    #[from(with_fn = convert_inner)]
+    #[try_from(with_fn = convert_inner, infallible)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = try_convert_inner)]
+    pub verifier_certificate: Option<CertificateResponseRestDTO>,
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub holder_did: Option<DidListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
+
+    #[try_from(infallible)]
     pub protocol: String,
+
+    #[try_from(infallible)]
     pub transport: String,
+
+    #[try_from(infallible)]
     pub state: ProofStateRestEnum,
+
+    #[try_from(infallible)]
     pub role: ProofRoleRestEnum,
+
+    #[try_from(infallible)]
     pub organisation_id: OrganisationId,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
+
+    #[try_from(with_fn = convert_inner, infallible)]
     pub redirect_uri: Option<String>,
-    #[from(with_fn = convert_inner)]
+
+    #[try_from(with_fn = try_convert_inner)]
     pub proof_inputs: Vec<ProofInputRestDTO>,
 
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub claims_removed_at: Option<OffsetDateTime>,
@@ -380,19 +411,24 @@ pub enum ProofClaimValueRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
-#[from(ProofInputDTO)]
+#[try_from(T = ProofInputDTO, Error = MapperError)]
 pub struct ProofInputRestDTO {
     /// The set of claims being asserted by the credential shared during the
     /// proof request.
-    #[from(with_fn = convert_inner)]
+    #[try_from(with_fn = convert_inner, infallible)]
     pub claims: Vec<ProofClaimRestDTO>,
+
     /// The credentials exchanged as part of the successfully shared proof.
-    #[from(with_fn = convert_inner)]
+    #[try_from(with_fn = try_convert_inner)]
     pub credential: Option<GetCredentialResponseRestDTO>,
+
+    #[try_from(infallible)]
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
+
     /// Defines the maximum age at which an LVVC will be validated.
+    #[try_from(with_fn = convert_inner, infallible)]
     pub validity_constraint: Option<i64>,
 }
 

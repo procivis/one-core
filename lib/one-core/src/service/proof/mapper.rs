@@ -410,6 +410,12 @@ pub(super) async fn get_verifier_proof_detail(
 
     let holder = convert_inner(proof.holder_identifier.to_owned());
 
+    let verifier_certificate = proof
+        .verifier_certificate
+        .clone()
+        .map(TryInto::try_into)
+        .transpose()?;
+
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 
     Ok(ProofDetailResponseDTO {
@@ -422,6 +428,7 @@ pub(super) async fn get_verifier_proof_detail(
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
         verifier: list_item_response.verifier,
+        verifier_certificate,
         holder_did,
         holder,
         transport: list_item_response.transport,
@@ -638,6 +645,12 @@ pub(super) async fn get_holder_proof_detail(
     );
     let holder = convert_inner(value.holder_identifier.to_owned());
 
+    let verifier_certificate = value
+        .verifier_certificate
+        .clone()
+        .map(TryInto::try_into)
+        .transpose()?;
+
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
 
     Ok(ProofDetailResponseDTO {
@@ -650,6 +663,7 @@ pub(super) async fn get_holder_proof_detail(
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
         verifier: list_item_response.verifier,
+        verifier_certificate,
         holder_did,
         holder,
         transport: list_item_response.transport,
