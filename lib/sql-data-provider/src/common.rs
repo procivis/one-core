@@ -24,6 +24,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
+
     use super::calculate_pages_count;
 
     #[test]

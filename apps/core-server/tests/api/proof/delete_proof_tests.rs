@@ -2,6 +2,7 @@ use one_core::model::history::HistoryAction;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;

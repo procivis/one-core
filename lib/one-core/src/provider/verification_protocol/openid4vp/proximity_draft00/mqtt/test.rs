@@ -1,3 +1,4 @@
+use similar_asserts::assert_eq;
 use futures::FutureExt;
 use mockall::predicate::eq;
 use serde_json::json;

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use reqwest::Client;
+use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use wiremock::matchers::{headers, path};

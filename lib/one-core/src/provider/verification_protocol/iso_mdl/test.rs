@@ -4,6 +4,7 @@ use std::sync::Arc;
 use maplit::{hashmap, hashset};
 use mockall::predicate::eq;
 use secrecy::SecretSlice;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

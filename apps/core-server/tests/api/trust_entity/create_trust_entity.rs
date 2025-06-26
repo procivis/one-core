@@ -5,6 +5,7 @@ use core_server::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityT
 use ct_codecs::{Base64, Encoder};
 use one_core::model::trust_anchor::TrustAnchor;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 

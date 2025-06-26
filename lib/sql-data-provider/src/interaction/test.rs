@@ -6,6 +6,7 @@ use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
+use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
 

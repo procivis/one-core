@@ -1,4 +1,5 @@
 use rstest::rstest;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::*;

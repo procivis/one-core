@@ -4,6 +4,7 @@ use std::vec;
 
 use mockall::predicate::eq;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

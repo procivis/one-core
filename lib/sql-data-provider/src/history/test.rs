@@ -11,6 +11,7 @@ use shared_types::{
     ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId,
     ProofSchemaId,
 };
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::entity::key_did::KeyRole;

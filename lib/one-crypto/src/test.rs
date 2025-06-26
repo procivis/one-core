@@ -1,3 +1,4 @@
+use similar_asserts::assert_eq;
 #[test]
 fn test_base64_salt() {
     let result = super::utilities::generate_salt_base64_16();

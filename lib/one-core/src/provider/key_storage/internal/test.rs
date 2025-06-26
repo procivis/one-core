@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mockall::predicate;
 use mockall::predicate::{always, eq};
 use secrecy::{ExposeSecret, SecretSlice};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

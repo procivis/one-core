@@ -6,6 +6,7 @@ use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json_path::JsonPath;
+use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use validator::ValidateLength;
 

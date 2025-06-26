@@ -218,6 +218,7 @@ pub fn create_label_map_function(
 #[cfg(test)]
 mod test {
     use one_crypto::utilities::build_hmac_sha256;
+    use similar_asserts::assert_eq;
 
     use super::*;
     use crate::provider::credential_formatter::json_ld::json_ld_processor_options;

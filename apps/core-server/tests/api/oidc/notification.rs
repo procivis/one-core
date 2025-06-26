@@ -6,6 +6,7 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCI
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use time::macros::format_description;
 use uuid::Uuid;

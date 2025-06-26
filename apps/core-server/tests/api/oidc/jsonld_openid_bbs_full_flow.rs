@@ -1,3 +1,4 @@
+use similar_asserts::assert_eq;
 use axum::http::StatusCode;
 use one_core::config::core_config::VerificationProtocolType;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};

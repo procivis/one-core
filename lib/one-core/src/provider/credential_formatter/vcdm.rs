@@ -473,6 +473,7 @@ where
 #[cfg(test)]
 mod test {
     use serde::Deserialize;
+    use similar_asserts::assert_eq;
 
     use super::*;
 

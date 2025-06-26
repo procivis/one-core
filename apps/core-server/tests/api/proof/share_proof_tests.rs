@@ -8,6 +8,7 @@ use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use serde_json::Value;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
 

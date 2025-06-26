@@ -150,6 +150,8 @@ pub struct KeyListItemBindingDTO {
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
+
     use crate::binding::backup::BackupCreateBindingDTO;
     use crate::binding::history::{
         HistoryActionBindingEnum, HistoryEntityTypeBindingEnum, HistoryListQueryBindingDTO,

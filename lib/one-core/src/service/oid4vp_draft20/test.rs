@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use serde_json::json;
 use shared_types::{DidValue, ProofId};
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

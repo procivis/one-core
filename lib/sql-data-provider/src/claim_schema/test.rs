@@ -2,6 +2,7 @@ use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{DatabaseConnection, EntityTrait};
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ClaimSchemaProvider;

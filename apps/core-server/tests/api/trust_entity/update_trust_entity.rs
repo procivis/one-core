@@ -3,6 +3,7 @@ use core_server::endpoint::ssi::dto::{
 };
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::MockServer;
 

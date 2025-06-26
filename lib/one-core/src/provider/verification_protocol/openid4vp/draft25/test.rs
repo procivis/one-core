@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;

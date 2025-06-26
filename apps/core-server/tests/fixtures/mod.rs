@@ -37,6 +37,7 @@ use one_crypto::utilities::generate_alphanumeric;
 use sea_orm::ConnectionTrait;
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId, ProofId};
+use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::OffsetDateTime;

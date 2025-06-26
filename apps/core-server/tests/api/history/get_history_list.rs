@@ -2,6 +2,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};

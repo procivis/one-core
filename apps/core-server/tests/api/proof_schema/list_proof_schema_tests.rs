@@ -1,4 +1,5 @@
 use serde_json::Value;
+use similar_asserts::assert_eq;
 
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::server::run_server;

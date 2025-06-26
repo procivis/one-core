@@ -3,6 +3,7 @@ use core::str;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;

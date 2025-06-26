@@ -1,3 +1,5 @@
+use similar_asserts::assert_eq;
+
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::token_status_list::util::{

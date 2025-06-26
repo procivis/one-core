@@ -20,6 +20,7 @@ use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DatabaseConnection;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::IdentifierProvider;

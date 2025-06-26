@@ -105,6 +105,8 @@ fn validate_transport_type<'a>(
 mod test {
     use std::collections::BTreeSet;
 
+    use similar_asserts::assert_eq;
+
     use super::validate_and_select_transport_type;
     use crate::config::core_config::{CoreConfig, Fields, TransportType};
     use crate::config::validator::transport::SelectedTransportType;

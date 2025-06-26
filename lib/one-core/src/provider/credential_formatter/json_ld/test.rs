@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use serde_json::json;
+use similar_asserts::assert_eq;
 
 use crate::provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use crate::provider::credential_formatter::json_ld::{json_ld_processor_options, rdf_canonize};

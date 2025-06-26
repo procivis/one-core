@@ -38,6 +38,7 @@ use one_core::repository::revocation_list_repository::{
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

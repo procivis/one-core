@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use one_core::model::did::DidType;
+use similar_asserts::assert_eq;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::api_clients::dids::DidKeys;

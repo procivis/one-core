@@ -1,4 +1,5 @@
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
+use similar_asserts::assert_eq;
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::api_clients::trust_anchors::ListFilters;

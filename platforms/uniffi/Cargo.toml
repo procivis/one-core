@@ -36,6 +36,9 @@ uniffi                   = { workspace = true, features = ["tokio"] }
 url.workspace            = true
 uuid.workspace           = true
 
+[dev-dependencies]
+similar-asserts.workspace = true
+
 [target.'cfg(target_os = "android")'.dependencies]
 tracing-android = { version = "0.2" }
 

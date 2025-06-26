@@ -5,6 +5,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;

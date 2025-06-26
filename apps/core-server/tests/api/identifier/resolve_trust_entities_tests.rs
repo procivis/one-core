@@ -5,6 +5,7 @@ use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use rcgen::CertificateParams;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

@@ -4,6 +4,7 @@ use one_core::model::did::DidType;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::{Value, json};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

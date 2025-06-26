@@ -5,6 +5,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Iterable, Set};
 use shared_types::{
     CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
 };
+use similar_asserts::assert_eq;
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 

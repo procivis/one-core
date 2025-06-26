@@ -1,5 +1,6 @@
 use one_core::model::did::DidType;
 use serde_json::Value;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams};

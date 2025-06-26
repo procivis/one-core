@@ -16,6 +16,7 @@ use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
+use similar_asserts::assert_eq;
 use time::macros::datetime;
 use uuid::Uuid;
 

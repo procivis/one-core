@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use similar_asserts::assert_eq;
 
 pub trait FieldHelpers {
     fn parse<T>(&self) -> T

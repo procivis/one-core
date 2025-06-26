@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use similar_asserts::assert_eq;
+
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::service::ssi_issuer::SSIIssuerService;
 use crate::service::ssi_issuer::dto::{

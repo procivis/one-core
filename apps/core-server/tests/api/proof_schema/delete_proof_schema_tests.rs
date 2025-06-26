@@ -1,3 +1,5 @@
+use similar_asserts::assert_eq;
+
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 

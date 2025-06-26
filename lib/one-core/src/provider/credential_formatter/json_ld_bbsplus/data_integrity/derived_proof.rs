@@ -300,6 +300,8 @@ fn decompress_label_map(
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
+
     use super::*;
     use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{

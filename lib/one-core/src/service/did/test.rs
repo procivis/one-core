@@ -5,6 +5,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use mockall::predicate::*;
 use shared_types::DidId;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

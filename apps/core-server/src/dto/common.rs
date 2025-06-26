@@ -147,6 +147,7 @@ impl<'de, const MAX: u32> Deserialize<'de> for PageSize<MAX> {
 #[cfg(test)]
 mod test {
     use serde_json::json;
+    use similar_asserts::assert_eq;
 
     use super::ListQueryParamsRest;
 

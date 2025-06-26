@@ -129,6 +129,7 @@ mod test {
     use maplit::hashmap;
     use serde_json::json;
     use serde_json_path::JsonPath;
+    use similar_asserts::assert_eq;
     use time::Duration;
     use time::macros::datetime;
 

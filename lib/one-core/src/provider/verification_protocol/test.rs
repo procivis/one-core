@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

@@ -1,4 +1,5 @@
 use one_core::model::credential_schema::CredentialSchemaType;
+use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;

@@ -139,6 +139,7 @@ mod tests {
     use indexmap::indexmap;
     use maplit::hashmap;
     use serde_json::json;
+    use similar_asserts::assert_eq;
     use time::{Duration, OffsetDateTime};
     use uuid::Uuid;
 

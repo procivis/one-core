@@ -6,6 +6,7 @@ use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::{Value, json};
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::KeyAlgorithmType;

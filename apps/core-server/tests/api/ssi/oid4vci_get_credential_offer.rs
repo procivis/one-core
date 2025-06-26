@@ -1,4 +1,5 @@
 use one_core::model::credential::CredentialStateEnum;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;

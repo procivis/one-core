@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{

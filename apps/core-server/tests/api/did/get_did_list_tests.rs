@@ -1,4 +1,5 @@
 use one_core::model::did::{KeyRole, RelatedKey};
+use similar_asserts::assert_eq;
 
 use crate::fixtures::{TestingDidParams, TestingKeyParams};
 use crate::utils::api_clients::dids::DidFilters;

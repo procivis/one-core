@@ -1,4 +1,5 @@
 use serde_json::json;
+use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
 

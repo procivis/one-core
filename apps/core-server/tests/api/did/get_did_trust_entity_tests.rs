@@ -1,4 +1,5 @@
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;

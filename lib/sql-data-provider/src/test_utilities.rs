@@ -12,6 +12,7 @@ use shared_types::{
     ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId, HistoryId,
     IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
+use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;

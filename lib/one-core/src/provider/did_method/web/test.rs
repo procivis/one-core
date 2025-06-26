@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use shared_types::DidId;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};

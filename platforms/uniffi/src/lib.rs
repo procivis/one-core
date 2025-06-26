@@ -1026,6 +1026,7 @@ fn build_config(config: &str) -> Result<AppConfig<MobileConfig>, SDKError> {
 
 #[cfg(test)]
 mod tests {
+
     use crate::build_config;
 
     #[test]

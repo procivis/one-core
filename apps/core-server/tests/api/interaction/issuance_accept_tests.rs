@@ -11,6 +11,7 @@ use one_core::model::identifier::IdentifierType;
 use rcgen::CertificateParams;
 use serde_json::json;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::macros::datetime;
 use uuid::Uuid;
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use one_crypto::hasher::sha256::SHA256;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

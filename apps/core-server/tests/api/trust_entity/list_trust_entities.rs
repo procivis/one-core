@@ -4,6 +4,7 @@ use one_core::model::trust_entity::{
     TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType,
 };
 use serde_json::Value;
+use similar_asserts::assert_eq;
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::api_clients::trust_entity::ListFilters;

@@ -1,6 +1,7 @@
 use core_server::endpoint::ssi::dto::{
     PatchTrustEntityActionRestDTO, PatchTrustEntityRequestRestDTO,
 };
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};

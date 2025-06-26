@@ -4,6 +4,7 @@ use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::CredentialSchemaClaim;
 use serde_json::json;
 use shared_types::ProofSchemaId;
+use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;

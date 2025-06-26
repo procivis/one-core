@@ -124,6 +124,7 @@ mod test {
 
     use mockall::predicate::*;
     use serde_json::json;
+    use similar_asserts::assert_eq;
 
     use super::*;
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};

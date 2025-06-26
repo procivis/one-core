@@ -4,6 +4,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::MockHasher;
 use serde_json::{Value, json};
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;

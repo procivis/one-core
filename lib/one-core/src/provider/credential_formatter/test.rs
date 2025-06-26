@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use indexmap::indexset;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

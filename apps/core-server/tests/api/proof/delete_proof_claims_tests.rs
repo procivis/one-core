@@ -2,6 +2,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::HistoryAction;
 use one_core::model::proof::ProofStateEnum;
 use shared_types::EntityId;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;

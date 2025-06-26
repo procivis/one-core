@@ -7,6 +7,7 @@ use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use shared_types::{IdentifierId, OrganisationId};
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::CertificateProvider;

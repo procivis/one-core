@@ -4,6 +4,7 @@ use mockall::PredicateBooleanExt;
 use mockall::predicate::*;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

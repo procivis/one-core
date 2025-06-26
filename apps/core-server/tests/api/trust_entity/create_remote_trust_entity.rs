@@ -1,5 +1,6 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};

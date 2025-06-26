@@ -5,6 +5,7 @@ use mockall::predicate;
 use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::DidId;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

@@ -80,6 +80,8 @@ fn calculate_bitstring_size(input_size: usize) -> usize {
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     // test vector, no revocations, taken from: https://www.w3.org/TR/vc-status-list/#example-example-statuslist2021credential-0

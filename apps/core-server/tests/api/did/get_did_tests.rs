@@ -1,3 +1,5 @@
+use similar_asserts::assert_eq;
+
 use crate::fixtures::TestingDidParams;
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;

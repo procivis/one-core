@@ -698,6 +698,7 @@ pub mod opt_secret_string {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use similar_asserts::assert_eq;
 
     use super::*;
     use crate::model::credential_schema::{

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::http::Method;

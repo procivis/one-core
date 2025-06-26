@@ -118,6 +118,7 @@ pub(crate) fn is_dns_name_matching(dns_def: &str, target_domain: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
     use x509_parser::pem::parse_x509_pem;
 
     use super::*;

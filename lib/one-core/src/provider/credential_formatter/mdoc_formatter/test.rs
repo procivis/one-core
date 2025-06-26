@@ -6,6 +6,7 @@ use hex_literal::hex;
 use maplit::hashmap;
 use serde_json::json;
 use shared_types::OrganisationId;
+use similar_asserts::assert_eq;
 
 use super::mdoc::*;
 use super::*;

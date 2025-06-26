@@ -1,6 +1,7 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::CredentialSchemaType;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

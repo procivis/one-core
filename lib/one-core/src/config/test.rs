@@ -3,6 +3,7 @@ use std::env;
 use rusty_fork::rusty_fork_test;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use similar_asserts::assert_eq;
 
 use super::core_config::*;
 use crate::config::ConfigParsingError::GeneralParsingError;

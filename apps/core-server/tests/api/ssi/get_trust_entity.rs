@@ -18,6 +18,7 @@ use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 
 use crate::fixtures::{TestingDidParams, TestingKeyParams};

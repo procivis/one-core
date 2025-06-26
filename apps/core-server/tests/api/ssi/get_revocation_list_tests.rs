@@ -1,4 +1,5 @@
 use one_core::model::identifier::IdentifierType;
+use similar_asserts::assert_eq;
 
 use crate::fixtures::TestingIdentifierParams;
 use crate::utils::server::run_server;

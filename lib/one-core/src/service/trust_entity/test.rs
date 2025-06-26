@@ -4,6 +4,7 @@ use std::sync::Arc;
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

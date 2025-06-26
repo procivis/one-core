@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::Sequence;
 use mockall::predicate::eq;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::OrganisationService;

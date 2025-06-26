@@ -295,6 +295,7 @@ mod test {
 
     use one_crypto::hasher::sha256::SHA256;
     use serde_json::json;
+    use similar_asserts::assert_eq;
     use time::format_description::well_known::Rfc3339;
     use uuid::Uuid;
 

@@ -3,6 +3,7 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{Value, json};
+use similar_asserts::assert_eq;
 
 use crate::fixtures::{
     self, TestingConfigParams, TestingCredentialSchemaParams, TestingDidParams,

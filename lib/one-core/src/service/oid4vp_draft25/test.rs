@@ -5,6 +5,7 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use serde_json::json;
 use shared_types::{DidValue, ProofId};
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

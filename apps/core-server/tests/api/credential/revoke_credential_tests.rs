@@ -6,6 +6,7 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

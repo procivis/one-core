@@ -3,6 +3,7 @@ use one_core::model::organisation::{
 };
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

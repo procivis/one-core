@@ -838,6 +838,7 @@ fn check_overlapping_params(object: &serde_json::Map<String, Value>) -> Result<(
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use similar_asserts::assert_eq;
 
     use super::*;
 

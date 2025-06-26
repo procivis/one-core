@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use secrecy::SecretString;
+use similar_asserts::assert_eq;
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;

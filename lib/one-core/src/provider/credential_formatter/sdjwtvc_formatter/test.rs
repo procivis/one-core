@@ -11,6 +11,7 @@ use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

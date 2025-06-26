@@ -1,3 +1,5 @@
+use similar_asserts::assert_eq;
+
 use super::*;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 

@@ -221,6 +221,8 @@ impl PathComponent<'_> {
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     #[test]

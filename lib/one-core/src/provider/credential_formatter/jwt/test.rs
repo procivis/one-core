@@ -3,6 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use time::macros::datetime;
 

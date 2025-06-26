@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use serde_json::{Value, json};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;

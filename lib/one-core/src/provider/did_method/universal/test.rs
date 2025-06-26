@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use similar_asserts::assert_eq;
+
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::model::Operation;
 use crate::provider::did_method::universal::{Params, UniversalDidMethod};

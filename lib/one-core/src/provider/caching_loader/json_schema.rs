@@ -131,6 +131,7 @@ impl Resolver for JsonSchemaResolver {
 
 #[cfg(test)]
 mod test {
+
     #[test]
     fn test_validate_static_json_schemas() {
         let schemas = include_str!("../../../../../resource/sd_jwt_vc_schemas.json");

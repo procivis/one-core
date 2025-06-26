@@ -5,6 +5,7 @@ use std::sync::Arc;
 use mockall::predicate::*;
 use serde_json::json;
 use shared_types::CredentialId;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 

@@ -752,6 +752,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstr"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "234113d19d0d7d613b40e86fb654acf958910802bcceab913a4f9e7cda03b1a4"
+dependencies = [
+ "memchr",
+ "regex-automata 0.4.8",
+ "serde",
+]
+
+[[package]]
 name = "btree-range-map"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1060,6 +1071,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "console"
+version = "0.15.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "054ccb5b10f9f2cbf51eb355ca1d05c2d279ce1804688d0db74b4733a5aeafd8"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "once_cell",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1163,6 +1186,7 @@ dependencies = [
  "serde_with",
  "shadow-rs",
  "shared-types",
+ "similar-asserts",
  "sql-data-provider",
  "strum",
  "thiserror 2.0.12",
@@ -1595,6 +1619,12 @@ checksum = "e079f19b08ca6239f47f8ba8509c11cf3ea30095831f7fed61441475edd8c449"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "encode_unicode"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
 name = "encoding_rs"
@@ -3590,6 +3620,7 @@ dependencies = [
  "sha2 0.10.8",
  "shadow-rs",
  "shared-types",
+ "similar-asserts",
  "sophia_api",
  "sophia_c14n",
  "strum",
@@ -3624,6 +3655,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shared-types",
+ "similar-asserts",
  "sql-data-provider",
  "strum",
  "thiserror 2.0.12",
@@ -3666,6 +3698,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2 0.10.8",
+ "similar-asserts",
  "strum",
  "thiserror 2.0.12",
  "tokio",
@@ -5385,6 +5418,7 @@ dependencies = [
  "regex",
  "sea-orm",
  "serde",
+ "similar-asserts",
  "thiserror 2.0.12",
  "url",
  "utoipa",
@@ -5421,6 +5455,26 @@ name = "simd-adler32"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
+
+[[package]]
+name = "similar"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
+dependencies = [
+ "bstr",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "similar-asserts"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5b441962c817e33508847a22bd82f03a30cff43642dc2fae8b050566121eb9a"
+dependencies = [
+ "console",
+ "similar",
+]
 
 [[package]]
 name = "siphasher"
@@ -5571,6 +5625,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shared-types",
+ "similar-asserts",
  "tempfile",
  "time",
  "tokio",

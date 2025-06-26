@@ -16,6 +16,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use shared_types::{CredentialId, DidValue};
+use similar_asserts::assert_eq;
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;

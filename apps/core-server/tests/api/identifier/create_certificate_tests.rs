@@ -1,6 +1,7 @@
 use rcgen::{
     CertificateParams, CertificateRevocationListParams, CrlDistributionPoint, RevokedCertParams,
 };
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use validator::ValidateLength;
 

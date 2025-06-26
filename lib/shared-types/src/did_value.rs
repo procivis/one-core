@@ -221,6 +221,8 @@ mod seaorm {
 mod tests {
     use std::str::FromStr;
 
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     #[test]

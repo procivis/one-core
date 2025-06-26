@@ -11,6 +11,7 @@ use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use time::macros::format_description;
 use wiremock::http::Method;

@@ -5,6 +5,7 @@ use one_core::model::validity_credential::{Lvvc, ValidityCredential, ValidityCre
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel};
 use shared_types::CredentialId;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

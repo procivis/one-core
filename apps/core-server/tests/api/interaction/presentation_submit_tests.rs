@@ -5,6 +5,7 @@ use one_core::model::interaction::Interaction;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use serde_json::json;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{body_string_contains, method, path};

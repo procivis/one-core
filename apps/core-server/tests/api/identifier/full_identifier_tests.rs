@@ -1,4 +1,5 @@
 use shared_types::IdentifierId;
+use similar_asserts::assert_eq;
 
 use crate::api_oidc_tests::common::eddsa_key_2;
 use crate::fixtures::TestingKeyParams;

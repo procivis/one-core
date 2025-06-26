@@ -90,6 +90,7 @@ mod tests {
     use std::collections::HashMap;
 
     use serde_json::json;
+    use similar_asserts::assert_eq;
     use time::macros::datetime;
 
     use super::*;

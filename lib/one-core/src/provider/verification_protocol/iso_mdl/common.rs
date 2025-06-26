@@ -397,6 +397,8 @@ pub(crate) fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, VerificationPr
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     #[test]

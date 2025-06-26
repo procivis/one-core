@@ -1,5 +1,6 @@
 use one_core::model::history::HistoryAction;
 use shared_types::EntityId;
+use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};

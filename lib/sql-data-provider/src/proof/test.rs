@@ -36,6 +36,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{
     ClaimSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ProofProvider;

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

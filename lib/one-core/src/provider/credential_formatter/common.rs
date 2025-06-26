@@ -112,6 +112,7 @@ impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use similar_asserts::assert_eq;
 
     use super::*;
 

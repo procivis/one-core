@@ -124,6 +124,7 @@ mod test {
     use std::str::FromStr;
 
     use json_ld::{IriBuf, RemoteDocument};
+    use similar_asserts::assert_eq;
 
     use super::canonize;
     use crate::provider::credential_formatter::json_ld::json_ld_processor_options;

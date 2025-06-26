@@ -7,6 +7,7 @@ use mockall::predicate;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;

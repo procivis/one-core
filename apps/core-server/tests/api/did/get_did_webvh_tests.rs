@@ -1,5 +1,6 @@
 use one_core::model::did::DidType;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::context::TestContext;

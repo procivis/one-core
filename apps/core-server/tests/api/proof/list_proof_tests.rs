@@ -4,6 +4,7 @@ use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use shared_types::ProofId;
+use similar_asserts::assert_eq;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams, create_organisation};
 use crate::utils::api_clients::proofs::ProofFilters;

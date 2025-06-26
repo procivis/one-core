@@ -49,6 +49,7 @@ serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
 shadow-rs          = { version = "0.38" }
 shared-types       = { version = "0.1.0", path = "lib/shared-types", features = ["sea-orm"] }
+similar-asserts    = { version = "1.7" }
 strum              = { version = "0.26", features = ["derive"] }
 tempfile           = { version = "3.10" }
 thiserror          = { version = "2.0" }

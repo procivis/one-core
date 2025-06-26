@@ -363,6 +363,7 @@ fn get_cbor_map_value(
 mod test {
     use hex_literal::hex;
     use one_crypto::utilities::get_rng;
+    use similar_asserts::assert_eq;
     use uuid::uuid;
 
     use super::*;

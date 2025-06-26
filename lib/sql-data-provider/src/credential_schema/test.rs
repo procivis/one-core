@@ -16,6 +16,7 @@ use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::CredentialSchemaId;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

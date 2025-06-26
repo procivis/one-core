@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use shared_types::CredentialId;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;

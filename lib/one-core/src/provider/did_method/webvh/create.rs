@@ -283,6 +283,7 @@ mod test {
 
     use secrecy::SecretSlice;
     use shared_types::KeyId;
+    use similar_asserts::assert_eq;
     use time::format_description::well_known::Iso8601;
 
     use super::*;

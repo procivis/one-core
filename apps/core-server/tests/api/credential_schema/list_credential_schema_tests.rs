@@ -1,4 +1,5 @@
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
+use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
 

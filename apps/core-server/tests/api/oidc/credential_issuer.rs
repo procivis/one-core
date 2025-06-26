@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use one_core::model::credential_schema::CredentialSchemaType;
 use serde_json::{Value, json};
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;

@@ -27,6 +27,7 @@ use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::{OrganisationId, ProofSchemaId};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

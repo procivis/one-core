@@ -6,6 +6,7 @@ use one_core::model::remote_entity_cache::{
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::RemoteEntityCacheEntryId;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::{env, fs};
 
 use serde_json::json;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::binding::OneCoreBinding;

@@ -3,6 +3,7 @@ use std::vec;
 
 use mockall::predicate::*;
 use shared_types::CredentialSchemaId;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

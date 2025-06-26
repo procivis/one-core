@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mockall::predicate;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 
 use super::PhysicalCardFormatter;

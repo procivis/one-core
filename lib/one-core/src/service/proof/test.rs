@@ -5,6 +5,7 @@ use mockall::predicate::*;
 use rstest::rstest;
 use secrecy::SecretSlice;
 use shared_types::ProofId;
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

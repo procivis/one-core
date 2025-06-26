@@ -17,6 +17,7 @@ use one_core::provider::task::certificate_check::dto::CertificateCheckResultDTO;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::json;
+use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;

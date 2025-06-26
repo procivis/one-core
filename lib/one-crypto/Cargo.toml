@@ -37,9 +37,10 @@ sha2                  = { version = "0.10" }
 thiserror.workspace   = true
 
 [dev-dependencies]
-mockall = { workspace = true }
-tokio   = { workspace = true, features = ["rt-multi-thread", "macros"] }
-hex     = { workspace = true }
+mockall         = { workspace = true }
+similar-asserts = { workspace = true }
+tokio           = { workspace = true, features = ["rt-multi-thread", "macros"] }
+hex             = { workspace = true }
 
 [features]
 mock = ["mockall"]

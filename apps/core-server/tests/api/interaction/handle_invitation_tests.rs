@@ -8,6 +8,7 @@ use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VpPresentationFormat,
 };
 use serde_json::json;
+use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;

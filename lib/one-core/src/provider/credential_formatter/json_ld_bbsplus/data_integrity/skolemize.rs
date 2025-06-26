@@ -120,6 +120,7 @@ mod test {
 
     use itertools::Itertools;
     use json_ld::IriBuf;
+    use similar_asserts::assert_eq;
 
     use super::*;
     use crate::provider::credential_formatter::json_ld::json_ld_processor_options;

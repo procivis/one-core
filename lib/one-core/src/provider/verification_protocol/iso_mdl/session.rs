@@ -48,6 +48,7 @@ pub(crate) enum StatusCode {
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
     use uuid::Uuid;
 
     use super::*;

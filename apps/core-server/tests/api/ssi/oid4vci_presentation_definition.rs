@@ -5,6 +5,7 @@ use one_core::model::key::Key;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams};

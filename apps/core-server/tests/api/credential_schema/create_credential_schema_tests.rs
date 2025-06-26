@@ -1,5 +1,6 @@
 use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
 use one_core::repository::error::DataLayerError;
+use similar_asserts::assert_eq;
 
 use crate::utils::api_clients::credential_schemas::CreateSchemaParams;
 use crate::utils::context::TestContext;

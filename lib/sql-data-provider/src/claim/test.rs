@@ -11,6 +11,7 @@ use one_core::repository::claim_schema_repository::{
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, IdentifierId};
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ClaimProvider;

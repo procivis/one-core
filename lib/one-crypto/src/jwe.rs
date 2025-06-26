@@ -438,6 +438,8 @@ pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, Encr
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
+
     use super::*;
     use crate::jwe::EncryptionAlgorithm::{A128CBCHS256, A256GCM};
     use crate::signer::ecdsa::ECDSASigner;
