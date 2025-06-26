@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
-    OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
+    OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
 use one_core::service::error::ServiceError;
+use one_core::service::ssi_holder::dto::CredentialConfigurationSupportedResponseDTO;
 use one_dto_mapper::{From, convert_inner};
 use url::Url;
 
@@ -72,11 +75,36 @@ pub enum HandleInvitationResponseBindingEnum {
         interaction_id: String,
         credential_ids: Vec<String>,
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
+        credential_configurations_supported:
+            HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
     },
     ProofRequest {
         interaction_id: String,
         proof_id: String,
     },
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct CredentialConfigurationSupportedResponseBindingDTO {
+    pub proof_types_supported: Option<HashMap<String, OpenID4VCIProofTypeSupportedBindingDTO>>,
+}
+
+impl From<CredentialConfigurationSupportedResponseDTO>
+    for CredentialConfigurationSupportedResponseBindingDTO
+{
+    fn from(value: CredentialConfigurationSupportedResponseDTO) -> Self {
+        Self {
+            proof_types_supported: value
+                .proof_types_supported
+                .map(|m| m.into_iter().map(|(i, v)| (i, v.into())).collect()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, From, Default, uniffi::Record)]
+#[from(OpenID4VCIProofTypeSupported)]
+pub struct OpenID4VCIProofTypeSupportedBindingDTO {
+    pub proof_signing_alg_values_supported: Vec<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

@@ -221,10 +221,15 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 credential_ids,
                 interaction_id,
                 tx_code,
+                credential_configurations_supported,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 credential_ids: credential_ids.iter().map(|item| item.to_string()).collect(),
                 tx_code: convert_inner(tx_code),
+                credential_configurations_supported: credential_configurations_supported
+                    .into_iter()
+                    .map(|(id, conf)| (id.to_string(), conf.into()))
+                    .collect(),
             },
             HandleInvitationResultDTO::ProofRequest {
                 interaction_id,

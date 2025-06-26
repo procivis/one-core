@@ -1016,10 +1016,10 @@ pub(super) fn credentials_supported_mdoc(
     Ok(credential_configuration)
 }
 
-pub(crate) fn map_proof_types_supported(
+pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSupported); 1]>>(
     supported_jose_alg_ids: Vec<String>,
-) -> IndexMap<String, OpenID4VCIProofTypeSupported> {
-    IndexMap::from([(
+) -> R {
+    R::from([(
         "jwt".to_string(),
         OpenID4VCIProofTypeSupported {
             proof_signing_alg_values_supported: supported_jose_alg_ids,

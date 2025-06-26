@@ -10,11 +10,15 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 credential_ids,
                 interaction_id,
                 tx_code,
+                credential_configurations_supported,
             } => Self {
                 interaction_id,
                 credential_ids: Some(credential_ids),
                 proof_id: None,
                 tx_code: convert_inner(tx_code),
+                credential_configurations_supported: Some(convert_inner(
+                    credential_configurations_supported,
+                )),
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
@@ -25,6 +29,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 credential_ids: None,
                 proof_id: Some(proof_id),
                 tx_code: None,
+                credential_configurations_supported: None,
             },
         }
     }

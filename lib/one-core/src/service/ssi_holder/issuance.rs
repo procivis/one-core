@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use url::Url;
 
 use super::SSIHolderService;
-use super::dto::HandleInvitationResultDTO;
+use super::dto::{CredentialConfigurationSupportedResponseDTO, HandleInvitationResultDTO};
 use crate::common_mapper::value_to_model_claims;
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::model::claim::Claim;
@@ -26,6 +26,7 @@ use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
+use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
@@ -447,10 +448,20 @@ impl SSIHolderService {
             .holder_handle_invitation(url, organisation, &storage_access, &handle_operations)
             .await?;
 
+        let credential_configuration = CredentialConfigurationSupportedResponseDTO {
+            proof_types_supported: Some(map_proof_types_supported(
+                self.key_algorithm_provider
+                    .supported_verification_jose_alg_ids(),
+            )),
+        };
         let result = HandleInvitationResultDTO::Credential {
             interaction_id,
             credential_ids: credentials.iter().map(|c| c.id).collect(),
             tx_code,
+            credential_configurations_supported: credentials
+                .iter()
+                .map(|c| (c.id, credential_configuration.clone()))
+                .collect(),
         };
 
         for mut credential in credentials {

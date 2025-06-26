@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, ProofId};
 
 use crate::model::interaction::InteractionId;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCITxCode;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+    OpenID4VCIProofTypeSupported, OpenID4VCITxCode,
+};
 
 #[derive(Clone, Debug)]
 pub struct PresentationSubmitRequestDTO {
@@ -21,11 +23,18 @@ pub struct PresentationSubmitCredentialRequestDTO {
 }
 
 #[derive(Clone, Debug)]
+pub struct CredentialConfigurationSupportedResponseDTO {
+    pub proof_types_supported: Option<HashMap<String, OpenID4VCIProofTypeSupported>>,
+}
+
+#[derive(Clone, Debug)]
 pub enum HandleInvitationResultDTO {
     Credential {
         interaction_id: InteractionId,
         credential_ids: Vec<CredentialId>,
         tx_code: Option<OpenID4VCITxCode>,
+        credential_configurations_supported:
+            HashMap<CredentialId, CredentialConfigurationSupportedResponseDTO>,
     },
     ProofRequest {
         interaction_id: InteractionId,

@@ -289,11 +289,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
 
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
+    let credential_id = resp["credentialIds"][0].parse();
+    let credential = context.db.credentials.get(&credential_id).await;
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
@@ -304,6 +301,17 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .get_did_by_value(&issuer_did.parse().unwrap())
         .await;
     assert_eq!(did.did_type, DidType::Remote);
+
+    let proof_types =
+        resp["credentialConfigurationsSupported"][credential_id.to_string()]["proofTypesSupported"]
+            ["jwt"]["proofSigningAlgValuesSupported"]
+            .parse::<Vec<String>>();
+    assert!(proof_types.contains(&"EdDSA".to_string()));
+    assert!(proof_types.contains(&"EDDSA".to_string()));
+    assert!(proof_types.contains(&"CRYDI3".to_string()));
+    assert!(proof_types.contains(&"DILITHIUM".to_string()));
+    assert!(proof_types.contains(&"ES256".to_string()));
+    assert!(proof_types.contains(&"BBS_PLUS".to_string()));
 }
 
 #[tokio::test]
