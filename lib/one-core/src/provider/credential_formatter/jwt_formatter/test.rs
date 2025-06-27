@@ -209,10 +209,7 @@ async fn test_format_credential() {
         payload.expires_at,
         Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
     );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
+    assert_eq!(payload.invalid_before, payload.issued_at,);
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));
@@ -304,10 +301,7 @@ async fn test_format_credential_with_layout_properties() {
         payload.expires_at,
         Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
     );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
+    assert_eq!(payload.invalid_before, payload.issued_at,);
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));
@@ -395,10 +389,7 @@ async fn test_format_credential_nested_array() {
         payload.expires_at,
         Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
     );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
+    assert_eq!(payload.invalid_before, payload.issued_at,);
 
     let vc = payload.custom.vc;
 
@@ -702,10 +693,7 @@ async fn test_format_presentation() {
         payload.expires_at,
         Some(payload.issued_at.unwrap() + Duration::minutes(5)),
     );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
+    assert_eq!(payload.invalid_before, payload.issued_at,);
 
     assert_eq!(payload.issuer, Some(String::from("did:example:123")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));

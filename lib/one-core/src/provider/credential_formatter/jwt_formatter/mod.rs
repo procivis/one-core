@@ -82,8 +82,7 @@ impl CredentialFormatter for JWTFormatter {
         let payload = JWTPayload {
             issued_at,
             expires_at,
-            invalid_before: issued_at
-                .and_then(|iat| iat.checked_sub(Duration::seconds(self.get_leeway() as i64))),
+            invalid_before: issued_at,
             issuer: Some(issuer),
             subject: credential_data.holder_did.map(|did| did.to_string()),
             jwt_id: credential_id,
@@ -197,7 +196,7 @@ impl CredentialFormatter for JWTFormatter {
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
+            invalid_before: Some(now),
             issuer: Some(holder_did.to_string()),
             subject: Some(holder_did.to_string()),
             jwt_id: Some(Uuid::new_v4().to_string()),
