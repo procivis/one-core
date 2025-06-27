@@ -52,8 +52,8 @@ pub fn credential_data_from_credential_detail_response(
         format!("{core_base_url}/ssi/context/v1/{}", credential.schema.id)
             .parse()
             .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
-    context.insert(ContextType::Url(credential_schema_context.clone()));
-    let issuer = issuer_for_credential(&credential, credential_schema_context)?;
+    context.insert(ContextType::Url(credential_schema_context));
+    let issuer = issuer_for_credential(&credential, core_base_url)?;
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
     // For JSON-LD formats the "id" is added to the credentialSubject inside the formatter.
     // This is currently the only way to remain backwards compatible with the old formatters and allow LVVC credential to set the credentialSubject.id.
@@ -96,10 +96,16 @@ pub fn credential_data_from_credential_detail_response(
 
 fn issuer_for_credential(
     credential: &CredentialDetailResponseDTO,
-    schema_url: Url,
+    core_base_url: &str,
 ) -> Result<Issuer, ServiceError> {
     if let Some(issuer_did) = &credential.issuer_did {
         return Ok(Issuer::Url(issuer_did.did.clone().into_url()));
     }
-    Ok(Issuer::Url(schema_url))
+    let url: Url = format!(
+        "{core_base_url}/ssi/openid4vci/draft-13/{}",
+        credential.schema.id
+    )
+    .parse()
+    .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
+    Ok(Issuer::Url(url))
 }
