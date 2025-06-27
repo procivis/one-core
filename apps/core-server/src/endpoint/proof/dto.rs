@@ -56,7 +56,6 @@ pub enum ProofRoleRestEnum {
     Verifier,
 }
 
-/// Exchange protocol being used.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -221,8 +220,9 @@ pub struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
 
+    /// Verification protocol used.
     pub protocol: String,
-    /// Exchange protocol being used.
+    /// Transport protocol used.
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub role: ProofRoleRestEnum,
