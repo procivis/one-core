@@ -252,6 +252,7 @@ pub(crate) struct ExtendedSubjectClaimsRestDTO {
     pub claims: IndexMap<String, ProcivisSubjectClaimValueRestDTO>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Debug, From, ToSchema)]
 #[from(OpenID4VCICredentialValueDetails)]
 pub(crate) struct ProcivisSubjectClaimValueRestDTO {

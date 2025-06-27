@@ -109,6 +109,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
                 allowed_schemes: vec!["https".to_string()],
             },
             rejection_identifier: None,
+            enable_credential_preview: true,
         }),
     )
 }
@@ -294,7 +295,7 @@ async fn test_generate_offer_did() {
     let keys = credential.claims.clone().unwrap_or_default();
 
     let credential_subject =
-        credentials_format(Some(WalletStorageTypeEnum::Software), &keys).unwrap();
+        credentials_format(Some(WalletStorageTypeEnum::Software), &keys, true).unwrap();
 
     let offer = create_credential_offer(
         &protocol_base_url,
@@ -339,7 +340,7 @@ async fn test_generate_offer_certificate() {
     let keys = credential.claims.clone().unwrap_or_default();
 
     let credential_subject =
-        credentials_format(Some(WalletStorageTypeEnum::Software), &keys).unwrap();
+        credentials_format(Some(WalletStorageTypeEnum::Software), &keys, true).unwrap();
 
     let offer = create_credential_offer(
         &protocol_base_url,
@@ -366,6 +367,50 @@ async fn test_generate_offer_certificate() {
                 "keys": {
                     "NUMBER": {
                         "value": "123",
+                        "value_type": "NUMBER"
+                    }
+                },
+                "wallet_storage_type": "SOFTWARE"
+            }
+        })
+    )
+}
+
+#[tokio::test]
+async fn test_generate_offer_claims_without_values() {
+    let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
+    let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
+    let credential = generic_credential_certificate();
+
+    let keys = credential.claims.clone().unwrap_or_default();
+
+    let credential_subject =
+        credentials_format(Some(WalletStorageTypeEnum::Software), &keys, false).unwrap();
+
+    let offer = create_credential_offer(
+        &protocol_base_url,
+        &interaction_id.to_string(),
+        &credential,
+        &credential.schema.as_ref().unwrap().id,
+        &credential.schema.as_ref().unwrap().schema_id,
+        credential_subject,
+    )
+    .unwrap();
+
+    assert_eq!(
+        json!(&offer),
+        json!({
+            "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
+            "issuer_certificate": "<dummy test cert chain>",
+            "credential_configuration_ids" : [
+                credential.schema.as_ref().unwrap().schema_id,
+            ],
+            "grants": {
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
+            },
+            "credential_subject": {
+                "keys": {
+                    "NUMBER": {
                         "value_type": "NUMBER"
                     }
                 },
@@ -404,6 +449,7 @@ async fn test_generate_share_credentials_offer_by_value() {
                 allowed_schemes: vec!["https".to_string()],
             },
             rejection_identifier: None,
+            enable_credential_preview: true,
         }),
         ..Default::default()
     });
@@ -947,6 +993,7 @@ async fn test_holder_reject_credential() {
                 did_method: "KEY".to_string(),
                 key_algorithm: KeyAlgorithmType::Ecdsa,
             }),
+            enable_credential_preview: true,
         }),
         ..Default::default()
     });
@@ -1900,5 +1947,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIParams {
             allowed_schemes: vec!["https".to_string()],
         },
         rejection_identifier: None,
+        enable_credential_preview: true,
     }
 }

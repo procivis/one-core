@@ -59,6 +59,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIParams {
             url_scheme: "swiyu".to_string(),
             redirect_uri: value.redirect_uri,
             rejection_identifier: None,
+            enable_credential_preview: false,
         }
     }
 }

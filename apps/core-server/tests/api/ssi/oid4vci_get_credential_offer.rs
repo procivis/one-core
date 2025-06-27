@@ -66,6 +66,148 @@ async fn test_get_credential_offer_success_jwt() {
         credential_id.as_str(),
         Some(credential_schema.schema_id.as_str())
     );
+
+    let expected_claims = serde_json::json!({
+        "firstName": {
+            "value": "test",
+            "value_type": "STRING",
+        },
+        "isOver18": {
+            "value": "true",
+            "value_type": "BOOLEAN",
+        },
+    });
+    assert_eq!(expected_claims, offer["credential_subject"]["keys"]);
+}
+
+#[tokio::test]
+async fn test_get_credential_offer_when_enable_credential_preview_false() {
+    // GIVEN
+    let config = indoc::indoc! {"
+      issuanceProtocol:
+        OPENID4VCI_DRAFT13:
+            params:
+              public:
+                enableCredentialPreview: false
+    "}
+    .to_string();
+
+    let (context, organisation, did, identifier, ..) =
+        TestContext::new_with_did(Some(config)).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_array_claims(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .await;
+
+    let claim_id = credential_schema
+        .claim_schemas
+        .clone()
+        .unwrap()
+        .into_iter()
+        .find(|claim| claim.schema.key == "namespace/root_array/nested/field")
+        .unwrap()
+        .schema
+        .id;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                claims_data: Some(vec![
+                    (claim_id.into(), "namespace/root_field", "foo-field"),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/0/nested/0/field",
+                        "foo1",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/0/nested/1/field",
+                        "foo2",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/1/nested/0/field",
+                        "foo3",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/1/nested/1/field",
+                        "foo4",
+                    ),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_credential_offer(credential_schema.id, credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let offer = resp.json_value().await;
+    assert_eq!(
+        offer["credential_issuer"],
+        format!(
+            "{}/ssi/openid4vci/draft-13/{}",
+            context.config.app.core_base_url, credential_schema.id
+        )
+    );
+    assert_eq!(offer["issuer_did"], did.did.to_string(),);
+    offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
+        .assert_eq(&interaction.id);
+
+    let credential_id = &offer["credential_configuration_ids"][0];
+    assert_eq!(
+        credential_id.as_str(),
+        Some(credential_schema.schema_id.as_str())
+    );
+
+    let expected_claims = serde_json::json!({
+            "namespace/root_array/0/nested/0/field": {
+                "value_type": "STRING",
+            },
+            "namespace/root_array/0/nested/1/field": {
+                "value_type": "STRING",
+            },
+            "namespace/root_array/1/nested/0/field": {
+                "value_type": "STRING",
+            },
+            "namespace/root_array/1/nested/1/field": {
+                "value_type": "STRING",
+            },
+            "namespace/root_field": {
+                "value_type": "STRING",
+            }
+    });
+    assert_eq!(expected_claims, offer["credential_subject"]["keys"]);
 }
 
 #[tokio::test]

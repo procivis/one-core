@@ -1150,8 +1150,9 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let credential_subject = credentials_format(credential_schema.wallet_storage_type, &claims)
-            .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
+        let credential_subject =
+            credentials_format(credential_schema.wallet_storage_type, &claims, true)
+                .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
         if self.params.credential_offer_by_value {
             let offer = create_credential_offer(

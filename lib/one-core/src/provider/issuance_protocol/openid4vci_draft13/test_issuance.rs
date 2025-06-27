@@ -246,6 +246,7 @@ async fn test_issuer_submit_succeeds() {
                 allowed_schemes: vec!["https".to_string()],
             },
             rejection_identifier: None,
+            enable_credential_preview: true,
         },
     );
 
@@ -444,6 +445,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 allowed_schemes: vec!["https".to_string()],
             },
             rejection_identifier: None,
+            enable_credential_preview: true,
         },
     );
 
@@ -633,6 +635,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 allowed_schemes: vec!["https".to_string()],
             },
             rejection_identifier: None,
+            enable_credential_preview: true,
         },
     );
 
@@ -731,6 +734,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
                 allowed_schemes: vec!["https".to_string()],
             },
             rejection_identifier: None,
+            enable_credential_preview: true,
         },
     );
 

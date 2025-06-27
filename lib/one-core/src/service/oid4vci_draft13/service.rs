@@ -38,8 +38,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINotificationEvent,
-    OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    Timestamp,
+    OpenID4VCINotificationRequestDTO, OpenID4VCIParams, OpenID4VCITokenRequestDTO,
+    OpenID4VCITokenResponseDTO, Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
@@ -245,8 +245,14 @@ impl OID4VCIDraft13Service {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let credential_subject = credentials_format(wallet_storage_type, &claims)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let params: OpenID4VCIParams = self.config.issuance_protocol.get(&credential.protocol)?;
+
+        let credential_subject = credentials_format(
+            wallet_storage_type,
+            &claims,
+            params.enable_credential_preview,
+        )
+        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         Ok(create_credential_offer(
             url,
@@ -694,6 +700,7 @@ impl OID4VCIDraft13Service {
 pub(crate) fn credentials_format(
     wallet_storage_type: Option<WalletStorageTypeEnum>,
     claims: &[Claim],
+    claims_with_values: bool,
 ) -> Result<ExtendedSubjectDTO, OpenIDIssuanceError> {
     Ok(ExtendedSubjectDTO {
         wallet_storage_type,
@@ -703,7 +710,10 @@ pub(crate) fn credentials_format(
                     (
                         claim.path.clone(),
                         OpenID4VCICredentialValueDetails {
-                            value: Some(claim.value.clone()),
+                            value: match claims_with_values {
+                                true => Some(claim.value.clone()),
+                                false => None,
+                            },
                             value_type: schema.data_type.clone(),
                         },
                     )

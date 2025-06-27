@@ -527,6 +527,7 @@ pub struct CredentialSubjectDisplay {
     pub locale: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VCICredentialValueDetails {
     pub value: Option<String>,
@@ -609,11 +610,18 @@ pub(crate) struct OpenID4VCIParams {
     pub redirect_uri: OpenID4VCRedirectUriParams,
 
     pub rejection_identifier: Option<OpenID4VCRejectionIdentifierParams>,
+
+    #[serde(default = "default_enable_credential_preview")]
+    pub enable_credential_preview: bool,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
 fn default_issuance_url_scheme() -> String {
     "openid-credential-offer".to_string()
+}
+
+fn default_enable_credential_preview() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Deserialize)]
