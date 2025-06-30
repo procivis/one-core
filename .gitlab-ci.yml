@@ -20,6 +20,7 @@ variables:
   CARGO_TARGET_DIR: "/build-cache/target"
   CARGO_HOME: "/build-cache/cargo-home"
   CARGO_UNSTABLE_GC: "true"
+  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -45,7 +46,6 @@ workflow:
     on_new_commit: conservative
 
 stages:
-  - build
   - test
   - docs
   - tests
@@ -137,15 +137,8 @@ before_script:
     forward:
       pipeline_variables: true
 
-build:
-  stage: build
-  extends:
-    - .cargo_build
-    - .rule:only_main_or_tag
-
 tests:mariadb:
   interruptible: true
-  needs: []
   extends:
     - .cargo_tests
   variables:
@@ -219,21 +212,21 @@ sonarqube-check:
 
 publish:
   stage: publish
-  needs:
-    - job: build
-      artifacts: true
+  dependencies: []
   extends:
     - .docker_publish
     - .rule:only_main_or_tag
+  variables:
+    EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
 
 publish_image_acr:
   stage: publish
-  needs:
-    - job: build
-      artifacts: true
+  dependencies: []
   extends:
     - .docker_acr_publish
     - .only_tag
+  variables:
+    EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
   parallel:
     matrix: !reference [ .one_core, clients_matrix ]
 
@@ -434,18 +427,11 @@ deploy:canivc:
     K8S_NAMESPACE: canivc
     DEPLOY_ENVIRONMENT: Canivc
 
-test:build:
-  stage: tests
-  needs: []
-  extends:
-    - .cargo_build
-    - .rule:except_main_branch
-
 tests:publish:
   stage: tests
-  needs:
-    - job: test:build
-      artifacts: true
+  dependencies: []
+  variables:
+    EXTRA_BUILD_ARGS: "--build-arg BUILD_IMAGE=$BUILD_IMAGE"
   extends:
     - .docker_publish
     - .rule:except_main_branch
