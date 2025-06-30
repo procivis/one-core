@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityRequestDTO,
     GetRemoteTrustEntityResponseDTO, GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO,
-    SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
+    ResolveTrustEntitiesRequestDTO, ResolveTrustEntityRequestDTO, SortableTrustEntityColumnEnum,
+    TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
@@ -112,6 +115,23 @@ impl OneCoreBinding {
             .list_trust_entities(filters.try_into()?)
             .await?
             .into())
+    }
+
+    #[uniffi::method]
+    pub async fn resolve_trust_entity_by_identifier(
+        &self,
+        request: ResolveTrustEntitiesRequestBindingDTO,
+    ) -> Result<HashMap<String, GetTrustEntityResponseBindingDTO>, BindingError> {
+        let core = self.use_core().await?;
+        let result = core
+            .trust_entity_service
+            .resolve_identifiers(request.try_into().map_err(BindingError::from)?)
+            .await?;
+        Ok(result
+            .identifier_to_trust_entity
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.into()))
+            .collect())
     }
 }
 
@@ -370,4 +390,20 @@ impl TryFrom<UpdateRemoteTrustEntityFromDidRequestBindingDTO>
             content: None,
         })
     }
+}
+
+#[derive(Debug, TryInto, uniffi::Record)]
+#[try_into(T = ResolveTrustEntitiesRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct ResolveTrustEntitiesRequestBindingDTO {
+    #[try_into(with_fn = "try_convert_inner")]
+    pub identifiers: Vec<ResolveTrustEntityRequestBindingDTO>,
+}
+
+#[derive(Debug, TryInto, uniffi::Record)]
+#[try_into(T = ResolveTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct ResolveTrustEntityRequestBindingDTO {
+    #[try_into(with_fn = into_id)]
+    pub id: String,
+    #[try_into(with_fn = into_id_opt)]
+    pub certificate_id: Option<String>,
 }
