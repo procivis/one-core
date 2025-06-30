@@ -20,7 +20,7 @@ pub fn value_to_published_claim(
         serde_json::Value::Object(map) => {
             for (key, value) in map {
                 published_claims.extend(value_to_published_claim(
-                    (format!("{}/{}", path_prefix, key), value),
+                    (format!("{path_prefix}/{key}"), value),
                     path_prefix,
                     false,
                 ));

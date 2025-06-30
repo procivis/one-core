@@ -11,8 +11,7 @@ impl MigrationTrait for Migration {
         manager
             .get_connection()
             .execute_unprepared(&format!(
-                "UPDATE {} SET format = 'SD_JWT' WHERE format = 'SDJWT'",
-                CREDENTIAL_SCHEMA_TABLE
+                "UPDATE {CREDENTIAL_SCHEMA_TABLE} SET format = 'SD_JWT' WHERE format = 'SDJWT'"
             ))
             .await?;
 

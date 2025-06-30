@@ -28,11 +28,11 @@ impl Default for TestingTrustAnchorParams {
         let id = Uuid::new_v4();
         Self {
             id,
-            name: format!("trust anchor {}", id),
+            name: format!("trust anchor {id}"),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             r#type: "SIMPLE_TRUST_LIST".to_string(),
-            publisher_reference: format!("publisher reference {}", id),
+            publisher_reference: format!("publisher reference {id}"),
             is_publisher: true,
         }
     }

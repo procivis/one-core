@@ -12,7 +12,7 @@ async fn test_get_list_credential_schema_success() {
             .db
             .credential_schemas
             .create(
-                &format!("test-{}", i),
+                &format!("test-{i}"),
                 &organisation,
                 "NONE",
                 Default::default(),

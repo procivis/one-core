@@ -73,9 +73,9 @@ pub fn build_jwe(
     encryption_alg: EncryptionAlgorithm,
 ) -> Result<String, EncryptionError> {
     let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyuinfo)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {e}")))?;
     let apv_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyvinfo)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apv: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apv: {e}")))?;
     let protected_header = json!({
         "kid": header.key_id,
         "enc": encryption_alg,
@@ -85,11 +85,11 @@ pub fn build_jwe(
         "epk": remote_jwk,
     });
     let protected_header_bytes = serde_json::to_vec(&protected_header).map_err(|e| {
-        EncryptionError::Crypto(format!("failed to serialize protected JWE header: {}", e))
+        EncryptionError::Crypto(format!("failed to serialize protected JWE header: {e}"))
     })?;
     let protected_header_b64 = Base64UrlSafeNoPadding::encode_to_string(protected_header_bytes)
         .map_err(|e| {
-            EncryptionError::Crypto(format!("failed to encode protected JWE header: {}", e))
+            EncryptionError::Crypto(format!("failed to encode protected JWE header: {e}"))
         })?;
 
     let encryption_key = derive_encryption_key(
@@ -113,7 +113,7 @@ pub fn build_jwe(
         )?,
     };
     let encrypted_b64 = Base64UrlSafeNoPadding::encode_to_string(encrypted)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE payload: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE payload: {e}")))?;
 
     Ok([
         protected_header_b64,
@@ -139,11 +139,11 @@ fn encrypt_in_place_aes_gcm(
     let cipher = Aes256Gcm::new(GenericArray::from_slice(key.expose_secret()));
     let tag = cipher
         .encrypt_in_place_detached(&iv, associated_data, buf)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {e}")))?;
     let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {e}")))?;
     let iv_b64 = Base64UrlSafeNoPadding::encode_to_string(iv)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE iv: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE iv: {e}")))?;
     Ok(AeadOutput { tag_b64, iv_b64 })
 }
 
@@ -178,13 +178,13 @@ fn encrypt_in_place_aes_cbc_hs256(
     );
     cipher128
         .encrypt_padded_mut::<Pkcs7>(buf, msg_len)
-        .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {}", err)))?;
+        .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {err}")))?;
 
     let tag = calculate_tag_aes_cbc_hs256(buf, associated_data, &iv, hmac_key)?;
     let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {e}")))?;
     let iv_b64 = Base64UrlSafeNoPadding::encode_to_string(iv)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE iv: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE iv: {e}")))?;
     Ok(AeadOutput { tag_b64, iv_b64 })
 }
 
@@ -226,7 +226,7 @@ fn decrypt_in_place_aes_cbc_hs256<'a>(
     );
     let plaintext = cipher128
         .decrypt_padded_mut::<Pkcs7>(buf)
-        .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {}", err)))?;
+        .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {err}")))?;
 
     Ok(plaintext)
 }
@@ -238,7 +238,7 @@ fn calculate_tag_aes_cbc_hs256(
     hmac_key: &[u8],
 ) -> Result<Vec<u8>, EncryptionError> {
     let mut mac = <HmacSha256 as Mac>::new_from_slice(hmac_key)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to create mac: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to create mac: {e}")))?;
     Mac::update(&mut mac, associated_data);
     Mac::update(&mut mac, iv);
     Mac::update(&mut mac, buf);
@@ -260,16 +260,14 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
 
     let header_bytes = decode_b64(header_b64, "JWE header")?;
     let header: JweHeader<RemoteJwk> = serde_json::from_slice(&header_bytes)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {e}")))?;
 
     let agreement_partyuinfo =
-        String::from_utf8(decode_b64(header.agreement_partyuinfo.as_str(), "apu")?).map_err(
-            |e| EncryptionError::Crypto(format!("Failed to parse apu to string: {}", e)),
-        )?;
+        String::from_utf8(decode_b64(header.agreement_partyuinfo.as_str(), "apu")?)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse apu to string: {e}")))?;
     let agreement_partyvinfo =
-        String::from_utf8(decode_b64(header.agreement_partyvinfo.as_str(), "apv")?).map_err(
-            |e| EncryptionError::Crypto(format!("Failed to parse apv to string: {}", e)),
-        )?;
+        String::from_utf8(decode_b64(header.agreement_partyvinfo.as_str(), "apv")?)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse apv to string: {e}")))?;
     Ok(Header {
         agreement_partyuinfo,
         agreement_partyvinfo,
@@ -309,7 +307,7 @@ impl EncryptedJWE {
         private_key_handle: &dyn PrivateKeyAgreementHandle,
     ) -> Result<Vec<u8>, EncryptionError> {
         let header: JweHeader<RemoteJwk> = serde_json::from_slice(&self.protected_header)
-            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {e}")))?;
 
         let shared_secret = self.derive_shared_secret(private_key_handle).await?;
         let encryption_key = self.derive_encryption_key(&shared_secret, &header)?;
@@ -326,9 +324,7 @@ impl EncryptedJWE {
                         &mut buf,
                         GenericArray::from_slice(&self.tag),
                     )
-                    .map_err(|e| {
-                        EncryptionError::Crypto(format!("Failed to decrypt JWE: {}", e))
-                    })?;
+                    .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?;
                 buf
             }
             EncryptionAlgorithm::A128CBCHS256 => {
@@ -340,7 +336,7 @@ impl EncryptedJWE {
                     &self.tag,
                     &encryption_key,
                 )
-                .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {}", e)))?
+                .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?
                 .to_vec()
             }
         };
@@ -354,7 +350,7 @@ impl EncryptedJWE {
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         let header: JweHeader<RemoteJwk> =
             serde_json::from_slice(&self.protected_header).map_err(|e| {
-                EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
+                EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {e}"))
             })?;
 
         private_key_handle
@@ -401,7 +397,7 @@ fn derive_encryption_key(
         &other_info,
         encryption_key.expose_secret_mut(),
     )
-    .map_err(|e| EncryptionError::Crypto(format!("Failed to derive encryption key: {}", e)))?;
+    .map_err(|e| EncryptionError::Crypto(format!("Failed to derive encryption key: {e}")))?;
     Ok(encryption_key)
 }
 
@@ -437,7 +433,7 @@ impl FromStr for EncryptedJWE {
 
 pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, EncryptionError> {
     Base64UrlSafeNoPadding::decode_to_vec(base64_input, None)
-        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode {}: {}", name, e)))
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode {name}: {e}")))
 }
 
 #[cfg(test)]

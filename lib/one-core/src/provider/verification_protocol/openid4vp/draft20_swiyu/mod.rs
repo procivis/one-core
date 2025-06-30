@@ -144,14 +144,14 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         }
 
         let response = self.client.get(url.as_str()).send().await.map_err(|e| {
-            VerificationProtocolError::Failed(format!("Failed to get request object: {}", e))
+            VerificationProtocolError::Failed(format!("Failed to get request object: {e}"))
         })?;
         let token = String::from_utf8(response.body).map_err(|e| {
-            VerificationProtocolError::Failed(format!("Invalid request object: {}", e))
+            VerificationProtocolError::Failed(format!("Invalid request object: {e}"))
         })?;
         let params: DecomposedToken<OpenID4VP20AuthorizationRequest> = Jwt::decompose_token(&token)
             .map_err(|e| {
-                VerificationProtocolError::Failed(format!("Failed to decompose token: {}", e))
+                VerificationProtocolError::Failed(format!("Failed to decompose token: {e}"))
             })?;
         let request_params = OpenID4VP20AuthorizationRequestQueryParams {
             client_id: params.payload.custom.client_id,
@@ -162,12 +162,12 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         let expected_url: Url = format!(
             "openid4vp://?{}",
             serde_qs::to_string(&request_params).map_err(|e| VerificationProtocolError::Failed(
-                format!("Failed to serialize query params: {}", e)
+                format!("Failed to serialize query params: {e}")
             ))?
         )
         .parse()
         .map_err(|e| {
-            VerificationProtocolError::Failed(format!("Failed to parse query params: {}", e))
+            VerificationProtocolError::Failed(format!("Failed to parse query params: {e}"))
         })?;
 
         self.inner
@@ -219,8 +219,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         let mut interaction_data: OpenID4VPVerifierInteractionContent =
             serde_json::from_value(response.context).map_err(|err| {
                 VerificationProtocolError::Failed(format!(
-                    "failed to parse interaction data: {}",
-                    err
+                    "failed to parse interaction data: {err}"
                 ))
             })?;
         let mut response_url: Url = interaction_data

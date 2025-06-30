@@ -623,7 +623,7 @@ fn interaction_data_from_proof(proof: &Proof) -> Result<Value, VerificationProto
             "missing interaction data".to_string(),
         ))?;
     let interaction_data = serde_json::from_slice(interaction_data_bytes).map_err(|err| {
-        VerificationProtocolError::Failed(format!("failed to parse interaction data: {}", err))
+        VerificationProtocolError::Failed(format!("failed to parse interaction data: {err}"))
     })?;
     Ok(interaction_data)
 }

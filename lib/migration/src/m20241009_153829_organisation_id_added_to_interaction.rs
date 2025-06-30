@@ -16,17 +16,16 @@ impl MigrationTrait for Migration {
         manager
             .get_connection()
             .execute_unprepared(&format!(
-                "UPDATE {} SET interaction_id=null",
-                CREDENTIAL_TABLE
+                "UPDATE {CREDENTIAL_TABLE} SET interaction_id=null"
             ))
             .await?;
         manager
             .get_connection()
-            .execute_unprepared(&format!("UPDATE {} SET interaction_id=null", PROOF_TABLE))
+            .execute_unprepared(&format!("UPDATE {PROOF_TABLE} SET interaction_id=null"))
             .await?;
         manager
             .get_connection()
-            .execute_unprepared(&format!("DELETE FROM {}", TABLE))
+            .execute_unprepared(&format!("DELETE FROM {TABLE}"))
             .await?;
 
         match manager.get_database_backend() {

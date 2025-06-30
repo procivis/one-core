@@ -61,7 +61,7 @@ pub(crate) async fn get_metrics() -> Response {
         Ok(result) => (StatusCode::OK, result).into_response(),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Metrics encoding error: {:?}", error),
+            format!("Metrics encoding error: {error:?}"),
         )
             .into_response(),
     }

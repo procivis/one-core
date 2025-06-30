@@ -67,7 +67,7 @@ pub(crate) async fn format_credential<T: Serialize>(
         let did_document = did_method_provider
             .resolve(holder_did)
             .await
-            .map_err(|err| FormatterError::CouldNotFormat(format!("{}", err)))?;
+            .map_err(|err| FormatterError::CouldNotFormat(format!("{err}")))?;
         did_document
             .find_verification_method(
                 additional_inputs.holder_key_id.as_deref(),

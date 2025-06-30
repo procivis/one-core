@@ -50,7 +50,7 @@ impl TryFrom<DidDocumentDTO> for super::serialize::DidDocument {
     fn try_from(value: DidDocumentDTO) -> Result<Self, DidMethodError> {
         Ok(Self {
             context: serde_json::from_value(value.context).map_err(|err| {
-                DidMethodError::MappingError(format!("failed to parse context: {}", err))
+                DidMethodError::MappingError(format!("failed to parse context: {err}"))
             })?,
             id: value.id.to_string(),
             verification_method: value.verification_method,

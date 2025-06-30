@@ -14,8 +14,7 @@ pub async fn add_enum_variant<T: Iden + IntoEnumIterator>(
             let values = format!("'{}'", enum_values.join("', '"));
 
             let query = format!(
-                r#"ALTER TABLE {table} CHANGE COLUMN {column} {column} ENUM({}) NOT NULL;"#,
-                values
+                r#"ALTER TABLE {table} CHANGE COLUMN {column} {column} ENUM({values}) NOT NULL;"#
             );
 
             let change_stmt = Statement::from_string(backend, &query);

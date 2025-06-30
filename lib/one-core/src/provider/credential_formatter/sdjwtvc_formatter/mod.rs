@@ -443,7 +443,7 @@ impl SDJWTVCFormatter {
                     if fields.r#type == DatatypeType::File {
                         let path = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
                         post_process_claims(path, &mut jwt.payload.custom.public_claims, |value| {
-                            format!("{}{}", JPEG_DATA_URI_PREFIX, value)
+                            format!("{JPEG_DATA_URI_PREFIX}{value}")
                         })
                     }
                 }

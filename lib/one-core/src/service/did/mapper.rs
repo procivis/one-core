@@ -188,7 +188,7 @@ pub(super) fn map_key_to_verification_method(
     public_key_jwk: PublicKeyJwkDTO,
 ) -> Result<DidVerificationMethodDTO, ServiceError> {
     Ok(DidVerificationMethodDTO {
-        id: format!("{}#key-{}", did_value, public_key_id),
+        id: format!("{did_value}#key-{public_key_id}"),
         r#type: "JsonWebKey2020".to_string(),
         controller: did_value.to_string(),
         public_key_jwk,

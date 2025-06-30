@@ -259,8 +259,7 @@ async fn get_verifier_key_id(
     .one(db)
     .await?
     .ok_or(DbErr::Migration(format!(
-        "Did {} does not have any related ASSERTION_METHOD keys",
-        verifier_did_id
+        "Did {verifier_did_id} does not have any related ASSERTION_METHOD keys"
     )))?
     .key_id;
     Ok((verifier_did_id, verifier_key_id))

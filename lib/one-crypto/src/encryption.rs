@@ -94,7 +94,7 @@ pub fn encrypt_data(
     );
     cocoon
         .wrap(data.expose_secret())
-        .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {:?}", err)))
+        .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {err:?}")))
 }
 
 pub fn decrypt_string(
@@ -104,7 +104,7 @@ pub fn decrypt_string(
     let decrypted = decrypt_data(data, encryption_key)?;
     Ok(SecretString::from(
         String::from_utf8(decrypted.expose_secret().to_vec()).map_err(|err| {
-            EncryptionError::Crypto(format!("failed to decrypt string data: {:?}", err))
+            EncryptionError::Crypto(format!("failed to decrypt string data: {err:?}"))
         })?,
     ))
 }
@@ -118,5 +118,5 @@ pub fn decrypt_data(
     cocoon
         .unwrap(data)
         .map(SecretSlice::from)
-        .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {:?}", err)))
+        .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {err:?}")))
 }

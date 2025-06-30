@@ -99,7 +99,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .is_none_or(|response_uri| {
             !response_uri.domain().is_some_and(|response_domain| {
                 client_id == response_domain
-                    || is_dns_name_matching(&format!("*.{}", client_id), response_domain)
+                    || is_dns_name_matching(&format!("*.{client_id}"), response_domain)
             })
         })
     {
@@ -412,8 +412,7 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
             (None, Some(request)) => {
                 let authorization_request = serde_json::from_str(request).map_err(|e| {
                     VerificationProtocolError::InvalidRequest(format!(
-                        "Failed to parse request: {}",
-                        e
+                        "Failed to parse request: {e}"
                     ))
                 })?;
                 Ok((authorization_request, None, None))

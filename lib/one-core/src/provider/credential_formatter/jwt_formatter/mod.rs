@@ -316,7 +316,7 @@ fn format_payload(credentials: &[String], nonce: Option<String>) -> Result<VP, F
         .iter()
         .map(|token| {
             if Base64UrlSafeNoPadding::decode_to_vec(token, None).is_ok() {
-                let token = format!("data:application/vp+mso_mdoc,{}", token);
+                let token = format!("data:application/vp+mso_mdoc,{token}");
 
                 let vp = EnvelopedContent {
                     context: Vec::from_iter(vcdm_v2_base_context(None)),

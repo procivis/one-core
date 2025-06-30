@@ -192,20 +192,20 @@ impl TryFrom<JwkEcKey> for RemoteJwk {
 
     fn try_from(value: JwkEcKey) -> Result<Self, Self::Error> {
         let point = value.to_encoded_point::<NistP256>().map_err(|e| {
-            EncryptionError::Crypto(format!("failed to convert JWK to encoded point: {}", e))
+            EncryptionError::Crypto(format!("failed to convert JWK to encoded point: {e}"))
         })?;
         let x = Base64UrlSafeNoPadding::encode_to_string(
             point
                 .x()
                 .ok_or(EncryptionError::Crypto("missing x coordinate".to_string()))?,
         )
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {e}")))?;
         let y = Base64UrlSafeNoPadding::encode_to_string(
             point
                 .y()
                 .ok_or(EncryptionError::Crypto("missing y coordinate".to_string()))?,
         )
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {e}")))?;
         Ok(Self {
             kty: "EC".to_string(),
             crv: value.crv().to_string(),

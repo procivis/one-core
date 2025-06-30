@@ -113,7 +113,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .subscribe(
                 host.to_string(),
                 port,
-                format!("/proof/{}/presentation-submission/identify", topic_id),
+                format!("/proof/{topic_id}/presentation-submission/identify"),
             )
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -128,7 +128,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .subscribe(
                 host.to_string(),
                 port,
-                format!("/proof/{}/presentation-definition", topic_id),
+                format!("/proof/{topic_id}/presentation-definition"),
             )
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;

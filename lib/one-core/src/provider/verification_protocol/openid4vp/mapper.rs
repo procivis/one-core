@@ -375,8 +375,8 @@ fn format_path(
             None => Ok(format!("$['{claim_key}']")),
             Some((namespace, key)) => Ok(format!("$['{namespace}']['{key}']")),
         },
-        FormatType::SdJwtVc => Ok(format!("$.{}", claim_key)),
-        _ => Ok(format!("$.vc.credentialSubject.{}", claim_key)),
+        FormatType::SdJwtVc => Ok(format!("$.{claim_key}")),
+        _ => Ok(format!("$.vc.credentialSubject.{claim_key}")),
     }
 }
 

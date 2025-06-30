@@ -1108,7 +1108,7 @@ async fn test_format_extract_round_trip() {
         .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
     auth_fn
         .expect_get_key_id()
-        .returning(move || Some(format!("{}#0", issuer_did)));
+        .returning(move || Some(format!("{issuer_did}#0")));
     let public_key_clone = key_pair.public.clone();
     auth_fn
         .expect_get_public_key()

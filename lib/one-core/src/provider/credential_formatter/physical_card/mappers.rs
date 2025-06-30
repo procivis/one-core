@@ -154,8 +154,7 @@ impl ProtectedOpticalData {
                 Ok(Self::Mrz(code.replace([' ', '\n', '\r'], "")))
             }
             _ => Err(FormatterError::Failed(format!(
-                "Unsupported subject type: {}",
-                subject_type
+                "Unsupported subject type: {subject_type}"
             ))),
         }
     }

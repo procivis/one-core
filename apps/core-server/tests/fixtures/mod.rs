@@ -92,9 +92,9 @@ pub fn create_config(
     let root = std::env!("CARGO_MANIFEST_DIR");
 
     let configs = [
-        InputFormat::yaml_file(format!("{}/../../config/config.yml", root)),
-        InputFormat::yaml_file(format!("{}/../../config/config-procivis-base.yml", root)),
-        InputFormat::yaml_file(format!("{}/../../config/config-local.yml", root)),
+        InputFormat::yaml_file(format!("{root}/../../config/config.yml")),
+        InputFormat::yaml_file(format!("{root}/../../config/config-procivis-base.yml")),
+        InputFormat::yaml_file(format!("{root}/../../config/config-local.yml")),
     ]
     .into_iter()
     .chain(ion_config.map(InputFormat::yaml_str))
@@ -131,7 +131,7 @@ pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
             url.set_path("");
             let conn = sea_orm::Database::connect(url.clone()).await.unwrap();
             let db_name: String = ulid::Ulid::new().to_string();
-            println!("USING DATABASE {}", db_name);
+            println!("USING DATABASE {db_name}");
 
             conn.execute_unprepared(&format!("CREATE DATABASE {db_name};"))
                 .await
@@ -816,8 +816,7 @@ pub async fn assert_history_count(
         .count();
     assert_eq!(
         num_entries, expected_count,
-        "expected {expected_count} entries with action {:?} for entity {entity_id}, but found {num_entries}",
-        action
+        "expected {expected_count} entries with action {action:?} for entity {entity_id}, but found {num_entries}"
     );
 }
 

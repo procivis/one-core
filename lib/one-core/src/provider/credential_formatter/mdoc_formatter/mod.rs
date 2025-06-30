@@ -156,7 +156,7 @@ impl MdocFormatter {
             .or_else(|| {
                 // fallback for backwards compatibility (also note "base_url" is not available on mobile verifier)
                 let base_url = self.base_url.as_ref()?;
-                Url::parse(&format!("{}/ssi/openid4vp/draft-20/response", base_url))
+                Url::parse(&format!("{base_url}/ssi/openid4vp/draft-20/response"))
                     .map(|u| u.to_string())
                     .ok()
             })
@@ -1202,8 +1202,7 @@ async fn extract_certificate_from_x5chain_header(
             .collect(),
         val => {
             return Err(FormatterError::Failed(format!(
-                "Unexpected value in x5chain header: {:?}",
-                val
+                "Unexpected value in x5chain header: {val:?}"
             )));
         }
     };
@@ -1386,8 +1385,7 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
         }
         Value::Null => Ok(serde_json::Value::Null),
         _ => Err(FormatterError::Failed(format!(
-            "Unexpected element value. Got: {:#?}",
-            value
+            "Unexpected element value. Got: {value:#?}"
         ))),
     }
 }
@@ -1420,8 +1418,7 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
             .ok_or_else(|| FormatterError::Failed("Expected String value for key".to_owned()))?;
 
         return Ok(serde_json::Value::String(format!(
-            "{},{}",
-            data_type_value, value
+            "{data_type_value},{value}"
         )));
     }
 

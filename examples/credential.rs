@@ -136,7 +136,7 @@ async fn main() -> Result<(), CredentialServiceError> {
         .extract_credential(CredentialFormat::SdJwt, &credential_presentation)
         .await
         .expect("Credential extraction failed");
-    println!("Parsed presentation content: {:#?}\n", details);
+    println!("Parsed presentation content: {details:#?}\n");
 
     let values = details.claims.claims;
 

@@ -53,7 +53,7 @@ impl DidMethod for KeyDidMethod {
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
             .public_key_as_multibase()
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
-        format!("did:key:{}", multibase)
+        format!("did:key:{multibase}")
             .parse()
             .map(|did| DidCreated { did, log: None })
             .context("did parsing error")

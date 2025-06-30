@@ -207,7 +207,7 @@ fn vct_logo_from_schema(
         .map(|s| Url::try_from(s.as_str()))
         .next()
         .transpose()
-        .map_err(|err| ServiceError::MappingError(format!("failed to parse logo URL: {}", err)))?
+        .map_err(|err| ServiceError::MappingError(format!("failed to parse logo URL: {err}")))?
         .map(|uri| SdJwtVcSimpleRenderingLogoDTO {
             uri,
             alt_text: None,

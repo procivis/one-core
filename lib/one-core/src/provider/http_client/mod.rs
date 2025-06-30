@@ -270,7 +270,7 @@ fn format_body(body: &Option<&Vec<u8>>) -> String {
         None => "<None>".to_string(),
         Some(value) => match String::from_utf8((*value).clone()) {
             Ok(string) => string,
-            Err(_) => format!("{:?}", value),
+            Err(_) => format!("{value:?}"),
         },
     }
 }

@@ -1809,7 +1809,7 @@ fn collect_keys(
     if let Some(claims) = claim_object.claims.as_ref() {
         for (key, object) in claims {
             let path = if let Some(item_path) = &item_path {
-                format!("{item_path}{}{key}", NESTED_CLAIM_MARKER)
+                format!("{item_path}{NESTED_CLAIM_MARKER}{key}")
             } else {
                 key.to_owned()
             };
@@ -1823,12 +1823,9 @@ fn collect_keys(
         for (key, object_definitions) in arrays {
             if let Some(object_fields) = object_definitions.first() {
                 let path = if let Some(item_path) = &item_path {
-                    format!(
-                        "{item_path}{}{key}{}0",
-                        NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER
-                    )
+                    format!("{item_path}{NESTED_CLAIM_MARKER}{key}{NESTED_CLAIM_MARKER}0")
                 } else {
-                    format!("{key}{}0", NESTED_CLAIM_MARKER)
+                    format!("{key}{NESTED_CLAIM_MARKER}0")
                 };
                 let paths = collect_keys(object_fields, Some(&path));
 

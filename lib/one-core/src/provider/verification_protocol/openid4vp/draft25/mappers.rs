@@ -153,7 +153,7 @@ fn get_params_for_redirect_uri(
 pub fn encode_client_id_with_scheme(client_id: String, client_id_scheme: ClientIdScheme) -> String {
     match client_id_scheme {
         ClientIdScheme::Did => client_id,
-        _ => format!("{}:{}", client_id_scheme, client_id),
+        _ => format!("{client_id_scheme}:{client_id}"),
     }
 }
 
@@ -168,7 +168,7 @@ pub fn decode_client_id_with_scheme(
             ))?;
 
     let client_id_scheme: ClientIdScheme = client_id_scheme.parse().map_err(|e| {
-        VerificationProtocolError::InvalidRequest(format!("invalid client_id_scheme: {}", e))
+        VerificationProtocolError::InvalidRequest(format!("invalid client_id_scheme: {e}"))
     })?;
 
     let client_id = match client_id_scheme {

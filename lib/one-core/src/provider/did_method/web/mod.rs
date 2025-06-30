@@ -48,7 +48,7 @@ impl WebDidMethod {
                 host_str.push_str(&format!("%3A{port}"));
             }
 
-            let did_base_string = format!("did:web:{}:ssi:did-web:v1", host_str);
+            let did_base_string = format!("did:web:{host_str}:ssi:did-web:v1");
 
             Some(did_base_string)
         } else {

@@ -123,7 +123,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
         })
         .await
         .map_err(|e| {
-            VerificationProtocolError::Failed(format!("failed to update interaction data: {}", e))
+            VerificationProtocolError::Failed(format!("failed to update interaction data: {e}"))
         })?;
 
     Ok(InvitationResponseDTO {

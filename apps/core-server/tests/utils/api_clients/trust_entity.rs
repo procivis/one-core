@@ -189,7 +189,7 @@ impl TrustEntitiesApi {
     ) -> Response {
         let body = json!(request);
         self.client
-            .patch(&format!("/api/trust-entity/v1/{}", id), body)
+            .patch(&format!("/api/trust-entity/v1/{id}"), body)
             .await
     }
 

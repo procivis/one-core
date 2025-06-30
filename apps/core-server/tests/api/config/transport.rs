@@ -44,8 +44,8 @@ async fn test_server_starts_with_base_config() {
     "}.to_string(),
     );
     let configs = [
-        InputFormat::yaml_file(format!("{}/../../config/config.yml", root)),
-        InputFormat::yaml_file(format!("{}/../../config/config-procivis-base.yml", root)),
+        InputFormat::yaml_file(format!("{root}/../../config/config.yml")),
+        InputFormat::yaml_file(format!("{root}/../../config/config-procivis-base.yml")),
     ]
     .into_iter()
     .chain(set_encryption_key.map(InputFormat::yaml_str));

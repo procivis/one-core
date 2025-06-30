@@ -22,7 +22,7 @@ pub fn extract_jwk(did: &DidValue) -> Result<PublicKeyJwkDTO, DidMethodError> {
 }
 
 pub fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocument {
-    let did_url = format!("{}#0", did);
+    let did_url = format!("{did}#0");
     let urls = Some(vec![did_url.clone()]);
     let verification_method = jwk_verification_method(did_url, did, jwk.clone().into());
 

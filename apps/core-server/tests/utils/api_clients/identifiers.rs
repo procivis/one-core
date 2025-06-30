@@ -18,7 +18,7 @@ impl IdentifiersApi {
         key_id: KeyId,
         organisation_id: OrganisationId,
     ) -> Response {
-        let did_name = format!("did-{}", name);
+        let did_name = format!("did-{name}");
         self.client
             .post(
                 "/api/identifier/v1",
@@ -94,12 +94,12 @@ impl IdentifiersApi {
     }
 
     pub async fn get(&self, id: &IdentifierId) -> Response {
-        self.client.get(&format!("/api/identifier/v1/{}", id)).await
+        self.client.get(&format!("/api/identifier/v1/{id}")).await
     }
 
     pub async fn delete(&self, id: &IdentifierId) -> Response {
         self.client
-            .delete(&format!("/api/identifier/v1/{}", id))
+            .delete(&format!("/api/identifier/v1/{id}"))
             .await
     }
 

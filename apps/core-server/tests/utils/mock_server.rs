@@ -24,10 +24,7 @@ impl MockServer {
 
     pub async fn refresh_token(&self, schema_id: impl Display) {
         Mock::given(method(Method::POST))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{}/token",
-                schema_id
-            )))
+            .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                    "access_token": "321",
@@ -43,10 +40,7 @@ impl MockServer {
 
     pub async fn token_endpoint(&self, schema_id: impl Display, test_token: impl Serialize) {
         Mock::given(method(Method::POST))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{}/token",
-                schema_id
-            )))
+            .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "access_token": test_token,
@@ -67,10 +61,7 @@ impl MockServer {
         tx_code: impl Display,
     ) {
         Mock::given(method(Method::POST))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{}/token",
-                schema_id
-            )))
+            .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
             .and(body_string_contains(format!("tx_code={tx_code}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -96,8 +87,7 @@ impl MockServer {
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{}/credential",
-                schema_id
+                "/ssi/openid4vci/draft-13/{schema_id}/credential"
             )))
             .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -119,8 +109,7 @@ impl MockServer {
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{}/notification",
-                schema_id
+                "/ssi/openid4vci/draft-13/{schema_id}/notification"
             )))
             .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
             .and(body_partial_json(json!({

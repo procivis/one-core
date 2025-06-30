@@ -311,8 +311,7 @@ async fn process_proof(
         let error_metadata = HistoryErrorMetadata {
             error_code: BR_0000,
             message: format!(
-                "Response received with documents and document errors: {:?}",
-                device_response
+                "Response received with documents and document errors: {device_response:?}"
             ),
         };
         set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;

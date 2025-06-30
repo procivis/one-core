@@ -56,8 +56,7 @@ pub(crate) fn parse_multibase_with_tag(
 ) -> Result<Vec<u8>, KeyAlgorithmError> {
     if !encoded.starts_with('z') {
         return Err(KeyAlgorithmError::Failed(format!(
-            "Invalid multibase, expected 'z' prefix but got '{}'",
-            encoded
+            "Invalid multibase, expected 'z' prefix but got '{encoded}'"
         )));
     }
     let raw_bs58 = &encoded[1..];

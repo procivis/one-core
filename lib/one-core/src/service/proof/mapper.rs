@@ -471,7 +471,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
         let path = if prefix.is_empty() {
             root_key.clone()
         } else {
-            format!("{}{}{}", prefix, NESTED_CLAIM_MARKER, root_key)
+            format!("{prefix}{NESTED_CLAIM_MARKER}{root_key}")
         };
 
         result.push(ProofClaimDTO {
@@ -496,7 +496,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
         let path = if prefix.is_empty() {
             root_key.clone()
         } else {
-            format!("{}{}{}", prefix, NESTED_CLAIM_MARKER, root_key)
+            format!("{prefix}{NESTED_CLAIM_MARKER}{root_key}")
         };
 
         result.push(ProofClaimDTO {

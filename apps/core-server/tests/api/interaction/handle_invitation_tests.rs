@@ -1419,8 +1419,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let callback_url = "http://127.0.0.1/callback";
     let client_metadata_uri = format!("{}/client-metadata", mock_server.uri());
     let presentation_definition_uri = format!("{}/presentation-definition", mock_server.uri());
-    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
-                                    , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap().to_string();
+    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata_uri={client_metadata_uri}&response_mode=direct_post&response_uri={callback_url}&presentation_definition_uri={presentation_definition_uri}")).unwrap().to_string();
 
     Mock::given(method(Method::GET))
         .and(path("/client-metadata"))
@@ -1472,8 +1471,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
     .unwrap();
     let nonce = Uuid::new_v4().to_string();
     let callback_url = "http://127.0.0.1/callback";
-    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
-                                    , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap().to_string();
+    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata={client_metadata}&response_mode=direct_post&response_uri={callback_url}&presentation_definition={presentation_definition}")).unwrap().to_string();
 
     // WHEN
     let resp = context

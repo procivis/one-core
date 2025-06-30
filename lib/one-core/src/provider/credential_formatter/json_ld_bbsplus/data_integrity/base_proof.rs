@@ -277,7 +277,7 @@ fn serialize_base_proof_value(
 
     let mut cbor_components = Vec::new();
     ciborium::ser::into_writer(&bbs_components, &mut cbor_components)
-        .map_err(|e| FormatterError::CouldNotFormat(format!("CBOR serialization failed: {}", e)))?;
+        .map_err(|e| FormatterError::CouldNotFormat(format!("CBOR serialization failed: {e}")))?;
 
     let mut cbor = CBOR_PREFIX_BASE.to_vec();
     cbor.extend(cbor_components);

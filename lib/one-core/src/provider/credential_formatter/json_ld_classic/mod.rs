@@ -645,8 +645,7 @@ pub(super) async fn verify_proof_signature(
 ) -> Result<(), FormatterError> {
     if !proof_value_bs58.starts_with('z') {
         return Err(FormatterError::CouldNotVerify(format!(
-            "Only base58 multibase encoding is supported for suite {}",
-            cryptosuite
+            "Only base58 multibase encoding is supported for suite {cryptosuite}"
         )));
     }
 

@@ -286,7 +286,7 @@ async fn test_identifier_filter_key_success() {
     let resp = result.json_value().await;
     assert_eq!(did_identifier_id.to_string(), resp["id"]);
     assert_eq!(did_identifier_name.to_string(), resp["name"]);
-    assert_eq!(format!("did-{}", did_identifier_name), resp["did"]["name"]);
+    assert_eq!(format!("did-{did_identifier_name}"), resp["did"]["name"]);
 
     let result = context
         .api

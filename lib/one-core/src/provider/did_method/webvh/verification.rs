@@ -164,7 +164,7 @@ fn verify_version(params: &DidLogParameters, mandatory: bool) -> Result<(), DidM
 fn verify_scid(scid: &str, first_line_raw: &str) -> Result<(), DidMethodError> {
     let replaced = first_line_raw.replace(scid, "{SCID}");
     let mut json_value = json_syntax::Value::from_str(&replaced).map_err(|err| {
-        ResolutionError(format!("Failed to parse SCID hash input as JSON: {}", err))
+        ResolutionError(format!("Failed to parse SCID hash input as JSON: {err}"))
     })?;
     let json_array = json_value
         .as_array_mut()
@@ -180,13 +180,12 @@ fn verify_scid(scid: &str, first_line_raw: &str) -> Result<(), DidMethodError> {
 
     let hash = canonicalized_hash(json_value)?;
     let multihash = multihash::Multihash::<32>::wrap(0x12, &hash)
-        .map_err(|err| ResolutionError(format!("Failed to create multihash: {}", err)))?;
+        .map_err(|err| ResolutionError(format!("Failed to create multihash: {err}")))?;
 
     let derived_scid = bs58::encode(multihash.to_bytes()).into_string();
     if scid != derived_scid {
         return Err(ResolutionError(format!(
-            "Invalid SCID: expected {}, got {}",
-            scid, derived_scid
+            "Invalid SCID: expected {scid}, got {derived_scid}"
         )));
     };
     Ok(())
@@ -198,7 +197,7 @@ fn verify_version_id(
     line_raw: &str,
 ) -> Result<(), DidMethodError> {
     let mut json_value = json_syntax::Value::from_str(line_raw).map_err(|err| {
-        ResolutionError(format!("Failed to parse SCID hash input as JSON: {}", err))
+        ResolutionError(format!("Failed to parse SCID hash input as JSON: {err}"))
     })?;
     let json_array = json_value
         .as_array_mut()
@@ -233,7 +232,7 @@ fn verify_version_id(
 
     let hash = canonicalized_hash(json_value)?;
     let multihash = multihash::Multihash::<32>::wrap(0x12, &hash)
-        .map_err(|err| ResolutionError(format!("Failed to create multihash: {}", err)))?;
+        .map_err(|err| ResolutionError(format!("Failed to create multihash: {err}")))?;
 
     let entry_hash = bs58::encode(multihash.to_bytes()).into_string();
     if entry_hash != expected_entry_hash {

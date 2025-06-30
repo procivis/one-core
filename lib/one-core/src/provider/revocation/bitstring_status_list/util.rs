@@ -37,8 +37,7 @@ pub fn extract_bitstring_index(
 
     if !compressed_list.starts_with(GZIP_PREFIX) {
         return Err(BitstringError::InvalidPrefix(format!(
-            "expected gzip header: {GZIP_PREFIX}, input: {}",
-            compressed_list
+            "expected gzip header: {GZIP_PREFIX}, input: {compressed_list}"
         )));
     }
 
@@ -71,7 +70,7 @@ pub(super) fn generate_bitstring(input: Vec<bool>) -> Result<String, BitstringEr
 
     Base64UrlSafeNoPadding::encode_to_string(compressed)
         .map_err(BitstringError::Base64Encoding)
-        .map(|s| format!("{MULTIBASE_PREFIX}{}", s))
+        .map(|s| format!("{MULTIBASE_PREFIX}{s}"))
 }
 
 fn calculate_bitstring_size(input_size: usize) -> usize {

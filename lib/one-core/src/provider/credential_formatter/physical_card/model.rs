@@ -54,15 +54,14 @@ where
 {
     time::Date::parse(&date.to_string(), &Iso8601::DEFAULT)
         .map_err(|e| {
-            FormatterError::CouldNotExtractCredentials(format!("Failed to parse date: {}", e))
+            FormatterError::CouldNotExtractCredentials(format!("Failed to parse date: {e}"))
         })
         .and_then(|d| {
             OffsetDateTime::new_utc(d, time::Time::MIDNIGHT)
                 .format(&Rfc3339)
                 .map_err(|e| {
                     FormatterError::CouldNotExtractCredentials(format!(
-                        "Failed to format date: {}",
-                        e
+                        "Failed to format date: {e}"
                     ))
                 })
         })

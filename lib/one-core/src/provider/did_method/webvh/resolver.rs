@@ -432,9 +432,7 @@ mod test {
         resolve_log_files(folder, |result, file_name| {
             assert!(
                 result.is_ok(),
-                "Failed resolving did! Did log file: {}, result: {:#?}",
-                file_name,
-                result
+                "Failed resolving did! Did log file: {file_name}, result: {result:#?}"
             )
         })
         .await;

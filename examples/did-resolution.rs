@@ -32,8 +32,8 @@ async fn main() -> Result<(), DidMethodError> {
     for did in example_did_values_implemented.into_iter() {
         // resolve DID using service without allowing fallback provider
         let result = did_service.resolve_did(&did, false).await;
-        assert!(result.is_ok(), "expected to resolve DID {}", did);
-        println!("Resolved {} into:\n{:#?}\n", did, result);
+        assert!(result.is_ok(), "expected to resolve DID {did}");
+        println!("Resolved {did} into:\n{result:#?}\n");
     }
 
     // resolving an unimplemented DID method with fallback provider disabled will fail

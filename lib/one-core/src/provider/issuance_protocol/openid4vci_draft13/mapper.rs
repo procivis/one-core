@@ -1032,7 +1032,7 @@ pub(crate) fn map_cryptographic_binding_methods_supported(
 ) -> Vec<String> {
     let mut binding_methods: Vec<_> = supported_did_methods
         .iter()
-        .map(|did_method| format!("did:{}", did_method))
+        .map(|did_method| format!("did:{did_method}"))
         .collect();
     binding_methods.push("jwk".to_string());
     binding_methods

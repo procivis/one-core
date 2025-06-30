@@ -113,7 +113,7 @@ impl MqttVerifier {
         flow: impl FnOnce(MqttVerifierTransport) -> BoxFuture<'static, ()> + Send + 'static,
     ) -> Result<Url, VerificationProtocolError> {
         let url = {
-            let mut url: Url = format!("{}://connect", url_scheme).parse().map_err(|e| {
+            let mut url: Url = format!("{url_scheme}://connect").parse().map_err(|e| {
                 VerificationProtocolError::Failed(format!("Failed to parse url: `{e}`"))
             })?;
             url.query_pairs_mut()
@@ -127,7 +127,7 @@ impl MqttVerifier {
             url
         };
 
-        let topic_prefix = format!("/proof/{}", interaction_id);
+        let topic_prefix = format!("/proof/{interaction_id}");
         self.start_detached_subscriber(topic_prefix, proof_id, flow)
             .await?;
 

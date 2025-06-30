@@ -41,7 +41,7 @@ pub(super) struct KeyRef {
 pub fn canonicalized_hash(mut data: json_syntax::Value) -> Result<Vec<u8>, DidMethodError> {
     data.canonicalize();
     SHA256.hash(data.to_string().as_bytes()).map_err(|err| {
-        DidMethodError::ResolutionError(format!("Failed to hash canonicalized JSON: {}", err))
+        DidMethodError::ResolutionError(format!("Failed to hash canonicalized JSON: {err}"))
     })
 }
 

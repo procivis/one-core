@@ -219,8 +219,7 @@ pub(crate) async fn get_or_create_certificate_identifier(
 
     if attributes.fingerprint != fingerprint {
         return Err(ServiceError::MappingError(format!(
-            "Fingerprint {} doesn't match provided certificate",
-            fingerprint
+            "Fingerprint {fingerprint} doesn't match provided certificate"
         )));
     }
 
