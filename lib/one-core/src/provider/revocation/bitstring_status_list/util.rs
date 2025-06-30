@@ -29,11 +29,11 @@ pub fn extract_bitstring_index(
     compressed_list: String,
     index: usize,
 ) -> Result<bool, BitstringError> {
-    // For backwards compatibility, we allow the compressed list to be passed without the 'u' multibase prefix.
-    // see ONE-3528
-    let compressed_list = compressed_list
-        .strip_prefix(MULTIBASE_PREFIX)
-        .unwrap_or(&compressed_list);
+    let Some(compressed_list) = compressed_list.strip_prefix(MULTIBASE_PREFIX) else {
+        return Err(BitstringError::InvalidPrefix(format!(
+            "expected multibase prefix: '{MULTIBASE_PREFIX}', input: {compressed_list}"
+        )));
+    };
 
     if !compressed_list.starts_with(GZIP_PREFIX) {
         return Err(BitstringError::InvalidPrefix(format!(
@@ -86,7 +86,7 @@ mod test {
 
     // test vector, no revocations, taken from: https://www.w3.org/TR/vc-status-list/#example-example-statuslist2021credential-0
     const BITSTRING_NO_REVOCATIONS: &str =
-        "H4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA";
+        "uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA";
 
     // test vector, one revocation on index 1
     const BITSTRING_ONE_REVOCATION: &str =
