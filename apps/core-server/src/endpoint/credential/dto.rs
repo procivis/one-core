@@ -120,6 +120,8 @@ pub struct GetCredentialResponseRestDTO {
     #[try_from(with_fn = try_convert_inner)]
     pub issuer_certificate: Option<CertificateResponseRestDTO>,
 
+    /// Claims made by issuer. During the credential offer phase this
+    /// will be empty unless the issuer has provided preview values.
     #[try_from(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
 
