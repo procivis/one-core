@@ -108,12 +108,15 @@ pub struct GetCredentialResponseRestDTO {
     #[try_from(infallible)]
     pub schema: CredentialDetailSchemaResponseRestDTO,
 
+    /// DID details if issuer is using a DID.
     #[try_from(with_fn = convert_inner, infallible)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
 
+    /// Identifier ID of the issuer.
     #[try_from(with_fn = convert_inner, infallible)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
 
+    /// Certificate details if issuer is using an X.509.
     #[try_from(with_fn = try_convert_inner)]
     pub issuer_certificate: Option<CertificateResponseRestDTO>,
 

@@ -137,8 +137,17 @@ pub(crate) async fn get_identifier_list(
     security(
         ("bearer" = [])
     ),
-    summary = "Resolve the trust entity of each of the supplied identifiers",
-    description = "Returns a list of identifiers within an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    summary = "Resolve trust entities",
+    description = indoc::formatdoc! {"
+    Resolves trust entity information of supplied identifiers.
+
+    For holders and verifiers: get identifiers from offered credentials or shared
+    proofs and pass them here. The system checks the identifiers against your trust
+    anchors and returns information for trusted entities.
+
+    Note that trust information is informational only. Holders and verifiers can
+    decide how to proceed with any given interaction.
+"},
 )]
 pub(crate) async fn resolve_trust_entity(
     state: State<AppState>,

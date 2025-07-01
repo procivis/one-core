@@ -81,6 +81,7 @@ pub enum TrustEntityStateRest {
 #[from(GetTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetTrustEntityResponseRestDTO {
+    /// Trust entity ID.
     pub id: TrustEntityId,
     pub organisation_id: Option<OrganisationId>,
     #[serde(serialize_with = "front_time")]
@@ -96,6 +97,7 @@ pub struct GetTrustEntityResponseRestDTO {
     pub privacy_url: Option<String>,
     /// The role the entity is trusted to perform.
     pub role: TrustEntityRoleRest,
+    /// Trust anchor details.
     pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
     /// DID details.
     #[from(with_fn=convert_inner)]
