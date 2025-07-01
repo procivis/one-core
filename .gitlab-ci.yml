@@ -88,19 +88,6 @@ before_script:
       when: never
     - when: on_success
 
-.cargo_build:
-  tags:
-    - rust
-  script:
-    - cargo build --release -p core-server
-    - cargo sweep --time 7
-  after_script:
-    - mkdir -p target/release
-    - mv ${CARGO_TARGET_DIR}/release/core-server target/release/core-server
-  artifacts:
-    expire_in: 1 hour
-    paths:
-      - target/release/core-server
 
 .cargo_tests:
   stage: test
