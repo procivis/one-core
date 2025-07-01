@@ -39,7 +39,7 @@ impl OrganisationsDB {
         self.repository
             .update_organisation(UpdateOrganisationRequest {
                 id: *id,
-                name: id.to_string(),
+                name: None,
                 deactivate: Some(true),
             })
             .await

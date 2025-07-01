@@ -14,7 +14,7 @@ pub struct CreateOrganisationRequestDTO {
 #[into(UpdateOrganisationRequest)]
 pub struct UpsertOrganisationRequestDTO {
     pub id: OrganisationId,
-    pub name: String,
+    pub name: Option<String>,
     pub deactivate: Option<bool>,
 }
 

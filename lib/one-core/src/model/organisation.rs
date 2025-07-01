@@ -13,7 +13,7 @@ pub struct Organisation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateOrganisationRequest {
     pub id: OrganisationId,
-    pub name: String,
+    pub name: Option<String>,
     pub deactivate: Option<bool>,
 }
 

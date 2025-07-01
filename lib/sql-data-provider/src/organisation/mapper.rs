@@ -20,7 +20,10 @@ impl From<UpdateOrganisationRequest> for organisation::ActiveModel {
     fn from(value: UpdateOrganisationRequest) -> Self {
         Self {
             id: Set(value.id),
-            name: Set(value.name),
+            name: match value.name {
+                Some(name) => Set(name),
+                None => Unchanged(Default::default()),
+            },
             last_modified: Set(OffsetDateTime::now_utc()),
             deactivated_at: match value.deactivate {
                 Some(true) => Set(Some(OffsetDateTime::now_utc())),

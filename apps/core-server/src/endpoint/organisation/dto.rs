@@ -23,7 +23,8 @@ pub struct CreateOrganisationRequestRestDTO {
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpsertOrganisationRequestRestDTO {
-    pub name: String,
+    #[schema(value_type = String, example = "My Organization")]
+    pub name: Option<String>,
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
 }

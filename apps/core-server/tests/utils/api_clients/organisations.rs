@@ -30,13 +30,17 @@ impl OrganisationsApi {
     pub async fn upsert(
         &self,
         id: &impl Display,
-        name: &str,
+        name: Option<&str>,
         deactivate: Option<bool>,
     ) -> Response {
-        let mut body = json!({"name": name});
+        let mut body = json!({});
 
         if let Some(deactivate) = deactivate {
             body["deactivate"] = json!(deactivate);
+        }
+
+        if let Some(name) = name {
+            body["name"] = json!(name);
         }
         self.client
             .put(&format!("/api/organisation/v1/{id}"), body)

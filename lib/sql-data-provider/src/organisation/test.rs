@@ -109,7 +109,7 @@ async fn test_update_organisation() {
 
     let request = UpdateOrganisationRequest {
         id: org_id,
-        name: "name".to_string(),
+        name: Some("name".to_string()),
         deactivate: None,
     };
 

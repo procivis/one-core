@@ -24,7 +24,7 @@ impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
     fn from(request: UpsertOrganisationRequestDTO) -> Self {
         CreateOrganisationRequestDTO {
             id: Some(request.id),
-            name: Some(request.name),
+            name: request.name,
         }
     }
 }

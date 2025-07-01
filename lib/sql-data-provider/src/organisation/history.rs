@@ -7,9 +7,12 @@ use one_core::model::organisation::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
+use sea_orm::DbErr;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::mapper::to_data_layer_error;
 
 pub struct OrganisationHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
@@ -52,23 +55,46 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
     ) -> Result<(), DataLayerError> {
         self.inner.update_organisation(request.clone()).await?;
 
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                action: HistoryAction::Updated,
-                name: request.name,
-                target: None,
-                entity_id: Some(request.id.into()),
-                entity_type: HistoryEntityType::Organisation,
-                metadata: None,
-                organisation_id: Some(request.id),
-            })
-            .await;
+        let updated_entry = self
+            .inner
+            .get_organisation(&request.id, &OrganisationRelations::default())
+            .await?
+            .ok_or(to_data_layer_error(DbErr::RecordNotFound(
+                request.id.to_string(),
+            )))?;
 
-        if let Err(err) = result {
-            tracing::warn!("failed to insert organisation history event: {err:?}");
+        let mut history_actions = vec![];
+        if request.name.is_some() {
+            history_actions.push(HistoryAction::Updated);
+        }
+
+        if let Some(deactivate) = request.deactivate {
+            if deactivate {
+                history_actions.push(HistoryAction::Deactivated);
+            } else {
+                history_actions.push(HistoryAction::Reactivated);
+            }
+        }
+
+        for action in history_actions {
+            let result = self
+                .history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    action,
+                    name: updated_entry.name.clone(),
+                    target: None,
+                    entity_id: Some(request.id.into()),
+                    entity_type: HistoryEntityType::Organisation,
+                    metadata: None,
+                    organisation_id: Some(request.id),
+                })
+                .await;
+
+            if let Err(err) = result {
+                tracing::warn!("failed to insert organisation history event: {err:?}");
+            }
         }
 
         Ok(())

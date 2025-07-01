@@ -109,7 +109,7 @@ pub(crate) async fn post_organisation(
     ),
     summary = "Update or insert organization",
     description = indoc::formatdoc! {"
-        Updates the name of an organization if it exists, otherwise creates
+        Updates the name or deactivates an organization if it exists, otherwise creates
         a new organization using the provided UUID and name.
     "},
 )]

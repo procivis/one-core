@@ -38,6 +38,6 @@ pub struct CreateOrganisationRequestBindingDTO {
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct UpsertOrganisationRequestBindingDTO {
     pub id: String,
-    pub name: String,
+    pub name: Option<String>,
     pub deactivate: Option<bool>,
 }
