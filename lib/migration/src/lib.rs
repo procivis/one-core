@@ -126,6 +126,7 @@ mod m20250619_083023_name_deleted_at_unique;
 mod m20250620_123138_simplify_trust_entity_entity_key_index;
 mod m20250624_093010_rename_exchange_to_protocol;
 mod m20250624_112336_add_deactivated_at_to_organisation;
+mod m20250630_144901_add_expiry_to_remote_entity_cache;
 
 mod migrate_enum;
 
@@ -255,6 +256,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250620_123138_simplify_trust_entity_entity_key_index::Migration),
             Box::new(m20250624_093010_rename_exchange_to_protocol::Migration),
             Box::new(m20250624_112336_add_deactivated_at_to_organisation::Migration),
+            Box::new(m20250630_144901_add_expiry_to_remote_entity_cache::Migration),
         ]
     }
 }

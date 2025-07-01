@@ -26,7 +26,7 @@ pub mod in_memory;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait RemoteEntityStorage: Send + Sync {
-    async fn delete_oldest(
+    async fn delete_expired_or_least_used(
         &self,
         entity_type: RemoteEntityType,
     ) -> Result<(), RemoteEntityStorageError>;
@@ -46,6 +46,7 @@ pub trait RemoteEntityStorage: Send + Sync {
 #[from(RemoteEntityCacheEntry)]
 pub struct RemoteEntity {
     pub last_modified: OffsetDateTime,
+    pub expiration_date: Option<OffsetDateTime>,
 
     #[from(rename = "r#type")]
     pub entity_type: RemoteEntityType,
@@ -55,7 +56,6 @@ pub struct RemoteEntity {
     pub hit_counter: u32,
 
     pub media_type: Option<String>,
-    pub persistent: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

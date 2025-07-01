@@ -11,6 +11,7 @@ pub struct Model {
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub expiration_date: Option<OffsetDateTime>,
 
     pub key: String,
     #[sea_orm(column_type = "Blob")]
@@ -20,7 +21,6 @@ pub struct Model {
     pub r#type: CacheType,
 
     pub media_type: Option<String>,
-    pub persistent: bool,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

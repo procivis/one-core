@@ -10,6 +10,7 @@ pub struct RemoteEntityCacheEntry {
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub expiration_date: Option<OffsetDateTime>,
 
     pub key: String,
     pub value: Vec<u8>,
@@ -19,7 +20,6 @@ pub struct RemoteEntityCacheEntry {
     pub r#type: CacheType,
 
     pub media_type: Option<String>,
-    pub persistent: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]

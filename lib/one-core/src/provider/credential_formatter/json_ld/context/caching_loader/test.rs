@@ -51,7 +51,7 @@ async fn test_load_context_success_cache_hit() {
             value: response_content.to_string().into_bytes(),
             hit_counter: 0,
             media_type: Some(expected_media_type.to_owned()),
-            persistent: false,
+            expiration_date: Some(now + Duration::days(1)),
         }))
     });
 
@@ -183,7 +183,7 @@ async fn test_load_context_success_cache_miss_overfilled_delete_oldest_entry_cal
         .times(1)
         .return_once(|_| Ok(2usize));
     storage
-        .expect_delete_oldest()
+        .expect_delete_expired_or_least_used()
         .times(1)
         .return_once(|_| Ok(()));
 
@@ -216,7 +216,7 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
             value: old_response_content.to_string().into_bytes(),
             hit_counter: 0,
             media_type: None,
-            persistent: false,
+            expiration_date: Some(OffsetDateTime::now_utc()),
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -229,7 +229,7 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
         .times(1)
         .return_once(|_| Ok(2usize));
     storage
-        .expect_delete_oldest()
+        .expect_delete_expired_or_least_used()
         .times(1)
         .return_once(|_| Ok(()));
 
@@ -261,7 +261,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            persistent: false,
+            expiration_date: Some(OffsetDateTime::now_utc()),
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -273,7 +273,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_
         .times(1)
         .return_once(|_| Ok(2usize));
     storage
-        .expect_delete_oldest()
+        .expect_delete_expired_or_least_used()
         .times(1)
         .return_once(|_| Ok(()));
 
@@ -304,7 +304,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modifi
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            persistent: false,
+            expiration_date: Some(OffsetDateTime::now_utc()),
         }))
     });
     let now = OffsetDateTime::now_utc();
@@ -320,7 +320,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modifi
         .times(1)
         .return_once(|_| Ok(2usize));
     storage
-        .expect_delete_oldest()
+        .expect_delete_expired_or_least_used()
         .times(1)
         .return_once(|_| Ok(()));
 
@@ -347,7 +347,7 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            persistent: false,
+            expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -360,7 +360,7 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
         .times(1)
         .return_once(|_| Ok(2usize));
     storage
-        .expect_delete_oldest()
+        .expect_delete_expired_or_least_used()
         .times(1)
         .return_once(|_| Ok(()));
 
@@ -378,7 +378,7 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
 }
 
 #[tokio::test]
-async fn test_load_context_failed_cache_hit_older_than_refreshafter_and_failed_to_fetch() {
+async fn test_load_context_failed_cache_hit_older_than_refresh_after_and_failed_to_fetch() {
     let old_response_content = "old_content";
 
     let url = "http://127.0.0.2/context";
@@ -392,7 +392,7 @@ async fn test_load_context_failed_cache_hit_older_than_refreshafter_and_failed_t
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            persistent: false,
+            expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
         }))
     });
 
@@ -426,15 +426,16 @@ async fn test_load_context_success_with_force_refresh() {
     // The force_refresh flag indicates that the remote source should be used even if the cached content is fresh.
     // The cache still needs to be consulted to make sure the bypassed entry is _not_ persistent.
     let key = url.to_string();
+    let now = OffsetDateTime::now_utc();
     storage.expect_get_by_key().return_once(move |_| {
         Ok(Some(RemoteEntity {
-            last_modified: OffsetDateTime::now_utc(), // fresh copy
+            last_modified: now, // fresh copy
             value: old_response_content.to_string().into_bytes(),
             key,
             hit_counter: 42,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            persistent: false,
+            expiration_date: Some(now + Duration::days(1)),
         }))
     });
 
@@ -471,15 +472,16 @@ async fn test_load_persistent_context_success_with_force_refresh() {
     // The cache still needs to be consulted to make sure the bypassed entry is _not_ persistent.
     let key = url.to_string();
     let value = old_response_content.to_string().into_bytes();
+    let now = OffsetDateTime::now_utc();
     storage.expect_get_by_key().return_once(move |_| {
         Ok(Some(RemoteEntity {
-            last_modified: OffsetDateTime::now_utc(), // fresh copy
+            last_modified: now,
             value,
             key,
             hit_counter: 42,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            persistent: true,
+            expiration_date: None,
         }))
     });
 

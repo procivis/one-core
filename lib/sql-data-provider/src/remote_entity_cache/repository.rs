@@ -9,6 +9,7 @@ use sea_orm::{
     QueryOrder, QueryTrait,
 };
 use shared_types::RemoteEntityCacheEntryId;
+use time::OffsetDateTime;
 
 use crate::entity::remote_entity_cache;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -28,7 +29,22 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         Ok(context.id)
     }
 
-    async fn delete_oldest(&self, r#type: CacheType) -> Result<(), DataLayerError> {
+    async fn delete_expired_or_least_used(&self, r#type: CacheType) -> Result<(), DataLayerError> {
+        let delete_result = remote_entity_cache::Entity::delete_many()
+            .filter(remote_entity_cache::Column::ExpirationDate.lt(OffsetDateTime::now_utc()))
+            .filter(
+                remote_entity_cache::Column::Type
+                    .eq(remote_entity_cache::CacheType::from(r#type.clone())),
+            )
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        // Don't bother looking at usage if expired entries have been removed
+        if delete_result.rows_affected > 0 {
+            return Ok(());
+        }
+
         if let Some(model) = remote_entity_cache::Entity::find()
             .order_by_asc(remote_entity_cache::Column::HitCounter)
             .order_by_asc(remote_entity_cache::Column::LastModified)
@@ -50,7 +66,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
 
     async fn delete_all(&self, r#type: Option<Vec<CacheType>>) -> Result<(), DataLayerError> {
         remote_entity_cache::Entity::delete_many()
-            .filter(remote_entity_cache::Column::Persistent.eq(false))
+            .filter(remote_entity_cache::Column::ExpirationDate.is_not_null())
             .apply_if(r#type, |query, value| {
                 query.filter(
                     remote_entity_cache::Column::Type

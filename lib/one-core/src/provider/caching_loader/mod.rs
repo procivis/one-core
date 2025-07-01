@@ -86,7 +86,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         let entry_opt = self.storage.get_by_key(url).await?;
         let entry_persistent = entry_opt
             .as_ref()
-            .map(|val| val.persistent)
+            .map(|val| val.expiration_date.is_none())
             .unwrap_or(false);
         let context = if force_refresh && !entry_persistent {
             self.new_cache_entry(url, &resolver).await?
@@ -106,7 +106,9 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
     ) -> Result<(Vec<u8>, Option<String>), E> {
         match entry_opt {
             None => self.new_cache_entry(url, resolver).await,
-            Some(context) if context.persistent => Ok((context.value, context.media_type)),
+            Some(context) if context.expiration_date.is_none() => {
+                Ok((context.value, context.media_type))
+            }
             Some(mut context) => {
                 let requires_update = context_requires_update(
                     context.last_modified,
@@ -169,15 +171,16 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                 content,
                 media_type,
             } => {
+                let now = OffsetDateTime::now_utc();
                 self.storage
                     .insert(RemoteEntity {
-                        last_modified: OffsetDateTime::now_utc(),
+                        last_modified: now,
+                        expiration_date: Some(now + self.cache_refresh_timeout),
                         entity_type: self.remote_entity_type,
                         key: url.to_string(),
                         value: content.to_owned(),
                         hit_counter: 0,
                         media_type: media_type.clone(),
-                        persistent: false,
                     })
                     .await?;
 
@@ -204,7 +207,9 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             .await?
             > self.cache_size
         {
-            self.storage.delete_oldest(self.remote_entity_type).await?;
+            self.storage
+                .delete_expired_or_least_used(self.remote_entity_type)
+                .await?;
         }
 
         Ok(())

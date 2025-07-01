@@ -93,7 +93,7 @@ impl VctTypeMetadataCache {
                 key: vct.vct,
                 hit_counter: 0,
                 media_type: None,
-                persistent: true,
+                expiration_date: None,
             };
 
             self.inner

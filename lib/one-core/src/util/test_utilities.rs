@@ -23,29 +23,30 @@ pub fn mock_http_get_request(http_client: &mut MockHttpClient, url: String, resp
 }
 
 pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCachingLoader {
+    let now = OffsetDateTime::now_utc();
     let mut contexts = vec![
         (
             "https://www.w3.org/ns/credentials/v2".to_string(),
             RemoteEntity {
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: now,
                 entity_type: RemoteEntityType::JsonLdContext,
                 key: "https://www.w3.org/ns/credentials/v2".to_string(),
                 value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
                 hit_counter: 0,
                 media_type: None,
-                persistent: false,
+                expiration_date: Some(now + Duration::days(1)),
             },
         ),
         (
             "https://www.w3.org/ns/credentials/examples/v2".to_string(),
             RemoteEntity {
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: now,
                 entity_type: RemoteEntityType::JsonLdContext,
                 key: "https://www.w3.org/ns/credentials/examples/v2".to_string(),
                 value: W3_ORG_NS_CREDENTIALS_EXAMPLES_V2.to_string().into_bytes(),
                 hit_counter: 0,
                 media_type: None,
-                persistent: false,
+                expiration_date: Some(now + Duration::days(1)),
             },
         ),
     ];
@@ -54,13 +55,13 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
         contexts.push((
             id.to_string(),
             RemoteEntity {
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: now,
                 entity_type: RemoteEntityType::JsonLdContext,
                 key: id.to_string(),
                 value: content.to_string().into_bytes(),
                 hit_counter: 0,
                 media_type: None,
-                persistent: false,
+                expiration_date: Some(now + Duration::days(1)),
             },
         ))
     }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 use super::{RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType};
@@ -20,11 +21,18 @@ impl InMemoryStorage {
 
 #[async_trait]
 impl RemoteEntityStorage for InMemoryStorage {
-    async fn delete_oldest(
+    async fn delete_expired_or_least_used(
         &self,
         entity_type: RemoteEntityType,
     ) -> Result<(), RemoteEntityStorageError> {
+        let now = OffsetDateTime::now_utc();
         let mut hash_map_handle = self.storage.lock().await;
+        let size_prev = hash_map_handle.len();
+        hash_map_handle.retain(|_, val| val.expiration_date.map(|exp| exp > now).unwrap_or(true));
+        if hash_map_handle.len() != size_prev {
+            // expired entries got deleted, no need to remove by usage
+            return Ok(());
+        }
 
         if let Some(key) = hash_map_handle
             .iter()

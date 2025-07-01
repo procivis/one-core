@@ -7,7 +7,7 @@ use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepos
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::RemoteEntityCacheEntryId;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::RemoteEntityCacheProvider;
@@ -70,12 +70,12 @@ pub async fn insert_json_ld_context(
         id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(last_modified.unwrap_or(get_dummy_date())),
+        expiration_date: Set(Some(OffsetDateTime::now_utc() + Duration::days(1))),
         key: Set(url.to_string()),
         value: Set(context.to_owned()),
         hit_counter: Set(hit_counter),
         r#type: Set(remote_entity_cache::CacheType::JsonLdContext),
         media_type: Set(None),
-        persistent: Set(false),
     }
     .insert(database)
     .await?;
@@ -102,12 +102,12 @@ async fn test_create_context() {
         id: id.into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
         value: vec![0, 1, 2, 3],
         key: "http://www.host.co".parse().unwrap(),
         hit_counter: 1234,
         r#type: CacheType::JsonLdContext,
         media_type: None,
-        persistent: false,
     };
 
     let result = setup.provider.create(context).await.unwrap();
@@ -161,12 +161,12 @@ async fn test_update_context_success() {
             id: setup.id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
             value: vec![1, 2, 3, 4, 5, 6],
             key: "http://127.0.0.1".parse().unwrap(),
             hit_counter: 1234,
             r#type: CacheType::JsonLdContext,
             media_type: None,
-            persistent: false,
         })
         .await
         .unwrap();
@@ -199,7 +199,7 @@ async fn test_delete_oldest_context_success_simple() {
 
     setup
         .provider
-        .delete_oldest(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext)
         .await
         .unwrap();
 
@@ -212,7 +212,7 @@ async fn test_delete_oldest_context_success_simple() {
 
     setup
         .provider
-        .delete_oldest(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext)
         .await
         .unwrap();
 }
@@ -273,7 +273,7 @@ async fn test_delete_oldest_context_success_complex_select_lowest_hit_count_and_
 
     setup
         .provider
-        .delete_oldest(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext)
         .await
         .unwrap();
     let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
@@ -287,7 +287,7 @@ async fn test_delete_oldest_context_success_complex_select_lowest_hit_count_and_
 
     setup
         .provider
-        .delete_oldest(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext)
         .await
         .unwrap();
     let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
@@ -301,7 +301,7 @@ async fn test_delete_oldest_context_success_complex_select_lowest_hit_count_and_
 
     setup
         .provider
-        .delete_oldest(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext)
         .await
         .unwrap();
     let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
@@ -315,7 +315,7 @@ async fn test_delete_oldest_context_success_complex_select_lowest_hit_count_and_
 
     setup
         .provider
-        .delete_oldest(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext)
         .await
         .unwrap();
     let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;

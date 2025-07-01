@@ -73,7 +73,7 @@ impl JsonSchemaCache {
                 value: serde_json::to_vec(&schema).context("Failed to serialize schema")?,
                 hit_counter: 0,
                 media_type: None,
-                persistent: true,
+                expiration_date: None,
             };
 
             self.inner

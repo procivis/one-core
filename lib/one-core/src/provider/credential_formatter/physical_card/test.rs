@@ -4,7 +4,7 @@ use mockall::predicate;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use super::PhysicalCardFormatter;
 use crate::config::core_config::KeyAlgorithmType;
@@ -43,7 +43,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 key: url.to_string(),
                 hit_counter: 0,
                 media_type: None,
-                persistent: false,
+                expiration_date: Some(now + Duration::days(1)),
             }))
         });
 
@@ -59,7 +59,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 key: url.to_string(),
                 hit_counter: 0,
                 media_type: None,
-                persistent: false,
+                expiration_date: Some(now + Duration::days(1)),
             }))
         });
 
@@ -75,7 +75,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 key: url.to_string(),
                 hit_counter: 0,
                 media_type: None,
-                persistent: false,
+                expiration_date: Some(now + Duration::days(1)),
             }))
         });
 
