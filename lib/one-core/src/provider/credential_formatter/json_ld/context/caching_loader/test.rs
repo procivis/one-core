@@ -392,7 +392,7 @@ async fn test_load_context_failed_cache_hit_older_than_refresh_after_and_failed_
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
-            expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+            expiration_date: Some(get_dummy_date()),
         }))
     });
 

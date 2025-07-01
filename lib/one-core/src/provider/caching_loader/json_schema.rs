@@ -125,6 +125,7 @@ impl Resolver for JsonSchemaResolver {
         Ok(ResolveResult::NewValue {
             content: response.body,
             media_type: None,
+            expiry_date: None,
         })
     }
 }

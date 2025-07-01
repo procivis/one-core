@@ -37,6 +37,7 @@ impl Resolver for DidResolver {
         Ok(ResolveResult::NewValue {
             content: serde_json::to_vec(&dto)?,
             media_type: None,
+            expiry_date: None,
         })
     }
 }

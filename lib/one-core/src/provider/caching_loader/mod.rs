@@ -9,6 +9,7 @@
 //!
 //! [cac]: https://docs.procivis.ch/api/caching
 
+use std::cmp::min;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -40,6 +41,7 @@ pub enum ResolveResult {
     NewValue {
         content: Vec<u8>,
         media_type: Option<String>,
+        expiry_date: Option<OffsetDateTime>,
     },
     LastModificationDateUpdate(OffsetDateTime),
 }
@@ -104,61 +106,61 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         entry_opt: Option<RemoteEntity>,
         resolver: &Arc<dyn Resolver<Error = E>>,
     ) -> Result<(Vec<u8>, Option<String>), E> {
-        match entry_opt {
-            None => self.new_cache_entry(url, resolver).await,
-            Some(context) if context.expiration_date.is_none() => {
-                Ok((context.value, context.media_type))
-            }
-            Some(mut context) => {
-                let requires_update = context_requires_update(
-                    context.last_modified,
-                    self.cache_refresh_timeout,
-                    self.refresh_after,
-                );
+        let Some(mut context) = entry_opt else {
+            return self.new_cache_entry(url, resolver).await;
+        };
 
-                if requires_update != ContextRequiresUpdate::IsRecent {
-                    let result = resolver.do_resolve(url, Some(&context.last_modified)).await;
+        let Some(expiration_date) = context.expiration_date else {
+            // persistent value --> always up-to-date
+            return Ok((context.value, context.media_type));
+        };
 
-                    match result {
-                        Ok(value) => match value {
-                            ResolveResult::NewValue {
-                                content,
-                                media_type,
-                            } => {
-                                context.last_modified = OffsetDateTime::now_utc();
-                                context.value = content;
-                                context.media_type = media_type;
-                            }
-                            ResolveResult::LastModificationDateUpdate(value) => {
-                                context.last_modified = value;
-                            }
-                        },
-                        Err(error) => {
-                            if requires_update == ContextRequiresUpdate::MustBeUpdated {
-                                return Err(error);
-                            }
-                        }
+        let requires_update =
+            context_requires_update(context.last_modified, expiration_date, self.refresh_after);
+
+        if requires_update != ContextRequiresUpdate::IsRecent {
+            let result = resolver.do_resolve(url, Some(&context.last_modified)).await;
+
+            match result {
+                Ok(value) => match value {
+                    ResolveResult::NewValue {
+                        content,
+                        media_type,
+                        expiry_date,
+                    } => {
+                        context.last_modified = OffsetDateTime::now_utc();
+                        context.value = content;
+                        context.media_type = media_type;
+                        context.expiration_date = self.effective_expiry(expiry_date)
+                    }
+                    ResolveResult::LastModificationDateUpdate(value) => {
+                        context.last_modified = value;
+                    }
+                },
+                Err(error) => {
+                    if requires_update == ContextRequiresUpdate::MustBeUpdated {
+                        return Err(error);
                     }
                 }
-
-                context.hit_counter += 1;
-
-                if let Err(error) = self.storage.insert(context.to_owned()).await {
-                    match error {
-                        RemoteEntityStorageError::NotUpdated => {
-                            // ONE-4160: ignoring potential failure when update fails due to missing entry
-                            // the updated entry might be deleted at this point by another thread
-                            tracing::debug!(
-                                "Cache entry deleted while updating. It will be recreated on next usage."
-                            );
-                        }
-                        _ => return Err(error.into()),
-                    }
-                }
-
-                Ok((context.value, context.media_type))
             }
         }
+
+        context.hit_counter += 1;
+
+        if let Err(error) = self.storage.insert(context.to_owned()).await {
+            match error {
+                RemoteEntityStorageError::NotUpdated => {
+                    // ONE-4160: ignoring potential failure when update fails due to missing entry
+                    // the updated entry might be deleted at this point by another thread
+                    tracing::debug!(
+                        "Cache entry deleted while updating. It will be recreated on next usage."
+                    );
+                }
+                _ => return Err(error.into()),
+            }
+        }
+
+        Ok((context.value, context.media_type))
     }
 
     async fn new_cache_entry(
@@ -170,12 +172,12 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             ResolveResult::NewValue {
                 content,
                 media_type,
+                expiry_date,
             } => {
-                let now = OffsetDateTime::now_utc();
                 self.storage
                     .insert(RemoteEntity {
-                        last_modified: now,
-                        expiration_date: Some(now + self.cache_refresh_timeout),
+                        last_modified: OffsetDateTime::now_utc(),
+                        expiration_date: self.effective_expiry(expiry_date),
                         entity_type: self.remote_entity_type,
                         key: url.to_string(),
                         value: content.to_owned(),
@@ -190,6 +192,15 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                 Err(CachingLoaderError::UnexpectedResolveResult.into())
             }
         }
+    }
+
+    /// Calculates the effective expiry date to use based on the value suggested by the resolver (if any)
+    /// and the cache configuration.
+    fn effective_expiry(&self, resolved_expiry: Option<OffsetDateTime>) -> Option<OffsetDateTime> {
+        let default_exp = OffsetDateTime::now_utc() + self.cache_refresh_timeout;
+        resolved_expiry
+            .map(|exp| min(exp, default_exp))
+            .or(Some(default_exp))
     }
 
     pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {
@@ -224,19 +235,20 @@ pub enum CachingLoaderError {
 
 fn context_requires_update(
     last_modified: OffsetDateTime,
-    cache_refresh_timeout: time::Duration,
+    expiration_date: OffsetDateTime,
     refresh_after: time::Duration,
 ) -> ContextRequiresUpdate {
     let now = OffsetDateTime::now_utc();
 
-    let diff = now - last_modified;
+    if expiration_date < now {
+        return ContextRequiresUpdate::MustBeUpdated;
+    };
 
+    let diff = now - last_modified;
     if diff <= refresh_after {
         ContextRequiresUpdate::IsRecent
-    } else if diff <= cache_refresh_timeout {
-        ContextRequiresUpdate::CanBeUpdated
     } else {
-        ContextRequiresUpdate::MustBeUpdated
+        ContextRequiresUpdate::CanBeUpdated
     }
 }
 

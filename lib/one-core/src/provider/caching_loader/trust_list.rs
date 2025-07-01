@@ -92,6 +92,7 @@ impl Resolver for TrustListResolver {
         Ok(ResolveResult::NewValue {
             content: response.body,
             media_type: Some(media_type.unwrap_or("application/json".to_string())),
+            expiry_date: None,
         })
     }
 }

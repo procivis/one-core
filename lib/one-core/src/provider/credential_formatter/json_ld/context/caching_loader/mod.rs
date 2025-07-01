@@ -56,6 +56,7 @@ impl Resolver for JsonLdResolver {
             Ok(ResolveResult::NewValue {
                 content: response.body,
                 media_type: None,
+                expiry_date: None,
             })
         } else if response.status.is_redirection() {
             let result = response.header_get("Last-Modified");

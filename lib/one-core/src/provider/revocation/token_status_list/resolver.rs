@@ -47,6 +47,7 @@ impl Resolver for StatusListResolver {
         Ok(ResolveResult::NewValue {
             content: serde_json::to_vec(&cache_entry)?,
             media_type: Some(content_type),
+            expiry_date: None,
         })
     }
 }
