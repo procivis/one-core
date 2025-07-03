@@ -205,7 +205,7 @@ cp -r ${CARGO_TARGET_DIR}/uniffi/android/* ${CARGO_TARGET_DIR}/platforms/android
 dependencies = ["prepare_gradle_build_directory"]
 script = '''
 cd ${CARGO_TARGET_DIR}/platforms/android
-./gradlew assemble
+./gradlew assemble dokkaHtml
 '''
 
 [tasks.build_android]
@@ -213,6 +213,7 @@ dependencies = ["build_android_gradle"]
 script = '''
 mkdir -p ${CARGO_TARGET_DIR}/bindings/android/
 cp -r ${CARGO_TARGET_DIR}/platforms/android/onecore/build/outputs/aar/* ${CARGO_TARGET_DIR}/bindings/android/
+cp -r ${CARGO_TARGET_DIR}/platforms/android/onecore/build/dokka/* ${CARGO_TARGET_DIR}/bindings/android/
 '''
 
 #### iOS
