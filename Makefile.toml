@@ -289,6 +289,18 @@ xcodebuild -create-xcframework \
 cp -r ../../ProcivisOneCoreFFI.xcframework ../../bindings/ios
 '''
 
+[tasks.generate_ios_docs]
+script = '''
+export TARGET_DIR=`pwd`/${CARGO_TARGET_DIR}
+echo ${CARGO_TARGET_DIR}
+echo ${TARGET_DIR}
+echo `pwd`
+pushd platforms/ios >/dev/null
+xcodebuild docbuild -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -derivedDataPath ${TARGET_DIR}/platforms/ios/docs CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+cp -R ${TARGET_DIR}/platforms/ios/docs/Build/Products/Debug-iphoneos/ProcivisOneCore.doccarchive ${TARGET_DIR}/bindings/ios
+$(xcrun --find docc) process-archive transform-for-static-hosting ${TARGET_DIR}/bindings/ios/ProcivisOneCore.doccarchive/ --output-path ${TARGET_DIR}/bindings/ios/htmldoc
+'''
+
 [tasks.build_ios]
 dependencies = [
   "add_ios_targets",
@@ -297,6 +309,7 @@ dependencies = [
   "collect_ios_libs",
   "create_ffi_xc_framework",
   "build_ios_framework",
+  "generate_ios_docs",
 ]
 script = 'echo "--- output available in ${CARGO_TARGET_DIR}/bindings/ios ---"'
 
