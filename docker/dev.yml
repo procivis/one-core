@@ -1,0 +1,39 @@
+services:
+  mariadb:
+    image: mariadb:10.9
+    ports:
+      - 3306:3306
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Qpq5nDb5MKD6v9bt8dPD
+      MYSQL_PASSWORD: 886eOqVMmlHsayu6Vyxw
+      MYSQL_USER: core
+      MYSQL_DATABASE: core
+    restart: on-failure
+
+  walletdb:
+    image: mariadb:10.9
+    ports:
+      - 3307:3306
+    volumes:
+      - mariadb_data:/var/lib/mysql2
+    environment:
+      MYSQL_ROOT_PASSWORD: Qpq5nDb5MKD6v9bt8dPD
+      MYSQL_PASSWORD: 886eOqVMmlHsayu6Vyxw
+      MYSQL_USER: core
+      MYSQL_DATABASE: core
+    restart: on-failure
+
+  core-one:
+    image: hub.fity.tech/fidentity/procivis-one-core:0.0.0-dev
+    ports:
+      - 3000:3000
+    environment:
+      ONE_app__databaseUrl: "mysql://core:886eOqVMmlHsayu6Vyxw@mariadb/core"
+    depends_on:
+      - mariadb
+    restart: on-failure
+
+volumes:
+  mariadb_data:
