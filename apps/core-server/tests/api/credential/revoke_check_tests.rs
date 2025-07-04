@@ -6,18 +6,22 @@ use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::jwt::mapper::{
     bin_to_b64url_string, string_to_b64url_string,
 };
+use one_core::provider::credential_formatter::mdoc_formatter::Params;
+use one_core::provider::credential_formatter::model::{CredentialData, CredentialSchema, Issuer};
+use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use time::macros::format_description;
+use time::{Duration, OffsetDateTime};
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::fixtures::mdoc::format_mdoc_credential;
 use crate::fixtures::{
     TestingCredentialParams, TestingDidParams, TestingIdentifierParams, encrypted_token,
 };
@@ -855,23 +859,16 @@ async fn setup_lvvc_revoke_check_valid(
     (context, mock_server, credential)
 }
 
-static CREDENTIAL_CONTENT_OUTDATED: &str = "ompuYW1lU3BhY2VzomRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIJjSKig920Ai2ntgdAfGnRb-s0TORYA9W8b4mYjhw3u5cWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdHgZY2gucHJvY2l2aXMubWRvY19sYXlvdXQuMYPYGFhqpGhkaWdlc3RJRAFmcmFuZG9tWCBKbY7V0w4TKYTcJrmG_d1W6VU5Jb4_HCvN9RblZeaECXFlbGVtZW50SWRlbnRpZmllcmJpZGxlbGVtZW50VmFsdWVzb3JnLmlzby4yMzIyMC4xLm1JRNgYWMikaGRpZ2VzdElEAmZyYW5kb21YIG2uLPgrFExjiexjLUr5tMOSlDeiUnlxfyOLHuWUn6mVcWVsZW1lbnRJZGVudGlmaWVycGxheW91dFByb3BlcnRpZXNsZWxlbWVudFZhbHVlpmpiYWNrZ3JvdW5komVjb2xvcmVjb2xvcmVpbWFnZfZkbG9nb_ZwcHJpbWFyeUF0dHJpYnV0ZfZyc2Vjb25kYXJ5QXR0cmlidXRl9nBwaWN0dXJlQXR0cmlidXRl9mRjb2Rl9tgYWGOkaGRpZ2VzdElEA2ZyYW5kb21YIO7RwQ0lUbZZQPJ-2o4eru1n4Z3u1-KxfZvj5uo8dM_bcWVsZW1lbnRJZGVudGlmaWVyamxheW91dFR5cGVsZWxlbWVudFZhbHVlZENBUkRqaXNzdWVyQXV0aIRDoQEmoRghWQOLMIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0LhlkB99gYWQHypmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiZHJvb3ShAFggNe0Hk1dWKLOZJepp994MYA8ysT8FjnF2-z2Rl1jr9yB4GWNoLnByb2NpdmlzLm1kb2NfbGF5b3V0LjGjAVgg9LozcGRnhO0Oo_YkKFP00rQFY3TDzA9YoGXLs2iK_U0CWCBA6eF3OEgUB0VRtK3wxZX51_vkkvuI_gptomPDOPL8tANYILkTzzl3N4tq_nfykJWMmem_zZg7RYhR20zigE0ax8grbWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggcd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yciWCCJpCY9SCKvzQjZcIWqfb8o-p1YfQ_EzMII_xbe4_GVQGdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMTAtMjNUMDY6NTQ6MTZaaXZhbGlkRnJvbcB0MjAyNC0xMC0yM1QwNjo1NDoxNlpqdmFsaWRVbnRpbMB0MjAyNC0xMC0yM1QwNjo1NDozNlpuZXhwZWN0ZWRVcGRhdGXAdDIwMjQtMTAtMjNUMDY6NTQ6MjZaWEATHzcmg9pVWNf_lExfcVRKLYWmDTKMpX6iDAvVWYmDRadG0dgLntcyufhqWZi6J7DO_wfbpFgS6YNVEUjkRhO5";
-static CREDENTIAL_CONTENT_VALID: &str = "ompuYW1lU3BhY2VzomRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIA_N3wZ1v23KZ6f1llv4FOZ4P8h47vj94DhJWc8_5JjdcWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdHgZY2gucHJvY2l2aXMubWRvY19sYXlvdXQuMYPYGFhqpGhkaWdlc3RJRAFmcmFuZG9tWCD4SPq4-b9E62xRK-mSF5Iw4u__mlHEKctXQr5rkzjfh3FlbGVtZW50SWRlbnRpZmllcmJpZGxlbGVtZW50VmFsdWVzb3JnLmlzby4yMzIyMC4xLm1JRNgYWMikaGRpZ2VzdElEAmZyYW5kb21YIOLNTtn9i_sVQ7hUG9Rb1Jgo6S2XByWgHCGP0dBEuARwcWVsZW1lbnRJZGVudGlmaWVycGxheW91dFByb3BlcnRpZXNsZWxlbWVudFZhbHVlpmpiYWNrZ3JvdW5komVjb2xvcmVjb2xvcmVpbWFnZfZkbG9nb_ZwcHJpbWFyeUF0dHJpYnV0ZfZyc2Vjb25kYXJ5QXR0cmlidXRl9nBwaWN0dXJlQXR0cmlidXRl9mRjb2Rl9tgYWGOkaGRpZ2VzdElEA2ZyYW5kb21YIAT_On_5m4XZQY-kx-dKRPUSYZpvBuShHI1KeyLTs-tZcWVsZW1lbnRJZGVudGlmaWVyamxheW91dFR5cGVsZWxlbWVudFZhbHVlZENBUkRqaXNzdWVyQXV0aIRDoQEmoRghWQOLMIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0LhlkB99gYWQHypmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiZHJvb3ShAFggRpYenHUnzSbQbKmWIZI_BCwvghl1sOB4sGHxVx8fONt4GWNoLnByb2NpdmlzLm1kb2NfbGF5b3V0LjGjAVgg1FiRNnOwf8ZYKpkmqI4RRPhuK7kBp-SnGp7C0ylDCYMCWCDNDYNNvIsdmDH4g3DoO6nPvr6cs24w6dj22JIzKtVe8wNYIGKZcKRVQqvsWWTlF6M_IlV6Mj0sbORb9teoHlNfUE76bWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggcd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yciWCCJpCY9SCKvzQjZcIWqfb8o-p1YfQ_EzMII_xbe4_GVQGdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMTAtMjNUMDk6MDY6MzdaaXZhbGlkRnJvbcB0MjAyNC0xMC0yM1QwOTowNjozN1pqdmFsaWRVbnRpbMB0NTE5My0wOS0wN1QxODo1MzoxNlpuZXhwZWN0ZWRVcGRhdGXAdDUxOTMtMDktMDdUMTg6NTM6MTZaWEA9xMH7syX8sOtOp9cdJ-fAxqqTkgH5dae4Uq8-hm0KOwBqAQnHtIEZdNoouEAQ3OAfQULMPCe-osTG432uvNJO";
-
 #[tokio::test]
 async fn test_revoke_check_mdoc_update() {
     // GIVEN
-    let additional_config = indoc::formatdoc! {"
-        unsafeX509CrlValidityCheckEnabled: false
-    "};
-    let (context, organisation) = TestContext::new_with_organisation(Some(additional_config)).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
         .keys
         .create(&organisation, eddsa_testing_params())
         .await;
-
     let issuer_did = context
         .db
         .dids
@@ -966,7 +963,7 @@ async fn test_revoke_check_mdoc_update() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                credential: Some(&expired_mdoc_credential().await),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -976,12 +973,13 @@ async fn test_revoke_check_mdoc_update() {
         )
         .await;
 
+    let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
         .ssi_credential_endpoint(
             &credential_schema.id,
             "123",
-            CREDENTIAL_CONTENT_VALID,
+            &valid_credential,
             "mso_mdoc",
             1,
             None,
@@ -1005,14 +1003,161 @@ async fn test_revoke_check_mdoc_update() {
     assert!(resp[0]["reason"].is_null());
 
     let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        updated_credentials.credential,
-        CREDENTIAL_CONTENT_VALID.as_bytes()
-    );
+    assert_eq!(updated_credentials.credential, valid_credential.as_bytes());
 }
 
 #[tokio::test]
 async fn test_revoke_check_mdoc_update_invalid() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: local_key.clone(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up to date
+    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/openid4vci/draft-13/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": a_couple_of_seconds_in_future,
+        "refresh_token": encrypted_token("123"),
+        "refresh_token_expires_at": a_couple_of_seconds_in_future,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
+        .await;
+
+    let expired_credential = expired_mdoc_credential().await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                credential: Some(&expired_credential),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_identifier: Some(identifier.clone()),
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(
+            &credential_schema.id,
+            "123",
+            "this is not a valid mdoc",
+            "mso_mdoc",
+            1,
+            None,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("SUSPENDED", resp[0]["status"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    assert_eq!(
+        updated_credentials.credential,
+        expired_credential.as_bytes() // invalid content was rejected / credential not updated
+    );
+}
+
+#[tokio::test]
+async fn test_revoke_check_mdoc_update_force_refresh() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -1107,6 +1252,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         )
         .await;
 
+    let valid_credential = valid_mdoc_credential().await;
     let credential = context
         .db
         .credentials
@@ -1116,7 +1262,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                credential: Some(&valid_credential),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1126,169 +1272,13 @@ async fn test_revoke_check_mdoc_update_invalid() {
         )
         .await;
 
+    let valid_credential2 = valid_mdoc_credential().await;
     context
         .server_mock
         .ssi_credential_endpoint(
             &credential_schema.id,
             "123",
-            "this is not a valid mdoc",
-            "mso_mdoc",
-            1,
-            None,
-        )
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .credentials
-        .revocation_check(credential.id, None)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-
-    resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("SUSPENDED", resp[0]["status"]);
-    assert!(resp[0]["reason"].is_null());
-
-    let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        updated_credentials.credential,
-        CREDENTIAL_CONTENT_OUTDATED.as_bytes() // invalid content was rejected / credential not updated
-    );
-}
-
-#[tokio::test]
-async fn test_revoke_check_mdoc_update_force_refresh() {
-    // GIVEN
-    let additional_config = Some(indoc::formatdoc! {"
-        unsafeX509CrlValidityCheckEnabled: false
-        format:
-            MDOC:
-                params:
-                    public:
-                        msoMinimumRefreshTime: 0
-    "});
-    let (context, organisation) = TestContext::new_with_organisation(additional_config).await;
-
-    let local_key = context
-        .db
-        .keys
-        .create(&organisation, eddsa_testing_params())
-        .await;
-
-    let issuer_did = context
-        .db
-        .dids
-        .create(
-            Some(organisation.clone()),
-            TestingDidParams {
-                did_method: Some("KEY".to_string()),
-                did: Some(
-                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                        .parse()
-                        .unwrap(),
-                ),
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: local_key.clone(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            "NONE",
-            TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up to date
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
-    );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": encrypted_token("123"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
-
-    let interaction = context
-        .db
-        .interactions
-        .create(
-            None,
-            &context.server_mock.uri(),
-            &interaction_data,
-            &organisation,
-        )
-        .await;
-
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Accepted,
-            &identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
-                interaction: Some(interaction),
-                key: Some(local_key),
-                holder_identifier: Some(identifier.clone()),
-                role: Some(CredentialRole::Holder),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    context
-        .server_mock
-        .ssi_credential_endpoint(
-            &credential_schema.id,
-            "123",
-            CREDENTIAL_CONTENT_VALID,
+            &valid_credential2,
             "mso_mdoc",
             2,
             None,
@@ -1314,10 +1304,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         assert!(resp[0]["reason"].is_null());
 
         let updated_credentials = context.db.credentials.get(&credential.id).await;
-        assert_eq!(
-            updated_credentials.credential,
-            CREDENTIAL_CONTENT_VALID.as_bytes()
-        );
+        assert_eq!(updated_credentials.credential, valid_credential2.as_bytes());
         assert!(updated_credentials.last_modified > before_refresh);
     }
 }
@@ -1418,6 +1405,7 @@ async fn test_revoke_check_token_update() {
         )
         .await;
 
+    let valid_credential = valid_mdoc_credential().await;
     let credential = context
         .db
         .credentials
@@ -1427,7 +1415,7 @@ async fn test_revoke_check_token_update() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_VALID),
+                credential: Some(&valid_credential),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1557,6 +1545,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         )
         .await;
 
+    let expired_credential = expired_mdoc_credential().await;
     let credential = context
         .db
         .credentials
@@ -1566,7 +1555,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                credential: Some(&expired_credential),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1595,7 +1584,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(
         updated_credentials.credential,
-        CREDENTIAL_CONTENT_OUTDATED.as_bytes()
+        expired_credential.as_bytes()
     );
     assert_eq!(updated_credentials.state, CredentialStateEnum::Revoked,);
 }
@@ -1692,6 +1681,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         )
         .await;
 
+    let valid_credential = valid_mdoc_credential().await;
     let credential = context
         .db
         .credentials
@@ -1701,7 +1691,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_VALID),
+                credential: Some(&valid_credential),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1734,10 +1724,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
 #[tokio::test]
 async fn test_suspended_to_valid_mdoc() {
     // GIVEN
-    let additional_config = indoc::formatdoc! {"
-        unsafeX509CrlValidityCheckEnabled: false
-    "};
-    let (context, organisation) = TestContext::new_with_organisation(Some(additional_config)).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -1833,6 +1820,7 @@ async fn test_suspended_to_valid_mdoc() {
         )
         .await;
 
+    let expired_credential = expired_mdoc_credential().await;
     let credential = context
         .db
         .credentials
@@ -1842,7 +1830,7 @@ async fn test_suspended_to_valid_mdoc() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                credential: Some(&expired_credential),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1857,12 +1845,13 @@ async fn test_suspended_to_valid_mdoc() {
         .refresh_token(&credential_schema.id)
         .await;
 
+    let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
         .ssi_credential_endpoint(
             &credential_schema.id,
             "321",
-            CREDENTIAL_CONTENT_VALID,
+            &valid_credential,
             "mso_mdoc",
             1,
             None,
@@ -1891,10 +1880,7 @@ async fn test_suspended_to_valid_mdoc() {
     assert!(resp[0]["reason"].is_null());
 
     let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        updated_credentials.credential,
-        CREDENTIAL_CONTENT_VALID.as_bytes()
-    );
+    assert_eq!(updated_credentials.credential, valid_credential.as_bytes());
     assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
     let history = context
         .db
@@ -2015,6 +2001,7 @@ async fn test_suspended_to_suspended_update_failed() {
         )
         .await;
 
+    let expired_credential = expired_mdoc_credential().await;
     let credential = context
         .db
         .credentials
@@ -2024,7 +2011,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                credential: Some(&expired_credential),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -2058,7 +2045,7 @@ async fn test_suspended_to_suspended_update_failed() {
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(
         updated_credentials.credential,
-        CREDENTIAL_CONTENT_OUTDATED.as_bytes()
+        expired_credential.as_bytes()
     );
     assert_eq!(updated_credentials.state, CredentialStateEnum::Suspended,);
 }
@@ -2142,4 +2129,65 @@ async fn test_revoke_check_failed_deleted_credential() {
 
     // THEN
     assert_eq!(resp.status(), 404);
+}
+
+async fn valid_mdoc_credential() -> String {
+    let params = Params {
+        mso_expires_in: Duration::days(1),
+        mso_expected_update_in: Duration::seconds(300),
+        mso_minimum_refresh_time: Duration::seconds(300),
+        leeway: 60,
+        embed_layout_properties: None,
+    };
+    minimal_mdoc_credential(params).await
+}
+
+async fn expired_mdoc_credential() -> String {
+    let params = Params {
+        mso_expires_in: Duration::days(-1), // already expired
+        mso_expected_update_in: Duration::days(-1),
+        mso_minimum_refresh_time: Duration::seconds(0), // refresh immediately
+        leeway: 60,
+        embed_layout_properties: None,
+    };
+    minimal_mdoc_credential(params).await
+}
+
+async fn minimal_mdoc_credential(params: Params) -> String {
+    let credential = CredentialData {
+        vcdm: VcdmCredential {
+            context: Default::default(),
+            id: None,
+            r#type: vec![],
+            issuer: Issuer::Url("https://example.issuer.com".parse().unwrap()),
+            valid_from: None,
+            issuance_date: None,
+            valid_until: None,
+            expiration_date: None,
+            credential_subject: vec![],
+            credential_status: vec![],
+            proof: None,
+            credential_schema: Some(vec![CredentialSchema {
+                id: "schema".to_string(),
+                r#type: "schema".to_string(),
+                metadata: None,
+            }]),
+            refresh_service: None,
+            name: None,
+            description: None,
+            terms_of_use: None,
+            evidence: None,
+            related_resource: None,
+        },
+        claims: vec![],
+        holder_did: Some(
+            "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                .parse()
+                .unwrap(),
+        ),
+        holder_key_id: None,
+        issuer_certificate: None,
+    };
+
+    format_mdoc_credential(credential, params).await
 }

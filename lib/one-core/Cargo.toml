@@ -32,7 +32,7 @@ itertools                = { version = "0.13" }
 json-ld                  = { version = "0.21" }
 json-syntax              = { version = "0.12", features = ["serde", "serde_json"] }
 jsonptr                  = { version = "0.6" }
-maplit                   = { version = "1.0" }
+maplit.workspace         = true
 mime                     = { version = "0.3" }
 mockall                  = { workspace = true, optional = true }
 mrtd                     = { version = "0.5.2" }

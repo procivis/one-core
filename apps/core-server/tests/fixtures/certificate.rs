@@ -14,8 +14,11 @@ pub mod ecdsa {
     use std::sync::LazyLock;
 
     use asn1_rs::{Integer, SequenceOf, ToDer};
-    use one_crypto::Signer;
+    use async_trait::async_trait;
+    use one_core::config::core_config::KeyAlgorithmType;
+    use one_core::provider::credential_formatter::model::SignatureProvider;
     use one_crypto::signer::ecdsa::ECDSASigner;
+    use one_crypto::{Signer, SignerError};
     use rcgen::{PKCS_ECDSA_P256_SHA256, RemoteKeyPair, SignatureAlgorithm};
     use secrecy::SecretSlice;
 
@@ -40,12 +43,26 @@ pub mod ecdsa {
         Box::new(Key)
     }
 
+    pub fn signature_provider() -> Box<dyn SignatureProvider> {
+        Box::new(Key)
+    }
+
     impl RemoteKeyPair for Key {
         fn public_key(&self) -> &[u8] {
             &PUB_KEY_UNCOMPRESSED
         }
 
         fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
+            Ok(Self::sign(msg))
+        }
+
+        fn algorithm(&self) -> &'static SignatureAlgorithm {
+            &PKCS_ECDSA_P256_SHA256
+        }
+    }
+
+    impl Key {
+        fn sign(msg: &[u8]) -> Vec<u8> {
             let mut signature = ECDSASigner {}
                 .sign(
                     msg,
@@ -61,11 +78,30 @@ pub mod ecdsa {
             let r = Integer::from_const_array(r);
             let s = Integer::from_const_array(s);
             let seq = SequenceOf::from_iter([r, s]);
-            Ok(seq.to_der_vec().unwrap())
+            seq.to_der_vec().unwrap()
+        }
+    }
+
+    #[async_trait]
+    impl SignatureProvider for Key {
+        async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+            Ok(Self::sign(message))
         }
 
-        fn algorithm(&self) -> &'static SignatureAlgorithm {
-            &PKCS_ECDSA_P256_SHA256
+        fn get_key_id(&self) -> Option<String> {
+            unimplemented!()
+        }
+
+        fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+            Ok(KeyAlgorithmType::Ecdsa)
+        }
+
+        fn jose_alg(&self) -> Option<String> {
+            Some(String::from("ES256"))
+        }
+
+        fn get_public_key(&self) -> Vec<u8> {
+            PUB_KEY_UNCOMPRESSED.to_vec()
         }
     }
 }
@@ -74,8 +110,11 @@ pub mod ecdsa {
 pub mod eddsa {
     use std::sync::LazyLock;
 
-    use one_crypto::Signer;
+    use async_trait::async_trait;
+    use one_core::config::core_config::KeyAlgorithmType;
+    use one_core::provider::credential_formatter::model::SignatureProvider;
     use one_crypto::signer::eddsa::EDDSASigner;
+    use one_crypto::{Signer, SignerError};
     use rcgen::{PKCS_ED25519, RemoteKeyPair, SignatureAlgorithm};
     use secrecy::SecretSlice;
 
@@ -102,19 +141,53 @@ pub mod eddsa {
         Box::new(Key)
     }
 
+    #[allow(unused)]
+    pub fn signature_provider() -> Box<dyn SignatureProvider> {
+        Box::new(Key)
+    }
+
     impl RemoteKeyPair for Key {
         fn public_key(&self) -> &[u8] {
             &PUB_KEY
         }
 
         fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
-            Ok(EDDSASigner {}
-                .sign(msg, &PUB_KEY, &SecretSlice::from(PRIV_KEY.to_owned()))
-                .unwrap())
+            Ok(Self::sign(msg))
         }
 
         fn algorithm(&self) -> &'static SignatureAlgorithm {
             &PKCS_ED25519
+        }
+    }
+
+    impl Key {
+        fn sign(msg: &[u8]) -> Vec<u8> {
+            EDDSASigner {}
+                .sign(msg, &PUB_KEY, &SecretSlice::from(PRIV_KEY.to_owned()))
+                .unwrap()
+        }
+    }
+
+    #[async_trait]
+    impl SignatureProvider for Key {
+        async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+            Ok(Self::sign(message))
+        }
+
+        fn get_key_id(&self) -> Option<String> {
+            unimplemented!()
+        }
+
+        fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+            Ok(KeyAlgorithmType::Eddsa)
+        }
+
+        fn jose_alg(&self) -> Option<String> {
+            Some("EdDSA".to_string())
+        }
+
+        fn get_public_key(&self) -> Vec<u8> {
+            PUB_KEY.to_vec()
         }
     }
 }

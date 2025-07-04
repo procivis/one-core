@@ -49,7 +49,7 @@ pub struct CoreConfig {
     pub(crate) transport: TransportConfig,
     pub(crate) revocation: RevocationConfig,
     pub(crate) did: DidConfig,
-    pub(crate) datatype: DatatypeConfig,
+    pub datatype: DatatypeConfig,
     pub(crate) key_algorithm: KeyAlgorithmConfig,
     pub(crate) holder_key_storage: HolderKeyStorageConfig,
     pub(crate) key_storage: KeyStorageConfig,
