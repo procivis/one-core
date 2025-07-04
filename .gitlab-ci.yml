@@ -22,6 +22,7 @@ variables:
   CARGO_UNSTABLE_GC: "true"
   BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
 
+
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
   # - AAD_SERVICE_PRINCIPAL_CLIENT_SECRET: Application secret. Use for RBAC SP kubelogin
@@ -418,7 +419,7 @@ tests:publish:
   stage: tests
   dependencies: []
   variables:
-    EXTRA_BUILD_ARGS: "--build-arg BUILD_IMAGE=$BUILD_IMAGE"
+    EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
   extends:
     - .docker_publish
     - .rule:except_main_branch
