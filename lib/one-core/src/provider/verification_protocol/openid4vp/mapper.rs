@@ -324,7 +324,7 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
     };
 
     let selectively_disclosable = !formatter_provider
-        .get_formatter(&credential_schema.format)
+        .get_credential_formatter(&credential_schema.format)
         .ok_or(VerificationProtocolError::Failed(
             "missing provider".to_string(),
         ))?

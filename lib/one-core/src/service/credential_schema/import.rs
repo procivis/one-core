@@ -21,7 +21,7 @@ pub(crate) async fn import_credential_schema(
     let create_request = request.to_owned().into();
 
     let formatter = formatter_provider
-        .get_formatter(&request.format)
+        .get_credential_formatter(&request.format)
         .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
     super::validator::validate_create_request(
         &create_request,

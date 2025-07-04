@@ -34,6 +34,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::adapter::PresentationFormatterAdapter;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -459,10 +460,16 @@ async fn test_submit_proof_failed_credential_suspended() {
         });
 
     let formatter = Arc::new(formatter);
+    let presentation_formatter = Arc::new(PresentationFormatterAdapter::new(formatter.clone()));
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
-        .times(4)
+        .expect_get_presentation_formatter()
+        .times(2)
+        .returning(move |_| Some(presentation_formatter.clone()));
+
+    formatter_provider
+        .expect_get_credential_formatter()
+        .times(2)
         .returning(move |_| Some(formatter.clone()));
 
     let mut revocation_method = MockRevocationMethod::new();
@@ -751,10 +758,16 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         });
 
     let formatter = Arc::new(formatter);
+    let presentation_formatter = Arc::new(PresentationFormatterAdapter::new(formatter.clone()));
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
-        .times(4)
+        .expect_get_presentation_formatter()
+        .times(2)
+        .returning(move |_| Some(presentation_formatter.clone()));
+
+    formatter_provider
+        .expect_get_credential_formatter()
+        .times(2)
         .returning(move |_| Some(formatter.clone()));
 
     let mut revocation_method = MockRevocationMethod::new();

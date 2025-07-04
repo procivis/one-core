@@ -241,7 +241,7 @@ async fn test_get_issuer_metadata_jwt() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("JWT"))
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -343,7 +343,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("SD_JWT"))
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -443,7 +443,7 @@ async fn test_get_issuer_metadata_mdoc() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("MDOC"))
         .return_once(move |_| Some(Arc::new(formatter)));
 

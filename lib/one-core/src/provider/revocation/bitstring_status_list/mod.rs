@@ -325,7 +325,7 @@ impl BitstringStatusList {
         };
 
         self.formatter_provider
-            .get_formatter(format.as_str())
+            .get_credential_formatter(format.as_str())
             .ok_or_else(|| RevocationError::FormatterNotFound(self.params.format.to_string()))
     }
 
@@ -351,7 +351,7 @@ impl BitstringStatusList {
         };
 
         self.formatter_provider
-            .get_formatter(format)
+            .get_credential_formatter(format)
             .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
     }
 

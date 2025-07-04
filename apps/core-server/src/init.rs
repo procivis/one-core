@@ -461,7 +461,10 @@ pub async fn initialize_core(
                 }
             }
 
-            Ok(Arc::new(CredentialFormatterProviderImpl::new(formatters)))
+            Ok(Arc::new(CredentialFormatterProviderImpl::new(
+                formatters,
+                HashMap::new(),
+            )))
         })
     };
 

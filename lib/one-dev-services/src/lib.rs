@@ -320,6 +320,7 @@ impl OneDevCore {
                     )) as _,
                 ),
             ]),
+            HashMap::new(),
         ));
 
         let signature_service =

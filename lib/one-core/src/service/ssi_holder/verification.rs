@@ -319,7 +319,7 @@ impl SSIHolderService {
 
             let formatter = self
                 .formatter_provider
-                .get_formatter(&format)
+                .get_credential_formatter(&format)
                 .ok_or(MissingProviderError::Formatter(format.to_string()))?;
 
             validate_holder_capabilities(

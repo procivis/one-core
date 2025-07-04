@@ -231,12 +231,12 @@ impl SSIHolderService {
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
         let format = &schema.format;
-        let formatter =
-            self.formatter_provider
-                .get_formatter(format)
-                .ok_or(ServiceError::MissingProvider(
-                    MissingProviderError::Formatter(format.to_owned()),
-                ))?;
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(format)
+            .ok_or(ServiceError::MissingProvider(
+                MissingProviderError::Formatter(format.to_owned()),
+            ))?;
 
         validate_holder_capabilities(
             &self.config,
@@ -298,7 +298,7 @@ impl SSIHolderService {
 
         let formatter = self
             .formatter_provider
-            .get_formatter(credential_format)
+            .get_credential_formatter(credential_format)
             .ok_or(ServiceError::MissingProvider(
                 MissingProviderError::Formatter(credential_format.to_owned()),
             ))?;

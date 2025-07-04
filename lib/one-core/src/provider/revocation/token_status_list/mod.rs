@@ -253,7 +253,7 @@ impl TokenStatusList {
         let format = self.params.format.to_string();
 
         self.formatter_provider
-            .get_formatter(&format)
+            .get_credential_formatter(&format)
             .ok_or(RevocationError::FormatterNotFound(format))
     }
 

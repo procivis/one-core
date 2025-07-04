@@ -2203,7 +2203,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(1)
         .returning(move |_| Some(formatter.clone()));
 
@@ -2328,7 +2328,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -2448,7 +2448,7 @@ async fn test_create_proof_using_identifier() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(3)
         .returning(move |_| Some(formatter.clone()));
 
@@ -2579,7 +2579,7 @@ async fn test_create_proof_without_related_key() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(3)
         .returning(move |_| Some(formatter.clone()));
 
@@ -2708,7 +2708,7 @@ async fn test_create_proof_with_related_key() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(3)
         .returning(move |_| Some(formatter.clone()));
 
@@ -2842,7 +2842,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(1)
         .returning(move |_| Some(formatter.clone()));
 
@@ -2957,7 +2957,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         });
     let formatter = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -3033,7 +3033,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         .once()
         .return_once(FormatterCapabilities::default);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -3121,7 +3121,7 @@ async fn test_create_proof_did_deactivated_error() {
             ..Default::default()
         });
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -3235,7 +3235,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
             ..Default::default()
         });
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -3357,7 +3357,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
 
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();

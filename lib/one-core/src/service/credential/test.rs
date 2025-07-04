@@ -741,7 +741,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -849,7 +849,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -1039,7 +1039,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -1146,7 +1146,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -1253,7 +1253,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -1369,7 +1369,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -1514,7 +1514,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -1629,7 +1629,7 @@ async fn test_create_credential_schema_deleted() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -1808,7 +1808,7 @@ async fn test_check_revocation_non_revocable() {
 
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(formatter.clone()));
 
     revocation_method_provider
@@ -1945,7 +1945,7 @@ async fn test_check_revocation_being_revoked() {
 
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(formatter.clone()));
 
     let revocation_method = Arc::new(revocation_method);
@@ -2058,7 +2058,7 @@ async fn test_create_credential_key_with_issuer_key() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2210,7 +2210,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2332,7 +2332,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2445,7 +2445,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2568,7 +2568,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2691,7 +2691,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2801,7 +2801,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -2902,7 +2902,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -5162,7 +5162,7 @@ async fn test_create_credential_array(
             .expect_get_credential_schema()
             .return_once(move |_, _| Ok(Some(credential_schema)));
         formatter_provider
-            .expect_get_formatter()
+            .expect_get_credential_formatter()
             .once()
             .return_once(move |_| Some(Arc::new(formatter)));
         credential_repository

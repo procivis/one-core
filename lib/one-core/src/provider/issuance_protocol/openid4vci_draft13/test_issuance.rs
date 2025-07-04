@@ -156,7 +156,7 @@ async fn test_issuer_submit_succeeds() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -342,7 +342,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq(format))
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
@@ -503,7 +503,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq(format))
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));

@@ -127,7 +127,7 @@ impl VCAPIService {
 
         let formatter = self
             .credential_formatter
-            .get_formatter(credential_format)
+            .get_credential_formatter(credential_format)
             .ok_or(ServiceError::MissingProvider(
                 MissingProviderError::Formatter(credential_format.to_string()),
             ))?;
@@ -231,12 +231,12 @@ impl VCAPIService {
                 .unwrap_or("JSON_LD_CLASSIC")
         };
 
-        let formatter =
-            self.credential_formatter
-                .get_formatter(format)
-                .ok_or(ServiceError::Other(format!(
-                    "Formatter not found for credential format {format}"
-                )))?;
+        let formatter = self
+            .credential_formatter
+            .get_credential_formatter(format)
+            .ok_or(ServiceError::Other(format!(
+                "Formatter not found for credential format {format}"
+            )))?;
 
         let string_token =
             serde_json::to_string(&verify_request.verifiable_credential).map_err(|e| {
@@ -274,9 +274,9 @@ impl VCAPIService {
 
         const CREDENTIAL_FORMAT: &str = "JSON_LD_CLASSIC";
 
-        let formatter = self
+        let presentation_formatter = self
             .credential_formatter
-            .get_formatter(CREDENTIAL_FORMAT)
+            .get_presentation_formatter(CREDENTIAL_FORMAT)
             .ok_or(ServiceError::MissingProvider(
                 MissingProviderError::Formatter(CREDENTIAL_FORMAT.to_string()),
             ))?;
@@ -293,7 +293,7 @@ impl VCAPIService {
             certificate_validator: self.certificate_validator.clone(),
         });
 
-        formatter
+        presentation_formatter
             .extract_presentation(
                 &string_token,
                 verification_fn,

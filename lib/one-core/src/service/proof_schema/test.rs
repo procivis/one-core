@@ -337,7 +337,7 @@ async fn test_create_proof_schema_success() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -772,7 +772,7 @@ async fn test_create_proof_schema_array_object_fail() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -930,7 +930,7 @@ async fn test_create_proof_schema_array_success() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -1104,7 +1104,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     let formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -1448,7 +1448,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("JWT"))
         .returning(move |_| Some(formatter.clone()));
 
@@ -1654,7 +1654,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("JWT"))
         .returning(move |_| Some(formatter.clone()));
 
@@ -1825,7 +1825,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("MDOC"))
         .return_once(move |_| Some(Arc::new(formatter)));
 
@@ -2446,7 +2446,7 @@ async fn test_create_proof_schema_verify_nested_generic(
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(move |_| Some(Arc::new(formatter)));
 

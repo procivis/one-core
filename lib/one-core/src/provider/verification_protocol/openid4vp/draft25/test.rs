@@ -93,7 +93,7 @@ async fn test_share_proof() {
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         formatter_provider,

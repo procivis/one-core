@@ -596,7 +596,7 @@ async fn test_holder_accept_credential_success() {
         .await;
 
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
@@ -771,7 +771,7 @@ async fn test_holder_accept_expired_credential_fails() {
         .await;
 
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();

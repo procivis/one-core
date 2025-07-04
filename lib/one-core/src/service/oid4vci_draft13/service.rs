@@ -101,7 +101,7 @@ impl OID4VCIDraft13Service {
 
         let formatter = self
             .formatter_provider
-            .get_formatter(&schema.format)
+            .get_credential_formatter(&schema.format)
             .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?;
 
         let credential_signing_alg_values_supported = formatter

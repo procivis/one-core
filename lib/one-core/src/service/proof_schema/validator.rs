@@ -126,7 +126,7 @@ pub fn extract_claims_from_credential_schema(
                 .ok_or_else(|| ServiceError::MappingError("Missing credential schema".into()))?;
 
             let formatter = formatter_provider
-                .get_formatter(&credential_schema.format.to_string())
+                .get_credential_formatter(&credential_schema.format.to_string())
                 .ok_or(MissingProviderError::Formatter(
                     credential_schema.format.to_string(),
                 ))?;

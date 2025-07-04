@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -25,11 +26,11 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
 use crate::provider::credential_formatter::model::{AuthenticationFn, DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx};
+use crate::provider::presentation_formatter::model::CredentialToPresent;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -726,12 +727,6 @@ pub(super) struct CreatePresentationParams<'a> {
 pub(super) async fn create_presentation(
     params: CreatePresentationParams<'_>,
 ) -> Result<(String, PresentationSubmissionMappingDTO), VerificationProtocolError> {
-    let tokens: Vec<String> = params
-        .credential_presentations
-        .iter()
-        .map(|presented_credential| presented_credential.presentation.to_owned())
-        .collect();
-
     let token_formats: Vec<String> = params
         .credential_presentations
         .iter()
@@ -743,7 +738,7 @@ pub(super) async fn create_presentation(
 
     let presentation_formatter = params
         .formatter_provider
-        .get_formatter(&format.to_string())
+        .get_presentation_formatter(&format.to_string())
         .ok_or(VerificationProtocolError::Failed(
             "Formatter not found".to_string(),
         ))?;
@@ -792,19 +787,25 @@ pub(super) async fn create_presentation(
         );
     }
 
-    let key_algorithm =
-        params
-            .key
-            .key_algorithm_type()
-            .ok_or(VerificationProtocolError::Failed(
-                FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
-            ))?;
+    let credentials = params
+        .credential_presentations
+        .iter()
+        .map(|presented_credential| {
+            let credential_format =
+                FormatType::from_str(&presented_credential.credential_schema.format)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            Ok(CredentialToPresent {
+                raw_credential: presented_credential.presentation.to_owned(),
+                credential_format,
+            })
+        })
+        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
 
     let FormattedPresentation {
         vp_token,
         oidc_format,
     } = presentation_formatter
-        .format_presentation(&tokens, &params.holder_did.did, key_algorithm, auth_fn, ctx)
+        .format_presentation(credentials, auth_fn, &params.holder_did.did, ctx)
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

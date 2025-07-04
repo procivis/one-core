@@ -64,11 +64,11 @@ pub(crate) async fn validate_proof(
     });
 
     let format = "MDOC";
-    let formatter = formatter_provider
-        .get_formatter(format)
+    let presentation_formatter = formatter_provider
+        .get_presentation_formatter(format)
         .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
-    let presentation = formatter
+    let presentation = presentation_formatter
         .extract_presentation(
             presentation,
             key_verification_presentation,
@@ -84,7 +84,7 @@ pub(crate) async fn validate_proof(
         .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
     // Check if presentation is expired
-    let leeway = formatter.get_leeway();
+    let leeway = presentation_formatter.get_leeway();
     validate_issuance_time(&presentation.issued_at, leeway)?;
     validate_expiration_time(&presentation.expires_at, leeway)?;
 
@@ -158,8 +158,12 @@ pub(crate) async fn validate_proof(
     let mut proved_credentials: HashMap<CredentialSchemaId, Vec<ValidatedProofClaimDTO>> =
         HashMap::new();
 
+    let credential_formatter = formatter_provider
+        .get_credential_formatter(format)
+        .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
+
     for credential in presentation.credentials {
-        let received_credential = formatter
+        let received_credential = credential_formatter
             .extract_credentials(
                 &credential,
                 None,

@@ -76,7 +76,7 @@ pub(crate) async fn generate_credential_additional_data(
     );
 
     let formatter = formatter_provider
-        .get_formatter(params.format.to_string().as_str())
+        .get_credential_formatter(params.format.to_string().as_str())
         .ok_or_else(|| {
             ServiceError::MissingProvider(MissingProviderError::Formatter(
                 params.format.to_string(),

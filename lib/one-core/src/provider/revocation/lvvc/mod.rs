@@ -120,7 +120,7 @@ impl LvvcProvider {
 
         let formatter = self
             .credential_formatter
-            .get_formatter(format)
+            .get_credential_formatter(format)
             .ok_or_else(|| RevocationError::FormatterNotFound(format.to_owned()))?;
 
         Ok(formatter)

@@ -324,7 +324,7 @@ impl OpenID4VCI13 {
 
             let formatter = self
                 .formatter_provider
-                .get_formatter(&status_list_format)
+                .get_credential_formatter(&status_list_format)
                 .ok_or(IssuanceProtocolError::Failed(format!(
                     "formatter not found: {status_list_format}"
                 )))?;
@@ -374,7 +374,7 @@ impl OpenID4VCI13 {
 
             let formatter = self
                 .formatter_provider
-                .get_formatter(&format.to_string())
+                .get_credential_formatter(&format.to_string())
                 .ok_or(IssuanceProtocolError::Failed(format!(
                     "formatter not found: {format}"
                 )))?;
@@ -543,7 +543,7 @@ impl OpenID4VCI13 {
 
         let formatter = self
             .formatter_provider
-            .get_formatter(&real_format)
+            .get_credential_formatter(&real_format)
             .ok_or_else(|| {
                 IssuanceProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?;
@@ -1354,7 +1354,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let token = self
             .formatter_provider
-            .get_formatter(&format)
+            .get_credential_formatter(&format)
             .ok_or(IssuanceProtocolError::Failed(format!(
                 "formatter not found: {format}"
             )))?

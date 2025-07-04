@@ -229,14 +229,16 @@ async fn test_check_revocation_status_as_holder_not_cached() {
 #[tokio::test]
 async fn test_check_revocation_status_as_holder_cached() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider.expect_get_formatter().returning(|_| {
-        let mut formatter = MockCredentialFormatter::new();
-        formatter
-            .expect_extract_credentials_unverified()
-            .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_extract_credentials_unverified()
+                .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
 
-        Some(Arc::new(formatter))
-    });
+            Some(Arc::new(formatter))
+        });
 
     let (did, _, credential) = generic_did_credential(CredentialRole::Holder);
 
@@ -294,14 +296,16 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
         .await;
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider.expect_get_formatter().returning(|_| {
-        let mut formatter = MockCredentialFormatter::new();
-        formatter
-            .expect_extract_credentials_unverified()
-            .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_extract_credentials_unverified()
+                .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
 
-        Some(Arc::new(formatter))
-    });
+            Some(Arc::new(formatter))
+        });
 
     let (did, _, credential) = generic_did_credential(CredentialRole::Holder);
 
@@ -370,14 +374,16 @@ fn common_mock_providers() -> (
         });
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider.expect_get_formatter().returning(|_| {
-        let mut formatter = MockCredentialFormatter::new();
-        formatter
-            .expect_extract_credentials_unverified()
-            .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_extract_credentials_unverified()
+                .returning(|_, _| Ok(extracted_credential("ACCEPTED")));
 
-        Some(Arc::new(formatter))
-    });
+            Some(Arc::new(formatter))
+        });
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider

@@ -151,7 +151,7 @@ impl VerificationProtocol for ScanToVerify {
 
         let formatter = self
             .formatter_provider
-            .get_formatter(&credential_schema.format)
+            .get_credential_formatter(&credential_schema.format)
             .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
 
         let request: ScanToVerifyRequestDTO =

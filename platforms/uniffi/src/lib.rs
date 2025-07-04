@@ -594,7 +594,10 @@ async fn initialize(
                         }
                     }
 
-                    Ok(Arc::new(CredentialFormatterProviderImpl::new(formatters)))
+                    Ok(Arc::new(CredentialFormatterProviderImpl::new(
+                        formatters,
+                        HashMap::new(),
+                    )))
                 })
             };
 

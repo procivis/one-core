@@ -390,12 +390,9 @@ async fn extract_lvvcs(
         let oidc_format = &path_nested.format;
         let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential))
             .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-        let formatter =
-            formatter_provider
-                .get_formatter(&format)
-                .ok_or(OpenID4VCError::ValidationError(format!(
-                    "Could not find format: {format}",
-                )))?;
+        let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
+            OpenID4VCError::ValidationError(format!("Could not find format: {format}",)),
+        )?;
 
         let credential = formatter
             .extract_credentials_unverified(credential, None)

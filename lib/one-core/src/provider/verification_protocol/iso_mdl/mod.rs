@@ -2,6 +2,7 @@
 //! https://www.iso.org/standard/69084.html
 
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -24,13 +25,12 @@ use super::{
     VerificationProtocolError,
 };
 use crate::common_mapper::{NESTED_CLAIM_MARKER, PublicKeyWithJwk, decode_cbor_base64};
-use crate::config::core_config::{CoreConfig, DidType, IdentifierType, TransportType};
+use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
@@ -40,6 +40,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::model::CredentialToPresent;
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -183,9 +184,9 @@ impl VerificationProtocol for IsoMdl {
                     "no credentials to format".into(),
                 ))?;
 
-        let formatter = self
+        let presentation_formatter = self
             .formatter_provider
-            .get_formatter(&credential_presentation.credential_schema.format)
+            .get_presentation_formatter(&credential_presentation.credential_schema.format)
             .ok_or(VerificationProtocolError::Failed(format!(
                 "unknown format: {}",
                 credential_presentation.credential_schema.format
@@ -203,19 +204,20 @@ impl VerificationProtocol for IsoMdl {
             ..Default::default()
         };
 
-        let presentaitons = credential_presentations
+        let presentations = credential_presentations
             .into_iter()
-            .map(|credential| credential.presentation)
-            .collect::<Vec<_>>();
+            .map(|credential| {
+                let format = FormatType::from_str(&credential.credential_schema.format)
+                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+                Ok(CredentialToPresent {
+                    raw_credential: credential.presentation,
+                    credential_format: format,
+                })
+            })
+            .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
 
-        let key_algorithm = key
-            .key_algorithm_type()
-            .ok_or(VerificationProtocolError::Failed(
-                FormatterError::Failed("Missing key algorithm".to_string()).to_string(),
-            ))?;
-
-        let FormattedPresentation { vp_token, .. } = formatter
-            .format_presentation(&presentaitons, &holder_did.did, key_algorithm, auth_fn, ctx)
+        let FormattedPresentation { vp_token, .. } = presentation_formatter
+            .format_presentation(presentations, auth_fn, &holder_did.did, ctx)
             .await
             .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 

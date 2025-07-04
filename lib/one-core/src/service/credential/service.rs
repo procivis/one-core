@@ -128,7 +128,7 @@ impl CredentialService {
 
         let formatter_capabilities = self
             .formatter_provider
-            .get_formatter(&schema.format)
+            .get_credential_formatter(&schema.format)
             .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?
             .get_capabilities();
 
@@ -800,7 +800,7 @@ impl CredentialService {
         // Workaround credential format detection
         let format = detect_format_with_crypto_suite(&credential_schema.format, &credential_str)?;
 
-        let Some(formatter) = self.formatter_provider.get_formatter(&format) else {
+        let Some(formatter) = self.formatter_provider.get_credential_formatter(&format) else {
             return Err(MissingProviderError::Formatter(credential_schema.format).into());
         };
 

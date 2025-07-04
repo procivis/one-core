@@ -88,7 +88,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
 
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(formatter.clone()));
 
     let revocation_method = Arc::new(revocation_method);

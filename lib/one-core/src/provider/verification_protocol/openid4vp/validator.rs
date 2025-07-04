@@ -39,11 +39,11 @@ pub(super) async fn peek_presentation(
 ) -> Result<Presentation, OpenID4VCError> {
     let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
         .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-    let formatter = formatter_provider
-        .get_formatter(&format)
+    let presentation_formatter = formatter_provider
+        .get_presentation_formatter(&format)
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
-    let presentation = formatter
+    let presentation = presentation_formatter
         .extract_presentation_unverified(presentation_string, ExtractPresentationCtx::default())
         .await
         .map_err(|e| {
@@ -67,11 +67,11 @@ pub(super) async fn validate_presentation(
 ) -> Result<Presentation, OpenID4VCError> {
     let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
         .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-    let formatter = formatter_provider
-        .get_formatter(&format)
+    let presentation_formatter = formatter_provider
+        .get_presentation_formatter(&format)
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
-    let presentation = formatter
+    let presentation = presentation_formatter
         .extract_presentation(presentation_string, key_verification, context)
         .await
         .map_err(|e| {
@@ -82,8 +82,11 @@ pub(super) async fn validate_presentation(
             }
         })?;
 
-    validate_issuance_time(&presentation.issued_at, formatter.get_leeway())?;
-    validate_expiration_time(&presentation.expires_at, formatter.get_leeway())?;
+    validate_issuance_time(&presentation.issued_at, presentation_formatter.get_leeway())?;
+    validate_expiration_time(
+        &presentation.expires_at,
+        presentation_formatter.get_leeway(),
+    )?;
 
     if presentation
         .nonce
@@ -163,7 +166,7 @@ pub(super) async fn validate_credential(
         .map(|schema| schema.format.as_str())
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
     let formatter = formatter_provider
-        .get_formatter(format)
+        .get_credential_formatter(format)
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
     let credential = formatter

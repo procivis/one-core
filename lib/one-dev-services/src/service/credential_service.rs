@@ -62,7 +62,7 @@ impl CredentialService {
 
         let token = self
             .credential_formatter_provider
-            .get_formatter(&format.to_string())
+            .get_credential_formatter(&format.to_string())
             .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
             .format_credential(credential_data, auth_fn)
             .await?;
@@ -77,7 +77,7 @@ impl CredentialService {
     ) -> Result<String, CredentialServiceError> {
         let token = self
             .credential_formatter_provider
-            .get_formatter(&format.to_string())
+            .get_credential_formatter(&format.to_string())
             .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
             .format_credential_presentation(credential, None, None)
             .await?;
@@ -99,7 +99,7 @@ impl CredentialService {
 
         let details = self
             .credential_formatter_provider
-            .get_formatter(&format.to_string())
+            .get_credential_formatter(&format.to_string())
             .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
             .extract_credentials(credential, None, key_verification, None)
             .await?;

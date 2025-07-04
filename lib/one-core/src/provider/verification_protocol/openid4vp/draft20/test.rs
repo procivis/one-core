@@ -191,7 +191,7 @@ async fn test_share_proof() {
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         formatter_provider,
@@ -299,7 +299,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         formatter_provider,
@@ -542,7 +542,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
 
     let protocol = setup_protocol(TestInputs {
@@ -1074,7 +1074,7 @@ async fn test_share_proof_custom_scheme() {
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         formatter_provider,

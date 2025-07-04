@@ -357,7 +357,7 @@ async fn test_create_credential_schema_success() {
         .expect_credential_schema_id()
         .returning(|_, _, _| Ok("schema id".to_string()));
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -471,7 +471,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_credential_schema_id()
         .returning(|_, _, _| Ok(custom_schema_id.to_string()));
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -558,7 +558,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
         .returning(|_, _, _| Ok(VCT.to_string()));
 
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .with(eq("SD_JWT_VC"))
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
@@ -701,7 +701,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .expect_credential_schema_id()
         .returning(|_, _, _| Ok("some schema id".to_string()));
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -771,7 +771,7 @@ async fn test_create_credential_schema_success_nested_claims() {
 async fn test_create_credential_schema_failed_slash_in_claim_name() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
@@ -817,7 +817,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
 async fn test_create_credential_schema_failed_nested_claims_not_in_object_type() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
@@ -878,7 +878,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
 async fn test_create_credential_schema_failed_nested_claims_object_type_has_empty_claims() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
@@ -922,7 +922,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
 async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
@@ -1001,7 +1001,7 @@ async fn test_create_credential_schema_unique_name_error() {
             ..Default::default()
         });
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1058,7 +1058,7 @@ async fn test_create_credential_schema_unique_name_error() {
 async fn test_create_credential_schema_failed_unique_claims_error() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(2)
         .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
@@ -1156,7 +1156,7 @@ async fn test_create_credential_schema_fail_validation() {
     let organisation_repository = MockOrganisationRepository::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(4)
         .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
 
@@ -1309,7 +1309,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         .expect_credential_schema_id()
         .returning(|_, _, _| Ok("schema id".to_string()));
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1402,7 +1402,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             ..Default::default()
         });
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1465,7 +1465,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         .expect_get_capabilities()
         .returning(FormatterCapabilities::default);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1525,7 +1525,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         .expect_get_capabilities()
         .returning(generic_formatter_capabilities);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1612,7 +1612,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
             ..generic_formatter_capabilities()
         });
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1689,7 +1689,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
             ..generic_formatter_capabilities()
         });
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1752,7 +1752,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .expect_get_capabilities()
         .returning(generic_formatter_capabilities);
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -1810,7 +1810,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
 async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .times(3)
         .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
@@ -2866,7 +2866,7 @@ async fn test_import_credential_schema_success() {
             ..Default::default()
         });
     formatter_provider
-        .expect_get_formatter()
+        .expect_get_credential_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
