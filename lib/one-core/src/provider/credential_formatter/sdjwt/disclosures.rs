@@ -7,8 +7,8 @@ use serde_json::Value;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
+use crate::util::jwt::mapper::string_to_b64url_string;
 
 pub(crate) const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 

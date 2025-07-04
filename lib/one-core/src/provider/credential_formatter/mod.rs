@@ -12,7 +12,7 @@ use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub mod error;
 
-mod common;
+pub(crate) mod common;
 pub use common::nest_claims;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -24,7 +24,6 @@ use crate::provider::credential_formatter::model::{FormattedPresentation, Holder
 pub mod json_ld;
 pub mod json_ld_bbsplus;
 pub mod json_ld_classic;
-pub mod jwt;
 pub mod jwt_formatter;
 pub mod mapper;
 pub mod mdoc_formatter;

@@ -2,8 +2,8 @@ use shared_types::DidValue;
 
 use self::model::VC;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::VerificationFn;
+use crate::util::jwt::Jwt;
 
 mod model;
 

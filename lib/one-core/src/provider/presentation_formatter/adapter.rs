@@ -12,7 +12,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::presentation_formatter::model::PresentationFormatterCapabilities;
 use crate::provider::presentation_formatter::{CredentialToPresent, PresentationFormatter};
 
-/// Temporary wrapper around a CredentialFormatter implementation to faciliate the transition to the new presentation formatter trait.
+/// Temporary wrapper around a CredentialFormatter implementation to facilitate the transition to the new presentation formatter trait.
 pub struct PresentationFormatterAdapter {
     inner: Arc<dyn CredentialFormatter>,
 }

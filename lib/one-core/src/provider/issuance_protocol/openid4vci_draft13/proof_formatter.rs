@@ -5,12 +5,12 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};
-use crate::provider::credential_formatter::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::util::jwt::model::{DecomposedToken, JWTPayload};
+use crate::util::jwt::{Jwt, JwtPublicKeyInfo};
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
 

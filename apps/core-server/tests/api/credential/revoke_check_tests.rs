@@ -3,14 +3,12 @@ use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::revocation_list::RevocationListPurpose;
-use one_core::provider::credential_formatter::jwt::mapper::{
-    bin_to_b64url_string, string_to_b64url_string,
-};
 use one_core::provider::credential_formatter::mdoc_formatter::Params;
 use one_core::provider::credential_formatter::model::{CredentialData, CredentialSchema, Issuer};
 use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
+use one_core::util::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};

@@ -24,9 +24,6 @@ use crate::provider::caching_loader::vct::{
     MockVctTypeMetadataFetcher, SdJwtVcTypeMetadataCacheItem,
 };
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::credential_formatter::jwt::model::{
-    JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
-};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialStatus, ExtractPresentationCtx, Issuer,
     IssuerDetails, MockSignatureProvider, MockTokenVerifier, PublicKeySource, PublishedClaim,
@@ -57,6 +54,7 @@ use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{dummy_did_document, dummy_jwk, generic_config};
+use crate::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::util::key_verification::KeyVerification;
 
 #[tokio::test]

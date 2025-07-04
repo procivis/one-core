@@ -8,12 +8,10 @@ use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::revocation_list::RevocationListPurpose;
-use one_core::provider::credential_formatter::jwt::mapper::{
-    bin_to_b64url_string, string_to_b64url_string,
-};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::task::certificate_check::dto::CertificateCheckResultDTO;
+use one_core::util::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::json;

@@ -1,10 +1,10 @@
 use anyhow::Context;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::Presentation;
 use crate::provider::credential_formatter::sdjwt::model::{Sdvp, VcClaim};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use crate::util::jwt::Jwt;
 
 pub(crate) fn vc_from_credential(
     mut credential: VcdmCredential,

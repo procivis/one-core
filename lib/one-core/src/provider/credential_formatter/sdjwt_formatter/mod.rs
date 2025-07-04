@@ -20,7 +20,6 @@ use crate::config::core_config::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
@@ -30,11 +29,11 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::jwt::Jwt;
 
 #[cfg(test)]
 mod test;
 
-use super::jwt::model::JWTPayload;
 use super::model::CredentialData;
 use super::vcdm::VcdmCredential;
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
@@ -46,6 +45,7 @@ use crate::provider::credential_formatter::sdjwt::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::util::jwt::model::JWTPayload;
 
 pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,

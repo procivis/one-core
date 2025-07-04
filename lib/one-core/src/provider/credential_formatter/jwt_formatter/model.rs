@@ -1,44 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VPContent {
-    #[serde(rename = "@context")]
-    pub context: Vec<ContextType>,
-    #[serde(rename = "type")]
-    pub r#type: Vec<String>,
-    pub verifiable_credential: Vec<VerifiableCredential>,
-}
+use crate::provider::credential_formatter::vcdm::JwtVcdmCredential;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VcClaim {
     pub vc: JwtVcdmCredential,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VP {
-    pub vp: VPContent,
-    pub nonce: Option<String>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum VerifiableCredential {
-    Enveloped(EnvelopedContent),
-    Token(String),
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct EnvelopedContent {
-    #[serde(rename = "@context")]
-    pub context: Vec<ContextType>,
-    pub id: String,
-    #[serde(rename = "type")]
-    pub r#type: Vec<String>,
 }
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]

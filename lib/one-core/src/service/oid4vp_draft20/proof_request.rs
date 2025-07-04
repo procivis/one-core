@@ -9,10 +9,6 @@ use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::jwt::model::{
-    JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
-};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -28,6 +24,8 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_presentation_definition,
 };
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::util::oidc::determine_response_mode;
 use crate::util::x509::pem_chain_into_x5c;
 

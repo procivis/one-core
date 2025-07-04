@@ -6,14 +6,14 @@ use time::OffsetDateTime;
 use crate::KeyProvider;
 use crate::common_validator::validate_expiration_time;
 use crate::model::did::{Did, KeyFilter, KeyRole};
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::{JWTHeader, JWTPayload};
 use crate::util::key_verification::KeyVerification;
 
 /// JWT authorization token for use of authenticated holder/verifier access (LVVC fetching, remote trust-entity)

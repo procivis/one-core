@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 
-use anyhow::Context;
 use shared_types::DidValue;
 
-use super::model::{VP, VcClaim, VerifiableCredential};
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
+use super::model::VcClaim;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IssuerDetails,
-    Presentation,
 };
+use crate::util::jwt::Jwt;
 
 impl From<CredentialSchemaData> for Option<CredentialSchema> {
     fn from(credential_schema: CredentialSchemaData) -> Self {
@@ -71,45 +68,6 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
                 .vc
                 .credential_schema
                 .and_then(|s| s.into_iter().next()),
-        })
-    }
-}
-
-impl TryFrom<Jwt<VP>> for Presentation {
-    type Error = FormatterError;
-
-    fn try_from(jwt: Jwt<VP>) -> Result<Self, Self::Error> {
-        let credentials = jwt
-            .payload
-            .custom
-            .vp
-            .verifiable_credential
-            .into_iter()
-            .map(|vc| match vc {
-                VerifiableCredential::Enveloped(enveloped) => {
-                    let (_type, token) = enveloped.id.split_once(',').ok_or(
-                        FormatterError::CouldNotExtractPresentation(
-                            "Enveloped VP id missing delimiter".to_string(),
-                        ),
-                    )?;
-                    Ok(token.to_string())
-                }
-                VerifiableCredential::Token(token) => Ok(token),
-            })
-            .collect::<Result<Vec<_>, FormatterError>>()?;
-
-        Ok(Presentation {
-            id: jwt.payload.jwt_id,
-            issued_at: jwt.payload.issued_at,
-            expires_at: jwt.payload.expires_at,
-            issuer_did: jwt
-                .payload
-                .issuer
-                .map(|did| did.parse().context("did parsing error"))
-                .transpose()
-                .map_err(|e| Self::Error::Failed(e.to_string()))?,
-            nonce: jwt.payload.custom.nonce,
-            credentials,
         })
     }
 }

@@ -44,6 +44,7 @@ use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
+use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
 use one_core::provider::presentation_formatter::mso_mdoc::MsoMdocPresentationFormatter;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -469,6 +470,10 @@ pub async fn initialize_core(
                     certificate_validator.clone(),
                     providers.core_base_url.clone(),
                 )) as _,
+            );
+            presentation_formatters.insert(
+                "JWT".to_owned(),
+                Arc::new(JwtVpPresentationFormatter::new()) as _,
             );
             Ok(Arc::new(CredentialFormatterProviderImpl::new(
                 formatters,

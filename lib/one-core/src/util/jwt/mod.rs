@@ -13,10 +13,11 @@ use serde::de::DeserializeOwned;
 use shared_types::DidValue;
 
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
-use super::model::{PublicKeySource, VerificationFn};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, PublicKeySource, TokenVerifier, VerificationFn,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 

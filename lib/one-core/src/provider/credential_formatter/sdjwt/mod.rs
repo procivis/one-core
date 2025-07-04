@@ -10,15 +10,12 @@ use serde_json::Value;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
-use super::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use super::model::{
     AuthenticationFn, CertificateDetails, HolderBindingCtx, IssuerDetails, PublicKeySource,
     TokenVerifier, VerificationFn,
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::model::DecomposedToken;
-use crate::provider::credential_formatter::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     compute_object_disclosures, parse_token, select_disclosures,
@@ -33,6 +30,10 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::util::jwt::model::{
+    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
+use crate::util::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::util::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 
 pub mod disclosures;

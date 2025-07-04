@@ -10,7 +10,6 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, HolderBindingCtx,
     Issuer, MockSignatureProvider, PublishedClaim,
@@ -24,6 +23,7 @@ use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
+use crate::util::jwt::Jwt;
 
 #[tokio::test]
 async fn test_prepare_sd_presentation() {

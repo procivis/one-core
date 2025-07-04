@@ -21,7 +21,6 @@ use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
 use url::Url;
 
-use super::jwt::model::JWTPayload;
 use super::model::{
     CredentialData, CredentialStatus, FormattedPresentation, HolderBindingCtx, PublishedClaim,
 };
@@ -37,7 +36,6 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
@@ -56,6 +54,8 @@ use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::JWTPayload;
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 

@@ -4,15 +4,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use model::{EnvelopedContent, VP, VPContent, VcClaim, VerifiableCredential};
+use model::VcClaim;
 use serde::Deserialize;
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
-use super::jwt::Jwt;
-use super::jwt::model::JWTPayload;
 use super::model::{CredentialData, Features, FormattedPresentation, HolderBindingCtx};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -29,7 +24,8 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::JWTPayload;
 
 #[cfg(test)]
 mod test;
@@ -182,57 +178,22 @@ impl CredentialFormatter for JWTFormatter {
 
     async fn format_presentation(
         &self,
-        tokens: &[String],
-        holder_did: &DidValue,
-        algorithm: KeyAlgorithmType,
-        auth_fn: AuthenticationFn,
-        FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
+        _tokens: &[String],
+        _holder_did: &DidValue,
+        _algorithm: KeyAlgorithmType,
+        _auth_fn: AuthenticationFn,
+        _context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        let vp: VP = format_payload(tokens, nonce)?;
-
-        let now = OffsetDateTime::now_utc();
-        let valid_for = Duration::minutes(5);
-
-        let payload = JWTPayload {
-            issued_at: Some(now),
-            expires_at: now.checked_add(valid_for),
-            invalid_before: Some(now),
-            issuer: Some(holder_did.to_string()),
-            subject: Some(holder_did.to_string()),
-            jwt_id: Some(Uuid::new_v4().to_string()),
-            custom: vp,
-            ..Default::default()
-        };
-
-        let key_id = auth_fn.get_key_id();
-        let key_algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_type(algorithm)
-            .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
-
-        let jose_alg = key_algorithm
-            .issuance_jose_alg_id()
-            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
-
-        let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, None, payload);
-
-        let vp_token = jwt.tokenize(Some(auth_fn)).await?;
-        Ok(FormattedPresentation {
-            vp_token,
-            oidc_format: "jwt_vp_json".to_string(),
-        })
+        unimplemented!()
     }
 
     async fn extract_presentation(
         &self,
-        token: &str,
-        verification: VerificationFn,
+        _token: &str,
+        _verification: VerificationFn,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        // Build fails if verification fails
-        let jwt: Jwt<VP> = Jwt::build_from_token(token, Some(&verification), None).await?;
-
-        jwt.try_into()
+        unimplemented!()
     }
 
     fn get_leeway(&self) -> u64 {
@@ -299,52 +260,9 @@ impl CredentialFormatter for JWTFormatter {
 
     async fn extract_presentation_unverified(
         &self,
-        token: &str,
+        _token: &str,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let jwt: Jwt<VP> = Jwt::build_from_token(token, None, None).await?;
-
-        jwt.try_into()
+        unimplemented!()
     }
-}
-
-fn format_payload(credentials: &[String], nonce: Option<String>) -> Result<VP, FormatterError> {
-    let mut has_enveloped_presentation = false;
-
-    let tokens = credentials
-        .iter()
-        .map(|token| {
-            if Base64UrlSafeNoPadding::decode_to_vec(token, None).is_ok() {
-                let token = format!("data:application/vp+mso_mdoc,{token}");
-
-                let vp = EnvelopedContent {
-                    context: Vec::from_iter(vcdm_v2_base_context(None)),
-                    id: token,
-                    r#type: vec!["EnvelopedVerifiablePresentation".to_owned()],
-                };
-                has_enveloped_presentation = true;
-
-                Ok(VerifiableCredential::Enveloped(vp))
-            } else {
-                Ok(VerifiableCredential::Token(token.to_owned()))
-            }
-        })
-        .collect::<Result<Vec<VerifiableCredential>, FormatterError>>()?;
-
-    let types = match has_enveloped_presentation {
-        false => vec!["VerifiablePresentation".to_owned()],
-        true => vec![
-            "VerifiablePresentation".to_owned(),
-            "EnvelopedVerifiablePresentation".to_owned(),
-        ],
-    };
-
-    Ok(VP {
-        vp: VPContent {
-            context: Vec::from_iter(vcdm_v2_base_context(None)),
-            r#type: types,
-            verifiable_credential: tokens,
-        },
-        nonce,
-    })
 }

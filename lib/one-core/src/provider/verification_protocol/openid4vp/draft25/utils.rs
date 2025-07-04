@@ -11,8 +11,6 @@ use super::model::{
     OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
 };
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -26,6 +24,8 @@ use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
 };
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::DecomposedToken;
 use crate::util::key_verification::KeyVerification;
 use crate::util::x509::{is_dns_name_matching, x5c_into_pem_chain};
 

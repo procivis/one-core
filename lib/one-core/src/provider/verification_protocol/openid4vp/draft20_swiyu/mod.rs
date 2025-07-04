@@ -12,8 +12,6 @@ use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::http_client::HttpClient;
 use crate::provider::verification_protocol::VerificationProtocol;
@@ -34,6 +32,8 @@ use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::DecomposedToken;
 
 pub(crate) struct OpenID4VP20Swiyu {
     inner: OpenID4VP20HTTP,
