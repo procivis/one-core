@@ -438,7 +438,6 @@ trigger_tests:e2e:
 
 trigger_tests:api:
   stage: tests
-  when: manual
   variables:
     API_TEST: "CORE"
   needs:
