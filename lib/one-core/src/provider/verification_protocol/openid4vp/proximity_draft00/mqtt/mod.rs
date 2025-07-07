@@ -13,7 +13,6 @@ use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
 use crate::config::core_config::TransportType;
-use crate::model::interaction::InteractionId;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
@@ -70,11 +69,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         TransportType::Mqtt
     }
 
-    async fn setup(
-        &self,
-        url: Url,
-        _: InteractionId,
-    ) -> Result<Self::Context, VerificationProtocolError> {
+    async fn setup(&self, url: Url) -> Result<Self::Context, VerificationProtocolError> {
         let query = url
             .query()
             .ok_or(VerificationProtocolError::InvalidRequest(

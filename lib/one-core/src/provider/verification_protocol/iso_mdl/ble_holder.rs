@@ -17,7 +17,7 @@ use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
@@ -83,9 +83,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
                     )
                     .await
             },
-            |_, peripheral| async move {
-                stop_ble_peripheral(&*peripheral).await;
-            },
+            |_, _| async move {},
             OnConflict::ReplaceIfSameFlow,
             true,
         )
@@ -124,13 +122,7 @@ pub(crate) async fn receive_mdl_request(
         .schedule_continuation(
             interaction_data.continuation_task_id,
             |task_id, _, peripheral| async move {
-                let info = wait_for_device(&*peripheral, interaction_data.service_uuid).await;
-
-                if info.is_err() {
-                    stop_ble_peripheral(&*peripheral).await;
-                }
-
-                let info = info?;
+                let info = wait_for_device(&peripheral, interaction_data.service_uuid).await?;
 
                 let result = tx.send(info.clone());
                 if let Err(device_info) = result {
@@ -139,7 +131,7 @@ pub(crate) async fn receive_mdl_request(
 
                 let result = async {
                     let session_establishment =
-                        read_request(&*peripheral, &info, interaction_data.service_uuid).await?;
+                        read_request(&peripheral, &info, interaction_data.service_uuid).await?;
 
                     let session_transcript_bytes = create_session_transcript_bytes(
                         device_engagement.clone(),
@@ -215,7 +207,7 @@ pub(crate) async fn receive_mdl_request(
                         message: err.to_string(),
                     };
                     set_proof_error(&*proof_repository, &proof_id, error_metadata).await;
-                    abort(&*peripheral, Some(&info), interaction_data.service_uuid).await;
+                    notify_end(&peripheral, Some(&info), interaction_data.service_uuid).await;
                 }
 
                 result
@@ -226,8 +218,8 @@ pub(crate) async fn receive_mdl_request(
                     message: "Propose proof was cancelled".to_string(),
                 };
                 set_proof_error(&*proof_repository_clone, &proof_id, error_metadata).await;
-                abort(
-                    &*peripheral,
+                notify_end(
+                    &peripheral,
                     rx.await.ok().as_ref(),
                     interaction_data.service_uuid,
                 )
@@ -296,15 +288,9 @@ pub(crate) async fn send_mdl_response(
                 // Wait for device disconnection here (but this means blocking UI)
                 tokio::time::sleep(Duration::from_millis(200)).await;
 
-                peripheral.stop_server().await.map_err(|e| {
-                    VerificationProtocolError::Failed(format!("Unable to stop server: {e}"))
-                })?;
-
                 Ok::<_, VerificationProtocolError>(())
             },
-            move |_, peripheral| async move {
-                stop_ble_peripheral(&*peripheral).await;
-            },
+            move |_, _| async move {},
             false,
         )
         .await
@@ -321,7 +307,7 @@ pub(crate) async fn send_mdl_response(
 }
 
 async fn wait_for_device(
-    peripheral: &dyn BlePeripheral,
+    peripheral: &TrackingBlePeripheral,
     service_uuid: Uuid,
 ) -> Result<DeviceInfo, VerificationProtocolError> {
     let info = loop {
@@ -353,7 +339,7 @@ async fn wait_for_device(
 }
 
 async fn wait_for_start(
-    peripheral: &dyn BlePeripheral,
+    peripheral: &TrackingBlePeripheral,
     info: &DeviceInfo,
     service_uuid: Uuid,
 ) -> Result<(), VerificationProtocolError> {
@@ -380,7 +366,7 @@ async fn wait_for_start(
 }
 
 async fn read_request(
-    peripheral: &dyn BlePeripheral,
+    peripheral: &TrackingBlePeripheral,
     info: &DeviceInfo,
     service_uuid: Uuid,
 ) -> Result<SessionEstablishment, VerificationProtocolError> {
@@ -415,8 +401,8 @@ async fn read_request(
     }
 }
 
-pub(crate) async fn abort(
-    peripheral: &dyn BlePeripheral,
+pub(crate) async fn notify_end(
+    peripheral: &TrackingBlePeripheral,
     device_info: Option<&DeviceInfo>,
     service_uuid: Uuid,
 ) {
@@ -432,13 +418,6 @@ pub(crate) async fn abort(
         if let Err(err) = result {
             tracing::warn!("Failed to notify characteristic data: {err}");
         }
-    }
-    stop_ble_peripheral(peripheral).await;
-}
-
-async fn stop_ble_peripheral(peripheral: &dyn BlePeripheral) {
-    if let Err(err) = peripheral.stop_server().await {
-        tracing::warn!("failed to stop BLE peripheral: {err}");
     }
 }
 

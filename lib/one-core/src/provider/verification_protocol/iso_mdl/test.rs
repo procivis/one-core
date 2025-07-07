@@ -25,6 +25,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionRuleTypeEnum;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
@@ -46,15 +47,26 @@ async fn test_presentation_reject_ok() {
         .returning(move |_, _, _, _| Ok(()));
 
     ble_peripheral
+        .expect_is_advertising()
+        .times(1)
+        .returning(move || Ok(false));
+
+    ble_peripheral
         .expect_stop_server()
         .times(1)
         .returning(move || Ok(()));
 
-    let ble_waiter = BleWaiter::new(Arc::new(MockBleCentral::new()), Arc::new(ble_peripheral));
+    let mut ble_central = MockBleCentral::new();
+    ble_central
+        .expect_is_scanning()
+        .times(1)
+        .returning(move || Ok(false));
+
+    let ble_waiter = BleWaiter::new(Arc::new(ble_central), Arc::new(ble_peripheral));
     let (continuation_task_id, _) = ble_waiter
         .schedule(
             Uuid::new_v4(),
-            |_, _, _| async {},
+            |_, _, _| async { Ok(()) as Result<(), VerificationProtocolError> },
             |_, _| async {},
             OnConflict::DoNothing,
             true,

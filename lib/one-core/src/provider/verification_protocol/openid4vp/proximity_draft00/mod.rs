@@ -110,9 +110,9 @@ impl OpenID4VPProximityDraft00 {
         ble: Option<BleWaiter>,
     ) -> Self {
         let url_scheme = params.url_scheme.clone();
-        let ble_holder_transport = ble.clone().map(|ble| {
-            BleHolderTransport::new(url_scheme.clone(), ble, interaction_repository.clone())
-        });
+        let ble_holder_transport = ble
+            .clone()
+            .map(|ble| BleHolderTransport::new(url_scheme.clone(), ble));
         let (openid_mqtt, mqtt_holder_transport) = if let Some(mqtt_client) = mqtt_client {
             if let Ok(transport_params) = config.transport.get(TransportType::Mqtt.as_ref()) {
                 (

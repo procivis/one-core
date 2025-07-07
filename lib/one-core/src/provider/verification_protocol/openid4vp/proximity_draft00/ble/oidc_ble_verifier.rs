@@ -24,7 +24,7 @@ use super::{
 use crate::config::core_config::TransportType;
 use crate::model::interaction::InteractionId;
 use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
@@ -50,7 +50,7 @@ type ConnectionEventStream = Pin<Box<dyn Stream<Item = Vec<ConnectionEvent>> + S
 
 pub(crate) struct BleVerifierTransport {
     task_id: Uuid,
-    peripheral: Arc<dyn BlePeripheral>,
+    peripheral: TrackingBlePeripheral,
 }
 
 pub(crate) struct BleVerifierContext {
@@ -93,7 +93,7 @@ impl ProximityVerifierTransport for BleVerifierTransport {
         context: &Self::Context,
         request: String,
     ) -> Result<(), VerificationProtocolError> {
-        write_presentation_request(&request, &context.peer, self.peripheral.clone()).await
+        write_presentation_request(&request, &context.peer, &self.peripheral).await
     }
 
     async fn receive_presentation(
@@ -104,7 +104,7 @@ impl ProximityVerifierTransport for BleVerifierTransport {
         select! {
             biased;
             _ = wallet_disconnect_event(&mut event_stream, &context.peer.device_info.address) => Err(VerificationProtocolError::Failed("wallet disconnected".into())),
-            submission = read_presentation_submission(&context.peer, self.peripheral.clone()) => Ok(HolderSubmission::Presentation(submission?)),
+            submission = read_presentation_submission(&context.peer, &self.peripheral) => Ok(HolderSubmission::Presentation(submission?)),
         }
     }
 
@@ -134,7 +134,9 @@ impl ProximityVerifierTransport for BleVerifierTransport {
     }
 
     async fn clean_up(&self) {
-        stop_server(&*self.peripheral).await
+        if let Err(err) = self.peripheral.teardown().await {
+            warn!("Failed to clean up BLE verifier transport: {err}");
+        }
     }
 }
 
@@ -160,11 +162,9 @@ pub(crate) async fn schedule_ble_verifier_flow(
         .schedule(
             *OIDC_BLE_FLOW,
             |_, _, peripheral| async move {
-                start_advertisement(advertising_name, &*peripheral).await
+                start_advertisement(advertising_name, peripheral).await
             },
-            |_, peripheral| async move {
-                stop_server(&*peripheral).await;
-            },
+            |_, _| async {},
             OnConflict::ReplaceIfSameFlow,
             true,
         )
@@ -185,9 +185,10 @@ pub(crate) async fn schedule_ble_verifier_flow(
             |task_id, _, peripheral| async move {
                 let tranport = BleVerifierTransport {
                     task_id,
-                    peripheral,
+                    peripheral: peripheral.clone(),
                 };
                 flow(tranport).await;
+                Ok(()) as Result<(), VerificationProtocolError>
             },
             move |_, peripheral| async move {
                 info!("cancelling proof sharing");
@@ -216,7 +217,6 @@ pub(crate) async fn schedule_ble_verifier_flow(
                         warn!("failed to notify client about disconnect: {err}")
                     }
                 };
-                stop_server(&*peripheral).await;
             },
             false,
         )
@@ -237,12 +237,6 @@ pub(crate) async fn retract_proof_ble(ble: &BleWaiter) {
     ble.abort(Abort::Flow(*OIDC_BLE_FLOW)).await;
 }
 
-async fn stop_server(peripheral: &dyn BlePeripheral) {
-    let result = peripheral.stop_server().await;
-    if let Err(ref err) = result {
-        warn!("failed to stop BLE peripheral server: {err}");
-    }
-}
 async fn wallet_disconnect_event(
     connection_event_stream: &mut ConnectionEventStream,
     wallet_address: &str,
@@ -316,7 +310,7 @@ fn get_advertise_data() -> ServiceDescription {
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
 async fn start_advertisement(
     verifier_name: String,
-    ble_peripheral: &dyn BlePeripheral,
+    ble_peripheral: TrackingBlePeripheral,
 ) -> Result<(), VerificationProtocolError> {
     if ble_peripheral
         .is_advertising()
@@ -340,7 +334,7 @@ async fn start_advertisement(
 }
 
 async fn get_connection_event_stream(
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: TrackingBlePeripheral,
 ) -> ConnectionEventStream {
     futures::stream::unfold(ble_peripheral, |peripheral| async move {
         match peripheral.get_connection_change_events().await {
@@ -360,7 +354,7 @@ async fn get_connection_event_stream(
     err(Debug)
 )]
 async fn wait_for_wallet_identify_request(
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: TrackingBlePeripheral,
     connection_event_stream: &mut ConnectionEventStream,
 ) -> Result<(DeviceInfo, IdentityRequest), VerificationProtocolError> {
     let mut connected_devices: HashMap<String, DeviceInfo> = HashMap::new();
@@ -418,12 +412,12 @@ async fn wait_for_wallet_identify_request(
 pub(crate) fn read(
     id: &str,
     device_info: &DeviceInfo,
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: TrackingBlePeripheral,
 ) -> impl Stream<Item = Result<Vec<u8>, BleError>> + Send + use<> {
     let address = device_info.address.clone();
 
     let stream_of_streams = futures::stream::unfold(
-        (address, id.to_string(), ble_peripheral.clone()),
+        (address, id.to_string(), ble_peripheral),
         move |(address, id, ble_peripheral)| async move {
             let result = ble_peripheral
                 .get_characteristic_writes(address.clone(), SERVICE_UUID.to_string(), id.clone())
@@ -448,7 +442,7 @@ pub(crate) fn read(
 async fn write_presentation_request(
     request: &String,
     peer: &BLEPeer,
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: &TrackingBlePeripheral,
 ) -> Result<(), VerificationProtocolError> {
     let encrypted = peer
         .encrypt(request)
@@ -458,7 +452,7 @@ async fn write_presentation_request(
     let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.mtu());
     let len = (chunks.len() as u16).to_be_bytes();
 
-    send(REQUEST_SIZE_UUID, &len, peer, &*ble_peripheral).await?;
+    send(REQUEST_SIZE_UUID, &len, peer, ble_peripheral).await?;
     write_chunks_with_report(chunks, peer, ble_peripheral).await
 }
 
@@ -466,7 +460,7 @@ pub(crate) async fn send(
     id: &str,
     data: &[u8],
     wallet: &BLEPeer,
-    ble_peripheral: &dyn BlePeripheral,
+    ble_peripheral: &TrackingBlePeripheral,
 ) -> Result<(), VerificationProtocolError> {
     ble_peripheral
         .set_characteristic_data(SERVICE_UUID.to_string(), id.to_string(), data)
@@ -487,14 +481,14 @@ pub(crate) async fn send(
 async fn write_chunks_with_report(
     chunks: Chunks,
     wallet: &BLEPeer,
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: &TrackingBlePeripheral,
 ) -> Result<(), VerificationProtocolError> {
     for chunk in chunks.iter() {
         send(
             PRESENTATION_REQUEST_UUID,
             chunk.to_bytes().as_slice(),
             wallet,
-            &*ble_peripheral,
+            ble_peripheral,
         )
         .await?
     }
@@ -518,7 +512,7 @@ async fn write_chunks_with_report(
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
 async fn request_write_report(
     wallet: &BLEPeer,
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: TrackingBlePeripheral,
 ) -> Result<Vec<u16>, VerificationProtocolError> {
     ble_peripheral
         .notify_characteristic_data(
@@ -545,7 +539,7 @@ async fn request_write_report(
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
 pub(crate) async fn read_presentation_submission(
     connected_wallet: &BLEPeer,
-    ble_peripheral: Arc<dyn BlePeripheral>,
+    ble_peripheral: &TrackingBlePeripheral,
 ) -> Result<BleOpenId4VpResponse, VerificationProtocolError> {
     let request_size: MessageSize = read(
         CONTENT_SIZE_UUID,

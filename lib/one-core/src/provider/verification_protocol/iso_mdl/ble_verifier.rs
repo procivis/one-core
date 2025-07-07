@@ -18,7 +18,9 @@ use crate::common_mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
-use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use crate::provider::bluetooth_low_energy::low_level::ble_central::{
+    BleCentral, TrackingBleCentral,
+};
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
@@ -122,11 +124,11 @@ pub(crate) async fn start_client(
     ble.schedule(
         *ISO_MDL_FLOW,
         move |_, central, _| async move {
-            if let Err(error) = verifier_flow(
+            let result = verifier_flow(
                 ble_options,
                 verifier_session,
                 &proof,
-                &*central,
+                &central,
                 sender,
                 credential_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -138,32 +140,36 @@ pub(crate) async fn start_client(
                 certificate_validator.clone(),
                 certificate_repository.clone(),
             )
-            .await
-            {
-                let message = format!("mDL verifier failure: {error:#?}");
-                tracing::info!(message);
-                let error_metadata = HistoryErrorMetadata {
-                    error_code: BR_0000,
-                    message,
-                };
-                if let Err(err) =
-                    set_proof_to_error(&*proof_repository, proof.id, error_metadata).await
+            .await;
+
+            if let Err(error) = &result {
                 {
-                    tracing::warn!("failed to set proof to error: {err}");
+                    let message = format!("mDL verifier failure: {error:#?}");
+                    tracing::info!(message);
+                    let error_metadata = HistoryErrorMetadata {
+                        error_code: BR_0000,
+                        message,
+                    };
+                    if let Err(err) =
+                        set_proof_to_error(&*proof_repository, proof.id, error_metadata).await
+                    {
+                        tracing::warn!("failed to set proof to error: {err}");
+                    }
                 }
-            }
+            };
+
+            result
         },
         move |central, _| async move {
             let message = "Cancelling mDL verifier flow".to_string();
             tracing::info!(message);
-            if let Ok(true) = central.is_scanning().await {
-                if let Err(err) = central.stop_scan().await {
-                    tracing::warn!("failed to stop BLE central: {err}");
-                }
-            }
-
             if let Ok(device_info) = receiver.await {
-                send_end_and_disconnect(&device_info, &peripheral_server_uuid, &*central).await;
+                send_end(
+                    device_info.device_address.clone(),
+                    &peripheral_server_uuid,
+                    &central,
+                )
+                .await;
             }
         },
         OnConflict::ReplaceIfSameFlow,
@@ -184,7 +190,7 @@ async fn verifier_flow(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: &Proof,
-    central: &dyn BleCentral,
+    central: &TrackingBleCentral,
     sender: oneshot::Sender<PeripheralDiscoveryData>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -224,7 +230,12 @@ async fn verifier_flow(
     )
     .await;
     if let Err(_error) = &result {
-        send_end_and_disconnect(&device, &peripheral_server_uuid, central).await;
+        send_end(
+            device.device_address.clone(),
+            &peripheral_server_uuid,
+            central,
+        )
+        .await;
     }
 
     result
@@ -235,7 +246,7 @@ async fn process_proof(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: &Proof,
-    central: &dyn BleCentral,
+    central: &TrackingBleCentral,
     device: &PeripheralDiscoveryData,
     mtu_size: usize,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -389,7 +400,7 @@ async fn set_proof_to_error(
 async fn send_end(
     device_address: DeviceAddress,
     peripheral_server_uuid: &Uuid,
-    central: &dyn BleCentral,
+    central: &TrackingBleCentral,
 ) {
     if let Err(err) = central
         .write_data(
@@ -402,22 +413,6 @@ async fn send_end(
         .await
     {
         tracing::warn!("failed to write end: {err}");
-    }
-}
-
-async fn send_end_and_disconnect(
-    device_info: &PeripheralDiscoveryData,
-    peripheral_server_uuid: &Uuid,
-    central: &dyn BleCentral,
-) {
-    send_end(
-        device_info.device_address.clone(),
-        peripheral_server_uuid,
-        central,
-    )
-    .await;
-    if let Err(err) = central.disconnect(device_info.device_address.clone()).await {
-        tracing::warn!("failed to disconnect BLE central: {err}");
     }
 }
 
@@ -473,7 +468,7 @@ async fn fill_proof_claims_and_credentials(
 }
 
 async fn connect_to_server(
-    central: &dyn BleCentral,
+    central: &TrackingBleCentral,
     service_uuid: String,
 ) -> anyhow::Result<(PeripheralDiscoveryData, usize)> {
     central.start_scan(Some(vec![service_uuid.clone()])).await?;
@@ -518,7 +513,7 @@ async fn connect_to_server(
 }
 
 async fn send_session_establishment(
-    central: &dyn BleCentral,
+    central: &TrackingBleCentral,
     device: &PeripheralDiscoveryData,
     service_uuid: String,
     mtu_size: usize,
@@ -548,7 +543,7 @@ async fn send_session_establishment(
 }
 
 async fn read_response(
-    central: &dyn BleCentral,
+    central: &TrackingBleCentral,
     info: &PeripheralDiscoveryData,
     service_uuid: String,
 ) -> Result<SessionData, VerificationProtocolError> {

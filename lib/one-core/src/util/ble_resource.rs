@@ -9,8 +9,12 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::ble_central::{
+    BleCentral, TrackingBleCentral,
+};
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::{
+    BlePeripheral, TrackingBlePeripheral,
+};
 
 /// Represents flow that requires exclusive access to BLE
 struct Action {
@@ -22,6 +26,10 @@ struct Action {
     expect_continuation: bool,
     handle: JoinHandle<()>,
     cancellation: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static>,
+    /// Per-flow tracking central
+    tracking_central: TrackingBleCentral,
+    /// Per-flow tracking peripheral
+    tracking_peripheral: TrackingBlePeripheral,
 }
 
 impl Action {
@@ -30,8 +38,18 @@ impl Action {
     }
 
     async fn abort(self) {
+        // Stop the task
         self.handle.abort();
+        // Run any custom cancellation logic
         (self.cancellation)().await;
+        // Teardown the tracking central
+        if let Err(err) = self.tracking_central.teardown().await {
+            warn!("Failed to teardown BLE central tracking during abort: {err}");
+        }
+        // Teardown the tracking peripheral
+        if let Err(err) = self.tracking_peripheral.teardown().await {
+            warn!("Failed to teardown BLE peripheral tracking during abort: {err}");
+        }
     }
 }
 
@@ -65,17 +83,17 @@ impl<T> JoinResult<T> {
     }
 }
 
-pub enum ScheduleResult<T> {
+pub enum ScheduleResult<T, E> {
     Scheduled {
         /// Handle to async computation
-        handle: BoxFuture<'static, JoinResult<T>>,
+        handle: BoxFuture<'static, JoinResult<Result<T, E>>>,
         task_id: Uuid,
     },
     Busy,
 }
 
-impl<T> ScheduleResult<T> {
-    pub async fn value_or<E>(self, err: E) -> Result<(Uuid, JoinResult<T>), E> {
+impl<T, E> ScheduleResult<T, E> {
+    pub async fn value_or<Err>(self, err: Err) -> Result<(Uuid, JoinResult<Result<T, E>>), Err> {
         match self {
             Self::Scheduled { handle, task_id } => Ok((task_id, handle.await)),
             Self::Busy => Err(err),
@@ -110,19 +128,20 @@ impl BleWaiter {
     }
 
     /// Schedule flow
-    pub async fn schedule<F, C, FR, CR>(
+    pub async fn schedule<F, C, FR, CR, T, E>(
         &self,
         flow_id: Uuid,
         flow: F,
         cancellation: C,
         on_conflict: OnConflict,
         expect_continuation: bool,
-    ) -> ScheduleResult<FR::Output>
+    ) -> ScheduleResult<T, E>
     where
-        F: FnOnce(Uuid, Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> FR,
-        FR: Future + Send + 'static,
-        FR::Output: Send + 'static,
-        C: (FnOnce(Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> CR) + Send + 'static,
+        F: FnOnce(Uuid, TrackingBleCentral, TrackingBlePeripheral) -> FR,
+        FR: Future<Output = Result<T, E>> + Send + 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+        C: (FnOnce(TrackingBleCentral, TrackingBlePeripheral) -> CR) + Send + 'static,
         CR: Future + Send,
     {
         let mut state = self.state.lock().await;
@@ -140,25 +159,27 @@ impl BleWaiter {
         }
 
         self.abort_inner(&mut state, Abort::Always).await;
-        let (action, handle) = self.spawn(flow_id, flow, cancellation, expect_continuation);
+        let (action, handle) =
+            self.spawn(flow_id, flow, cancellation, expect_continuation, None, None);
         let task_id = action.task_id;
         state.replace(action);
         ScheduleResult::Scheduled { handle, task_id }
     }
 
     /// Schedule next step of flow
-    pub async fn schedule_continuation<F, C, FR, CR>(
+    pub async fn schedule_continuation<F, C, FR, CR, T, E>(
         &self,
         task_id: Uuid,
         flow: F,
         cancellation: C,
         expect_continuation: bool,
-    ) -> ScheduleResult<FR::Output>
+    ) -> ScheduleResult<T, E>
     where
-        F: FnOnce(Uuid, Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> FR,
-        FR: Future + Send + 'static,
-        FR::Output: Send + 'static,
-        C: (FnOnce(Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> CR) + Send + 'static,
+        F: FnOnce(Uuid, TrackingBleCentral, TrackingBlePeripheral) -> FR,
+        FR: Future<Output = Result<T, E>> + Send + 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+        C: (FnOnce(TrackingBleCentral, TrackingBlePeripheral) -> CR) + Send + 'static,
         CR: Future + Send,
     {
         let mut state = self.state.lock().await;
@@ -169,10 +190,16 @@ impl BleWaiter {
                 if let Err(err) = result {
                     warn!("Scheduling continuation of task {task_id}. Previous step failed: {err}");
                 }
-                let (action, handle) =
-                    self.spawn(action.flow_id, flow, cancellation, expect_continuation);
-                let task_id = action.task_id;
-                state.replace(action);
+                let (new_action, handle) = self.spawn(
+                    action.flow_id,
+                    flow,
+                    cancellation,
+                    expect_continuation,
+                    Some(action.tracking_central),
+                    Some(action.tracking_peripheral),
+                );
+                let task_id = new_action.task_id;
+                state.replace(new_action);
                 ScheduleResult::Scheduled { handle, task_id }
             }
         }
@@ -192,39 +219,76 @@ impl BleWaiter {
         })
     }
 
-    fn spawn<C, F, FR, CR>(
+    fn spawn<C, F, FR, CR, T, E>(
         &self,
         flow_id: Uuid,
         flow: F,
         cancellation: C,
         expect_continuation: bool,
-    ) -> (Action, BoxFuture<'static, JoinResult<FR::Output>>)
+        existing_tracking_central: Option<TrackingBleCentral>,
+        existing_tracking_peripheral: Option<TrackingBlePeripheral>,
+    ) -> (Action, BoxFuture<'static, JoinResult<Result<T, E>>>)
     where
-        F: FnOnce(Uuid, Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> FR,
-        FR: Future + Send + 'static,
-        FR::Output: Send + 'static,
-        C: (FnOnce(Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> CR) + Send + 'static,
+        F: FnOnce(Uuid, TrackingBleCentral, TrackingBlePeripheral) -> FR,
+        FR: Future<Output = Result<T, E>> + Send + 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+        C: (FnOnce(TrackingBleCentral, TrackingBlePeripheral) -> CR) + Send + 'static,
         CR: Future + Send,
     {
         let task_id = Uuid::new_v4();
-        let task = flow(task_id, self.central.clone(), self.peripheral.clone());
+        let tracking_central = existing_tracking_central
+            .unwrap_or_else(|| TrackingBleCentral::new(self.central.clone()));
+        let tracking_peripheral = existing_tracking_peripheral
+            .unwrap_or_else(|| TrackingBlePeripheral::new(self.peripheral.clone()));
+        let task = flow(
+            task_id,
+            tracking_central.clone(),
+            tracking_peripheral.clone(),
+        );
         let (finish, mut on_finish) = mpsc::channel(2);
         let finish_clone = finish.clone();
 
+        let tracking_central_for_completion = tracking_central.clone();
+        let tracking_peripheral_for_completion = tracking_peripheral.clone();
         let handle = tokio::spawn(async move {
-            let val = task.await;
-            let result = finish.send(JoinResult::Ok(val)).await;
-            if let Err(err) = result {
+            let result = task.await;
+
+            // Automatic teardown logic based on result and continuation expectation
+            let should_teardown = match &result {
+                // Always teardown on error
+                Err(_) => true,
+                // Teardown on success only if no continuation expected
+                Ok(_) => !expect_continuation,
+            };
+
+            if should_teardown {
+                if let Err(err) = tracking_central_for_completion.teardown().await {
+                    warn!("Failed to teardown BLE central tracking after flow completion: {err}");
+                }
+                if let Err(err) = tracking_peripheral_for_completion.teardown().await {
+                    warn!(
+                        "Failed to teardown BLE peripheral tracking after flow completion: {err}"
+                    );
+                }
+            }
+
+            let send_result = finish.send(JoinResult::Ok(result)).await;
+            if let Err(err) = send_result {
                 warn!("Failed to send finish signal: {err}");
             }
         });
 
-        let central = self.central.clone();
-        let peripheral = self.peripheral.clone();
+        let tracking_central_for_cancellation = tracking_central.clone();
+        let tracking_peripheral_for_cancellation = tracking_peripheral.clone();
 
         let cancellation = Box::new(move || {
             async move {
-                cancellation(central, peripheral).await;
+                cancellation(
+                    tracking_central_for_cancellation,
+                    tracking_peripheral_for_cancellation,
+                )
+                .await;
                 let result = finish_clone.send(JoinResult::Aborted).await;
                 if let Err(err) = result {
                     warn!("Failed to send finish (aborted) signal: {err}");
@@ -243,6 +307,8 @@ impl BleWaiter {
                 expect_continuation,
                 handle,
                 cancellation,
+                tracking_central,
+                tracking_peripheral,
             },
             on_finish,
         )

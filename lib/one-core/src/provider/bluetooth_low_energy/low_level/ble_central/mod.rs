@@ -4,6 +4,9 @@ use super::dto::{
 };
 use crate::provider::bluetooth_low_energy::BleError;
 
+mod tracking_wrapper;
+pub use tracking_wrapper::TrackingBleCentral;
+
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait BleCentral: Send + Sync {

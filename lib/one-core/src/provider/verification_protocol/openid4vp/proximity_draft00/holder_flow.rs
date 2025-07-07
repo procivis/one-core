@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::common_mapper::DidRole;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
-use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
+use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
@@ -27,11 +27,7 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
 
     fn transport_type(&self) -> TransportType;
 
-    async fn setup(
-        &self,
-        invitation_url: Url,
-        interaction_id: InteractionId,
-    ) -> Result<Self::Context, VerificationProtocolError>;
+    async fn setup(&self, invitation_url: Url) -> Result<Self::Context, VerificationProtocolError>;
 
     async fn receive_authz_request_token(
         &self,
@@ -79,7 +75,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     )
     .await?;
 
-    let mut context = transport.setup(url, interaction_id).await?;
+    let mut context = transport.setup(url).await?;
     let authz_request_token = transport.receive_authz_request_token(&mut context).await?;
     let presentation_request = Jwt::<OpenID4VP20AuthorizationRequest>::build_from_token(
         &authz_request_token,
