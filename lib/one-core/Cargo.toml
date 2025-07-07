@@ -22,6 +22,7 @@ coset                    = { version = "0.3", features = ["std"] }
 crc                      = { version = "3.2.1" }
 ct-codecs.workspace      = true
 dashmap                  = "6.1.0"
+dcql                     = { version = "0.1.0", path = "../dcql" }
 figment                  = { version = "0.10", default-features = false }
 flate2                   = { version = "1.0" }
 futures.workspace        = true
