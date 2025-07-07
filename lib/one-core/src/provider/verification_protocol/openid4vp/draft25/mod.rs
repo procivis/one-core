@@ -68,6 +68,7 @@ mod test;
 mod utils;
 
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
+const DCQL_QUERY_VALUE_QUERY_PARAM_KEY: &str = "dcql_query";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
 const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
@@ -203,6 +204,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         self.params.url_scheme == url.scheme()
             && !query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
             && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
+                || query_has_key(DCQL_QUERY_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_QUERY_PARAM_KEY))
     }

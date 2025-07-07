@@ -1,3 +1,4 @@
+use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use url::Url;
@@ -45,6 +46,7 @@ pub struct OpenID4VP25AuthorizationRequestQueryParams {
     pub response_mode: Option<String>,
     pub response_uri: Option<String>,
     pub client_metadata: Option<String>,
+    pub dcql_query: Option<String>,
     pub presentation_definition: Option<String>,
     pub presentation_definition_uri: Option<String>,
 
@@ -80,6 +82,9 @@ pub(crate) struct OpenID4VP25AuthorizationRequest {
 
     #[serde(default)]
     pub presentation_definition_uri: Option<Url>,
+
+    #[serde(default)]
+    pub dcql_query: Option<DcqlQuery>,
 
     #[serde(default)]
     pub redirect_uri: Option<String>,

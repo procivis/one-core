@@ -231,6 +231,7 @@ impl From<OpenID4VP20AuthorizationRequest> for OpenID4VPHolderInteractionData {
             client_metadata_uri: value.client_metadata_uri,
             presentation_definition: value.presentation_definition,
             presentation_definition_uri: value.presentation_definition_uri,
+            dcql_query: None,
             redirect_uri: value.redirect_uri,
             verifier_did: None,
             verifier_certificate: None,

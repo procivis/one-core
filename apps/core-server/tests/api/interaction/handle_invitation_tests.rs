@@ -1489,6 +1489,84 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
 }
 
 #[tokio::test]
+async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let client_metadata = &OpenID4VPClientMetadata {
+        jwks: Default::default(),
+        vp_formats: HashMap::from([(
+            "jwt_vp_json".to_string(),
+            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+                alg: vec!["EdDSA".to_string()],
+            }),
+        )]),
+        ..Default::default()
+    };
+    let dcql_query = json!({
+        "credentials": [
+            {
+                "id": "my_credential",
+                "format": "dc+sd-jwt",
+                "meta": {
+                    "vct_values": [
+                        "https://credentials.example.com/identity_credential"
+                    ]
+                },
+                "claims": [
+                    {
+                        "path": [
+                            "last_name"
+                        ]
+                    },
+                    {
+                        "path": [
+                            "first_name"
+                        ]
+                    },
+                    {
+                        "path": [
+                            "address",
+                            "street_address"
+                        ]
+                    }
+                ]
+            }
+        ]
+    });
+    let nonce = Uuid::new_v4().to_string();
+    let callback_url = "http://127.0.0.1/callback";
+    let client_id = format!("redirect_uri:{callback_url}");
+    let request = json!({
+        "client_id":client_id,
+        "response_type":"vp_token",
+        "response_mode":"direct_post",
+        "client_metadata":client_metadata,
+        "nonce":nonce,
+        "dcql_query":dcql_query,
+        "response_uri":callback_url
+    });
+    let query = Url::parse(&format!(
+        "openid4vp://?client_id={client_id}&request={}",
+        serde_json::to_string(&request).unwrap()
+    ))
+    .unwrap()
+    .to_string();
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, &query)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+}
+
+#[tokio::test]
 async fn test_handle_invitation_mdoc() {
     let mock_server = MockServer::start().await;
     let (context, organistion) = TestContext::new_with_organisation(None).await;

@@ -383,6 +383,7 @@ fn generate_authorization_request_params(
         nonce: Some(nonce),
         state: Some(interaction_id.to_string()),
         presentation_definition_uri: None,
+        dcql_query: None,
         redirect_uri: None,
     })
 }

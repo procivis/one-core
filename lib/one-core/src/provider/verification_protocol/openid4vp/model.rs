@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
+use dcql::DcqlQuery;
 use one_crypto::jwe::EncryptionAlgorithm;
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
@@ -292,6 +293,9 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
     pub presentation_definition_uri: Option<Url>,
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_with_serde_json")]
+    pub dcql_query: Option<DcqlQuery>,
 
     #[serde(default, skip_serializing)]
     pub redirect_uri: Option<String>,

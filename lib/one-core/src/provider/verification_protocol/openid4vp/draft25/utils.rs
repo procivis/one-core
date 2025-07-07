@@ -624,6 +624,14 @@ pub(crate) fn validate_interaction_data(
         ));
     }
 
+    if interaction_data.presentation_definition.is_some() && interaction_data.dcql_query.is_some() {
+        return Err(
+            VerificationProtocolError::InvalidDcqlQueryOrPresentationDefinition(
+                "'presentation_definition' and 'dcql_query' must not both be set".to_string(),
+            ),
+        );
+    }
+
     Ok(())
 }
 

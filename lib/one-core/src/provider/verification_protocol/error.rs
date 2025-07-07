@@ -14,6 +14,8 @@ pub enum VerificationProtocolError {
     OperationNotSupported,
     #[error("Invalid request: `{0}`")]
     InvalidRequest(String),
+    #[error("Invalid request: `{0}`")]
+    InvalidDcqlQueryOrPresentationDefinition(String),
     #[error(transparent)]
     Other(anyhow::Error),
     #[error(transparent)]

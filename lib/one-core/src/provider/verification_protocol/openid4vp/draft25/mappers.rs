@@ -147,6 +147,7 @@ fn get_params_for_redirect_uri(
         request: None,
         request_uri: None,
         redirect_uri: None,
+        dcql_query: None,
     })
 }
 
@@ -223,6 +224,7 @@ impl TryFrom<OpenID4VP25AuthorizationRequestQueryParams> for OpenID4VP25Authoriz
                 .map(json_parse)
                 .transpose()?,
             redirect_uri: query_params.redirect_uri,
+            dcql_query: query_params.dcql_query.map(json_parse).transpose()?,
         })
     }
 }
@@ -245,6 +247,7 @@ impl TryFrom<OpenID4VP25AuthorizationRequest> for OpenID4VPHolderInteractionData
             response_uri: value.response_uri,
             presentation_definition: value.presentation_definition,
             presentation_definition_uri: value.presentation_definition_uri,
+            dcql_query: value.dcql_query,
             redirect_uri: value.redirect_uri,
             verifier_did: None,
             verifier_certificate: None,

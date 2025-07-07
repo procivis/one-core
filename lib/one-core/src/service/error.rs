@@ -859,6 +859,9 @@ pub enum ErrorCode {
     #[strum(message = "Key already exists")]
     BR_0066,
 
+    #[strum(message = "Invalid DCQL query or presentation definition")]
+    BR_0083,
+
     #[strum(message = "General input validation error")]
     BR_0084,
 
@@ -1483,6 +1486,7 @@ impl ErrorCodeMixin for VerificationProtocolError {
             Self::Disabled(_) => ErrorCode::BR_0085,
             Self::Other(_) => ErrorCode::BR_0062,
             Self::StorageAccessError(_) => ErrorCode::BR_0062,
+            Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
         }
     }
 }
