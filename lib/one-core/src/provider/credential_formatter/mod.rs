@@ -21,7 +21,6 @@ use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::model::{FormattedPresentation, HolderBindingCtx};
 
 // Implementation
-pub mod json_ld;
 pub mod json_ld_bbsplus;
 pub mod json_ld_classic;
 pub mod jwt_formatter;

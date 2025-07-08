@@ -96,8 +96,8 @@ use indexmap::IndexMap;
 use model::{CredentialFormat, DidMethodType, StorageType};
 use one_core::config::core_config;
 use one_core::provider::caching_loader::CachingLoader;
+use one_core::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
-use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::{
     JsonLdBbsplus, Params as JsonLdParams,
 };
@@ -126,6 +126,7 @@ use one_core::provider::key_storage::internal::{
     InternalKeyProvider, Params as InternalKeyProviderParams,
 };
 use one_core::provider::key_storage::provider::KeyProviderImpl;
+use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::service::certificate::validator::CertificateValidatorImpl;
@@ -315,12 +316,19 @@ impl OneDevCore {
                         None,
                         did_method_provider.clone(),
                         key_algorithm_provider.clone(),
-                        json_ld_caching_loader,
+                        json_ld_caching_loader.clone(),
                         client.clone(),
                     )) as _,
                 ),
             ]),
-            HashMap::new(),
+            HashMap::from_iter(vec![(
+                "JSON_LD_CLASSIC".to_string(),
+                Arc::new(LdpVpPresentationFormatter::new(
+                    crypto_provider.clone(),
+                    json_ld_caching_loader,
+                    client.clone(),
+                )) as _,
+            )]),
         ));
 
         let signature_service =

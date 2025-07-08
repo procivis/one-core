@@ -1,11 +1,11 @@
 use super::{JsonLdBbsplus, data_integrity};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
-use crate::provider::credential_formatter::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
 use crate::provider::credential_formatter::model::{DetailCredential, VerificationFn};
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::key_algorithm::key::MultiMessageSignatureKeyHandle;
+use crate::util::rdf_canonization::json_ld_processor_options;
+use crate::util::vcdm_jsonld_contexts::{DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid};
 
 impl JsonLdBbsplus {
     pub(super) async fn verify(
@@ -17,7 +17,7 @@ impl JsonLdBbsplus {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
-        if !crate::provider::credential_formatter::json_ld::is_context_list_valid(
+        if !is_context_list_valid(
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
             &DEFAULT_ALLOWED_CONTEXTS,

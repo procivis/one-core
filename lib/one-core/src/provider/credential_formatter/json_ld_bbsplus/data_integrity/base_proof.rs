@@ -11,12 +11,12 @@ use time::OffsetDateTime;
 
 use super::canonicalize::{canonicalize_and_group, create_shuffled_id_label_map_function};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::rdf_canonize;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
     BbsBaseProofComponents, CBOR_PREFIX_BASE,
 };
 use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
+use crate::util::rdf_canonization::rdf_canonize;
 
 pub async fn create_base_proof(
     unsecured_document: &VcdmCredential,
@@ -301,7 +301,6 @@ mod test {
 
     use super::*;
     use crate::model::key::Key;
-    use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
         document_loader, vc_permanent_resident_card, vc_windsurf_race_committee,
     };
@@ -309,6 +308,7 @@ mod test {
     use crate::provider::key_algorithm::bbs::BBS;
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
     use crate::provider::key_storage::provider::SignatureProviderImpl;
+    use crate::util::rdf_canonization::json_ld_processor_options;
 
     #[tokio::test]
     // test vector from https://www.w3.org/TR/vc-di-bbs/#base-proof-0

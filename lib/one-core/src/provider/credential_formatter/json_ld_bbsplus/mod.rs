@@ -14,8 +14,6 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::CredentialFormatter;
-use super::json_ld::context::caching_loader::ContextCache;
-use super::json_ld::{json_ld_processor_options, jsonld_forbidden_claim_names};
 use super::model::{CredentialData, FormattedPresentation, HolderBindingCtx, Issuer};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -24,8 +22,8 @@ use crate::config::core_config::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
+use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx, Features,
     FormatPresentationCtx, FormatterCapabilities, Presentation, SelectiveDisclosure,
@@ -36,6 +34,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::rdf_canonization::json_ld_processor_options;
+use crate::util::vcdm_jsonld_contexts::jsonld_forbidden_claim_names;
 
 mod data_integrity;
 pub mod model;

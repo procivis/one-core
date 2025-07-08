@@ -8,7 +8,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::key::Key;
-use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
     document_loader, vc_permanent_resident_card,
 };
@@ -23,6 +22,7 @@ use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::bbs::BBS;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::SignatureProviderImpl;
+use crate::util::rdf_canonization::json_ld_processor_options;
 
 #[tokio::test]
 async fn test_create_and_verify_base_and_derived_proof() {

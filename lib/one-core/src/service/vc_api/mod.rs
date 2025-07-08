@@ -2,7 +2,7 @@ mod service;
 
 use std::sync::Arc;
 
-use crate::provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
+use crate::provider::caching_loader::json_ld_context::ContextCache;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -14,6 +14,7 @@ use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;
+pub mod model;
 mod validation;
 
 pub struct VCAPIService {

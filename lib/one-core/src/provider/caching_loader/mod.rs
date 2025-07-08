@@ -21,6 +21,7 @@ use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
 
+pub mod json_ld_context;
 pub mod json_schema;
 pub mod trust_list;
 pub mod vct;

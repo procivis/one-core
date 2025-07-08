@@ -11,7 +11,7 @@ use sophia_api::quad::Spog;
 use uuid::Uuid;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::canonization::TermAdapter;
+use crate::util::rdf_canonization::TermAdapter;
 
 const URN_CUSTOM_SCHEME_PREFIX: &str = "urn:bnid:";
 
@@ -123,11 +123,11 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::NQuadLines;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
         context_examples_vocabulary, context_vc2_0,
     };
+    use crate::util::rdf_canonization::json_ld_processor_options;
 
     #[tokio::test]
     async fn test_skolemize_jsonld() {

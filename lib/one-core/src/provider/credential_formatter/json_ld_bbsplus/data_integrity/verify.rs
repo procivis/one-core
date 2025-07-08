@@ -16,6 +16,7 @@ use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::{
 };
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
+use crate::util::rdf_canonization::rdf_canonize;
 
 pub async fn verify_base_proof(
     vcdm: &VcdmCredential,
@@ -151,12 +152,7 @@ async fn create_verify_data(
         ));
     };
 
-    let canonical_proof_config = crate::provider::credential_formatter::json_ld::rdf_canonize(
-        &proof,
-        &loader,
-        options.clone(),
-    )
-    .await?;
+    let canonical_proof_config = rdf_canonize(&proof, &loader, options.clone()).await?;
     let proof_hash = hasher
         .hash(canonical_proof_config.as_bytes())
         .map_err(|e| {
@@ -209,11 +205,11 @@ mod test {
     use one_crypto::hasher::sha256::SHA256;
 
     use super::*;
-    use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::document_loader;
     use crate::provider::credential_formatter::model::MockTokenVerifier;
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::bbs::BBS;
+    use crate::util::rdf_canonization::json_ld_processor_options;
 
     #[tokio::test]
     // from https://www.w3.org/TR/vc-di-bbs/#example-signed-base-document

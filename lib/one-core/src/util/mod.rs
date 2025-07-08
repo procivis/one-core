@@ -5,6 +5,7 @@ pub mod interactions;
 pub mod key_verification;
 pub mod oidc;
 pub mod params;
+pub mod rdf_canonization;
 pub mod revocation_update;
 pub mod timestamp;
 pub mod vcdm_jsonld_contexts;

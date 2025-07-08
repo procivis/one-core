@@ -13,7 +13,7 @@ use super::NQuadLines;
 use super::selection::{SelectionResult, select_canonical_nquads};
 use super::skolemize::{skolemize_compact_json_ld, to_deskolemized_nquads};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::canonization::TermAdapter;
+use crate::util::rdf_canonization::TermAdapter;
 
 static BLANK_NODE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(_:([^\s]+))"#).expect("Failed to compile regex"));
@@ -221,10 +221,10 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::provider::credential_formatter::json_ld::json_ld_processor_options;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
         document_loader, vc_permanent_resident_card,
     };
+    use crate::util::rdf_canonization::json_ld_processor_options;
 
     #[tokio::test]
     // test using data from basic test vector https://www.w3.org/TR/vc-di-bbs/#base-proof

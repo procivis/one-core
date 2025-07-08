@@ -5,7 +5,7 @@ use sophia_api::quad::Spog;
 
 use super::skolemize::to_deskolemized_nquads;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::canonization::TermAdapter;
+use crate::util::rdf_canonization::TermAdapter;
 
 pub struct SelectionResult {
     pub _selected_document: json_syntax::Value,

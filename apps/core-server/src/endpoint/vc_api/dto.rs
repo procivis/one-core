@@ -1,11 +1,12 @@
-use one_core::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
 use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::did_method::dto::DidDocumentDTO;
+use one_core::provider::presentation_formatter::ldp_vp::model::LdPresentation;
 use one_core::service::vc_api::dto::{
     CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
     CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
     PresentationVerifyResponse, VerifyOptions,
 };
+use one_core::service::vc_api::model::LdCredential;
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;

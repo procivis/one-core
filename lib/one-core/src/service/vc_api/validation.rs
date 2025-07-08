@@ -2,9 +2,9 @@ use std::sync::LazyLock;
 
 use url::Url;
 
-use crate::provider::credential_formatter::json_ld::model::LdPresentation;
 use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredential};
+use crate::provider::presentation_formatter::ldp_vp::model::LdPresentation;
 use crate::service::error::ServiceError;
 
 static V1: LazyLock<ContextType> =

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mockall::predicate::{always, eq};
 use time::{Duration, OffsetDateTime};
 
-use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use crate::provider::http_client::{Method, MockHttpClient, RequestBuilder, Response};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityType};

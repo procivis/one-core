@@ -12,6 +12,7 @@ use crate::provider::presentation_formatter::model::{
 
 pub mod adapter;
 pub mod jwt_vp_json;
+pub mod ldp_vp;
 pub mod model;
 pub mod mso_mdoc;
 

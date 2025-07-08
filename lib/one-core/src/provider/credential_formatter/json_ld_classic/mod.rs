@@ -4,11 +4,8 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
-use indexmap::indexset;
 use itertools::Itertools;
-use model::CredentialEnvelope;
 use one_crypto::{CryptoProvider, Hasher};
-use serde::ser::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
@@ -16,42 +13,34 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
-use super::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
-use super::json_ld::{
-    is_context_list_valid, json_ld_processor_options, jsonld_forbidden_claim_names,
-};
 use super::model::{
     CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails, PublicKeySource,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
-    DidType, FormatType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
+    DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
+use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::context::caching_loader::{
-    ContextCache, JsonLdCachingLoader,
-};
-use crate::provider::credential_formatter::json_ld::model::{LdPresentation, VerifiableCredential};
-use crate::provider::credential_formatter::json_ld::rdf_canonize;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, Context, CredentialPresentation, CredentialSubject, DetailCredential,
+    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Issuer,
     Presentation, VerificationFn,
 };
-use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::util::oidc::map_to_openid4vp_format;
+use crate::util::rdf_canonization::{json_ld_processor_options, rdf_canonize};
+use crate::util::vcdm_jsonld_contexts::{
+    DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid, jsonld_forbidden_claim_names,
+};
 #[cfg(test)]
 mod test;
-
-mod model;
 
 pub struct JsonLdClassic {
     pub base_url: Option<String>,
@@ -182,119 +171,22 @@ impl CredentialFormatter for JsonLdClassic {
 
     async fn format_presentation(
         &self,
-        tokens: &[String],
-        holder_did: &DidValue,
-        algorithm: KeyAlgorithmType,
-        auth_fn: AuthenticationFn,
-        ctx: FormatPresentationCtx,
+        _tokens: &[String],
+        _holder_did: &DidValue,
+        _algorithm: KeyAlgorithmType,
+        _auth_fn: AuthenticationFn,
+        _ctx: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        let context = indexset![ContextType::Url(Context::CredentialsV2.to_url())];
-
-        let formats = ctx.token_formats.map(|formats| {
-            formats
-                .into_iter()
-                .filter_map(|format| {
-                    format
-                        .parse::<FormatType>()
-                        .ok()
-                        .and_then(|f| map_to_openid4vp_format(&f).ok())
-                })
-                .collect::<Vec<_>>()
-        });
-
-        let verifiable_credential: VerifiableCredential = match formats {
-            // Envelope if we know we should
-            Some(formats) => tokens
-                .iter()
-                .zip(formats)
-                .map(|(token, format)| match format {
-                    "ldp_vc" => serde_json::from_str(token),
-                    _ => {
-                        let enveloped = CredentialEnvelope::new(format, token);
-                        let json_value = serde_json::to_value(enveloped)?;
-                        let map = json_value
-                            .as_object()
-                            .ok_or(serde_json::Error::custom("Credential must be an object"))?
-                            .to_owned();
-                        Ok(map)
-                    }
-                })
-                .collect::<Result<_, _>>()
-                .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
-            // Assume json inside
-            None => tokens
-                .iter()
-                .map(|token| serde_json::from_str(token))
-                .collect::<Result<_, _>>()
-                .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
-        };
-
-        let mut presentation = LdPresentation {
-            context: context.clone(),
-            r#type: vec!["VerifiablePresentation".to_string()],
-            verifiable_credential,
-            holder: holder_did.as_str().parse().map(Issuer::Url).map_err(|_| {
-                FormatterError::CouldNotFormat("Holder DID is not a URL".to_string())
-            })?,
-            proof: None,
-        };
-
-        let cryptosuite = match algorithm {
-            KeyAlgorithmType::Eddsa => "eddsa-rdfc-2022",
-            KeyAlgorithmType::Ecdsa => "ecdsa-rdfc-2019",
-            _ => {
-                return Err(FormatterError::CouldNotFormat(format!(
-                    "Unsupported algorithm: {algorithm}"
-                )));
-            }
-        };
-
-        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
-            "Missing jwk key id".to_string(),
-        ))?;
-
-        let mut proof = VcdmProof::builder()
-            .context(context)
-            .maybe_nonce(ctx.nonce)
-            .created(OffsetDateTime::now_utc())
-            .proof_purpose("authentication")
-            .cryptosuite(cryptosuite)
-            .verification_method(key_id)
-            .build();
-
-        let proof_hash = prepare_proof_hash(
-            &presentation,
-            &proof,
-            &*self.crypto,
-            self.caching_loader.to_owned(),
-            None,
-            json_ld_processor_options(),
-        )
-        .await?;
-
-        let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
-
-        proof.proof_value = Some(signed_proof);
-        proof.context = None;
-        presentation.proof = Some(proof);
-
-        let vp_token = serde_json::to_string(&presentation)
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
-        Ok(FormattedPresentation {
-            vp_token,
-            oidc_format: "ldp_vp".to_string(),
-        })
+        unimplemented!()
     }
 
     async fn extract_presentation(
         &self,
-        json_ld: &str,
-        verification_fn: VerificationFn,
+        _json_ld: &str,
+        _verification_fn: VerificationFn,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        self.extract_presentation_internal(json_ld, Some(verification_fn))
-            .await
+        unimplemented!()
     }
 
     fn get_leeway(&self) -> u64 {
@@ -349,10 +241,10 @@ impl CredentialFormatter for JsonLdClassic {
 
     async fn extract_presentation_unverified(
         &self,
-        json_ld: &str,
+        _json_ld: &str,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        self.extract_presentation_internal(json_ld, None).await
+        unimplemented!()
     }
 }
 
@@ -430,63 +322,6 @@ impl JsonLdClassic {
             claims,
             status: vcdm.credential_status,
             credential_schema: vcdm.credential_schema.map(|v| v[0].clone()),
-        })
-    }
-
-    async fn extract_presentation_internal(
-        &self,
-        json_ld: &str,
-        verification_fn: Option<VerificationFn>,
-    ) -> Result<Presentation, FormatterError> {
-        let presentation: LdPresentation = serde_json::from_str(json_ld)
-            .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
-
-        if let Some(verification_fn) = verification_fn {
-            verify_presentation_signature(
-                presentation.clone(),
-                verification_fn,
-                &*self.crypto,
-                self.caching_loader.to_owned(),
-            )
-            .await?;
-        }
-
-        if !is_context_list_valid(
-            &presentation.context,
-            self.params.allowed_contexts.as_ref(),
-            &DEFAULT_ALLOWED_CONTEXTS,
-            None,
-            None,
-        ) {
-            return Err(FormatterError::CouldNotVerify(
-                "Used context is not allowed".to_string(),
-            ));
-        };
-
-        let credentials: Vec<String> = presentation
-            .verifiable_credential
-            .iter()
-            .map(|token| {
-                if token.contains_key("type") && token["type"] == "EnvelopedVerifiableCredential" {
-                    let enveloped: CredentialEnvelope =
-                        serde_json::from_value(serde_json::Value::Object(token.to_owned()))?;
-
-                    Ok(enveloped.get_token())
-                } else {
-                    serde_json::to_string(token)
-                }
-            })
-            .collect::<Result<_, _>>()
-            .map_err(|err| FormatterError::CouldNotExtractCredentials(err.to_string()))?;
-
-        let proof = presentation.proof.as_ref();
-        Ok(Presentation {
-            id: None,
-            issued_at: proof.and_then(|p| p.created),
-            expires_at: None,
-            issuer_did: Some(presentation.holder.to_did_value()?),
-            nonce: proof.and_then(|p| p.nonce.to_owned()),
-            credentials,
         })
     }
 
@@ -588,54 +423,7 @@ pub(super) async fn verify_credential_signature(
     Ok(())
 }
 
-pub(super) async fn verify_presentation_signature(
-    mut presentation: LdPresentation,
-    verification_fn: VerificationFn,
-    crypto: &dyn CryptoProvider,
-    caching_loader: ContextCache,
-) -> Result<(), FormatterError> {
-    // Remove proof for canonicalization
-    let mut proof = presentation
-        .proof
-        .take()
-        .ok_or(FormatterError::CouldNotVerify("Missing proof".to_owned()))?;
-    let proof_value = proof.proof_value.ok_or(FormatterError::CouldNotVerify(
-        "Missing proof_value".to_owned(),
-    ))?;
-    let key_id = proof.verification_method.as_str();
-    let issuer_did = &presentation.holder;
-
-    if proof.context.is_none() {
-        proof.context = Some(presentation.context.clone());
-    }
-
-    // Remove proof value for canonicalization
-    proof.proof_value = None;
-
-    let proof_hash = prepare_proof_hash(
-        &presentation,
-        &proof,
-        crypto,
-        caching_loader,
-        None,
-        json_ld_processor_options(),
-    )
-    .await?;
-
-    verify_proof_signature(
-        &proof_hash,
-        &proof_value,
-        &issuer_did.to_did_value()?,
-        key_id,
-        &proof.cryptosuite,
-        verification_fn,
-    )
-    .await?;
-
-    Ok(())
-}
-
-pub(super) async fn verify_proof_signature(
+pub(crate) async fn verify_proof_signature(
     proof_hash: &[u8],
     proof_value_bs58: &str,
     issuer_did: &DidValue,
@@ -676,7 +464,7 @@ pub(super) async fn verify_proof_signature(
     Ok(())
 }
 
-pub(super) async fn sign_proof_hash(
+pub(crate) async fn sign_proof_hash(
     proof_hash: &[u8],
     auth_fn: AuthenticationFn,
 ) -> Result<String, FormatterError> {
@@ -688,7 +476,7 @@ pub(super) async fn sign_proof_hash(
     Ok(format!("z{}", bs58::encode(signature).into_string()))
 }
 
-pub(super) async fn prepare_proof_hash(
+pub(crate) async fn prepare_proof_hash(
     document: &impl Serialize,
     proof: &VcdmProof,
     crypto: &dyn CryptoProvider,

@@ -10,17 +10,7 @@ use url::Url;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
-use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
-
-pub type VerifiableCredential = Vec<serde_json::Map<String, serde_json::Value>>;
-
-pub static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
-    "https://www.w3.org/ns/credentials/v2",
-    "https://www.w3.org/2018/credentials/v1",
-    "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld",
-    "https://w3id.org/security/data-integrity/v2",
-];
-
+use crate::provider::credential_formatter::vcdm::ContextType;
 // The main credential
 #[skip_serializing_none]
 #[serde_as]
@@ -103,7 +93,17 @@ pub struct LdCredentialSubject {
     pub subject: HashMap<String, serde_json::Value>,
 }
 
-pub type Claims = HashMap<String, String>;
+fn deserialize_option_or_error_if_null<'de, D>(deserializer: D) -> Result<Option<Url>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<Url>::deserialize(deserializer)? {
+        Some(url) => Ok(Some(url)),
+        None => Err(serde::de::Error::custom(
+            "Deserializer forbids deserializing null as an Option::None",
+        )),
+    }
+}
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,24 +121,6 @@ pub struct LdProof {
     pub nonce: Option<String>,
     pub challenge: Option<String>,
     pub domain: Option<String>,
-}
-
-// The main presentation
-#[skip_serializing_none]
-#[serde_as]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct LdPresentation {
-    #[serde(rename = "@context")]
-    pub context: IndexSet<ContextType>,
-
-    #[serde_as(as = "OneOrMany<_>")]
-    pub r#type: Vec<String>,
-
-    pub verifiable_credential: VerifiableCredential,
-    pub holder: Issuer,
-
-    pub proof: Option<VcdmProof>,
 }
 
 #[skip_serializing_none]
@@ -174,16 +156,4 @@ pub struct RelatedResource {
     #[serde(rename = "digestSRI")]
     pub digest_sri: Option<String>,
     pub digest_multibase: Option<String>,
-}
-
-fn deserialize_option_or_error_if_null<'de, D>(deserializer: D) -> Result<Option<Url>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    match Option::<Url>::deserialize(deserializer)? {
-        Some(url) => Ok(Some(url)),
-        None => Err(serde::de::Error::custom(
-            "Deserializer forbids deserializing null as an Option::None",
-        )),
-    }
 }

@@ -10,12 +10,12 @@ use one_core::config::core_config::{
     FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigValidationError};
+use one_core::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use one_core::provider::credential_formatter::CredentialFormatter;
-use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::JsonLdBbsplus;
 use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
 use one_core::provider::credential_formatter::jwt_formatter::JWTFormatter;
@@ -47,6 +47,7 @@ use one_core::provider::key_storage::remote_secure_element::RemoteSecureElementK
 use one_core::provider::key_storage::secure_element::SecureElementKeyProvider;
 use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
+use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::presentation_formatter::mso_mdoc::MsoMdocPresentationFormatter;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -595,19 +596,28 @@ async fn initialize(
                         }
                     }
 
-                    let mut presentation_formatters = HashMap::new();
-                    presentation_formatters.insert(
-                        "MDOC".to_owned(),
-                        Arc::new(MsoMdocPresentationFormatter::new(
-                            key_algorithm_provider.clone(),
-                            certificate_validator.clone(),
-                            providers.core_base_url.clone(),
-                        )) as _,
-                    );
-                    presentation_formatters.insert(
-                        "JWT".to_owned(),
-                        Arc::new(JwtVpPresentationFormatter::new()) as _,
-                    );
+                    let presentation_formatters = HashMap::from_iter([
+                        (
+                            "JSON_LD_CLASSIC".to_owned(),
+                            Arc::new(LdpVpPresentationFormatter::new(
+                                crypto.clone(),
+                                caching_loader.clone(),
+                                client.clone(),
+                            )) as _,
+                        ),
+                        (
+                            "MDOC".to_owned(),
+                            Arc::new(MsoMdocPresentationFormatter::new(
+                                key_algorithm_provider.clone(),
+                                certificate_validator.clone(),
+                                providers.core_base_url.clone(),
+                            )) as _,
+                        ),
+                        (
+                            "JWT".to_owned(),
+                            Arc::new(JwtVpPresentationFormatter::new()) as _,
+                        ),
+                    ]);
                     Ok(Arc::new(CredentialFormatterProviderImpl::new(
                         formatters,
                         presentation_formatters,

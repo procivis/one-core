@@ -8,8 +8,8 @@ use time::{Duration, OffsetDateTime};
 
 use super::PhysicalCardFormatter;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::{MockTokenVerifier, PublicKeySource};
 use crate::provider::credential_formatter::physical_card::mappers::terse_bitstring_status_list_to_bitstring_status;
 use crate::provider::credential_formatter::physical_card::model::{

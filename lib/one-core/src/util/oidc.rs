@@ -1,7 +1,7 @@
 use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::sdjwt::{SdJwtType, detect_sdjwt_type_from_token};
+use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -55,7 +55,7 @@ pub(crate) fn map_from_oidc_format_to_core_detailed(
         }
         "ldp_vc" => {
             if let Some(token) = token {
-                match json_ld::get_crypto_suite(token) {
+                match get_crypto_suite(token) {
                     Some(suite) => match suite.as_str() {
                         "bbs-2023" => Ok("JSON_LD_BBSPLUS".to_string()),
                         _ => Ok("JSON_LD_CLASSIC".to_string()),
@@ -120,4 +120,11 @@ pub(crate) fn determine_response_mode(proof: &Proof) -> Result<String, Verificat
         false => "direct_post".to_string(),
     };
     Ok(response_mode)
+}
+
+fn get_crypto_suite(json_ld_str: &str) -> Option<String> {
+    match serde_json::from_str::<VcdmCredential>(json_ld_str) {
+        Ok(json_ld) => json_ld.proof.map(|proof| proof.cryptosuite),
+        Err(_) => None,
+    }
 }

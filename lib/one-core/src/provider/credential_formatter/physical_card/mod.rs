@@ -14,10 +14,8 @@ use crate::config::core_config::{
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
+use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::context::caching_loader::{
-    ContextCache, JsonLdCachingLoader,
-};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx, Features,
     FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,

@@ -1,5 +1,6 @@
-use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
+use crate::provider::presentation_formatter::ldp_vp::model::LdPresentation;
+use crate::service::vc_api::model::LdCredential;
 
 #[derive(Debug)]
 pub struct CredentialIssueRequest {

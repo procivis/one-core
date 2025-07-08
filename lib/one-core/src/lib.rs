@@ -10,7 +10,6 @@ use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::caching_loader::json_schema::JsonSchemaCache;
 use provider::caching_loader::trust_list::TrustListCache;
 use provider::caching_loader::vct::VctTypeMetadataCache;
-use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use provider::issuance_protocol::provider::IssuanceProtocolProviderImpl;
 use provider::mqtt_client::MqttClient;
 use provider::task::provider::TaskProviderImpl;
@@ -41,7 +40,7 @@ use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
-use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
