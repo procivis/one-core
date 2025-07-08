@@ -40,7 +40,7 @@ pub struct CredentialQuery {
     pub meta: CredentialMeta,
     pub claims: Vec<ClaimQuery>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub claim_sets: Option<Vec<Vec<String>>>,
+    pub claim_sets: Option<Vec<Vec<ClaimQueryId>>>,
 }
 
 /// Format-specific metadata for credential queries
@@ -52,6 +52,15 @@ pub enum CredentialMeta {
     W3cVc { type_values: Vec<Vec<String>> },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClaimQueryId(String);
+
+impl<T: ToString> From<T> for ClaimQueryId {
+    fn from(value: T) -> Self {
+        Self(value.to_string())
+    }
+}
+
 /// Individual claim query within a credential query
 ///
 /// The following fields defined in the specification are not supported
@@ -59,7 +68,7 @@ pub enum CredentialMeta {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClaimQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: Option<ClaimQueryId>,
     pub path: Vec<String>,
     // Custom field to mark if a claim is required or optional
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -281,7 +290,7 @@ mod test {
 
         for (i, (expected_id, expected_path)) in expected_claims.iter().enumerate() {
             let claim = &credential.claims[i];
-            assert_eq!(claim.id.as_ref().unwrap(), expected_id);
+            assert_eq!(claim.id.as_ref().unwrap(), &ClaimQueryId::from(expected_id));
             assert_eq!(claim.path, *expected_path);
             assert!(claim.required.is_none());
             assert!(claim.intent_to_retain.is_none());
@@ -293,10 +302,22 @@ mod test {
         assert_eq!(claim_sets.len(), 2);
 
         // First claim set: ["a", "c", "d", "e"]
-        assert_eq!(claim_sets[0], vec!["a", "c", "d", "e"]);
+        assert_eq!(
+            claim_sets[0],
+            vec!["a", "c", "d", "e"]
+                .into_iter()
+                .map(Into::<ClaimQueryId>::into)
+                .collect::<Vec<_>>()
+        );
 
         // Second claim set: ["a", "b", "e"]
-        assert_eq!(claim_sets[1], vec!["a", "b", "e"]);
+        assert_eq!(
+            claim_sets[1],
+            vec!["a", "b", "e"]
+                .into_iter()
+                .map(Into::<ClaimQueryId>::into)
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
