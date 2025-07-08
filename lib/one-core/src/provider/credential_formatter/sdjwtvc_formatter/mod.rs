@@ -208,73 +208,24 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _auth_fn: AuthenticationFn,
         _context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        // for presentation the SD-JWT formatter is used
-        unreachable!()
+        unimplemented!()
     }
 
     async fn extract_presentation(
         &self,
-        token: &str,
-        verification: VerificationFn,
+        _token: &str,
+        _verification: VerificationFn,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let (credential, proof_of_key_possession) = self
-            .extract_credentials_internal(
-                token,
-                None,
-                Some(verification),
-                &*self.crypto,
-                None,
-                Duration::seconds(self.get_leeway() as i64),
-            )
-            .await?;
-
-        let proof_of_key_possession = proof_of_key_possession.ok_or(FormatterError::Failed(
-            "Missing proof of key possesion".to_string(),
-        ))?;
-
-        let presentation = Presentation {
-            id: proof_of_key_possession.jwt_id,
-            issued_at: proof_of_key_possession.issued_at,
-            expires_at: proof_of_key_possession.expires_at,
-            issuer_did: credential.subject,
-            nonce: Some(proof_of_key_possession.custom.nonce),
-            credentials: vec![token.to_string()],
-        };
-
-        Ok(presentation)
+        unimplemented!()
     }
 
     async fn extract_presentation_unverified(
         &self,
-        token: &str,
+        _token: &str,
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        let (credential, proof_of_key_possession) = self
-            .extract_credentials_internal(
-                token,
-                None,
-                None,
-                &*self.crypto,
-                None,
-                Duration::seconds(self.get_leeway() as i64),
-            )
-            .await?;
-
-        let proof_of_key_possession = proof_of_key_possession.ok_or(FormatterError::Failed(
-            "Missing proof of key possesion".to_string(),
-        ))?;
-
-        let presentation = Presentation {
-            id: proof_of_key_possession.jwt_id,
-            issued_at: proof_of_key_possession.issued_at,
-            expires_at: proof_of_key_possession.expires_at,
-            issuer_did: credential.subject,
-            nonce: Some(proof_of_key_possession.custom.nonce),
-            credentials: vec![token.to_string()],
-        };
-
-        Ok(presentation)
+        unimplemented!()
     }
 
     fn get_leeway(&self) -> u64 {

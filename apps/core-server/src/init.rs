@@ -48,6 +48,7 @@ use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFo
 use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::presentation_formatter::mso_mdoc::MsoMdocPresentationFormatter;
 use one_core::provider::presentation_formatter::sdjwt::SdjwtPresentationFormatter;
+use one_core::provider::presentation_formatter::sdjwt_vc::SdjwtVCPresentationFormatter;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -489,6 +490,24 @@ pub async fn initialize_core(
                     Arc::new(SdjwtPresentationFormatter::new(
                         client.clone(),
                         crypto.clone(),
+                    )) as _,
+                ),
+                (
+                    "SD_JWT_VC".to_owned(),
+                    Arc::new(SdjwtVCPresentationFormatter::new(
+                        client.clone(),
+                        crypto.clone(),
+                        certificate_validator.clone(),
+                        false,
+                    )) as _,
+                ),
+                (
+                    "SD_JWT_VC_SWIYU".to_owned(),
+                    Arc::new(SdjwtVCPresentationFormatter::new(
+                        client.clone(),
+                        crypto.clone(),
+                        certificate_validator.clone(),
+                        true,
                     )) as _,
                 ),
             ]);

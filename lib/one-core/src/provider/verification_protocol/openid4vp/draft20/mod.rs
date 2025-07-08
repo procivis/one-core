@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -384,9 +383,12 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         let credentials = credential_presentations
             .iter()
             .map(|presented_credential| {
-                let credential_format =
-                    FormatType::from_str(&presented_credential.credential_schema.format)
-                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                let credential_format = self
+                    .config
+                    .format
+                    .get_fields(&presented_credential.credential_schema.format)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                    .r#type;
                 Ok(CredentialToPresent {
                     raw_credential: presented_credential.presentation.to_owned(),
                     credential_format,
