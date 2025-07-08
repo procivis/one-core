@@ -20,7 +20,6 @@ use crate::config::core_config::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormattedPresentation,
@@ -44,14 +43,12 @@ use crate::provider::credential_formatter::sdjwt::{
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::util::jwt::model::JWTPayload;
 
 pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     client: Arc<dyn HttpClient>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     params: Params,
 }
 
@@ -171,71 +168,30 @@ impl CredentialFormatter for SDJWTFormatter {
 
     async fn format_presentation(
         &self,
-        credentials: &[String],
-        holder_did: &DidValue,
-        algorithm: KeyAlgorithmType,
-        auth_fn: AuthenticationFn,
-        context: FormatPresentationCtx,
+        _credentials: &[String],
+        _holder_did: &DidValue,
+        _algorithm: KeyAlgorithmType,
+        _auth_fn: AuthenticationFn,
+        _context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        if credentials.len() != 1 {
-            return Err(FormatterError::Failed(
-                "SD-JWT formatter only supports single credential presentations".to_string(),
-            ));
-        }
-
-        let credential = credentials.first().ok_or(FormatterError::Failed(
-            "Empty credential list passed to format_presentation".to_string(),
-        ))?;
-
-        let DecomposedToken { jwt, .. } = parse_token(credential)?;
-        let decomposed_token = Jwt::<()>::decompose_token(jwt)?;
-        if decomposed_token.payload.proof_of_possession_key.is_some() {
-            return Ok(FormattedPresentation {
-                vp_token: credential.to_owned(),
-                oidc_format: "vc+sd-jwt".to_string(),
-            });
-        }
-
-        if decomposed_token.payload.subject.is_none() {
-            return Err(FormatterError::Failed(
-                "Credential has neither subject nor cnf claim. Cannot create holder binding proof."
-                    .to_string(),
-            ));
-        }
-
-        // ONE-6254: There is no cnf claim in old legacy SD-JWT credentials. Instead, there is a sub
-        // claim referring to a holder did. For legacy compatibility, wrap in W3C verifiable presentation
-        // signed by a key matching the holder did.
-        // Remove once legacy credential compatibility is no longer needed.
-        let jwt_formatter = JWTFormatter::new(
-            crate::provider::credential_formatter::jwt_formatter::Params {
-                leeway: self.params.leeway,
-                embed_layout_properties: self.params.embed_layout_properties,
-            },
-            self.key_algorithm_provider.clone(),
-        );
-        jwt_formatter
-            .format_presentation(credentials, holder_did, algorithm, auth_fn, context)
-            .await
+        unimplemented!()
     }
 
     async fn extract_presentation(
         &self,
-        token: &str,
-        verification: VerificationFn,
-        context: ExtractPresentationCtx,
+        _token: &str,
+        _verification: VerificationFn,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        self.extract_presentation_internal(token, Some(&verification), context, &*self.client)
-            .await
+        unimplemented!()
     }
 
     async fn extract_presentation_unverified(
         &self,
-        token: &str,
-        context: ExtractPresentationCtx,
+        _token: &str,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
-        self.extract_presentation_internal(token, None, context, &*self.client)
-            .await
+        unimplemented!()
     }
 
     fn get_leeway(&self) -> u64 {
@@ -310,19 +266,17 @@ impl SDJWTFormatter {
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         client: Arc<dyn HttpClient>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             params,
             crypto,
             did_method_provider,
             client,
-            key_algorithm_provider,
         }
     }
 }
 
-pub(super) async fn extract_credentials_internal(
+pub(crate) async fn extract_credentials_internal(
     token: &str,
     verification: Option<&VerificationFn>,
     crypto: &dyn CryptoProvider,
@@ -402,53 +356,6 @@ pub(super) async fn extract_credentials_internal(
         },
         key_binding_payload,
     ))
-}
-
-impl SDJWTFormatter {
-    async fn extract_presentation_internal(
-        &self,
-        token: &str,
-        verification: Option<&VerificationFn>,
-        _context: ExtractPresentationCtx,
-        http_client: &dyn HttpClient,
-    ) -> Result<Presentation, FormatterError> {
-        // W3C VP SD-JWT tokens and SD-JWT tokens.
-        let as_jwt_vp: Result<Jwt<Sdvp>, FormatterError> =
-            Jwt::build_from_token(token, verification, None)
-                .await
-                .map_err(|e| FormatterError::Failed(format!("Failed to build Jwt<Sdvp>: {e}")));
-
-        if let Ok(jwt_vp) = as_jwt_vp {
-            return jwt_vp.try_into().map_err(|e| {
-                FormatterError::Failed(format!("Failed to convert Jwt<Sdvp> to Presentation: {e}"))
-            });
-        }
-
-        let (credential, proof_of_key_possesion) = extract_credentials_internal(
-            token,
-            verification,
-            &*self.crypto,
-            None,
-            Duration::seconds(self.get_leeway() as i64),
-            http_client,
-        )
-        .await?;
-
-        let proof_of_key_possesion = proof_of_key_possesion.ok_or(FormatterError::Failed(
-            "Missing proof of key possesion".to_string(),
-        ))?;
-
-        let presentation = Presentation {
-            id: proof_of_key_possesion.jwt_id,
-            issued_at: proof_of_key_possesion.issued_at,
-            expires_at: proof_of_key_possesion.expires_at,
-            issuer_did: credential.subject,
-            nonce: Some(proof_of_key_possesion.custom.nonce),
-            credentials: vec![token.to_string()],
-        };
-
-        Ok(presentation)
-    }
 }
 
 fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterError> {

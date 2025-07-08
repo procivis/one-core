@@ -49,6 +49,7 @@ use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
 use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::presentation_formatter::mso_mdoc::MsoMdocPresentationFormatter;
+use one_core::provider::presentation_formatter::sdjwt::SdjwtPresentationFormatter;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -522,7 +523,6 @@ async fn initialize(
                                     crypto.clone(),
                                     did_method_provider.clone(),
                                     client.clone(),
-                                    key_algorithm_provider.clone(),
                                 )) as _
                             }
                             FormatType::SdJwtVc => {
@@ -616,6 +616,13 @@ async fn initialize(
                         (
                             "JWT".to_owned(),
                             Arc::new(JwtVpPresentationFormatter::new()) as _,
+                        ),
+                        (
+                            "SD_JWT".to_owned(),
+                            Arc::new(SdjwtPresentationFormatter::new(
+                                client.clone(),
+                                crypto.clone(),
+                            )) as _,
                         ),
                     ]);
                     Ok(Arc::new(CredentialFormatterProviderImpl::new(

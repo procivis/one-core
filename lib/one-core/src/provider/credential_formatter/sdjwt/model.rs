@@ -34,18 +34,6 @@ pub struct VCContent {
     pub valid_until: Option<OffsetDateTime>,
 }
 
-// TODO: remove the presentation models, since only JWT formatted presentations are used
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VPContent {
-    #[serde(rename = "@context")]
-    pub context: Vec<String>,
-    #[serde(rename = "type")]
-    pub r#type: Vec<String>,
-    #[serde(rename = "_sd_jwt")]
-    pub verifiable_credential: Vec<String>,
-}
-
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,13 +46,6 @@ pub struct VcClaim {
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
     #[serde(rename = "_sd_alg", default)]
     pub hash_alg: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Sdvp {
-    pub vp: VPContent,
-    pub nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

@@ -299,7 +299,6 @@ impl OneDevCore {
                         crypto_provider.clone(),
                         did_method_provider.clone(),
                         client.clone(),
-                        key_algorithm_provider.clone(),
                     )) as _,
                 ),
                 (
