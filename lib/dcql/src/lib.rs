@@ -18,6 +18,15 @@ pub struct DcqlQuery {
     pub credentials: Vec<CredentialQuery>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CredentialQueryId(String);
+
+impl<T: ToString> From<T> for CredentialQueryId {
+    fn from(value: T) -> Self {
+        Self(value.to_string())
+    }
+}
+
 /// Credential query structure
 ///
 /// The following fields defined in the specification are not supported
@@ -26,7 +35,7 @@ pub struct DcqlQuery {
 /// - require_cryptographic_holder_binding
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CredentialQuery {
-    pub id: String,
+    pub id: CredentialQueryId,
     pub format: String,
     pub meta: CredentialMeta,
     pub claims: Vec<ClaimQuery>,
@@ -92,7 +101,7 @@ mod test {
         assert_eq!(query.credentials.len(), 1);
 
         let credential = &query.credentials[0];
-        assert_eq!(credential.id, "my_credential");
+        assert_eq!(credential.id, "my_credential".into());
         assert_eq!(credential.format, "mso_mdoc");
 
         // Verify meta data
@@ -160,7 +169,7 @@ mod test {
 
         // Verify first credential (SD-JWT VC)
         let pid_credential = &query.credentials[0];
-        assert_eq!(pid_credential.id, "pid");
+        assert_eq!(pid_credential.id, "pid".into());
         assert_eq!(pid_credential.format, "dc+sd-jwt");
 
         match &pid_credential.meta {
@@ -185,7 +194,7 @@ mod test {
 
         // Verify second credential (mso_mdoc)
         let mdl_credential = &query.credentials[1];
-        assert_eq!(mdl_credential.id, "mdl");
+        assert_eq!(mdl_credential.id, "mdl".into());
         assert_eq!(mdl_credential.format, "mso_mdoc");
 
         match &mdl_credential.meta {
@@ -244,7 +253,7 @@ mod test {
         assert_eq!(query.credentials.len(), 1);
 
         let credential = &query.credentials[0];
-        assert_eq!(credential.id, "pid");
+        assert_eq!(credential.id, "pid".into());
         assert_eq!(credential.format, "dc+sd-jwt");
 
         // Verify metadata
@@ -322,7 +331,7 @@ mod test {
         assert_eq!(query.credentials.len(), 1);
 
         let credential = &query.credentials[0];
-        assert_eq!(credential.id, "my_credential");
+        assert_eq!(credential.id, "my_credential".into());
         assert_eq!(credential.format, "mso_mdoc");
 
         // Verify meta data
@@ -377,7 +386,7 @@ mod test {
         assert_eq!(query.credentials.len(), 1);
 
         let credential = &query.credentials[0];
-        assert_eq!(credential.id, "example_jwt_vc");
+        assert_eq!(credential.id, "example_jwt_vc".into());
         assert_eq!(credential.format, "jwt_vc_json");
 
         // Verify meta data
