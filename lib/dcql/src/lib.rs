@@ -5,6 +5,8 @@
 //!
 //! Reference: https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#section-6
 
+pub mod mapper;
+
 use serde::{Deserialize, Serialize};
 
 /// Digital Credentials Query Language (DCQL) query structure
@@ -20,12 +22,6 @@ pub struct DcqlQuery {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CredentialQueryId(String);
-
-impl<T: ToString> From<T> for CredentialQueryId {
-    fn from(value: T) -> Self {
-        Self(value.to_string())
-    }
-}
 
 /// Credential query structure
 ///
@@ -55,12 +51,6 @@ pub enum CredentialMeta {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClaimQueryId(String);
 
-impl<T: ToString> From<T> for ClaimQueryId {
-    fn from(value: T) -> Self {
-        Self(value.to_string())
-    }
-}
-
 /// Individual claim query within a credential query
 ///
 /// The following fields defined in the specification are not supported
@@ -69,7 +59,7 @@ impl<T: ToString> From<T> for ClaimQueryId {
 pub struct ClaimQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<ClaimQueryId>,
-    pub path: Vec<String>,
+    pub path: ClaimPath,
     // Custom field to mark if a claim is required or optional
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
@@ -78,12 +68,92 @@ pub struct ClaimQuery {
     pub intent_to_retain: Option<bool>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ClaimPath {
+    segments: Vec<PathSegment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PathSegment {
+    /// Property of object with specific name
+    PropertyName(String),
+    /// 0-based index into an array
+    ArrayIndex(usize),
+    /// Select all elements of an array
+    ArrayAll,
+}
+
 #[cfg(test)]
 mod test {
-    use serde_json::json;
+    use serde_json::{json, Value};
     use similar_asserts::assert_eq;
 
     use super::*;
+
+    #[test]
+    fn test_claim_path() {
+        let query: PathSegment = serde_json::from_value(json!("test".to_string())).unwrap();
+        assert_eq!(query, PathSegment::PropertyName("test".to_string()));
+
+        let query: PathSegment = serde_json::from_value(json!(5)).unwrap();
+        assert_eq!(query, PathSegment::ArrayIndex(5));
+
+        let query: PathSegment = serde_json::from_value(Value::Null).unwrap();
+        assert_eq!(query, PathSegment::ArrayAll);
+
+        let path = json!(["abc", 5, "blub", null]);
+        let query: ClaimPath = serde_json::from_value(path).unwrap();
+        assert_eq!(
+            query,
+            ClaimPath::from(vec![
+                "abc".into(),
+                5.into(),
+                "blub".into(),
+                PathSegment::ArrayAll
+            ])
+        );
+
+        let full_json = json!({
+            "credentials": [
+                {
+                    "id": "pid",
+                    "format": "dc+sd-jwt",
+                    "meta": {
+                        "vct_values": ["https://credentials.example.com/identity_credential"]
+                    },
+                    "claims": [
+                        {"path": ["given_name"]},
+                        {"path": ["family_name", 0]},
+                        {"path": ["address", null, "street_address"]}
+                    ]
+                }
+            ]
+        });
+
+        let query: DcqlQuery = serde_json::from_value(full_json).unwrap();
+        assert_eq!(
+            query
+                .credentials
+                .first()
+                .unwrap()
+                .claims
+                .get(1)
+                .unwrap()
+                .path,
+            ClaimPath::from(vec!["family_name".into(), PathSegment::ArrayIndex(0)])
+        );
+    }
+
+    #[test]
+    fn test_claim_path_failures() {
+        let result = serde_json::from_value::<PathSegment>(json!(-5));
+        assert!(result.is_err());
+
+        let result = serde_json::from_value::<PathSegment>(json!(5.58));
+        assert!(result.is_err());
+    }
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#appendix-D-1
     #[test]
@@ -125,13 +195,19 @@ mod test {
         assert_eq!(credential.claims.len(), 2);
 
         let first_claim = &credential.claims[0];
-        assert_eq!(first_claim.path, vec!["org.iso.7367.1", "vehicle_holder"]);
+        assert_eq!(
+            first_claim.path,
+            vec!["org.iso.7367.1", "vehicle_holder"].into()
+        );
         assert!(first_claim.id.is_none());
         assert!(first_claim.required.is_none());
         assert!(first_claim.intent_to_retain.is_none());
 
         let second_claim = &credential.claims[1];
-        assert_eq!(second_claim.path, vec!["org.iso.18013.5.1", "first_name"]);
+        assert_eq!(
+            second_claim.path,
+            vec!["org.iso.18013.5.1", "first_name"].into()
+        );
         assert!(second_claim.id.is_none());
         assert!(second_claim.required.is_none());
         assert!(second_claim.intent_to_retain.is_none());
@@ -194,11 +270,11 @@ mod test {
 
         // Verify SD-JWT VC claims
         assert_eq!(pid_credential.claims.len(), 3);
-        assert_eq!(pid_credential.claims[0].path, vec!["given_name"]);
-        assert_eq!(pid_credential.claims[1].path, vec!["family_name"]);
+        assert_eq!(pid_credential.claims[0].path, vec!["given_name"].into());
+        assert_eq!(pid_credential.claims[1].path, vec!["family_name"].into());
         assert_eq!(
             pid_credential.claims[2].path,
-            vec!["address", "street_address"]
+            vec!["address", "street_address"].into()
         );
 
         // Verify second credential (mso_mdoc)
@@ -217,11 +293,11 @@ mod test {
         assert_eq!(mdl_credential.claims.len(), 2);
         assert_eq!(
             mdl_credential.claims[0].path,
-            vec!["org.iso.7367.1", "vehicle_holder"]
+            vec!["org.iso.7367.1", "vehicle_holder"].into()
         );
         assert_eq!(
             mdl_credential.claims[1].path,
-            vec!["org.iso.18013.5.1", "first_name"]
+            vec!["org.iso.18013.5.1", "first_name"].into()
         );
 
         // Verify optional fields are None for both credentials
@@ -288,10 +364,10 @@ mod test {
             ("e", vec!["date_of_birth"]),
         ];
 
-        for (i, (expected_id, expected_path)) in expected_claims.iter().enumerate() {
+        for (i, (expected_id, expected_path)) in expected_claims.into_iter().enumerate() {
             let claim = &credential.claims[i];
             assert_eq!(claim.id.as_ref().unwrap(), &ClaimQueryId::from(expected_id));
-            assert_eq!(claim.path, *expected_path);
+            assert_eq!(claim.path, ClaimPath::from(expected_path));
             assert!(claim.required.is_none());
             assert!(claim.intent_to_retain.is_none());
         }
@@ -367,13 +443,19 @@ mod test {
         assert_eq!(credential.claims.len(), 2);
 
         let first_claim = &credential.claims[0];
-        assert_eq!(first_claim.path, vec!["org.iso.7367.1", "vehicle_holder"]);
+        assert_eq!(
+            first_claim.path,
+            vec!["org.iso.7367.1", "vehicle_holder"].into()
+        );
         assert!(first_claim.id.is_none());
         assert_eq!(first_claim.required, Some(true));
         assert_eq!(first_claim.intent_to_retain, Some(true));
 
         let second_claim = &credential.claims[1];
-        assert_eq!(second_claim.path, vec!["org.iso.18013.5.1", "first_name"]);
+        assert_eq!(
+            second_claim.path,
+            vec!["org.iso.18013.5.1", "first_name"].into()
+        );
         assert!(second_claim.id.is_none());
         assert_eq!(second_claim.required, Some(false));
         assert_eq!(second_claim.intent_to_retain, Some(false));
@@ -423,13 +505,19 @@ mod test {
         assert_eq!(credential.claims.len(), 2);
 
         let first_claim = &credential.claims[0];
-        assert_eq!(first_claim.path, vec!["credentialSubject", "family_name"]);
+        assert_eq!(
+            first_claim.path,
+            vec!["credentialSubject", "family_name"].into()
+        );
         assert!(first_claim.id.is_none());
         assert!(first_claim.required.is_none());
         assert!(first_claim.intent_to_retain.is_none());
 
         let second_claim = &credential.claims[1];
-        assert_eq!(second_claim.path, vec!["credentialSubject", "given_name"]);
+        assert_eq!(
+            second_claim.path,
+            vec!["credentialSubject", "given_name"].into()
+        );
         assert!(second_claim.id.is_none());
         assert!(second_claim.required.is_none());
         assert!(second_claim.intent_to_retain.is_none());
