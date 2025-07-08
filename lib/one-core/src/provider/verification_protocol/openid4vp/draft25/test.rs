@@ -24,11 +24,12 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
+use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VC25PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
-    OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
+    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
+    OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
@@ -71,7 +72,8 @@ fn generic_params() -> OpenID4Vp25Params {
                 ClientIdScheme::VerifierAttestation,
             ],
         },
-        verifier: OpenID4VCPresentationVerifierParams {
+        verifier: OpenID4VC25PresentationVerifierParams {
+            use_dcql: false,
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,

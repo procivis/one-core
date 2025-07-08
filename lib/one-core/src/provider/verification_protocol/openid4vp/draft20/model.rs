@@ -4,9 +4,8 @@ use url::Url;
 
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
-    OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
-    default_presentation_url_scheme,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
+    OpenID4VPClientMetadata, OpenID4VPPresentationDefinition, default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -25,11 +24,17 @@ pub(crate) struct OpenID4Vp20Params {
     pub url_scheme: String,
 
     pub holder: OpenID4VCPresentationHolderParams,
-    pub verifier: OpenID4VCPresentationVerifierParams,
+    pub verifier: OpenID4VC20PresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
     // Required to handle SWIYU verification requests that have invalid client_metadata.
     // Remove when the SWIYU provider is removed.
     pub predefined_client_metadata: Option<OpenID4VPClientMetadata>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VC20PresentationVerifierParams {
+    pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 
 #[skip_serializing_none]

@@ -54,6 +54,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: eudi-openid4vp
         verifier:
+          useDcql: false
           supportedClientIdSchemes: [x509_san_dns, redirect_uri, verifier_attestation, did]
         holder:
           supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]

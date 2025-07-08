@@ -150,6 +150,7 @@ verificationProtocol:
       public:
         useRequestUri: true
         verifier:
+          useDcql: false
           supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
         holder:
           supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]

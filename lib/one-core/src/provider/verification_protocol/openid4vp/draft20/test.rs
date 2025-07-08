@@ -37,10 +37,11 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VC20PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
-    OpenID4VCRedirectUriParams, OpenID4VPAlgs, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPAlgs,
+    OpenID4VPClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
@@ -88,7 +89,7 @@ fn generic_params() -> OpenID4Vp20Params {
                 ClientIdScheme::Did,
             ],
         },
-        verifier: OpenID4VCPresentationVerifierParams {
+        verifier: OpenID4VC20PresentationVerifierParams {
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
@@ -1131,7 +1132,7 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
                 ClientIdScheme::VerifierAttestation,
             ],
         },
-        verifier: OpenID4VCPresentationVerifierParams {
+        verifier: OpenID4VC20PresentationVerifierParams {
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,

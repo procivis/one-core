@@ -475,6 +475,12 @@ impl VerificationProtocol for OpenID4VP25HTTP {
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let interaction_id = Uuid::new_v4();
 
+        if self.params.verifier.use_dcql {
+            return Err(VerificationProtocolError::Failed(
+                "DCQL not yet implemented".to_string(),
+            ));
+        }
+
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
             interaction_id,

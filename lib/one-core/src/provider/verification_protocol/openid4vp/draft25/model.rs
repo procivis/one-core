@@ -4,9 +4,8 @@ use url::Url;
 
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
-    OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
-    default_presentation_url_scheme,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
+    OpenID4VPClientMetadata, OpenID4VPPresentationDefinition, default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -21,10 +20,21 @@ pub(crate) struct OpenID4Vp25Params {
     pub url_scheme: String,
 
     pub holder: OpenID4VCPresentationHolderParams,
-    pub verifier: OpenID4VCPresentationVerifierParams,
+    pub verifier: OpenID4VC25PresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VC25PresentationVerifierParams {
+    pub supported_client_id_schemes: Vec<ClientIdScheme>,
+    #[serde(default = "default_use_dcql")]
+    pub use_dcql: bool,
+}
+
+fn default_use_dcql() -> bool {
+    true
+}
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct OpenID4VP25AuthorizationRequestQueryParams {

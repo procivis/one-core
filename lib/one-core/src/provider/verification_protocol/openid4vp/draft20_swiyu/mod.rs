@@ -21,12 +21,13 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
-    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
+    OpenID4VC20PresentationVerifierParams, OpenID4VP20AuthorizationRequest,
+    OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCPresentationVerifierParams,
-    OpenID4VCRedirectUriParams, OpenID4VPClientMetadata, OpenID4VPVcSdJwtAlgs,
-    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
+    OpenID4VPClientMetadata, OpenID4VPVcSdJwtAlgs, OpenID4VPVerifierInteractionContent,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -59,7 +60,7 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
             holder: OpenID4VCPresentationHolderParams {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],
             },
-            verifier: OpenID4VCPresentationVerifierParams {
+            verifier: OpenID4VC20PresentationVerifierParams {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],
             },
             redirect_uri: value.redirect_uri,

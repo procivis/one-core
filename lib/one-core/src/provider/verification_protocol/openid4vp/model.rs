@@ -313,12 +313,6 @@ pub(crate) struct OpenID4VCPresentationHolderParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4VCPresentationVerifierParams {
-    pub supported_client_id_schemes: Vec<ClientIdScheme>,
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display, EnumString)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
