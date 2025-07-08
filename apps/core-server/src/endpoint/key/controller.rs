@@ -93,7 +93,7 @@ pub(crate) async fn post_key(
         ("bearer" = [])
     ),
     summary = "List keys",
-    description = "Returns a list of keys created in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of keys created in an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_key_list(
     state: State<AppState>,

@@ -125,7 +125,7 @@ pub(crate) async fn get_trust_entity_details(
         ("bearer" = [])
     ),
     summary = "List trust entities",
-    description = "Returns a list of trust entities in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of trust entities in an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_trust_entities(
     state: State<AppState>,

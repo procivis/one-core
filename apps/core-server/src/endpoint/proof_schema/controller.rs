@@ -54,7 +54,7 @@ pub(crate) async fn post_proof_schema(
         ("bearer" = [])
     ),
     summary = "Retrieve proof schemas",
-    description = "Returns a list of proof schemas. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of proof schemas. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,

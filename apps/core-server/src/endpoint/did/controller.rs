@@ -64,7 +64,7 @@ pub(crate) async fn get_did(
         ("bearer" = [])
     ),
     summary = "List DIDs",
-    description = "Returns a list of DIDs within an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of DIDs within an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_did_list(
     state: State<AppState>,

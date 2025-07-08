@@ -186,7 +186,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("certificate_management")
                        .description(Some(indoc::formatdoc! {"
                 Manage certificates in the system. To add a certificate as an identifier,
-                see the [identifiers](/core/identifier-management) endpoints.
+                see the [identifiers](/reference/core/identifier-management) endpoints.
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -199,7 +199,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .description(Some(indoc::formatdoc! {"
                 These endpoints are being phased out, but they can be used to create and
                 manage DIDs (Decentralized Identifiers). Use the
-                [identifiers](/core/identifier-management) endpoints to create and manage
+                [identifiers](/reference/core/identifier-management) endpoints to create and manage
                 DIDs.
 
                 Related guide: [DIDs](/dids)

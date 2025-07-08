@@ -76,7 +76,7 @@ pub(crate) async fn get_credential_schema(
         ("bearer" = [])
     ),
     summary = "List credential schemas",
-    description = "Returns a list of credential schemas in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of credential schemas in an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,

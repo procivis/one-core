@@ -106,7 +106,7 @@ pub(crate) async fn delete_proof(
         ("bearer" = [])
     ),
     summary = "List proof requests",
-    description = "Returns a list of proof requests in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of proof requests in an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
