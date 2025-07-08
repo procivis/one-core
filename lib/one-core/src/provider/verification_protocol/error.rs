@@ -1,3 +1,4 @@
+use dcql::DcqlError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -20,4 +21,6 @@ pub enum VerificationProtocolError {
     Other(anyhow::Error),
     #[error(transparent)]
     StorageAccessError(anyhow::Error),
+    #[error("DCQL error: `{0}`")]
+    DcqlError(DcqlError),
 }

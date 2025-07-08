@@ -43,6 +43,7 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
+use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
 };
@@ -216,6 +217,16 @@ impl VerificationProtocol for OpenID4VP25HTTP {
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData =
             serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        if let Some(dcql_query) = interaction_data.dcql_query {
+            return get_presentation_definition_for_dcql_query(
+                dcql_query,
+                proof,
+                storage_access,
+                &self.config,
+            )
+            .await;
+        }
 
         let presentation_definition =
             interaction_data

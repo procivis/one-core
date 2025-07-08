@@ -1,4 +1,5 @@
-use crate::{ClaimPath, ClaimQueryId, CredentialQueryId, PathSegment};
+use crate::matching::ClaimFilter;
+use crate::{ClaimPath, ClaimQuery, ClaimQueryId, CredentialQueryId, PathSegment};
 
 impl From<String> for CredentialQueryId {
     fn from(value: String) -> Self {
@@ -47,5 +48,14 @@ impl From<&str> for PathSegment {
 impl From<usize> for PathSegment {
     fn from(value: usize) -> Self {
         Self::ArrayIndex(value)
+    }
+}
+
+impl From<ClaimQuery> for ClaimFilter {
+    fn from(value: ClaimQuery) -> Self {
+        Self {
+            path: value.path,
+            required: value.required.unwrap_or(true),
+        }
     }
 }

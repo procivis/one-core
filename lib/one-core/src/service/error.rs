@@ -1504,6 +1504,7 @@ impl ErrorCodeMixin for VerificationProtocolError {
             Self::Other(_) => ErrorCode::BR_0062,
             Self::StorageAccessError(_) => ErrorCode::BR_0062,
             Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
+            Self::DcqlError(_) => ErrorCode::BR_0085,
         }
     }
 }

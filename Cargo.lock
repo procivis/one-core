@@ -1162,6 +1162,7 @@ dependencies = [
  "bs58",
  "clap",
  "ct-codecs",
+ "dcql",
  "futures",
  "headers",
  "hex",

@@ -14,6 +14,7 @@ use thiserror::Error;
 mod builder;
 mod display;
 pub mod mapper;
+pub mod matching;
 /// Digital Credentials Query Language (DCQL) query structure
 ///
 /// This is a simplified model of the DCQL query structure as defined in
@@ -93,7 +94,7 @@ pub enum CredentialFormat {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 #[serde(transparent)]
 pub struct ClaimPath {
-    segments: Vec<PathSegment>,
+    pub segments: Vec<PathSegment>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
