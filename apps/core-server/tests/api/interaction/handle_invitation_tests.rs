@@ -1545,18 +1545,17 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
         "dcql_query":dcql_query,
         "response_uri":callback_url
     });
-    let query = Url::parse(&format!(
-        "openid4vp://?client_id={client_id}&request={}",
-        serde_json::to_string(&request).unwrap()
-    ))
-    .unwrap()
-    .to_string();
+
+    let mut query = Url::parse(&format!("openid4vp://?client_id={client_id}")).unwrap();
+    query
+        .query_pairs_mut()
+        .append_pair("request", &serde_json::to_string(&request).unwrap());
 
     // WHEN
     let resp = context
         .api
         .interactions
-        .handle_invitation(organisation.id, &query)
+        .handle_invitation(organisation.id, query.as_ref())
         .await;
 
     // THEN

@@ -6,7 +6,6 @@
 //! Reference: https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#section-6
 
 pub mod mapper;
-
 use serde::{Deserialize, Serialize};
 
 /// Digital Credentials Query Language (DCQL) query structure
@@ -32,7 +31,7 @@ pub struct CredentialQueryId(String);
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CredentialQuery {
     pub id: CredentialQueryId,
-    pub format: String,
+    pub format: CredentialFormat,
     pub meta: CredentialMeta,
     pub claims: Vec<ClaimQuery>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -66,6 +65,18 @@ pub struct ClaimQuery {
     // MDOC specific field, as per draft 29, section b.2.4
     #[serde(skip_serializing_if = "Option::is_none")]
     pub intent_to_retain: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CredentialFormat {
+    #[serde(rename = "jwt_vc_json")]
+    JwtVc,
+    #[serde(rename = "ldp_vc")]
+    LdpVc,
+    #[serde(rename = "mso_mdoc")]
+    MsoMdoc,
+    #[serde(rename = "dc+sd-jwt")]
+    SdJwt,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -181,7 +192,7 @@ mod test {
 
         let credential = &query.credentials[0];
         assert_eq!(credential.id, "my_credential".into());
-        assert_eq!(credential.format, "mso_mdoc");
+        assert_eq!(credential.format, CredentialFormat::MsoMdoc);
 
         // Verify meta data
         match &credential.meta {
@@ -255,7 +266,7 @@ mod test {
         // Verify first credential (SD-JWT VC)
         let pid_credential = &query.credentials[0];
         assert_eq!(pid_credential.id, "pid".into());
-        assert_eq!(pid_credential.format, "dc+sd-jwt");
+        assert_eq!(pid_credential.format, CredentialFormat::SdJwt);
 
         match &pid_credential.meta {
             CredentialMeta::SdJwtVc { vct_values } => {
@@ -280,7 +291,7 @@ mod test {
         // Verify second credential (mso_mdoc)
         let mdl_credential = &query.credentials[1];
         assert_eq!(mdl_credential.id, "mdl".into());
-        assert_eq!(mdl_credential.format, "mso_mdoc");
+        assert_eq!(mdl_credential.format, CredentialFormat::MsoMdoc);
 
         match &mdl_credential.meta {
             CredentialMeta::MsoMdoc { doctype_value } => {
@@ -339,7 +350,7 @@ mod test {
 
         let credential = &query.credentials[0];
         assert_eq!(credential.id, "pid".into());
-        assert_eq!(credential.format, "dc+sd-jwt");
+        assert_eq!(credential.format, CredentialFormat::SdJwt);
 
         // Verify metadata
         match &credential.meta {
@@ -429,7 +440,7 @@ mod test {
 
         let credential = &query.credentials[0];
         assert_eq!(credential.id, "my_credential".into());
-        assert_eq!(credential.format, "mso_mdoc");
+        assert_eq!(credential.format, CredentialFormat::MsoMdoc);
 
         // Verify meta data
         match &credential.meta {
@@ -490,7 +501,7 @@ mod test {
 
         let credential = &query.credentials[0];
         assert_eq!(credential.id, "example_jwt_vc".into());
-        assert_eq!(credential.format, "jwt_vc_json");
+        assert_eq!(credential.format, CredentialFormat::JwtVc);
 
         // Verify meta data
         match &credential.meta {
