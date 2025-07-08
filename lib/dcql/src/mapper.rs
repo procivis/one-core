@@ -1,14 +1,26 @@
 use crate::{ClaimPath, ClaimQueryId, CredentialQueryId, PathSegment};
 
-impl<T: ToString> From<T> for CredentialQueryId {
-    fn from(value: T) -> Self {
-        Self(value.to_string())
+impl From<String> for CredentialQueryId {
+    fn from(value: String) -> Self {
+        Self(value)
     }
 }
 
-impl<T: ToString> From<T> for ClaimQueryId {
-    fn from(value: T) -> Self {
-        Self(value.to_string())
+impl From<&str> for CredentialQueryId {
+    fn from(value: &str) -> Self {
+        Self(value.to_owned())
+    }
+}
+
+impl From<String> for ClaimQueryId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&str> for ClaimQueryId {
+    fn from(value: &str) -> Self {
+        Self(value.to_owned())
     }
 }
 

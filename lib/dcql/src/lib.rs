@@ -5,9 +5,13 @@
 //!
 //! Reference: https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#section-6
 
-pub mod mapper;
-use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+mod display;
+pub mod mapper;
 /// Digital Credentials Query Language (DCQL) query structure
 ///
 /// This is a simplified model of the DCQL query structure as defined in
@@ -19,7 +23,7 @@ pub struct DcqlQuery {
     pub credentials: Vec<CredentialQuery>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CredentialQueryId(String);
 
 /// Credential query structure
@@ -33,7 +37,8 @@ pub struct CredentialQuery {
     pub id: CredentialQueryId,
     pub format: CredentialFormat,
     pub meta: CredentialMeta,
-    pub claims: Vec<ClaimQuery>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claims: Option<Vec<ClaimQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claim_sets: Option<Vec<Vec<ClaimQueryId>>>,
 }
@@ -47,7 +52,7 @@ pub enum CredentialMeta {
     W3cVc { type_values: Vec<Vec<String>> },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ClaimQueryId(String);
 
 /// Individual claim query within a credential query
@@ -96,9 +101,17 @@ pub enum PathSegment {
     ArrayAll,
 }
 
+#[derive(Clone, Debug, Error)]
+pub enum DcqlError {
+    #[error("missing id on claim query for claim with path {path}")]
+    MissingClaimQueryId { path: ClaimPath },
+    #[error("unknown claim query id {id}")]
+    UnknownClaimQueryId { id: ClaimQueryId },
+}
+
 #[cfg(test)]
 mod test {
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -150,6 +163,8 @@ mod test {
                 .first()
                 .unwrap()
                 .claims
+                .as_ref()
+                .unwrap()
                 .get(1)
                 .unwrap()
                 .path,
@@ -203,9 +218,9 @@ mod test {
         }
 
         // Verify claims
-        assert_eq!(credential.claims.len(), 2);
+        assert_eq!(credential.claims.as_ref().unwrap().len(), 2);
 
-        let first_claim = &credential.claims[0];
+        let first_claim = &credential.claims.as_ref().unwrap()[0];
         assert_eq!(
             first_claim.path,
             vec!["org.iso.7367.1", "vehicle_holder"].into()
@@ -214,7 +229,7 @@ mod test {
         assert!(first_claim.required.is_none());
         assert!(first_claim.intent_to_retain.is_none());
 
-        let second_claim = &credential.claims[1];
+        let second_claim = &credential.claims.as_ref().unwrap()[1];
         assert_eq!(
             second_claim.path,
             vec!["org.iso.18013.5.1", "first_name"].into()
@@ -280,11 +295,17 @@ mod test {
         }
 
         // Verify SD-JWT VC claims
-        assert_eq!(pid_credential.claims.len(), 3);
-        assert_eq!(pid_credential.claims[0].path, vec!["given_name"].into());
-        assert_eq!(pid_credential.claims[1].path, vec!["family_name"].into());
+        assert_eq!(pid_credential.claims.as_ref().unwrap().len(), 3);
         assert_eq!(
-            pid_credential.claims[2].path,
+            pid_credential.claims.as_ref().unwrap()[0].path,
+            vec!["given_name"].into()
+        );
+        assert_eq!(
+            pid_credential.claims.as_ref().unwrap()[1].path,
+            vec!["family_name"].into()
+        );
+        assert_eq!(
+            pid_credential.claims.as_ref().unwrap()[2].path,
             vec!["address", "street_address"].into()
         );
 
@@ -301,13 +322,13 @@ mod test {
         }
 
         // Verify mso_mdoc claims
-        assert_eq!(mdl_credential.claims.len(), 2);
+        assert_eq!(mdl_credential.claims.as_ref().unwrap().len(), 2);
         assert_eq!(
-            mdl_credential.claims[0].path,
+            mdl_credential.claims.as_ref().unwrap()[0].path,
             vec!["org.iso.7367.1", "vehicle_holder"].into()
         );
         assert_eq!(
-            mdl_credential.claims[1].path,
+            mdl_credential.claims.as_ref().unwrap()[1].path,
             vec!["org.iso.18013.5.1", "first_name"].into()
         );
 
@@ -365,7 +386,7 @@ mod test {
         }
 
         // Verify claims with IDs
-        assert_eq!(credential.claims.len(), 5);
+        assert_eq!(credential.claims.as_ref().unwrap().len(), 5);
 
         let expected_claims = [
             ("a", vec!["last_name"]),
@@ -376,7 +397,7 @@ mod test {
         ];
 
         for (i, (expected_id, expected_path)) in expected_claims.into_iter().enumerate() {
-            let claim = &credential.claims[i];
+            let claim = &credential.claims.as_ref().unwrap()[i];
             assert_eq!(claim.id.as_ref().unwrap(), &ClaimQueryId::from(expected_id));
             assert_eq!(claim.path, ClaimPath::from(expected_path));
             assert!(claim.required.is_none());
@@ -451,9 +472,9 @@ mod test {
         }
 
         // Verify claims
-        assert_eq!(credential.claims.len(), 2);
+        assert_eq!(credential.claims.as_ref().unwrap().len(), 2);
 
-        let first_claim = &credential.claims[0];
+        let first_claim = &credential.claims.as_ref().unwrap()[0];
         assert_eq!(
             first_claim.path,
             vec!["org.iso.7367.1", "vehicle_holder"].into()
@@ -462,7 +483,7 @@ mod test {
         assert_eq!(first_claim.required, Some(true));
         assert_eq!(first_claim.intent_to_retain, Some(true));
 
-        let second_claim = &credential.claims[1];
+        let second_claim = &credential.claims.as_ref().unwrap()[1];
         assert_eq!(
             second_claim.path,
             vec!["org.iso.18013.5.1", "first_name"].into()
@@ -513,9 +534,9 @@ mod test {
         }
 
         // Verify claims
-        assert_eq!(credential.claims.len(), 2);
+        assert_eq!(credential.claims.as_ref().unwrap().len(), 2);
 
-        let first_claim = &credential.claims[0];
+        let first_claim = &credential.claims.as_ref().unwrap()[0];
         assert_eq!(
             first_claim.path,
             vec!["credentialSubject", "family_name"].into()
@@ -524,7 +545,7 @@ mod test {
         assert!(first_claim.required.is_none());
         assert!(first_claim.intent_to_retain.is_none());
 
-        let second_claim = &credential.claims[1];
+        let second_claim = &credential.claims.as_ref().unwrap()[1];
         assert_eq!(
             second_claim.path,
             vec!["credentialSubject", "given_name"].into()
@@ -535,5 +556,37 @@ mod test {
 
         // Verify optional fields are None
         assert!(credential.claim_sets.is_none());
+    }
+
+    #[test]
+    fn test_no_claims_parsing() {
+        let json = json!({
+            "credentials": [
+                {
+                    "id": "my_credential",
+                    "format": "mso_mdoc",
+                    "meta": {
+                        "doctype_value": "org.iso.7367.1.mVRC"
+                    }
+                }
+            ]
+        });
+
+        let query: DcqlQuery = serde_json::from_value(json).unwrap();
+
+        // Verify the structure was parsed correctly
+        assert_eq!(query.credentials.len(), 1);
+
+        let credential = &query.credentials[0];
+        assert_eq!(credential.id, "my_credential".into());
+        assert_eq!(credential.format, CredentialFormat::MsoMdoc);
+
+        // Verify meta data
+        match &credential.meta {
+            CredentialMeta::MsoMdoc { doctype_value } => {
+                assert_eq!(doctype_value, "org.iso.7367.1.mVRC");
+            }
+            _ => panic!("Expected MsoMdoc meta type"),
+        }
     }
 }
