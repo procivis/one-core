@@ -254,5 +254,4 @@ fn get_identifier_list_query(query_params: &IdentifierListQuery) -> Select<ident
         .group_by(identifier::Column::DeletedAt)
         .order_by_desc(identifier::Column::CreatedDate)
         .order_by_desc(identifier::Column::Id)
-        .distinct()
 }

@@ -8,8 +8,8 @@ use one_core::model::key::Key;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 
@@ -132,7 +132,6 @@ impl DidRepository for DidProvider {
 
     async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {
         let query = did::Entity::find()
-            .distinct()
             .filter(did::Column::DeletedAt.is_null())
             .with_filter_join(&query_params)
             .with_list_query(&query_params)

@@ -32,7 +32,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-enum CredentialNew {
+pub enum CredentialNew {
     Role,
 }
 

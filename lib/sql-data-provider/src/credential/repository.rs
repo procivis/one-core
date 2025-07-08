@@ -333,10 +333,14 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .filter(credential::Column::DeletedAt.is_null())
         // list query
         .with_filter_join(&query_params)
-        .with_list_query(&query_params)
+        .with_list_query(&query_params);
+
+    if query_params.sorting.is_some() || query_params.pagination.is_some() {
         // fallback ordering
-        .order_by_desc(credential::Column::CreatedDate)
-        .order_by_desc(credential::Column::Id);
+        query = query
+            .order_by_desc(credential::Column::CreatedDate)
+            .order_by_desc(credential::Column::Id);
+    }
 
     if let Some(include) = query_params.include {
         if include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties) {
@@ -351,7 +355,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         }
     }
 
-    query.distinct()
+    query
 }
 
 #[autometrics]

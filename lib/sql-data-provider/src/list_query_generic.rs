@@ -9,7 +9,7 @@ use one_core::model::list_query::ListQuery;
 use sea_orm::prelude::Expr;
 use sea_orm::query::*;
 use sea_orm::sea_query::{Func, IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, EntityTrait, RelationDef};
+use sea_orm::{ColumnTrait, EntityTrait, RelationDef, RelationType};
 
 use crate::mapper::order_from_sort_direction;
 
@@ -70,10 +70,16 @@ where
                 alias,
             } in unique_relations
             {
-                match alias {
-                    None => result = result.join(join_type, relation_def),
-                    Some(join_as) => result = result.join_as(join_type, relation_def, join_as),
+                // when joining a one-to-many or many-to-many relation,
+                // SQL DISTINCT clause might be needed to avoid duplicate results
+                if relation_def.rel_type == RelationType::HasMany {
+                    result = result.distinct();
                 }
+
+                result = match alias {
+                    None => result.join(join_type, relation_def),
+                    Some(join_as) => result.join_as(join_type, relation_def, join_as),
+                };
             }
         }
 

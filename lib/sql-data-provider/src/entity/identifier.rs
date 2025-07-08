@@ -64,6 +64,12 @@ impl Related<super::key::Entity> for Entity {
     }
 }
 
+impl Related<super::certificate::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Certificate.def()
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]

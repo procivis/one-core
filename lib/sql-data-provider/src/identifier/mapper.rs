@@ -120,7 +120,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                         .map(key_did::KeyRole::from)
                         .collect::<Vec<_>>(),
                 )
-                .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
+                .or(identifier::Column::Type.ne(identifier::IdentifierType::Did))
                 .into_condition(),
             IdentifierFilterValue::KeyStorages(key_storages) => key::Column::StorageType
                 .is_in(key_storages.clone())
@@ -142,11 +142,30 @@ impl IntoFilterCondition for IdentifierFilterValue {
 impl IntoJoinRelations for IdentifierFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
         match self {
-            IdentifierFilterValue::DidMethods(_)
-            | IdentifierFilterValue::KeyAlgorithms(_)
-            | IdentifierFilterValue::KeyStorages(_)
-            | IdentifierFilterValue::KeyRoles(_) => {
+            IdentifierFilterValue::DidMethods(_) => {
+                vec![JoinRelation {
+                    join_type: JoinType::LeftJoin,
+                    relation_def: identifier::Relation::Did.def(),
+                    alias: None,
+                }]
+            }
+            IdentifierFilterValue::KeyRoles(_) => {
                 vec![
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: identifier::Relation::Did.def(),
+                        alias: None,
+                    },
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: did::Relation::KeyDid.def(),
+                        alias: None,
+                    },
+                ]
+            }
+            IdentifierFilterValue::KeyAlgorithms(_) | IdentifierFilterValue::KeyStorages(_) => {
+                vec![
+                    // IdentifierType::Did
                     JoinRelation {
                         join_type: JoinType::LeftJoin,
                         relation_def: identifier::Relation::Did.def(),
@@ -162,14 +181,16 @@ impl IntoJoinRelations for IdentifierFilterValue {
                         relation_def: key_did::Relation::Key.def(),
                         alias: Some(Alias::new("did_key").into_iden()),
                     },
+                    // IdentifierType::Key
                     JoinRelation {
                         join_type: JoinType::LeftJoin,
                         relation_def: identifier::Relation::Key.def(),
                         alias: None,
                     },
+                    // IdentifierType::Certificate
                     JoinRelation {
                         join_type: JoinType::LeftJoin,
-                        relation_def: certificate::Relation::Identifier.def().rev(),
+                        relation_def: identifier::Relation::Certificate.def(),
                         alias: None,
                     },
                     JoinRelation {

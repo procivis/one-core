@@ -143,7 +143,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum Credential {
+pub enum Credential {
     Table,
     State,
     SuspendEndDate,
