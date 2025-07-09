@@ -59,16 +59,11 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .map(|pagination| pagination.page_size as u64);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let (items_count, history_list) =
+            tokio::join!(query.to_owned().count(&self.db), query.all(&self.db));
 
-        let history_list: Vec<history::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
+        let history_list = history_list.map_err(|e| DataLayerError::Db(e.into()))?;
 
         create_list_response(history_list, limit, items_count)
     }

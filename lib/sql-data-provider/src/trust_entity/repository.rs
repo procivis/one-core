@@ -252,17 +252,15 @@ impl TrustEntityRepository for TrustEntityProvider {
             .order_by_desc(trust_entity::Column::CreatedDate)
             .order_by_desc(trust_entity::Column::Id);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
+        let (items_count, trust_entities) = tokio::join!(
+            query.to_owned().count(&self.db),
+            query
+                .into_model::<TrustEntityListItemEntityModel>()
+                .all(&self.db)
+        );
 
-        let trust_entities = query
-            .into_model::<TrustEntityListItemEntityModel>()
-            .all(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
+        let items_count = items_count.map_err(to_data_layer_error)?;
+        let trust_entities = trust_entities.map_err(to_data_layer_error)?;
 
         Ok(GetTrustEntitiesResponseDTO {
             values: convert_inner(trust_entities),

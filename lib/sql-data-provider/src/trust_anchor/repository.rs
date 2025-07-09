@@ -61,17 +61,15 @@ impl TrustAnchorRepository for TrustAnchorProvider {
             .order_by_desc(trust_anchor::Column::CreatedDate)
             .order_by_desc(trust_anchor::Column::Id);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
+        let (items_count, trust_anchors) = tokio::join!(
+            query.to_owned().count(&self.db),
+            query
+                .into_model::<TrustAnchorsListItemEntityModel>()
+                .all(&self.db)
+        );
 
-        let trust_anchors = query
-            .into_model::<TrustAnchorsListItemEntityModel>()
-            .all(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
+        let items_count = items_count.map_err(to_data_layer_error)?;
+        let trust_anchors = trust_anchors.map_err(to_data_layer_error)?;
 
         Ok(GetTrustAnchorsResponseDTO {
             values: convert_inner(trust_anchors),

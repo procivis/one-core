@@ -5,12 +5,12 @@ use one_core::model::certificate::{
 };
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, Set, Unchanged};
 use shared_types::CertificateId;
 use time::OffsetDateTime;
 
 use super::CertificateProvider;
-use super::mapper::create_list_response;
+use crate::common::list_query_with_base_model;
 use crate::entity::{certificate, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -102,22 +102,7 @@ impl CertificateRepository for CertificateProvider {
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);
 
-        let limit = query_params
-            .pagination
-            .map(|pagination| pagination.page_size as u64);
-
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let certificates: Vec<certificate::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        Ok(create_list_response(certificates, limit, items_count))
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 
     async fn update(

@@ -8,13 +8,12 @@ use one_core::model::key::Key;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 
 use super::DidProvider;
-use super::mapper::create_list_response;
+use crate::common::list_query_with_base_model;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -138,22 +137,7 @@ impl DidRepository for DidProvider {
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
 
-        let limit = query_params
-            .pagination
-            .map(|pagination| pagination.page_size as u64);
-
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let dids: Vec<did::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        Ok(create_list_response(dids, limit, items_count))
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {

@@ -102,17 +102,13 @@ impl ProofRepository for ProofProvider {
 
         let query = get_proof_list_query(&query_params);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let (items_count, proofs) = tokio::join!(
+            query.to_owned().count(&self.db),
+            query.into_model::<ProofListItemModel>().all(&self.db)
+        );
 
-        let proofs = query
-            .into_model::<ProofListItemModel>()
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
+        let proofs = proofs.map_err(|e| DataLayerError::Db(e.into()))?;
 
         create_list_response(proofs, limit.unwrap_or(items_count), items_count)
     }

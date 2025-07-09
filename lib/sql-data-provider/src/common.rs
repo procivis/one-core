@@ -1,4 +1,11 @@
+use one_core::model::common::GetListResponse;
+use one_core::model::list_query::ListQuery;
+use one_core::repository::error::DataLayerError;
+use one_dto_mapper::convert_inner;
+use sea_orm::{DatabaseConnection, EntityTrait, PaginatorTrait, Select};
 use serde::de::{Deserialize, Deserializer, Error, Unexpected};
+
+use crate::mapper::to_data_layer_error;
 
 pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
@@ -20,6 +27,39 @@ where
             &"zero or one",
         )),
     }
+}
+
+pub(crate) async fn list_query_with_base_model<
+    'db,
+    E: EntityTrait,
+    ListItem: From<E::Model>,
+    SortableColumn,
+    FV,
+    Include,
+>(
+    query: Select<E>,
+    query_params: ListQuery<SortableColumn, FV, Include>,
+    db: &'db DatabaseConnection,
+) -> Result<GetListResponse<ListItem>, DataLayerError>
+where
+    Select<E>: PaginatorTrait<'db, DatabaseConnection>,
+{
+    let limit = query_params
+        .pagination
+        .as_ref()
+        .map(|pagination| pagination.page_size as _);
+
+    let (items_count, items) =
+        tokio::join!(PaginatorTrait::count(query.to_owned(), db), query.all(db));
+
+    let items_count = items_count.map_err(to_data_layer_error)?;
+    let items = items.map_err(to_data_layer_error)?;
+
+    Ok(GetListResponse::<ListItem> {
+        values: convert_inner(items),
+        total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+        total_items: items_count,
+    })
 }
 
 #[cfg(test)]

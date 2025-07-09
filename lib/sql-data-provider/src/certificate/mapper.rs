@@ -1,11 +1,9 @@
 use one_core::model::certificate::{
-    Certificate, CertificateFilterValue, GetCertificateList, SortableCertificateColumn,
+    Certificate, CertificateFilterValue, SortableCertificateColumn,
 };
-use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 
-use crate::common::calculate_pages_count;
 use crate::entity::certificate::{self, ActiveModel};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
@@ -89,17 +87,5 @@ impl IntoFilterCondition for CertificateFilterValue {
 impl IntoJoinRelations for CertificateFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
         vec![]
-    }
-}
-
-pub(super) fn create_list_response(
-    certificates: Vec<certificate::Model>,
-    limit: Option<u64>,
-    items_count: u64,
-) -> GetCertificateList {
-    GetCertificateList {
-        values: convert_inner(certificates),
-        total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
-        total_items: items_count,
     }
 }

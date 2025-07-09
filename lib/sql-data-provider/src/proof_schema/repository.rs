@@ -11,15 +11,15 @@ use one_core::model::proof_schema::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
-    TransactionTrait, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, TransactionTrait,
+    Unchanged,
 };
 use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaProvider;
-use super::mapper::create_list_response;
+use crate::common::list_query_with_base_model;
 use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -199,29 +199,13 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         &self,
         query_params: GetProofSchemaQuery,
     ) -> Result<GetProofSchemaList, DataLayerError> {
-        let limit = query_params
-            .pagination
-            .as_ref()
-            .map(|pagination| pagination.page_size as _);
-
         let query = crate::entity::proof_schema::Entity::find()
             .filter(proof_schema::Column::DeletedAt.is_null())
             .with_list_query(&query_params)
             .order_by_desc(proof_schema::Column::CreatedDate)
             .order_by_desc(proof_schema::Column::Id);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let proof_schemas: Vec<proof_schema::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        create_list_response(proof_schemas, limit.unwrap_or(items_count), items_count)
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 
     async fn delete_proof_schema(

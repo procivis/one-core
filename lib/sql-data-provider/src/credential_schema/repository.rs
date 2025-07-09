@@ -185,16 +185,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .order_by_desc(credential_schema::Column::CreatedDate)
             .order_by_desc(credential_schema::Column::Id);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let (items_count, credential_schemas) =
+            tokio::join!(query.to_owned().count(&self.db), query.all(&self.db));
 
-        let credential_schemas: Vec<credential_schema::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
+        let credential_schemas = credential_schemas.map_err(|e| DataLayerError::Db(e.into()))?;
 
         let claims = if let Some(claim_schemas) = &relations.claim_schemas {
             Either::Left(

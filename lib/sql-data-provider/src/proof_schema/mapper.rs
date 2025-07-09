@@ -1,12 +1,10 @@
 use anyhow::anyhow;
-use one_core::model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn};
+use one_core::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
 use one_core::repository::error::DataLayerError;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
-use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 
-use crate::common::calculate_pages_count;
 use crate::entity::proof_schema;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
@@ -49,18 +47,6 @@ impl IntoFilterCondition for ProofSchemaFilterValue {
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
         }
     }
-}
-
-pub(crate) fn create_list_response(
-    schemas: Vec<proof_schema::Model>,
-    limit: u64,
-    items_count: u64,
-) -> Result<GetProofSchemaList, DataLayerError> {
-    Ok(GetProofSchemaList {
-        values: convert_inner(schemas),
-        total_pages: calculate_pages_count(items_count, limit),
-        total_items: items_count,
-    })
 }
 
 impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {

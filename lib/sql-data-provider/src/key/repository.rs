@@ -4,14 +4,13 @@ use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use shared_types::KeyId;
 
+use crate::common::list_query_with_base_model;
 use crate::entity::key;
 use crate::key::KeyProvider;
-use crate::key::mapper::{create_list_response, from_model_and_relations};
+use crate::key::mapper::from_model_and_relations;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 
@@ -110,21 +109,6 @@ impl KeyRepository for KeyProvider {
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);
 
-        let limit = query_params
-            .pagination
-            .map(|pagination| pagination.page_size as u64);
-
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let keys: Vec<key::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        Ok(create_list_response(keys, limit, items_count))
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 }

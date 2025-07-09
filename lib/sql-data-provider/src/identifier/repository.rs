@@ -5,16 +5,15 @@ use one_core::model::identifier::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
-use one_dto_mapper::convert_inner;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Select, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Select, Set,
+    Unchanged,
 };
 use shared_types::{CertificateId, DidId, IdentifierId};
 use time::OffsetDateTime;
 
 use super::IdentifierProvider;
-use crate::common::calculate_pages_count;
+use crate::common::list_query_with_base_model;
 use crate::entity::{certificate, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -199,26 +198,7 @@ impl IdentifierRepository for IdentifierProvider {
     ) -> Result<GetIdentifierList, DataLayerError> {
         let query = get_identifier_list_query(&query_params);
 
-        let limit = query_params
-            .pagination
-            .map(|pagination| pagination.page_size as u64);
-
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let identifiers: Vec<identifier::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        Ok(GetIdentifierList {
-            values: convert_inner(identifiers),
-            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
-            total_items: items_count,
-        })
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 }
 

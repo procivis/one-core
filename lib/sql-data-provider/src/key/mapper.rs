@@ -1,10 +1,9 @@
-use one_core::model::key::{GetKeyList, Key, KeyFilterValue, SortableKeyColumn};
+use one_core::model::key::{Key, KeyFilterValue, SortableKeyColumn};
 use one_core::model::organisation::Organisation;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
-use crate::common::calculate_pages_count;
 use crate::entity;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
@@ -55,18 +54,6 @@ impl IntoFilterCondition for KeyFilterValue {
             }
             Self::Ids(ids) => entity::key::Column::Id.is_in(ids).into_condition(),
         }
-    }
-}
-
-pub(super) fn create_list_response(
-    keys: Vec<entity::key::Model>,
-    limit: Option<u64>,
-    items_count: u64,
-) -> GetKeyList {
-    GetKeyList {
-        values: convert_inner(keys),
-        total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
-        total_items: items_count,
     }
 }
 
