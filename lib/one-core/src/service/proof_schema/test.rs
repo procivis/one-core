@@ -1442,6 +1442,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
 
@@ -1648,6 +1649,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
 

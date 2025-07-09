@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
+use serde::Serialize;
 use serde_json::json;
 use shared_types::OrganisationId;
 use uuid::Uuid;
@@ -11,17 +12,61 @@ pub struct CredentialSchemasApi {
     client: HttpClient,
 }
 
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct TestClaim {
+    pub datatype: String,
+    pub key: String,
+    pub required: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub claims: Vec<TestClaim>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub array: Option<bool>,
+}
+
+impl TestClaim {
+    pub fn primary_attribute_from_firsts(&self) -> String {
+        if let Some(first_child) = self.claims.first() {
+            format!(
+                "{}/{}",
+                self.key,
+                first_child.primary_attribute_from_firsts()
+            )
+        } else {
+            self.key.clone()
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct CreateSchemaParams {
     pub name: String,
     pub organisation_id: Uuid,
     pub format: String,
-    pub claim_name: String,
+    pub claims: Vec<TestClaim>,
     pub schema_id: Option<String>,
     pub revocation_method: Option<String>,
     pub suspension_allowed: Option<bool>,
     pub wallet_storage_type: Option<String>,
     pub logo: Option<String>,
+}
+
+impl CreateSchemaParams {
+    pub fn with_default_claims(mut self, claim_name: String) -> Self {
+        self.claims = vec![TestClaim {
+            datatype: "OBJECT".to_string(),
+            key: "firstObject".to_string(),
+            required: true,
+            claims: vec![TestClaim {
+                datatype: "STRING".to_string(),
+                key: claim_name,
+                required: true,
+                claims: vec![],
+                array: None,
+            }],
+            array: None,
+        }];
+        self
+    }
 }
 
 impl CredentialSchemasApi {
@@ -30,21 +75,14 @@ impl CredentialSchemasApi {
     }
 
     pub async fn create(&self, params: CreateSchemaParams) -> Response {
+        let primary_attribute = params
+            .claims
+            .first()
+            .map(TestClaim::primary_attribute_from_firsts)
+            .unwrap_or_default();
+
         let mut body = json!({
-          "claims": [
-            {
-              "datatype": "OBJECT",
-              "key": "firstObject",
-              "required": true,
-              "claims": [
-                {
-                  "datatype": "STRING",
-                  "key": params.claim_name,
-                  "required": true
-                }
-              ],
-            }
-          ],
+          "claims": params.claims,
           "format": params.format,
           "name": params.name,
           "organisationId": params.organisation_id,
@@ -54,7 +92,7 @@ impl CredentialSchemasApi {
             "backgroundColor": "bg-color",
             "backgroundImage": "bg-image",
             "labelColor": "label-color",
-            "primaryAttribute": format!("firstObject/{claim_name}", claim_name = params.claim_name),
+            "primaryAttribute": primary_attribute,
           },
           "schemaId": params.schema_id,
         });

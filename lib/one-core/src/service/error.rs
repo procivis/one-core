@@ -485,6 +485,12 @@ pub enum ValidationError {
     #[error("Credential schema: Duplicit claim schema")]
     CredentialSchemaDuplicitClaim,
 
+    #[error("Credential schema: Claim `{claim_name}` data type {data_type} is unsupported")]
+    CredentialSchemaClaimSchemaUnsupportedDatatype {
+        claim_name: String,
+        data_type: String,
+    },
+
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
 
@@ -1213,6 +1219,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid CA trust entity certificate chain")]
     BR_0244,
+
+    #[strum(message = "Unsupported claim data type")]
+    BR_0245,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1446,6 +1455,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::WalletStorageTypeDisabled(_) => ErrorCode::BR_0225,
             Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
             Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
+            Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
         }
     }
 }

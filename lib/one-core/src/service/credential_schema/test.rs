@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::vec;
 
+use assert2::let_assert;
 use mockall::predicate::*;
 use shared_types::CredentialSchemaId;
 use similar_asserts::assert_eq;
@@ -351,6 +352,7 @@ async fn test_create_credential_schema_success() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into()],
             ..Default::default()
         });
     formatter
@@ -465,6 +467,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
             features: vec![Features::SelectiveDisclosure, Features::RequiresSchemaId],
+            datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
     formatter
@@ -545,6 +548,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
             features: [Features::RequiresSchemaId].into(),
+            datatypes: vec!["STRING".into()],
             ..Default::default()
         });
 
@@ -695,6 +699,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
     formatter
@@ -920,11 +925,20 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
+    let mut formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            datatypes: vec!["STRING".into(), "OBJECT".into()],
+            ..Default::default()
+        });
+
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .return_once(|_| Some(Arc::new(formatter)));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
@@ -998,6 +1012,7 @@ async fn test_create_credential_schema_unique_name_error() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into()],
             ..Default::default()
         });
     formatter_provider
@@ -1303,6 +1318,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into()],
             ..Default::default()
         });
     formatter
@@ -1399,6 +1415,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into()],
             ..Default::default()
         });
     formatter_provider
@@ -1463,7 +1480,10 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
 
     formatter
         .expect_get_capabilities()
-        .returning(FormatterCapabilities::default);
+        .returning(|| FormatterCapabilities {
+            datatypes: vec!["STRING".into()],
+            ..Default::default()
+        });
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -2863,6 +2883,7 @@ async fn test_import_credential_schema_success() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into()],
             ..Default::default()
         });
     formatter_provider
@@ -2951,4 +2972,87 @@ async fn test_import_credential_schema_success() {
         .await
         .unwrap();
     assert_ne!(external_schema_id, result);
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_fail_unsupported_datatype() {
+    // given
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let organisation = dummy_organisation(None);
+
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec![RevocationType::None],
+            datatypes: vec!["STRING".into()],
+            ..Default::default()
+        });
+    formatter
+        .expect_credential_schema_id()
+        .returning(|_, _, _| Ok("some schema id".to_string()));
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        MockRevocationMethodProvider::default(),
+        generic_config().core,
+    );
+
+    // when
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            external_schema: false,
+            organisation_id: organisation.id.to_owned(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                array: Some(false),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "x".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        array: Some(false),
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "y".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        array: Some(true),
+                        claims: vec![],
+                    },
+                ],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+            allow_suspension: Some(true),
+        })
+        .await
+        .unwrap_err();
+
+    // then
+    let_assert!(
+        ServiceError::Validation(
+            ValidationError::CredentialSchemaClaimSchemaUnsupportedDatatype {
+                claim_name,
+                data_type
+            }
+        ) = result
+    );
+    assert2::assert!(claim_name == "location");
+    assert2::assert!(data_type == "OBJECT");
 }

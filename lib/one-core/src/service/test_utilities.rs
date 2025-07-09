@@ -475,7 +475,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         ],
         verification_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         verification_key_storages: vec![KeyStorageType::Internal],
-        datatypes: vec![],
+        datatypes: vec!["STRING".into(), "OBJECT".into()],
         forbidden_claim_names: vec![],
         issuance_identifier_types: vec![ConfigIdentifierType::Did],
         verification_identifier_types: vec![ConfigIdentifierType::Did],

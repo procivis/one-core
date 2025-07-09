@@ -2,7 +2,7 @@ use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageType
 use one_core::repository::error::DataLayerError;
 use similar_asserts::assert_eq;
 
-use crate::utils::api_clients::credential_schemas::CreateSchemaParams;
+use crate::utils::api_clients::credential_schemas::{CreateSchemaParams, TestClaim};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
@@ -16,13 +16,15 @@ async fn test_create_credential_schema_success() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -56,13 +58,16 @@ async fn test_create_credential_schema_remote_secure_element_success() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            wallet_storage_type: Some("REMOTE_SECURE_ELEMENT".into()),
-            format: "JWT".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                wallet_storage_type: Some("REMOTE_SECURE_ELEMENT".into()),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims(Default::default()),
+        )
         .await;
 
     // THEN
@@ -90,25 +95,29 @@ async fn test_create_credential_schema_with_the_same_name_in_different_organisat
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     let resp1 = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation1.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation1.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -125,13 +134,15 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     assert_eq!(resp.status(), 201);
@@ -139,13 +150,15 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -175,13 +188,15 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -197,27 +212,31 @@ async fn test_fail_create_credential_schema_with_same_schema_id() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema1".into(),
-            organisation_id: organisation.id.into(),
-            format: "MDOC".into(),
-            claim_name: "foo".into(),
-            schema_id: Some("foo".into()),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema1".into(),
+                organisation_id: organisation.id.into(),
+                format: "MDOC".into(),
+                schema_id: Some("foo".into()),
+                ..Default::default()
+            }
+            .with_default_claims("foo".into()),
+        )
         .await;
 
     let resp1 = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema2".into(),
-            organisation_id: organisation.id.into(),
-            format: "MDOC".into(),
-            claim_name: "foo".into(),
-            schema_id: Some("foo".into()),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema2".into(),
+                organisation_id: organisation.id.into(),
+                format: "MDOC".into(),
+                schema_id: Some("foo".into()),
+                ..Default::default()
+            }
+            .with_default_claims("foo".into()),
+        )
         .await;
 
     // THEN
@@ -234,13 +253,15 @@ async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JSON_LD_CLASSIC".into(),
-            claim_name: "id".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JSON_LD_CLASSIC".into(),
+                ..Default::default()
+            }
+            .with_default_claims("id".into()),
+        )
         .await;
 
     // THEN
@@ -262,7 +283,12 @@ async fn test_fail_to_create_credential_schema_with_layout_properties_when_its_u
             name: "some credential schema".into(),
             organisation_id: organisation.id.into(),
             format: "PHYSICAL_CARD".into(),
-            claim_name: "firstName".into(),
+            claims: vec![TestClaim {
+                datatype: "STRING".into(),
+                key: "firstName".into(),
+                required: true,
+                ..Default::default()
+            }],
             ..Default::default()
         })
         .await;
@@ -281,15 +307,17 @@ async fn test_create_credential_schema_revocation_no_suspension_succeeds() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            suspension_allowed: Some(true),
-            revocation_method: Some("BITSTRINGSTATUSLIST".into()),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                suspension_allowed: Some(true),
+                revocation_method: Some("BITSTRINGSTATUSLIST".into()),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -305,15 +333,17 @@ async fn test_create_credential_schema_revocation_no_suspension_fails() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            suspension_allowed: Some(true),
-            revocation_method: Some("NONE".into()),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                suspension_allowed: Some(true),
+                revocation_method: Some("NONE".into()),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -371,16 +401,18 @@ async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspens
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "MDOC".into(),
-            revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
-            claim_name: "firstName".into(),
-            schema_id: Some("schema id".into()),
-            suspension_allowed: Some(false),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "MDOC".into(),
+                revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
+                schema_id: Some("schema id".into()),
+                suspension_allowed: Some(false),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -398,15 +430,17 @@ async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "MDOC".into(),
-            revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
-            claim_name: "firstName".into(),
-            schema_id: Some("schema id".into()),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "MDOC".into(),
+                revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
+                schema_id: Some("schema id".into()),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -423,14 +457,16 @@ async fn test_fail_create_credential_schema_invalid_logo() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            logo: Some("some invalid logo".into()),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                logo: Some("some invalid logo".into()),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
@@ -448,16 +484,46 @@ async fn test_fail_create_credential_schema_deactivated_organisation() {
     let resp = context
         .api
         .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "JWT".into(),
-            claim_name: "firstName".into(),
-            ..Default::default()
-        })
+        .create(
+            CreateSchemaParams {
+                name: "some credential schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
         .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0241", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_with_unsupported_data_type() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let mut create_request = CreateSchemaParams {
+        name: "Test".into(),
+        organisation_id: organisation.id.into(),
+        format: "SD_JWT_VC_SWIYU".into(),
+        schema_id: Some("ID".into()),
+        ..Default::default()
+    };
+    create_request.claims = vec![TestClaim {
+        datatype: "STRING".to_string(),
+        key: "firstName".to_string(),
+        required: true,
+        claims: vec![],
+        array: Some(true),
+    }];
+
+    // WHEN
+    let resp = context.api.credential_schemas.create(create_request).await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let err = resp.error_code().await;
+    assert_eq!(err, "BR_0245");
 }

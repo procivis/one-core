@@ -55,7 +55,7 @@ pub(crate) fn validate_create_request(
     validate_key_lengths(&request.claims, 0)?;
     validate_format(&request.format, &config.format)?;
     validate_revocation(&request.revocation_method, &config.revocation)?;
-    validate_nested_claim_schemas(&request.claims, config)?;
+    validate_nested_claim_schemas(&request.claims, config, formatter)?;
 
     let revocation_method = revocation_method_provider
         .get_revocation_method(&request.revocation_method)
@@ -82,10 +82,10 @@ pub(crate) fn check_background_properties(
         .and_then(|p| p.background.as_ref());
 
     if let Some(background) = background {
-        match (background.color.as_ref(), background.image.as_ref()) {
-            (Some(_), None) | (None, Some(_)) => return Ok(()),
-            _ => return Err(ValidationError::AttributeCombinationNotAllowed.into()),
-        }
+        return match (background.color.as_ref(), background.image.as_ref()) {
+            (Some(_), None) | (None, Some(_)) => Ok(()),
+            _ => Err(ValidationError::AttributeCombinationNotAllowed.into()),
+        };
     }
 
     Ok(())
@@ -100,14 +100,14 @@ pub(crate) fn check_logo_properties(
         .and_then(|p| p.logo.as_ref());
 
     if let Some(logo) = logo {
-        match (
+        return match (
             logo.background_color.as_ref(),
             logo.font_color.as_ref(),
             logo.image.as_ref(),
         ) {
-            (Some(_), Some(_), None) | (None, None, Some(_)) => return Ok(()),
-            _ => return Err(ValidationError::AttributeCombinationNotAllowed.into()),
-        }
+            (Some(_), Some(_), None) | (None, None, Some(_)) => Ok(()),
+            _ => Err(ValidationError::AttributeCombinationNotAllowed.into()),
+        };
     }
 
     Ok(())
@@ -225,11 +225,12 @@ fn validate_claims_names_are_not_forbidden(
 fn validate_nested_claim_schemas(
     claims: &[CredentialClaimSchemaRequestDTO],
     config: &CoreConfig,
+    formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
     validate_claim_schema_keys_unique(claims)?;
 
     for claim_schema in gather_claim_schemas(claims) {
-        validate_claim_schema(claim_schema, config)?;
+        validate_claim_schema(claim_schema, config, formatter)?;
     }
 
     validate_datatypes(
@@ -242,16 +243,15 @@ fn validate_nested_claim_schemas(
 fn validate_claim_schema(
     claim_schema: &CredentialClaimSchemaRequestDTO,
     config: &CoreConfig,
+    formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
     let claim_type = config.datatype.get_fields(&claim_schema.datatype)?.r#type();
     validate_claim_schema_name(claim_schema)?;
     validate_claim_schema_type(claim_schema, claim_type)?;
-    if let Some(is_array) = claim_schema.array {
-        if is_array {
-            config.datatype.get_if_enabled("ARRAY")?;
-        }
+    if let Some(true) = claim_schema.array {
+        config.datatype.get_if_enabled("ARRAY")?;
     }
-
+    validate_claims_schema_type_supported_by_formatter(claim_schema, formatter)?;
     Ok(())
 }
 
@@ -306,6 +306,36 @@ fn validate_claim_schema_type(
         }
     }
 
+    Ok(())
+}
+
+fn validate_claims_schema_type_supported_by_formatter(
+    claim_schema: &CredentialClaimSchemaRequestDTO,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), ValidationError> {
+    if let Some(true) = claim_schema.array {
+        validate_datatype_formatter_capabilities(
+            &claim_schema.key,
+            &"ARRAY".to_string(),
+            formatter,
+        )?;
+    }
+    validate_datatype_formatter_capabilities(&claim_schema.key, &claim_schema.datatype, formatter)
+}
+
+fn validate_datatype_formatter_capabilities(
+    claim_name: &String,
+    datatype: &String,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), ValidationError> {
+    if !formatter.get_capabilities().datatypes.contains(datatype) {
+        return Err(
+            ValidationError::CredentialSchemaClaimSchemaUnsupportedDatatype {
+                claim_name: claim_name.to_owned(),
+                data_type: datatype.to_owned(),
+            },
+        );
+    };
     Ok(())
 }
 
