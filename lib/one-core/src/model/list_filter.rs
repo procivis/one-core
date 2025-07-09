@@ -201,4 +201,15 @@ impl<FV> ListFilterCondition<FV> {
             Self::Value { .. } => false,
         }
     }
+
+    /// Tests if any node of the condition contains a specific filter value
+    /// - visits all nodes until the `matcher` gives a positive result
+    pub fn contains<Matcher: Fn(&FV) -> bool>(&self, matcher: &Matcher) -> bool {
+        match self {
+            Self::And(conditions) | Self::Or(conditions) => conditions
+                .iter()
+                .any(|condition| condition.contains(matcher)),
+            Self::Value(fv) => matcher(fv),
+        }
+    }
 }

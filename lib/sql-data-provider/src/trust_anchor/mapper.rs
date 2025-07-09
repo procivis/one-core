@@ -1,3 +1,4 @@
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::trust_anchor::TrustAnchor;
 use one_core::service::trust_anchor::dto::{SortableTrustAnchorColumn, TrustAnchorFilterValue};
 use sea_orm::sea_query::SimpleExpr;
@@ -47,7 +48,10 @@ impl IntoSortingColumn for SortableTrustAnchorColumn {
 }
 
 impl IntoFilterCondition for TrustAnchorFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(
+        self,
+        _entire_filter: &ListFilterCondition<TrustAnchorFilterValue>,
+    ) -> sea_orm::Condition {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(trust_anchor::Column::Name, string_match)

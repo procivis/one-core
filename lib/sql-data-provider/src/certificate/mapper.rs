@@ -1,6 +1,7 @@
 use one_core::model::certificate::{
     Certificate, CertificateFilterValue, SortableCertificateColumn,
 };
+use one_core::model::list_filter::ListFilterCondition;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 
@@ -61,7 +62,7 @@ impl IntoSortingColumn for SortableCertificateColumn {
 }
 
 impl IntoFilterCondition for CertificateFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::Ids(ids) => certificate::Column::Id.is_in(ids).into_condition(),
             Self::Name(string_match) => {

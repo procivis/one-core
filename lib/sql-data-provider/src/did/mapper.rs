@@ -1,4 +1,5 @@
 use one_core::model::did::{Did, DidFilterValue, SortableDidColumn};
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
@@ -43,7 +44,7 @@ impl IntoSortingColumn for SortableDidColumn {
 }
 
 impl IntoFilterCondition for DidFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::Name(string_match) => get_string_match_condition(did::Column::Name, string_match),
             Self::Method(method) => get_equals_condition(did::Column::Method, method),

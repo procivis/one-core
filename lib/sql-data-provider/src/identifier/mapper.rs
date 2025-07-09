@@ -1,4 +1,5 @@
 use one_core::model::identifier::{Identifier, IdentifierFilterValue, SortableIdentifierColumn};
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
 use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
@@ -71,7 +72,7 @@ impl IntoSortingColumn for SortableIdentifierColumn {
 }
 
 impl IntoFilterCondition for IdentifierFilterValue {
-    fn get_condition(self) -> Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
             IdentifierFilterValue::Ids(ids) => identifier::Column::Id.is_in(ids).into_condition(),
             IdentifierFilterValue::Name(string_match) => {

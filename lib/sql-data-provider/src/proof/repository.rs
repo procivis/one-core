@@ -20,7 +20,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofProvider;
-use super::mapper::{create_list_response, get_proof_claim_active_model};
+use super::mapper::{
+    create_list_response, get_proof_claim_active_model, needs_interaction_table_for_filter,
+};
 use super::model::ProofListItemModel;
 use crate::entity::{did, identifier, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
@@ -221,7 +223,7 @@ impl ProofRepository for ProofProvider {
 
 /// produces list query declared to be used together with `into_model::<ProofListItemModel>()`
 fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::proof::Entity> {
-    crate::entity::proof::Entity::find()
+    let mut query = crate::entity::proof::Entity::find()
         .select_only()
         .columns([
             proof::Column::Id,
@@ -286,16 +288,25 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(
             proof_schema::Column::OrganisationId,
             "schema_organisation_id",
-        )
-        // add related interaction (which we need to filter by organisation on the holder side)
-        .join(
+        );
+
+    if needs_interaction_table_for_filter(query_params.filtering.as_ref()) {
+        query = query.join(
             sea_orm::JoinType::LeftJoin,
             proof::Relation::Interaction.def(),
-        )
-        .with_list_query(query_params)
+        );
+    }
+
+    query = query.with_list_query(query_params);
+
+    if query_params.sorting.is_some() || query_params.pagination.is_some() {
         // fallback ordering
-        .order_by_desc(proof::Column::CreatedDate)
-        .order_by_desc(proof::Column::Id)
+        query = query
+            .order_by_desc(proof::Column::CreatedDate)
+            .order_by_desc(proof::Column::Id);
+    }
+
+    query
 }
 
 impl ProofProvider {

@@ -1,4 +1,5 @@
 use one_core::model::key::{Key, KeyFilterValue, SortableKeyColumn};
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
@@ -40,7 +41,7 @@ impl IntoSortingColumn for SortableKeyColumn {
 }
 
 impl IntoFilterCondition for KeyFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(entity::key::Column::Name, string_match)

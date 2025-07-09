@@ -1,6 +1,7 @@
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn,
 };
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
@@ -27,7 +28,7 @@ impl IntoSortingColumn for SortableCredentialSchemaColumn {
 }
 
 impl IntoFilterCondition for CredentialSchemaFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)

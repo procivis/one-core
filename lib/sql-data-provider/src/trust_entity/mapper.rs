@@ -1,3 +1,4 @@
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::trust_entity::TrustEntity;
 use one_core::service::did::dto::DidListItemResponseDTO;
 use one_core::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
@@ -121,7 +122,7 @@ impl IntoSortingColumn for SortableTrustEntityColumnEnum {
 }
 
 impl IntoFilterCondition for TrustEntityFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(trust_entity::Column::Name, string_match)

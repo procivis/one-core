@@ -3,6 +3,7 @@ use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
 use one_core::model::identifier::Identifier;
 use one_core::model::interaction::InteractionId;
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialFilterValue;
@@ -32,7 +33,7 @@ impl IntoSortingColumn for SortableCredentialColumn {
 }
 
 impl IntoFilterCondition for CredentialFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::CredentialSchemaName(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)

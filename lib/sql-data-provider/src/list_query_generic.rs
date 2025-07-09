@@ -20,7 +20,11 @@ pub trait IntoSortingColumn {
 
 pub trait IntoFilterCondition: Clone + ListFilterValue {
     /// converts single query field into a sea-orm condition
-    fn get_condition(self) -> Condition;
+    ///
+    /// # Arguments
+    ///
+    /// * `entire_filter` - Complete filter containing the list filter value
+    fn get_condition(self, entire_filter: &ListFilterCondition<Self>) -> Condition;
 }
 
 pub struct JoinRelation {
@@ -132,7 +136,7 @@ where
 
         if let Some(filter) = &query.filtering {
             if !filter.is_empty() {
-                result = result.filter(get_filter_condition(filter));
+                result = result.filter(get_filter_condition(filter, filter));
             }
         }
 
@@ -156,13 +160,14 @@ where
 // helpers
 fn get_filter_condition<FilterValue: IntoFilterCondition>(
     filter_condition: &ListFilterCondition<FilterValue>,
+    entire_filter: &ListFilterCondition<FilterValue>,
 ) -> Condition {
     match filter_condition {
         ListFilterCondition::And(conditions) => {
             let mut result = Condition::all();
             for condition in conditions {
                 if !condition.is_empty() {
-                    result = result.add(get_filter_condition(condition));
+                    result = result.add(get_filter_condition(condition, entire_filter));
                 }
             }
             result
@@ -171,12 +176,12 @@ fn get_filter_condition<FilterValue: IntoFilterCondition>(
             let mut result = Condition::any();
             for condition in conditions {
                 if !condition.is_empty() {
-                    result = result.add(get_filter_condition(condition));
+                    result = result.add(get_filter_condition(condition, entire_filter));
                 }
             }
             result
         }
-        ListFilterCondition::Value(value) => value.to_owned().get_condition(),
+        ListFilterCondition::Value(value) => value.to_owned().get_condition(entire_filter),
     }
 }
 

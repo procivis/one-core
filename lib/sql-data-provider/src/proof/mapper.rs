@@ -1,6 +1,7 @@
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
 use one_core::model::identifier::Identifier;
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::proof::{GetProofList, Proof, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
@@ -28,16 +29,46 @@ impl IntoSortingColumn for SortableProofColumn {
     }
 }
 
+/// Decides whether to SQL-JOIN related interactions (which we need to filter by organisation on the holder side)
+pub(super) fn needs_interaction_table_for_filter(
+    filter: Option<&ListFilterCondition<ProofFilterValue>>,
+) -> bool {
+    let Some(filter) = filter else {
+        return false;
+    };
+
+    let has_organisation_filter =
+        filter.contains(&|fv| matches!(fv, ProofFilterValue::OrganisationId(_)));
+
+    let has_verifier_only_role_filter = filter.contains(&|fv| {
+        let ProofFilterValue::ProofRoles(roles) = fv else {
+            return false;
+        };
+
+        roles
+            .iter()
+            .all(|role| role == &one_core::model::proof::ProofRole::Verifier)
+    });
+
+    has_organisation_filter && !has_verifier_only_role_filter
+}
+
 impl IntoFilterCondition for ProofFilterValue {
-    fn get_condition(self) -> sea_orm::Condition {
+    fn get_condition(self, entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(proof_schema::Column::Name, string_match)
             }
-            Self::OrganisationId(organisation_id) => proof_schema::Column::OrganisationId
-                .eq(organisation_id)
-                .or(interaction::Column::OrganisationId.eq(organisation_id))
-                .into_condition(),
+            Self::OrganisationId(organisation_id) => {
+                if needs_interaction_table_for_filter(Some(entire_filter)) {
+                    proof_schema::Column::OrganisationId
+                        .eq(organisation_id)
+                        .or(interaction::Column::OrganisationId.eq(organisation_id))
+                } else {
+                    proof_schema::Column::OrganisationId.eq(organisation_id)
+                }
+                .into_condition()
+            }
             Self::ProofStates(states) => proof::Column::State
                 .is_in(states.into_iter().map(ProofRequestState::from))
                 .into_condition(),
