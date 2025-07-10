@@ -148,8 +148,12 @@ pub(super) struct ValidatedProofClaimDTO {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub nonce: String,
+    #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_with_serde_json")]
+    pub dcql_query: Option<DcqlQuery>,
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,

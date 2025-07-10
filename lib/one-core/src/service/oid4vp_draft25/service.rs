@@ -428,9 +428,15 @@ impl OID4VPDraft25Service {
                 "missing interaction".to_string(),
             ))?;
 
-        let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
+        let Some(presentation_definition) =
+            parse_interaction_content(interaction.data.as_ref())?.presentation_definition
+        else {
+            return Err(ServiceError::MappingError(
+                "missing presentation definition".to_string(),
+            ));
+        };
 
-        crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition(&proof, interaction_data.presentation_definition).map_err(Into::into)
+        crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition(&proof, presentation_definition).map_err(Into::into)
     }
 
     async fn mark_proof_as_failed(&self, id: &ProofId, error_metadata: HistoryErrorMetadata) {

@@ -360,7 +360,7 @@ fn generate_authorization_request_params(
 
     let OpenID4VPVerifierInteractionContent {
         nonce,
-        presentation_definition,
+        presentation_definition: Some(presentation_definition),
         client_id,
         response_uri: Some(response_uri),
         ..

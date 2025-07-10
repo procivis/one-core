@@ -474,10 +474,17 @@ impl VerificationProtocol for OpenID4VP20HTTP {
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let interaction_id = Uuid::new_v4();
 
+        let proof_schema = proof
+            .schema
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "missing proof schema".to_string(),
+            ))?;
+
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
             interaction_id,
-            proof,
+            proof_schema,
             type_to_descriptor,
             format_to_type_mapper,
             &*self.formatter_provider,
@@ -547,7 +554,8 @@ impl VerificationProtocol for OpenID4VP20HTTP {
 
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
-            presentation_definition,
+            presentation_definition: Some(presentation_definition),
+            dcql_query: None,
             client_id: client_id.to_owned(),
             client_id_scheme: Some(client_id_scheme),
             encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),

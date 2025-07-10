@@ -11,7 +11,7 @@ use bon::Builder;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-mod builder;
+pub mod builder;
 mod display;
 pub mod mapper;
 pub mod matching;

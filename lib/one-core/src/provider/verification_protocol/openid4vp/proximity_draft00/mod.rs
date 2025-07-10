@@ -840,9 +840,17 @@ pub(super) async fn prepare_proof_share(
     ),
     VerificationProtocolError,
 > {
+    let proof_schema = params
+        .proof
+        .schema
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "missing proof schema".to_string(),
+        ))?;
+
     let presentation_definition = create_open_id_for_vp_presentation_definition(
         params.interaction_id,
-        params.proof,
+        proof_schema,
         params.type_to_descriptor,
         params.format_to_type_mapper,
         params.formatter_provider,

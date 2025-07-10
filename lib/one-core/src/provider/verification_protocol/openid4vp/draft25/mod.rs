@@ -44,6 +44,7 @@ use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
+use crate::provider::verification_protocol::openid4vp::draft25::dcql::create_dcql_query;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
 };
@@ -61,6 +62,7 @@ use crate::provider::verification_protocol::openid4vp::{
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
+mod dcql;
 pub mod mappers;
 pub(crate) mod model;
 #[cfg(test)]
@@ -490,21 +492,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
         let interaction_id = Uuid::new_v4();
 
-        if self.params.verifier.use_dcql {
-            return Err(VerificationProtocolError::Failed(
-                "DCQL not yet implemented".to_string(),
-            ));
-        }
-
-        // Pass the expected presentation content to interaction for verification
-        let presentation_definition = create_open_id_for_vp_presentation_definition(
-            interaction_id,
-            proof,
-            type_to_descriptor,
-            format_to_type_mapper,
-            &*self.formatter_provider,
-        )?;
-
         let Some(base_url) = &self.base_url else {
             return Err(VerificationProtocolError::Failed("Missing base_url".into()));
         };
@@ -567,10 +554,36 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 .to_string(),
         };
 
+        let proof_schema = proof
+            .schema
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "Proof schema not found".to_string(),
+            ))?;
+
+        let (presentation_definition, dcql_query) = if self.params.verifier.use_dcql {
+            (
+                None,
+                Some(create_dcql_query(proof_schema, &format_to_type_mapper)?),
+            )
+        } else {
+            (
+                Some(create_open_id_for_vp_presentation_definition(
+                    interaction_id,
+                    proof_schema,
+                    type_to_descriptor,
+                    format_to_type_mapper,
+                    &*self.formatter_provider,
+                )?),
+                None,
+            )
+        };
+
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
             presentation_definition,
             client_id: encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
+            dcql_query,
             encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),

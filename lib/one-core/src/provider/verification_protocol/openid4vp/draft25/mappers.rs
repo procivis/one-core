@@ -128,8 +128,30 @@ fn get_params_for_redirect_uri(
     vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     interaction_data: &OpenID4VPVerifierInteractionContent,
 ) -> Result<OpenID4VP25AuthorizationRequestQueryParams, VerificationProtocolError> {
-    let presentation_definition = serde_json::to_string(&interaction_data.presentation_definition)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    if interaction_data.presentation_definition.is_some() && interaction_data.dcql_query.is_some() {
+        return Err(
+            VerificationProtocolError::InvalidDcqlQueryOrPresentationDefinition(
+                "Either presentation_definition or dcql_query must be present".to_string(),
+            ),
+        );
+    }
+
+    let presentation_definition = interaction_data
+        .presentation_definition
+        .as_ref()
+        .map(|pd| {
+            serde_json::to_string(&pd).map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        })
+        .transpose()?;
+
+    let dcql_query = interaction_data
+        .dcql_query
+        .as_ref()
+        .map(|dcql| {
+            serde_json::to_string(&dcql)
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        })
+        .transpose()?;
 
     let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(jwk, vp_formats))
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -142,12 +164,12 @@ fn get_params_for_redirect_uri(
         client_metadata: Some(metadata),
         response_uri: Some(client_id),
         nonce: Some(nonce),
-        presentation_definition: Some(presentation_definition),
+        presentation_definition,
         presentation_definition_uri: None,
         request: None,
         request_uri: None,
         redirect_uri: None,
-        dcql_query: None,
+        dcql_query,
     })
 }
 

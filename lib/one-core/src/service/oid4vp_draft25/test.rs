@@ -108,7 +108,8 @@ async fn test_presentation_definition_success() {
     let interaction_data = serde_json::to_vec(&OpenID4VPVerifierInteractionContent {
         nonce: "nonce".to_string(),
         encryption_key_id: None,
-        presentation_definition: OpenID4VPPresentationDefinition {
+        dcql_query: None,
+        presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: Uuid::new_v4().to_string(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
                 id: "123".to_string(),
@@ -129,7 +130,7 @@ async fn test_presentation_definition_success() {
                     limit_disclosure: None,
                 },
             }],
-        },
+        }),
         client_id: "client_id".to_string(),
         client_id_scheme: None,
         response_uri: None,
@@ -248,7 +249,8 @@ async fn test_submit_proof_failed_credential_suspended() {
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key_id: None,
-        presentation_definition: OpenID4VPPresentationDefinition {
+        dcql_query: None,
+        presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: interaction_id.to_string(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
                 id: "input_0".to_string(),
@@ -283,7 +285,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                     limit_disclosure: None,
                 },
             }],
-        },
+        }),
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
@@ -545,7 +547,8 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key_id: None,
-        presentation_definition: OpenID4VPPresentationDefinition {
+        dcql_query: None,
+        presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: interaction_id.to_string(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
                 id: "input_0".to_string(),
@@ -580,7 +583,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                     limit_disclosure: None,
                 },
             }],
-        },
+        }),
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,

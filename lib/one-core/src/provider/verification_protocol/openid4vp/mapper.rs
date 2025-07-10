@@ -28,8 +28,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
-use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CertificateDetails, ExtractPresentationCtx, IssuerDetails,
 };
@@ -228,17 +227,11 @@ pub fn create_format_map(
 
 pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
-    proof: &Proof,
+    proof_schema: &ProofSchema,
     format_type_to_input_descriptor_format: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinition, VerificationProtocolError> {
-    let proof_schema = proof
-        .schema
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "Proof schema not found".to_string(),
-        ))?;
     // using vec to keep the original order of claims/credentials in the proof request
     let requested_credentials: Vec<(CredentialSchema, Option<Vec<ProofInputClaimSchema>>)> =
         match proof_schema.input_schemas.as_ref() {

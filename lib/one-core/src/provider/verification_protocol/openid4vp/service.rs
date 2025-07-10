@@ -71,7 +71,7 @@ pub(crate) fn oidc_verifier_presentation_definition(
     mut presentation_definition: OpenID4VPPresentationDefinition,
 ) -> Result<OpenID4VPPresentationDefinition, OpenID4VCError> {
     let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
-        "Proof schema not found".to_string(),
+        "missing proof schema".to_string(),
     ))?;
 
     let proof_schema_inputs = match proof_schema.input_schemas.as_ref() {
@@ -196,12 +196,14 @@ async fn process_proof_submission(
     )
     .await?;
 
+    let Some(presentation_definition) = interaction_data.presentation_definition.clone() else {
+        return Err(OpenID4VCError::ValidationError(
+            "Missing presentation definition".to_string(),
+        ));
+    };
+
     if presentation_submission.descriptor_map.len()
-        != (interaction_data
-            .presentation_definition
-            .input_descriptors
-            .len()
-            + extracted_lvvcs.len())
+        != (presentation_definition.input_descriptors.len() + extracted_lvvcs.len())
     {
         return Err(OpenID4VCError::ValidationError(
             "different count of requested and submitted credentials".to_string(),
@@ -212,8 +214,7 @@ async fn process_proof_submission(
 
     // Unpack presentations and credentials
     for presentation_submitted in &presentation_submission.descriptor_map {
-        let input_descriptor = interaction_data
-            .presentation_definition
+        let input_descriptor = presentation_definition
             .input_descriptors
             .iter()
             .find(|descriptor| descriptor.id == presentation_submitted.id)
