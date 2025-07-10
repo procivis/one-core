@@ -149,7 +149,7 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
     assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
     body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
         .assert_eq(&vec![credential.id.to_string()]);
-    let field = json!({
+    let field1 = json!({
         "id": "firstName",
         "keyMap": {
             credential.id.to_string(): "firstName"
@@ -157,7 +157,17 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
         "name": "firstName",
         "required": true
     });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+    // also shown because JWT does not support selective disclosure
+    let field2 = json!({
+        "id": "isOver18",
+        "keyMap": {
+            credential.id.to_string(): "isOver18"
+        },
+        "name": "isOver18",
+        "required": true
+    });
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"]
+        .assert_eq_unordered(&[field1, field2]);
 }
 
 #[tokio::test]
@@ -535,6 +545,63 @@ async fn test_get_presentation_definition_dcql_multiple() {
     );
 }
 
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_no_claims() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Simple test schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some(vct.to_string()),
+                format: Some("SD_JWT_VC".to_owned()),
+                schema_type: Some(CredentialSchemaType::SdJwtVc),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+        .assert_eq(&vec![credential.id.to_string()]);
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq::<Vec<()>>(&vec![]);
+}
+
 async fn proof_for_dcql_query(
     context: &TestContext,
     org: &Organisation,
@@ -582,4 +649,133 @@ fn interaction_data_dcql(dcql_query: &DcqlQuery) -> Vec<u8> {
     })
     .to_string()
     .into_bytes()
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let schema_id1 = "https://example.org/foo-no-sd";
+    let credential_schema_no_sd = context
+        .db
+        .credential_schemas
+        .create(
+            "Schema no SD",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some(schema_id1.to_string()),
+                format: Some("JWT".to_owned()),
+                schema_type: Some(CredentialSchemaType::SdJwtVc),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let schema_id2 = "https://example.org/foo-sd";
+    let credential_schema_with_sd = context
+        .db
+        .credential_schemas
+        .create(
+            "Schema with SD",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some(schema_id2.to_string()),
+                format: Some("JSON_LD_BBSPLUS".to_owned()),
+                schema_type: Some(CredentialSchemaType::SdJwtVc),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential1 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema_no_sd,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential2 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema_with_sd,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // Allow both credential schemas
+    let credential_query = CredentialQuery::jwt_vc(vec![
+        vec![
+            "https://www.w3.org/ns/credentials/v2".to_owned(),
+            "https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json".to_owned(),
+            format!("{schema_id1}#SchemaNoSd"),
+        ],
+        vec![
+            "https://www.w3.org/ns/credentials/v2".to_owned(),
+            format!("{schema_id2}#SchemaWithSd"),
+        ],
+    ])
+    .id("test_id")
+    .claims(vec![
+        ClaimQuery::builder()
+            .path(vec!["firstName".to_string()])
+            // this is _not_ mandatory
+            .required(false)
+            .build(),
+    ])
+    .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+
+    // both credentials are applicable
+    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+        .assert_eq_unordered(&[credential1.id.to_string(), credential2.id.to_string()]);
+
+    // because credential1 does not support selective disclosure, all it's claims are present in fields
+    // (despite only one being requested) and all of them are required true (despite the requested claim
+    // being required false).
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["required"].assert_eq(&true);
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"][1]["required"].assert_eq(&true);
+
+    let fields = body["requestGroups"][0]["requestedCredentials"][0]["fields"]
+        .as_array()
+        .unwrap();
+    // This claim was asked for by the verifier, both credentials are applicable
+    assert!(
+        fields
+            .iter()
+            .any(|field| field["id"] == "firstName"
+                && field["keyMap"].as_object().unwrap().len() == 2)
+    );
+
+    // This claim was not asked for by the verifier but since it is included in credential1, and it is not selectively disclosable, it is listed.
+    // For credential2 this claim is not even selectable, as it was never asked for.
+    assert!(fields.iter().any(|field| field["id"] == "isOver18"
+        && field["keyMap"] == json!({credential1.id.to_string(): "isOver18"})));
 }
