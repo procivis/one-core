@@ -28,6 +28,7 @@ asn1-rs            = { version = "0.7" }
 async-trait        = { version = "0.1" }
 autometrics        = { version = "2.0", features = ["prometheus-0_13"] }
 axum               = { version = "0.8", features = ["macros"] }
+bon                = { version = "3.6.4" }
 bs58               = { version = "0.5" }
 ct-codecs          = { version = "1.1" }
 futures            = { version = "0.3" }

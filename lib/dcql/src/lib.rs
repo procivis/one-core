@@ -7,9 +7,11 @@
 
 use std::fmt::Debug;
 
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod builder;
 mod display;
 pub mod mapper;
 /// Digital Credentials Query Language (DCQL) query structure
@@ -18,7 +20,7 @@ pub mod mapper;
 /// https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#section-6
 /// Following fields are not supported
 /// - credential_sets
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 pub struct DcqlQuery {
     pub credentials: Vec<CredentialQuery>,
 }
@@ -32,8 +34,10 @@ pub struct CredentialQueryId(String);
 /// - multiple
 /// - trusted_authorities
 /// - require_cryptographic_holder_binding
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
+#[builder(start_fn(vis = ""))]
 pub struct CredentialQuery {
+    #[builder(into)]
     pub id: CredentialQueryId,
     pub format: CredentialFormat,
     pub meta: CredentialMeta,
@@ -59,10 +63,12 @@ pub struct ClaimQueryId(String);
 ///
 /// The following fields defined in the specification are not supported
 /// - values
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 pub struct ClaimQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(into)]
     pub id: Option<ClaimQueryId>,
+    #[builder(into)]
     pub path: ClaimPath,
     // Custom field to mark if a claim is required or optional
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -84,7 +90,7 @@ pub enum CredentialFormat {
     SdJwt,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 #[serde(transparent)]
 pub struct ClaimPath {
     segments: Vec<PathSegment>,
@@ -110,11 +116,11 @@ pub enum DcqlError {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use serde_json::{Value, json};
     use similar_asserts::assert_eq;
 
-    use super::*;
+    use crate::*;
 
     #[test]
     fn test_claim_path() {
