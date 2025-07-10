@@ -198,7 +198,7 @@ pub async fn create_key(
         last_modified: params.last_modified.unwrap_or(now),
         public_key: params.public_key.unwrap_or_default(),
         name: unwrap_or_random(params.name),
-        key_reference: params.key_reference.unwrap_or_default(),
+        key_reference: params.key_reference,
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
         organisation: Some(organisation.to_owned()),
@@ -263,21 +263,6 @@ pub async fn create_eddsa_key(db_conn: &DbConn, organisation: &Organisation) -> 
         }),
     )
     .await
-}
-
-pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-    data_layer
-        .get_key_repository()
-        .get_key(
-            id,
-            &KeyRelations {
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
-        .await
-        .unwrap()
-        .unwrap()
 }
 
 #[derive(Debug, Default)]

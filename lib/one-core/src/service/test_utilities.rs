@@ -386,7 +386,7 @@ pub fn dummy_key() -> Key {
         last_modified: OffsetDateTime::now_utc(),
         public_key: vec![],
         name: "dummy".into(),
-        key_reference: vec![],
+        key_reference: None,
         storage_type: "foo".into(),
         key_type: "EDDSA".into(),
         organisation: None,

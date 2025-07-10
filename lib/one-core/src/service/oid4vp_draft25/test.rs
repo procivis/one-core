@@ -863,7 +863,7 @@ async fn test_get_client_metadata_success() {
         last_modified: now,
         public_key: vec![],
         name: "verifier_key1".to_string(),
-        key_reference: vec![],
+        key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
         organisation: None,

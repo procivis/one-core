@@ -133,7 +133,7 @@ fn auth_fn() -> impl SignatureProvider {
             last_modified: OffsetDateTime::now_utc(),
             public_key,
             name: "test".to_string(),
-            key_reference: vec![],
+            key_reference: None,
             storage_type: "test".to_string(),
             key_type: "test".to_string(),
             organisation: None,

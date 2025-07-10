@@ -18,7 +18,7 @@ pub struct Key {
     pub last_modified: OffsetDateTime,
     pub public_key: Vec<u8>,
     pub name: String,
-    pub key_reference: Vec<u8>,
+    pub key_reference: Option<Vec<u8>>,
     pub storage_type: String,
     pub key_type: String,
 
@@ -29,6 +29,10 @@ pub struct Key {
 impl Key {
     pub fn key_algorithm_type(&self) -> Option<KeyAlgorithmType> {
         KeyAlgorithmType::from_str(&self.key_type).ok()
+    }
+
+    pub fn is_remote(&self) -> bool {
+        self.key_reference.is_none()
     }
 }
 
@@ -53,6 +57,13 @@ pub enum KeyFilterValue {
     KeyType(String),
     KeyStorage(String),
     Ids(Vec<KeyId>),
+    Remote(bool),
+}
+
+impl KeyFilterValue {
+    pub fn remote(v: impl Into<bool>) -> Self {
+        Self::Remote(v.into())
+    }
 }
 
 impl ListFilterValue for KeyFilterValue {}

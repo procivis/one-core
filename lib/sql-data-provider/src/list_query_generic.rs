@@ -217,6 +217,15 @@ pub(crate) fn get_comparison_condition<T: Into<Value>>(
     .into_condition()
 }
 
+pub(crate) fn get_nullability_condition(column: impl ColumnTrait, is_null: bool) -> Condition {
+    if is_null {
+        column.is_null()
+    } else {
+        column.is_not_null()
+    }
+    .into_condition()
+}
+
 /// helper function to construct an `eq` `sea_query::Condition` with a specific value
 pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Value>) -> Condition {
     column.eq(value).into_condition()

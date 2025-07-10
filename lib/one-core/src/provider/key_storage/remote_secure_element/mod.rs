@@ -112,9 +112,12 @@ impl SignaturePublicKeyHandle for RemoteSecureElementKeyHandle {
 #[async_trait::async_trait]
 impl SignaturePrivateKeyHandle for RemoteSecureElementKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        self.native_storage
-            .sign(&self.key.key_reference, message)
-            .await
+        let key_reference = self
+            .key
+            .key_reference
+            .as_ref()
+            .ok_or(SignerError::MissingKeyReference)?;
+        self.native_storage.sign(key_reference, message).await
     }
 }
 

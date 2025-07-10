@@ -235,7 +235,7 @@ fn generic_credential() -> Credential {
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
-                key_reference: vec![],
+                key_reference: None,
                 storage_type: "INTERNAL".to_string(),
                 key_type: "EDDSA".to_string(),
                 organisation: None,

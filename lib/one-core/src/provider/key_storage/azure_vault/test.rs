@@ -241,7 +241,7 @@ async fn test_azure_vault_sign() {
             last_modified: OffsetDateTime::now_utc(),
             public_key: vec![],
             name: "".to_string(),
-            key_reference: key_reference.as_bytes().to_vec(),
+            key_reference: Some(key_reference.as_bytes().to_vec()),
             storage_type: "".to_string(),
             key_type: "".to_string(),
             organisation: None,

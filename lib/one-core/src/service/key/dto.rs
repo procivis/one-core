@@ -33,6 +33,7 @@ pub struct KeyResponseDTO {
     pub public_key: Vec<u8>,
     pub key_type: String,
     pub storage_type: String,
+    pub is_remote: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, From)]

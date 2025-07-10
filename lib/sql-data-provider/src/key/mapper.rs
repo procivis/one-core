@@ -7,7 +7,8 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
 use crate::entity;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_nullability_condition,
+    get_string_match_condition,
 };
 
 pub(super) fn from_model_and_relations(
@@ -54,6 +55,9 @@ impl IntoFilterCondition for KeyFilterValue {
                 get_equals_condition(entity::key::Column::StorageType, storage)
             }
             Self::Ids(ids) => entity::key::Column::Id.is_in(ids).into_condition(),
+            Self::Remote(is_remote) => {
+                get_nullability_condition(entity::key::Column::KeyReference, is_remote)
+            }
         }
     }
 }

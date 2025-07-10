@@ -30,7 +30,7 @@ async fn test_generate_success() {
         .return_once(|_| {
             Ok(StorageGeneratedKey {
                 public_key: b"public_key".into(),
-                key_reference: b"key_reference".into(),
+                key_reference: Some(b"key_reference".into()),
             })
         });
 
@@ -41,7 +41,7 @@ async fn test_generate_success() {
         .await
         .unwrap();
     assert_eq!(result.public_key, b"public_key");
-    assert_eq!(result.key_reference, b"key_reference");
+    assert_eq!(result.key_reference, Some(b"key_reference".to_vec()));
 }
 
 #[tokio::test]
@@ -72,7 +72,7 @@ async fn test_sign_success() {
     let key_handle = provider
         .key_handle(&Key {
             id: Uuid::new_v4().into(),
-            key_reference: b"key_reference".to_vec(),
+            key_reference: Some(b"key_reference".to_vec()),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             public_key: b"public_key".to_vec(),

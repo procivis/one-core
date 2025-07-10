@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::dto::common::{Boolean, ExactColumn, ListQueryParamsRest};
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
@@ -66,6 +66,8 @@ pub struct KeyResponseRestDTO {
     pub key_type: String,
     #[try_from(infallible)]
     pub storage_type: String,
+    #[try_from(infallible)]
+    pub is_remote: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
@@ -123,6 +125,9 @@ pub struct KeyFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
+    /// Return only keys being a remote.
+    #[param(inline, nullable = false)]
+    pub is_remote: Option<Boolean>,
 }
 
 pub type GetKeyQuery = ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKeyColumnRestDTO>;

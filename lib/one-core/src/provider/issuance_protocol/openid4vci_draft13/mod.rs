@@ -1024,7 +1024,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             last_modified: OffsetDateTime::now_utc(),
             public_key,
             name: "temporary-rejection".to_string(),
-            key_reference: vec![],
+            key_reference: None,
             storage_type: "memory".to_string(),
             key_type: key_algorithm_type.to_string(),
             organisation: None,

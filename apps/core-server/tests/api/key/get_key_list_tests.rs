@@ -60,6 +60,7 @@ async fn test_get_keys_ok() {
             key_type: None,
             key_storage: None,
             ids: None,
+            is_remote: None,
         })
         .await;
 
@@ -117,6 +118,7 @@ async fn test_get_keys_filter_by_key_type() {
             key_type: Some("EDDSA".to_string()),
             key_storage: None,
             ids: None,
+            is_remote: None,
         })
         .await;
 
@@ -172,6 +174,7 @@ async fn test_get_keys_filter_by_key_storage() {
             key_type: None,
             key_storage: Some("INTERNAL".to_string()),
             ids: None,
+            is_remote: None,
         })
         .await;
 
@@ -184,4 +187,86 @@ async fn test_get_keys_filter_by_key_storage() {
     assert_eq!(1, values.len());
     let key_id: KeyId = values[0]["id"].parse();
     assert_eq!(key.id, key_id);
+}
+
+#[tokio::test]
+async fn test_get_keys_filter_by_is_remote() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key1 = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                key_reference: None,
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let key2 = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                key_reference: Some(b"testKey2".to_vec()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_type: None,
+            key_storage: None,
+            ids: None,
+            is_remote: Some(true),
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+
+    assert_eq!(1, values.len());
+    let key_id: KeyId = values[0]["id"].parse();
+    assert_eq!(key1.id, key_id);
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_type: None,
+            key_storage: None,
+            ids: None,
+            is_remote: Some(false),
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+
+    assert_eq!(1, values.len());
+    let key_id: KeyId = values[0]["id"].parse();
+    assert_eq!(key2.id, key_id);
 }

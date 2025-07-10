@@ -210,7 +210,7 @@ async fn test_create_did_jwk_success() {
         last_modified: OffsetDateTime::now_utc(),
         public_key: b"public".into(),
         name: "name".to_owned(),
-        key_reference: vec![],
+        key_reference: None,
         storage_type: "test".to_owned(),
         key_type: "ECDSA".to_owned(),
         organisation: None,

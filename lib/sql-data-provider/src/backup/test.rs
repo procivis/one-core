@@ -35,7 +35,7 @@ async fn insert_key_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set(Uuid::new_v4().to_string()),
         public_key: Set(vec![]),
-        key_reference: Set(vec![]),
+        key_reference: Set(None),
         storage_type: Set(storage_type.into()),
         key_type: Set("".into()),
         organisation_id: Set(organisation_id),

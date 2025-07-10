@@ -97,6 +97,8 @@ pub enum SignerError {
     MissingAlgorithm(String),
     #[error("Missing key")]
     MissingKey,
+    #[error("Missing key reference")]
+    MissingKeyReference,
 }
 
 /// Provides hashing.

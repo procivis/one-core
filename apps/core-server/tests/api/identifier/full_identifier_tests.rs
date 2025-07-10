@@ -13,7 +13,13 @@ async fn test_identifier_success() {
     let key = context
         .db
         .keys
-        .create(&organisation, TestingKeyParams::default())
+        .create(
+            &organisation,
+            TestingKeyParams {
+                key_reference: Some(b"test_key".to_vec()),
+                ..Default::default()
+            },
+        )
         .await;
 
     let result = context
@@ -297,4 +303,23 @@ async fn test_identifier_filter_key_success() {
     assert_eq!(result.status(), 200);
     let resp = result.json_value().await;
     assert_eq!(0, resp["totalItems"]);
+}
+
+#[tokio::test]
+async fn test_identifier_with_remote_key_fails() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let mut key_params = eddsa_key_2().params;
+    key_params.key_reference = None;
+    let key = context.db.keys.create(&organisation, key_params).await;
+
+    let key_identifier_name = "test-key-identifier";
+    let result = context
+        .api
+        .identifiers
+        .create_key_identifier(key_identifier_name, key.id, organisation.id)
+        .await;
+    assert_eq!(result.status(), 400);
+    let resp = result.json_value().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0076");
 }

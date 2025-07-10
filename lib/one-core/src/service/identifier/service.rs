@@ -166,6 +166,10 @@ impl IdentifierService {
                     .await?
                     .ok_or(EntityNotFoundError::Key(key_id))?;
 
+                if key.is_remote() {
+                    return Err(ValidationError::KeyMustNotBeRemote(key.name).into());
+                }
+
                 let id = Uuid::new_v4().into();
                 self.identifier_repository
                     .create(Identifier {

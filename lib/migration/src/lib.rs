@@ -129,6 +129,7 @@ mod m20250624_112336_add_deactivated_at_to_organisation;
 mod m20250630_144901_add_expiry_to_remote_entity_cache;
 mod m20250708_110608_credential_list_indexes;
 
+mod m20250709_133731_key_reference_nullable;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -259,6 +260,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250624_112336_add_deactivated_at_to_organisation::Migration),
             Box::new(m20250630_144901_add_expiry_to_remote_entity_cache::Migration),
             Box::new(m20250708_110608_credential_list_indexes::Migration),
+            Box::new(m20250709_133731_key_reference_nullable::Migration),
         ]
     }
 }

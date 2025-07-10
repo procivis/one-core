@@ -318,7 +318,7 @@ mod tests {
             last_modified: OffsetDateTime::now_utc(),
             public_key: vec![],
             name: "test key".to_string(),
-            key_reference: vec![],
+            key_reference: None,
             storage_type: "".to_string(),
             key_type: "".to_string(),
             organisation: None,

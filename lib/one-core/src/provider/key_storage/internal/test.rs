@@ -53,8 +53,12 @@ async fn test_internal_generate_with_encryption() {
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
         .await
         .unwrap();
-    assert_eq!(result.key_reference.len(), 39);
-    let decrypted = decrypt_data(&result.key_reference, &SecretSlice::from(vec![0; 32])).unwrap();
+    assert_eq!(result.key_reference.as_ref().unwrap().len(), 39);
+    let decrypted = decrypt_data(
+        result.key_reference.as_ref().unwrap(),
+        &SecretSlice::from(vec![0; 32]),
+    )
+    .unwrap();
     assert_eq!(decrypted.expose_secret(), vec![1, 2, 3]);
 }
 

@@ -28,7 +28,7 @@ impl KeysDB {
             last_modified: params.last_modified.unwrap_or(now),
             public_key: params.public_key.unwrap_or_default(),
             name: unwrap_or_random(params.name),
-            key_reference: params.key_reference.unwrap_or_default(),
+            key_reference: params.key_reference,
             storage_type: params.storage_type.unwrap_or_default(),
             key_type: params.key_type.unwrap_or_default(),
             organisation: Some(organisation.to_owned()),

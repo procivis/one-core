@@ -57,7 +57,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         last_modified: now,
         public_key: vec![],
         name: name.to_owned(),
-        key_reference: vec![],
+        key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
         organisation: Some(dummy_organisation(Some(organisation_id.into()))),
@@ -94,7 +94,7 @@ async fn test_create_key_success() {
         key_storage.expect_generate().once().returning(|_, _| {
             Ok(StorageGeneratedKey {
                 public_key: vec![],
-                key_reference: vec![],
+                key_reference: None,
             })
         });
 

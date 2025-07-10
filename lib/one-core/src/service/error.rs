@@ -632,6 +632,9 @@ pub enum ValidationError {
 
     #[error("Missing authority key identifier")]
     MissingAuthorityKeyIdentifier,
+
+    #[error("Key must not be remote: `{0}`")]
+    KeyMustNotBeRemote(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -864,6 +867,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Key already exists")]
     BR_0066,
+
+    #[strum(message = "Key must not be remote")]
+    BR_0076,
 
     #[strum(message = "Invalid DCQL query or presentation definition")]
     BR_0083,
@@ -1456,6 +1462,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
             Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
             Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
+            Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
         }
     }
 }

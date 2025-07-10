@@ -72,8 +72,10 @@ impl KeyStorage for InternalKeyProvider {
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,
-            key_reference: encrypt_data(&key_pair.private, &self.encryption_key)
-                .map_err(KeyStorageError::Encryption)?,
+            key_reference: Some(
+                encrypt_data(&key_pair.private, &self.encryption_key)
+                    .map_err(KeyStorageError::Encryption)?,
+            ),
         })
     }
 
@@ -105,8 +107,10 @@ impl KeyStorage for InternalKeyProvider {
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,
-            key_reference: encrypt_data(&key_pair.private, &self.encryption_key)
-                .map_err(KeyStorageError::Encryption)?,
+            key_reference: Some(
+                encrypt_data(&key_pair.private, &self.encryption_key)
+                    .map_err(KeyStorageError::Encryption)?,
+            ),
         })
     }
 
@@ -116,7 +120,11 @@ impl KeyStorage for InternalKeyProvider {
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
             .ok_or(SignerError::MissingAlgorithm(key.key_type.clone()))?;
 
-        let private_key = decrypt_data(&key.key_reference, &self.encryption_key)
+        let key_reference = key
+            .key_reference
+            .as_ref()
+            .ok_or(SignerError::MissingKeyReference)?;
+        let private_key = decrypt_data(key_reference, &self.encryption_key)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         algorithm

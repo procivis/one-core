@@ -231,6 +231,9 @@ impl DidService {
 
         let capabilities = did_method.get_capabilities();
         for key in &keys {
+            if key.is_remote() {
+                return Err(ValidationError::KeyMustNotBeRemote(key.name.clone()).into());
+            }
             let key_algorithm = key
                 .key_algorithm_type()
                 .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))

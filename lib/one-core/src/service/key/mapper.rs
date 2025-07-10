@@ -52,6 +52,7 @@ impl TryFrom<Key> for KeyResponseDTO {
             public_key: value.public_key,
             key_type: value.key_type,
             storage_type: value.storage_type,
+            is_remote: value.key_reference.is_none(),
         })
     }
 }

@@ -19,7 +19,7 @@ pub struct Model {
     pub public_key: Vec<u8>,
 
     #[sea_orm(column_type = "Blob")]
-    pub key_reference: Vec<u8>,
+    pub key_reference: Option<Vec<u8>>,
 
     pub storage_type: String,
     pub key_type: String,

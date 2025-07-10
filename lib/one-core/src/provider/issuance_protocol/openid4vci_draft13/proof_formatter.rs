@@ -314,7 +314,7 @@ mod test {
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: key_handle.public_key_as_raw(),
                 name: "test".to_string(),
-                key_reference: vec![],
+                key_reference: None,
                 storage_type: "test".to_string(),
                 key_type: "EDDSA".to_string(),
                 organisation: None,

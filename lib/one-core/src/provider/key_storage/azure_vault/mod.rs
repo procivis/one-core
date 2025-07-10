@@ -98,7 +98,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         Ok(StorageGeneratedKey {
             public_key,
-            key_reference: response.key.key_id.as_bytes().to_vec(),
+            key_reference: Some(response.key.key_id.as_bytes().to_vec()),
         })
     }
 
@@ -138,7 +138,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         Ok(StorageGeneratedKey {
             public_key,
-            key_reference: response.key.key_id.as_bytes().to_vec(),
+            key_reference: Some(response.key.key_id.as_bytes().to_vec()),
         })
     }
 
@@ -209,8 +209,15 @@ impl SignaturePublicKeyHandle for AzureVaultKeyHandle {
 #[async_trait]
 impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let key_reference = String::from_utf8(self.key.key_reference.to_owned())
+        let key_reference = self
+            .key
+            .key_reference
+            .as_ref()
+            .ok_or(SignerError::MissingKey)
+            .map(ToOwned::to_owned)
+            .map(String::from_utf8)?
             .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
         let sign_request = create_sign_request(message, self.crypto.clone())?;
 
         let response = self.azure_client.sign(key_reference, sign_request).await?;

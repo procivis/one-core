@@ -440,7 +440,7 @@ async fn test_share_proof_with_use_request_uri() {
                 last_modified: now,
                 public_key: vec![],
                 name: "".to_string(),
-                key_reference: vec![],
+                key_reference: None,
                 storage_type: "".to_string(),
                 key_type: "".to_string(),
                 organisation: None,

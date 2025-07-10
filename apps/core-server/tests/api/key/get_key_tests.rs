@@ -1,59 +1,85 @@
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use reqwest::StatusCode;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::utils::server::run_server;
-use crate::{fixtures, utils};
+use crate::fixtures::TestingKeyParams;
+use crate::utils::context::TestContext;
 
 #[tokio::test]
-async fn test_get_key_ok() {
+async fn test_get_key_success() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_key(&db_conn, &organisation, None).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                public_key: Some(b"test_public_key".to_vec()),
+                key_reference: Some(b"test_key_reference".to_vec()),
+                ..Default::default()
+            },
+        )
+        .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-    let url = format!("{base_url}/api/key/v1/{}", key.id);
-
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.keys.get(key.id).await;
 
     // THEN
     assert_eq!(resp.status(), StatusCode::OK);
+    let resp_key = resp.json_value().await;
 
-    let inserted_key = fixtures::get_key(&db_conn, &key.id).await;
-
-    assert_eq!(key.id, inserted_key.id);
-    assert_eq!(key.public_key, inserted_key.public_key);
+    assert_eq!(resp_key["id"], key.id.to_string());
+    assert_eq!(
+        resp_key["publicKey"],
+        Base64UrlSafeNoPadding::encode_to_string("test_public_key").unwrap()
+    );
+    assert_eq!(resp_key["isRemote"], false);
 }
 
 #[tokio::test]
 async fn test_get_key_not_found() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
+    let (context, _) = TestContext::new_with_organisation(None).await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-    let url = format!("{base_url}/api/key/v1/{}", Uuid::new_v4());
-
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.keys.get(Uuid::new_v4().into()).await;
 
     // THEN
     assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_get_remote_key_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                public_key: Some(b"test_public_key".to_vec()),
+                key_reference: None,
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.keys.get(key.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp_key = resp.json_value().await;
+
+    assert_eq!(resp_key["id"], key.id.to_string());
+    assert_eq!(
+        resp_key["publicKey"],
+        Base64UrlSafeNoPadding::encode_to_string("test_public_key").unwrap()
+    );
+    assert_eq!(resp_key["isRemote"], true);
 }

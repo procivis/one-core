@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use super::{HttpClient, Response};
 
+#[derive(Debug, Clone)]
 pub struct KeyFilters {
     pub page: u64,
     pub page_size: u64,
@@ -12,6 +13,7 @@ pub struct KeyFilters {
     pub key_type: Option<String>,
     pub key_storage: Option<String>,
     pub ids: Option<Vec<KeyId>>,
+    pub is_remote: Option<bool>,
 }
 
 pub struct KeysApi {
@@ -39,6 +41,10 @@ impl KeysApi {
         });
 
         self.client.post("/api/key/v1", body).await
+    }
+
+    pub async fn get(&self, key_id: KeyId) -> Response {
+        self.client.get(&format!("/api/key/v1/{key_id}")).await
     }
 
     pub async fn import(
@@ -71,6 +77,7 @@ impl KeysApi {
             key_type,
             key_storage,
             ids,
+            is_remote,
         }: KeyFilters,
     ) -> Response {
         let mut url = format!(
@@ -87,6 +94,10 @@ impl KeysApi {
 
         if let Some(key_storage) = key_storage {
             url += &format!("&keyStorage={key_storage}");
+        }
+
+        if let Some(is_remote) = is_remote {
+            url += &format!("&isRemote={is_remote}");
         }
 
         url = ids

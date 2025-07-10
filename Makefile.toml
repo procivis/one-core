@@ -17,7 +17,7 @@ args    = ["build", "-p", "core-server"]
 command = "cargo"
 
 [tasks.clippy]
-args    = ["clippy", "--all-targets"]
+args    = ["clippy", "--all-targets", "${@}"]
 command = "cargo"
 
 [tasks.format]

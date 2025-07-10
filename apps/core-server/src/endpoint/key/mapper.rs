@@ -29,7 +29,8 @@ impl From<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
         let key_type = value.key_type.map(KeyFilterValue::KeyType);
         let key_storage = value.key_storage.map(KeyFilterValue::KeyStorage);
         let ids = value.ids.map(KeyFilterValue::Ids);
+        let remote = value.is_remote.map(KeyFilterValue::remote);
 
-        organisation_id & name & key_type & key_storage & ids
+        organisation_id & name & key_type & key_storage & ids & remote
     }
 }

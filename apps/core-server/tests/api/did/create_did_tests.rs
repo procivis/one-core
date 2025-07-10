@@ -495,3 +495,30 @@ async fn test_fail_to_create_did_deactivated_organisation() {
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0241", resp.error_code().await);
 }
+
+#[tokio::test]
+async fn test_create_did_remote_key_fails() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let mut params = ecdsa_testing_params();
+    params.key_reference = None;
+    let key = context.db.keys.create(&organisation, params).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .dids
+        .create(
+            organisation.id,
+            DidKeys::single(key.id),
+            "KEY",
+            "test",
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0076");
+}

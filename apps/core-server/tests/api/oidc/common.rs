@@ -120,7 +120,7 @@ pub(super) async fn proof_jwt_for(
         last_modified: params.last_modified.unwrap_or(OffsetDateTime::now_utc()),
         public_key: params.public_key.unwrap_or_default(),
         name: "test-key".to_string(),
-        key_reference: params.key_reference.unwrap_or_default(),
+        key_reference: params.key_reference,
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
         organisation: None,

@@ -542,7 +542,7 @@ mod test {
             last_modified: OffsetDateTime::now_utc(),
             public_key,
             name: "test-key".to_string(),
-            key_reference: vec![],
+            key_reference: None,
             storage_type: "INTERNAL".to_string(),
             key_type: key_type.to_string(),
             organisation: None,

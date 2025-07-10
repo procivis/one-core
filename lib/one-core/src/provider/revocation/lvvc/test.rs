@@ -52,7 +52,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
                 last_modified: now,
                 public_key: vec![],
                 name: "".to_string(),
-                key_reference: vec![],
+                key_reference: None,
                 storage_type: "".to_string(),
                 key_type: "EDDSA".to_string(),
                 organisation: None,
