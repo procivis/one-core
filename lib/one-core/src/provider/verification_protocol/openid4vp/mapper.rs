@@ -559,35 +559,51 @@ impl OpenID4VP20AuthorizationRequest {
 
 pub(crate) fn map_presented_credentials_to_presentation_format_type(
     presented: &[PresentedCredential],
+    config: &CoreConfig,
 ) -> Result<FormatType, VerificationProtocolError> {
     // MDOC credential(s) are sent as a MDOC presentation, using the MDOC formatter
-    if presented.len() == 1
-        && presented
-            .iter()
-            .all(|cred| cred.credential_schema.format == FormatType::Mdoc.to_string())
-    {
+    if presented.len() == 1 && matches_format_types(presented, &[FormatType::Mdoc], config) {
         return Ok(FormatType::Mdoc);
     }
 
-    // The SD_JWT presentations can contains only one credential
+    // The SD_JWT presentations can contain only one credential
     if presented.len() == 1
-        && presented.iter().all(|cred| {
-            cred.credential_schema.format == FormatType::SdJwt.to_string()
-                || cred.credential_schema.schema_type == CredentialSchemaType::SdJwtVc
-        })
+        && matches_format_types(presented, &[FormatType::SdJwt, FormatType::SdJwtVc], config)
     {
         return Ok(FormatType::SdJwt);
     }
 
-    if presented.iter().all(|cred| {
-        cred.credential_schema.format == FormatType::JsonLdClassic.to_string()
-            || cred.credential_schema.format == FormatType::JsonLdBbsPlus.to_string()
-    }) {
+    if matches_format_types(
+        presented,
+        &[FormatType::JsonLdClassic, FormatType::JsonLdBbsPlus],
+        config,
+    ) {
         return Ok(FormatType::JsonLdClassic);
     }
 
     // Fallback, handle all other formats via enveloped JWT
     Ok(FormatType::Jwt)
+}
+
+fn matches_format_types(
+    presented: &[PresentedCredential],
+    types: &[FormatType],
+    config: &CoreConfig,
+) -> bool {
+    presented.iter().all(|cred| {
+        format_to_type(cred, config).is_ok_and(|format_type| types.contains(&format_type))
+    })
+}
+
+pub(crate) fn format_to_type(
+    presented_credential: &PresentedCredential,
+    config: &CoreConfig,
+) -> Result<FormatType, VerificationProtocolError> {
+    Ok(config
+        .format
+        .get_fields(&presented_credential.credential_schema.format)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .r#type)
 }
 
 #[allow(clippy::too_many_arguments)]

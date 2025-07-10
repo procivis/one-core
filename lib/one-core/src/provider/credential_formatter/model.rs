@@ -253,7 +253,6 @@ pub struct HolderBindingCtx {
 #[derive(Debug, Default)]
 pub struct FormatPresentationCtx {
     pub nonce: Option<String>,
-    pub token_formats: Option<Vec<String>>,
     pub mdoc_session_transcript: Option<Vec<u8>>,
 }
 

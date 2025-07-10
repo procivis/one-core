@@ -318,8 +318,10 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data)?;
 
-        let format =
-            map_presented_credentials_to_presentation_format_type(&credential_presentations)?;
+        let format = map_presented_credentials_to_presentation_format_type(
+            &credential_presentations,
+            &self.config,
+        )?;
 
         let presentation_formatter = self
             .formatter_provider
@@ -343,11 +345,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             ))?
             .id
             .to_owned();
-
-        let token_formats: Vec<_> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
-            .collect();
 
         let response_uri =
             interaction_data
@@ -375,7 +372,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         } else {
             FormatPresentationCtx {
                 nonce: Some(verifier_nonce.clone()),
-                token_formats: Some(token_formats),
                 ..Default::default()
             }
         };

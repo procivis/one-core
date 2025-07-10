@@ -170,7 +170,6 @@ async fn test_format_presentation_multi_tokens() {
             Box::new(auth_fn),
             &issuer_did,
             FormatPresentationCtx {
-                token_formats: Some(vec!["JWT".to_owned(), "JSON_LD_CLASSIC".to_owned()]),
                 ..Default::default()
             },
         )

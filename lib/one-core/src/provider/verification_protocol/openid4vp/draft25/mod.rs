@@ -6,6 +6,7 @@ use futures::future::BoxFuture;
 use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_scheme};
 use model::OpenID4Vp25Params;
 use one_crypto::utilities;
+use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
@@ -15,7 +16,7 @@ use utils::{
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::map_presented_credentials_to_presentation_format_type;
+use super::mapper::{format_to_type, map_presented_credentials_to_presentation_format_type};
 use super::mdoc::mdoc_presentation_context;
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
@@ -50,10 +51,10 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, JwePayload,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PexSubmission,
-    PresentationSubmissionMappingDTO, VpSubmissionData,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
+    JwePayload, OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
+    OpenID4VpPresentationFormat, PexSubmission, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -87,6 +88,11 @@ pub(crate) struct OpenID4VP25HTTP {
     config: Arc<CoreConfig>,
 }
 
+struct EncryptionInfo {
+    verifier_key: OpenID4VPClientMetadataJwkDTO,
+    alg: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+}
+
 impl OpenID4VP25HTTP {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
@@ -116,13 +122,7 @@ impl OpenID4VP25HTTP {
     async fn encryption_info_from_metadata(
         &self,
         interaction_data: &OpenID4VPHolderInteractionData,
-    ) -> Result<
-        Option<(
-            OpenID4VPClientMetadataJwkDTO,
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-        )>,
-        VerificationProtocolError,
-    > {
+    ) -> Result<Option<EncryptionInfo>, VerificationProtocolError> {
         let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
             // metadata_uri (if any) has been resolved before, no need to check
             return Ok(None);
@@ -168,7 +168,156 @@ impl OpenID4VP25HTTP {
         let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
             return Ok(None);
         };
-        Ok(Some((verifier_key, encryption_alg)))
+        Ok(Some(EncryptionInfo {
+            verifier_key,
+            alg: encryption_alg,
+        }))
+    }
+
+    async fn pex_submission_data(
+        &self,
+        credential_presentations: Vec<PresentedCredential>,
+        interaction_data: &OpenID4VPHolderInteractionData,
+        key: &Key,
+        jwk_key_id: Option<String>,
+        holder_did: &Did,
+        holder_nonce: String,
+    ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
+        let format = map_presented_credentials_to_presentation_format_type(
+            &credential_presentations,
+            &self.config,
+        )?;
+
+        let presentation_formatter = self
+            .formatter_provider
+            .get_presentation_formatter(&format.to_string())
+            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
+
+        let presentation_definition_id = interaction_data
+            .presentation_definition
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "presentation_definition is None".to_string(),
+            ))?
+            .id
+            .to_owned();
+
+        let credentials = credential_presentations
+            .iter()
+            .map(|presented_credential| {
+                let credential_format = format_to_type(presented_credential, &self.config)?;
+                Ok(CredentialToPresent {
+                    raw_credential: presented_credential.presentation.to_owned(),
+                    credential_format,
+                })
+            })
+            .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(key, jwk_key_id, self.key_algorithm_provider.clone())
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let ctx = format_presentation_context(interaction_data, &holder_nonce, format)?;
+        let FormattedPresentation {
+            vp_token,
+            oidc_format,
+        } = presentation_formatter
+            .format_presentation(credentials, auth_fn, &holder_did.did, ctx)
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        let presentation_submission = create_presentation_submission(
+            presentation_definition_id,
+            credential_presentations,
+            &oidc_format,
+        )?;
+
+        let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;
+        if encryption_info.is_none() && format == FormatType::Mdoc {
+            return Err(VerificationProtocolError::Failed(
+                "MDOC presentation requires encryption but no verifier EC keys are available"
+                    .to_string(),
+            ));
+        }
+        let submission_data = VpSubmissionData::Pex(PexSubmission {
+            presentation_submission,
+            vp_token,
+        });
+        Ok((submission_data, encryption_info))
+    }
+
+    async fn dcql_submission_data(
+        &self,
+        credential_presentations: Vec<PresentedCredential>,
+        interaction_data: &OpenID4VPHolderInteractionData,
+        key: &Key,
+        jwk_key_id: Option<String>,
+        holder_did: &Did,
+        holder_nonce: String,
+    ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
+        let mut vp_token = HashMap::new();
+        let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;
+
+        // For DCQL each credential gets a presentation individually
+        for credential_presentation in credential_presentations {
+            let credential_format = format_to_type(&credential_presentation, &self.config)?;
+            let presentation_format = match credential_format {
+                FormatType::SdJwt | FormatType::SdJwtVc => FormatType::SdJwt,
+                FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
+                FormatType::Mdoc => FormatType::Mdoc,
+                FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+            };
+
+            if encryption_info.is_none() && presentation_format == FormatType::Mdoc {
+                return Err(VerificationProtocolError::Failed(
+                    "MDOC presentation requires encryption but no verifier EC keys are available"
+                        .to_string(),
+                ));
+            }
+
+            let presentation_formatter = self
+                .formatter_provider
+                .get_presentation_formatter(&presentation_format.to_string())
+                .ok_or_else(|| {
+                    VerificationProtocolError::Failed("Formatter not found".to_string())
+                })?;
+
+            let auth_fn = self
+                .key_provider
+                .get_signature_provider(
+                    key,
+                    jwk_key_id.clone(),
+                    self.key_algorithm_provider.clone(),
+                )
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+            let formatted_presentation = presentation_formatter
+                .format_presentation(
+                    vec![CredentialToPresent {
+                        raw_credential: credential_presentation.presentation,
+                        credential_format,
+                    }],
+                    auth_fn,
+                    &holder_did.did,
+                    format_presentation_context(
+                        interaction_data,
+                        &holder_nonce,
+                        presentation_format,
+                    )?,
+                )
+                .await
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            vp_token
+                .entry(credential_presentation.request.id)
+                .and_modify(|presentations: &mut Vec<String>| {
+                    presentations.push(formatted_presentation.vp_token.to_owned())
+                })
+                .or_insert(vec![formatted_presentation.vp_token]);
+        }
+        Ok((
+            VpSubmissionData::Dcql(DcqlSubmission { vp_token }),
+            encryption_info,
+        ))
     }
 }
 
@@ -214,7 +363,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
     async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
-        context: serde_json::Value,
+        context: Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData =
@@ -333,37 +482,29 @@ impl VerificationProtocol for OpenID4VP25HTTP {
 
         let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data)?;
+        let holder_nonce = utilities::generate_alphanumeric(32);
 
-        let format =
-            map_presented_credentials_to_presentation_format_type(&credential_presentations)?;
-
-        let presentation_formatter = self
-            .formatter_provider
-            .get_presentation_formatter(&format.to_string())
-            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(
-                &key.to_owned(),
+        let (submission_data, encryption_info) = if interaction_data.dcql_query.is_some() {
+            self.dcql_submission_data(
+                credential_presentations,
+                &interaction_data,
+                key,
                 jwk_key_id,
-                self.key_algorithm_provider.clone(),
+                holder_did,
+                holder_nonce.to_owned(),
             )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_definition_id = interaction_data
-            .presentation_definition
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "presentation_definition is None".to_string(),
-            ))?
-            .id
-            .to_owned();
-
-        let token_formats: Vec<_> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
-            .collect();
+            .await?
+        } else {
+            self.pex_submission_data(
+                credential_presentations,
+                &interaction_data,
+                key,
+                jwk_key_id,
+                holder_did,
+                holder_nonce.to_owned(),
+            )
+            .await?
+        };
 
         let response_uri =
             interaction_data
@@ -372,85 +513,19 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 .ok_or(VerificationProtocolError::Failed(
                     "response_uri is None".to_string(),
                 ))?;
-        let verifier_nonce =
-            interaction_data
-                .nonce
-                .clone()
-                .ok_or(VerificationProtocolError::Failed(
-                    "nonce is None".to_string(),
-                ))?;
 
-        let holder_nonce = utilities::generate_alphanumeric(32);
-        let ctx = if format == FormatType::Mdoc {
-            mdoc_presentation_context(
-                &encode_client_id_with_scheme(
-                    interaction_data.client_id.clone(),
-                    interaction_data.client_id_scheme,
-                ),
-                &response_uri,
-                &verifier_nonce,
-                &holder_nonce,
-            )?
-        } else {
-            FormatPresentationCtx {
-                nonce: Some(verifier_nonce.clone()),
-                token_formats: Some(token_formats),
-                ..Default::default()
-            }
-        };
-
-        let credentials = credential_presentations
-            .iter()
-            .map(|presented_credential| {
-                let credential_format = self
-                    .config
-                    .format
-                    .get_fields(&presented_credential.credential_schema.format)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-                    .r#type;
-                Ok(CredentialToPresent {
-                    raw_credential: presented_credential.presentation.to_owned(),
-                    credential_format,
-                })
-            })
-            .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
-
-        let FormattedPresentation {
-            vp_token,
-            oidc_format,
-        } = presentation_formatter
-            .format_presentation(credentials, auth_fn, &holder_did.did, ctx)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
-            credential_presentations,
-            &oidc_format,
-        )?;
-
-        let encryption_info = self
-            .encryption_info_from_metadata(&interaction_data)
-            .await?;
-        if encryption_info.is_none() && format == FormatType::Mdoc {
-            return Err(VerificationProtocolError::Failed(
-                "MDOC presentation requires encryption but no verifier EC keys are available"
-                    .to_string(),
-            ));
-        }
-        let params = if let Some((verifier_key, alg)) = encryption_info {
+        let params = if let Some(EncryptionInfo { verifier_key, alg }) = encryption_info {
             encrypted_params(
                 interaction_data,
-                presentation_submission,
+                submission_data,
                 &holder_nonce,
-                vp_token,
                 verifier_key,
                 alg,
                 &*self.key_algorithm_provider,
             )
             .await?
         } else {
-            unencrypted_params(interaction_data, &presentation_submission, vp_token)?
+            unencrypted_params(interaction_data, &submission_data)?
         };
 
         let response = self
@@ -619,34 +694,87 @@ impl VerificationProtocol for OpenID4VP25HTTP {
     }
 }
 
+fn format_presentation_context(
+    interaction_data: &OpenID4VPHolderInteractionData,
+    holder_nonce: &str,
+    presentation_format: FormatType,
+) -> Result<FormatPresentationCtx, VerificationProtocolError> {
+    let verifier_nonce =
+        interaction_data
+            .nonce
+            .clone()
+            .ok_or(VerificationProtocolError::Failed(
+                "nonce is None".to_string(),
+            ))?;
+    let response_uri =
+        interaction_data
+            .response_uri
+            .clone()
+            .ok_or(VerificationProtocolError::Failed(
+                "response_uri is None".to_string(),
+            ))?;
+    let ctx = if presentation_format == FormatType::Mdoc {
+        mdoc_presentation_context(
+            &encode_client_id_with_scheme(
+                interaction_data.client_id.clone(),
+                interaction_data.client_id_scheme,
+            ),
+            &response_uri,
+            &verifier_nonce,
+            holder_nonce,
+        )?
+    } else {
+        FormatPresentationCtx {
+            nonce: Some(verifier_nonce),
+            ..Default::default()
+        }
+    };
+    Ok(ctx)
+}
+
 fn unencrypted_params(
     interaction_data: OpenID4VPHolderInteractionData,
-    presentation_submission: &PresentationSubmissionMappingDTO,
-    vp_token: String,
-) -> Result<HashMap<&'static str, String>, VerificationProtocolError> {
-    let mut params: HashMap<&str, String> = HashMap::new();
-    params.insert("vp_token", vp_token);
-    params.insert(
-        "presentation_submission",
-        serde_json::to_string(&presentation_submission)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
-    );
-
+    submission_data: &VpSubmissionData,
+) -> Result<HashMap<String, String>, VerificationProtocolError> {
+    let mut result = serde_json::to_value(submission_data).map_err(|err| {
+        VerificationProtocolError::Failed(format!(
+            "Failed to serialize presentation submission params: {err}"
+        ))
+    })?;
     if let Some(state) = interaction_data.state {
-        params.insert("state", state);
+        result["state"] = Value::String(state);
     }
-    Ok(params)
+    let params = result
+        .as_object()
+        .ok_or(VerificationProtocolError::Failed(format!(
+            "unsupported submission data: {result}"
+        )))?
+        .into_iter()
+        .map(|(k, v)| {
+            let value = if let Some(string) = v.as_str() {
+                string.to_string()
+            } else {
+                serde_json::to_string(v).map_err(|err| {
+                    VerificationProtocolError::Failed(format!(
+                        "failed to serialize submission data: {err}"
+                    ))
+                })?
+            };
+            Ok((k.clone(), value))
+        })
+        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
+    let map = HashMap::from_iter(params);
+    Ok(map)
 }
 
 async fn encrypted_params(
     interaction_data: OpenID4VPHolderInteractionData,
-    presentation_submission: PresentationSubmissionMappingDTO,
+    submission_data: VpSubmissionData,
     holder_nonce: &str,
-    vp_token: String,
     verifier_key: OpenID4VPClientMetadataJwkDTO,
     encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<HashMap<&'static str, String>, VerificationProtocolError> {
+) -> Result<HashMap<String, String>, VerificationProtocolError> {
     let aud = interaction_data
         .response_uri
         .ok_or(VerificationProtocolError::Failed(
@@ -660,10 +788,7 @@ async fn encrypted_params(
     let payload = JwePayload {
         aud: Some(aud),
         exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
-        submission_data: VpSubmissionData::Pex(PexSubmission {
-            vp_token,
-            presentation_submission,
-        }),
+        submission_data,
         state: interaction_data.state,
     };
 
@@ -677,9 +802,9 @@ async fn encrypted_params(
     )
     .await
     .map_err(|err| {
-        VerificationProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
+        VerificationProtocolError::Failed(format!("Failed to build response jwe: {err}"))
     })?;
-    Ok(HashMap::from_iter([("response", response)]))
+    Ok(HashMap::from_iter([("response".to_owned(), response)]))
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -35,6 +35,11 @@ use crate::service::storage_proxy::StorageAccess;
 ///     presentation definition assumes that _all_ claims are selectively disclosable, which is not
 ///     generally true for third-party credentials. This might result in UI components showing too
 ///     little data being disclosed on proof requests.
+///   - Misleading requested credential `fields` `required` flag when credentials with different schemas are queried
+///     simultaneously and where only some credential schemas support selective disclosure (this is only possible for W3C VCs):
+///     Since there is only one required flag per field, the required flag will be set to `true` if the field is present in
+///     at least one credential where the field is not selectively disclosable even if it would be optional given the DCQL
+///     query, and it would be selectively disclosable for other credentials.
 pub(crate) async fn get_presentation_definition_for_dcql_query(
     dcql_query: DcqlQuery,
     proof: &Proof,

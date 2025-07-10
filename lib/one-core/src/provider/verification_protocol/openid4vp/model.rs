@@ -63,6 +63,7 @@ pub struct ResponseSubmission {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
 pub enum VpSubmissionData {
     Dcql(DcqlSubmission),
     Pex(PexSubmission),

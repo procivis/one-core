@@ -318,6 +318,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             formatter_provider: &*self.formatter_provider,
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             key_provider: &*self.key_provider,
+            config: self.config.clone(),
             // Will be filled in later using holder transport
             presentation_definition: None,
             client_id: "",
@@ -720,19 +721,17 @@ pub(super) struct CreatePresentationParams<'a> {
     formatter_provider: &'a dyn CredentialFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: &'a dyn KeyProvider,
+
+    config: Arc<CoreConfig>,
 }
 
 pub(super) async fn create_presentation(
     params: CreatePresentationParams<'_>,
 ) -> Result<(String, PresentationSubmissionMappingDTO), VerificationProtocolError> {
-    let token_formats: Vec<String> = params
-        .credential_presentations
-        .iter()
-        .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
-        .collect();
-
-    let format =
-        map_presented_credentials_to_presentation_format_type(&params.credential_presentations)?;
+    let format = map_presented_credentials_to_presentation_format_type(
+        &params.credential_presentations,
+        &params.config,
+    )?;
 
     let presentation_formatter = params
         .formatter_provider
@@ -756,7 +755,6 @@ pub(super) async fn create_presentation(
 
     let mut ctx = FormatPresentationCtx {
         nonce: Some(params.nonce.to_string()),
-        token_formats: Some(token_formats),
         ..Default::default()
     };
 
