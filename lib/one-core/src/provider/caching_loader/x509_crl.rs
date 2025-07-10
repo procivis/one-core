@@ -83,8 +83,7 @@ impl Resolver for X509CrlResolver {
         key: &str,
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let response = self.client.get(key).send().await?.error_for_status()?;
-        let content = response.body;
+        let content = self.client.get(key).send().await?.error_for_status()?.body;
         let (_, crl) = x509_parser::parse_x509_crl(&content)
             .map_err(|_| CachingLoaderError::UnexpectedResolveResult)?;
         let expiry_date = crl.next_update().map(|time| time.to_datetime());

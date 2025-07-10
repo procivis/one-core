@@ -394,6 +394,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     assert!(result.is_some());
 
     // using cached information
+    let before_test = OffsetDateTime::now_utc();
     context
         .api
         .credentials
@@ -407,7 +408,8 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
         .await
         .unwrap();
 
-    assert_eq!(statuslist_credential_entry.hit_counter, 1);
+    assert!(statuslist_credential_entry.last_used >= before_test);
+    assert!(statuslist_credential_entry.last_used <= OffsetDateTime::now_utc());
 
     // bypassing the cache
     context
@@ -423,7 +425,9 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
         .await
         .unwrap();
 
-    assert_eq!(statuslist_credential_entry2.hit_counter, 0);
+    assert!(statuslist_credential_entry2.last_used >= before_test);
+    assert!(statuslist_credential_entry2.last_used <= OffsetDateTime::now_utc());
+
     assert!(statuslist_credential_entry.created_date < statuslist_credential_entry2.created_date);
 }
 

@@ -13,7 +13,7 @@ impl From<RemoteEntityCacheEntry> for remote_entity_cache::ActiveModel {
             expiration_date: Set(value.expiration_date),
             key: Set(value.key),
             value: Set(value.value),
-            hit_counter: Set(value.hit_counter),
+            last_used: Set(value.last_used),
             r#type: Set(value.r#type.into()),
             media_type: Set(value.media_type),
         }
@@ -31,7 +31,7 @@ impl TryFrom<remote_entity_cache::Model> for RemoteEntityCacheEntry {
             expiration_date: value.expiration_date,
             key: value.key,
             value: value.value,
-            hit_counter: value.hit_counter,
+            last_used: value.last_used,
             r#type: value.r#type.into(),
             media_type: value.media_type,
         })

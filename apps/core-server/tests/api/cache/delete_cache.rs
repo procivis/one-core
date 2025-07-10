@@ -111,7 +111,7 @@ fn test_entry(cache_type: CacheType, persistent: bool) -> RemoteEntityCacheEntry
         },
         value: format!("some value for {id}").into_bytes(),
         key: format!("some key for {id}"),
-        hit_counter: 0,
+        last_used: now,
         r#type: cache_type,
         media_type: None,
     }

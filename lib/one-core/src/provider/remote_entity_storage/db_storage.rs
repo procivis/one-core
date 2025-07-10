@@ -28,9 +28,10 @@ impl RemoteEntityStorage for DbStorage {
     async fn delete_expired_or_least_used(
         &self,
         entity_type: RemoteEntityType,
+        target_max_size: usize,
     ) -> Result<(), RemoteEntityStorageError> {
         self.remote_entity_cache_repository
-            .delete_expired_or_least_used(entity_type.into())
+            .delete_expired_or_least_used(entity_type.into(), target_max_size as u32)
             .await
             .map_err(|e| RemoteEntityStorageError::Delete(e.to_string()))
     }
@@ -98,7 +99,7 @@ fn storage_context_to_db_context(
         expiration_date: storage_context.expiration_date,
         value: storage_context.value,
         key: storage_context.key,
-        hit_counter: storage_context.hit_counter,
+        last_used: storage_context.last_used,
         r#type: storage_context.entity_type.into(),
         media_type: storage_context.media_type,
     }

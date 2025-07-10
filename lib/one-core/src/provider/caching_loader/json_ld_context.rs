@@ -207,7 +207,7 @@ mod test {
                 entity_type: RemoteEntityType::JsonLdContext,
                 key: url.to_string(),
                 value: response_content.to_string().into_bytes(),
-                hit_counter: 0,
+                last_used: now,
                 media_type: Some(expected_media_type.to_owned()),
                 expiration_date: Some(now + Duration::days(1)),
             }))
@@ -215,9 +215,9 @@ mod test {
 
         storage.expect_insert().times(1).return_once(|_| Ok(()));
         storage
-            .expect_get_storage_size()
+            .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(1usize));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(
             storage,
@@ -306,9 +306,9 @@ mod test {
 
         storage.expect_insert().times(1).return_once(|_| Ok(()));
         storage
-            .expect_get_storage_size()
+            .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(1usize));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(
             storage,
@@ -337,13 +337,9 @@ mod test {
         storage.expect_get_by_key().return_once(|_| Ok(None));
         storage.expect_insert().times(1).return_once(|_| Ok(()));
         storage
-            .expect_get_storage_size()
-            .times(1)
-            .return_once(|_| Ok(2usize));
-        storage
             .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(()));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
 
@@ -372,7 +368,7 @@ mod test {
                 entity_type: RemoteEntityType::JsonLdContext,
                 key: cloned_url,
                 value: old_response_content.to_string().into_bytes(),
-                hit_counter: 0,
+                last_used: get_dummy_date(),
                 media_type: None,
                 expiration_date: Some(OffsetDateTime::now_utc()),
             }))
@@ -383,13 +379,9 @@ mod test {
             Ok(())
         });
         storage
-            .expect_get_storage_size()
-            .times(1)
-            .return_once(|_| Ok(2usize));
-        storage
             .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(()));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
 
@@ -416,7 +408,7 @@ mod test {
                 last_modified: get_dummy_date(),
                 value: response_content.to_string().into_bytes(),
                 key: cloned_url,
-                hit_counter: 0,
+                last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
                 expiration_date: Some(OffsetDateTime::now_utc()),
@@ -427,13 +419,9 @@ mod test {
             Ok(())
         });
         storage
-            .expect_get_storage_size()
-            .times(1)
-            .return_once(|_| Ok(2usize));
-        storage
             .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(()));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
         let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
@@ -459,7 +447,7 @@ mod test {
                 last_modified: get_dummy_date(),
                 value: response_content.to_string().into_bytes(),
                 key: cloned_url.parse().unwrap(),
-                hit_counter: 0,
+                last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
                 expiration_date: Some(OffsetDateTime::now_utc()),
@@ -474,13 +462,9 @@ mod test {
                 Ok(())
             });
         storage
-            .expect_get_storage_size()
-            .times(1)
-            .return_once(|_| Ok(2usize));
-        storage
             .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(()));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
         let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
@@ -502,7 +486,7 @@ mod test {
                 last_modified: get_dummy_date(),
                 value: old_response_content.to_string().into_bytes(),
                 key: url.to_string(),
-                hit_counter: 0,
+                last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
                 expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
@@ -510,17 +494,12 @@ mod test {
         });
         storage.expect_insert().times(1).return_once(|request| {
             assert_eq!(request.value, old_response_content.to_string().into_bytes());
-            assert_eq!(request.hit_counter, 1);
             Ok(())
         });
         storage
-            .expect_get_storage_size()
-            .times(1)
-            .return_once(|_| Ok(2usize));
-        storage
             .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(()));
+            .return_once(|_, _| Ok(()));
 
         let refresh_timeout =
             OffsetDateTime::now_utc() - get_dummy_date() + Duration::seconds(99999);
@@ -548,7 +527,7 @@ mod test {
                 last_modified: get_dummy_date(),
                 value: old_response_content.to_string().into_bytes(),
                 key: url.to_string(),
-                hit_counter: 0,
+                last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
                 expiration_date: Some(get_dummy_date()),
@@ -591,7 +570,7 @@ mod test {
                 last_modified: now, // fresh copy
                 value: old_response_content.to_string().into_bytes(),
                 key,
-                hit_counter: 42,
+                last_used: now,
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
                 expiration_date: Some(now + Duration::days(1)),
@@ -600,9 +579,9 @@ mod test {
 
         storage.expect_insert().times(1).return_once(|_| Ok(()));
         storage
-            .expect_get_storage_size()
+            .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(1usize));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(
             storage,
@@ -637,7 +616,7 @@ mod test {
                 last_modified: now,
                 value,
                 key,
-                hit_counter: 42,
+                last_used: now,
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
                 expiration_date: None,
@@ -647,9 +626,9 @@ mod test {
         // persistent entries must not be changed after the initial load and cannot be bypassed
         storage.expect_insert().never();
         storage
-            .expect_get_storage_size()
+            .expect_delete_expired_or_least_used()
             .times(1)
-            .return_once(|_| Ok(1usize));
+            .return_once(|_, _| Ok(()));
 
         let loader = create_loader(
             storage,

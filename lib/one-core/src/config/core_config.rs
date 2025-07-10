@@ -92,12 +92,26 @@ pub enum CacheEntityCacheType {
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheEntityConfig {
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub cache_refresh_timeout: time::Duration,
-    pub cache_size: u32,
     pub cache_type: CacheEntityCacheType,
+
+    /// Maximum number of entries the cache can hold (of this `cache_type`)
+    ///
+    /// When limit reached, the oldest (unused) entries are removed
+    pub cache_size: u32,
+
+    /// Duration for soft-refresh
+    ///
+    /// Duration after which an entry is tried to be refreshed
+    /// (if refresh fails, the old cached value is still used)
     #[serde_as(as = "DurationSeconds<i64>")]
     pub refresh_after: time::Duration,
+
+    /// Duration for hard-refresh
+    ///
+    /// Duration after which an entry is expired and must be refreshed
+    /// (if refresh fails, the cached value is ignored and fetching fails)
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub cache_refresh_timeout: time::Duration,
 }
 
 pub enum InputFormat {

@@ -12,12 +12,12 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub expiration_date: Option<OffsetDateTime>,
+    pub last_used: OffsetDateTime,
 
     pub key: String,
     #[sea_orm(column_type = "Blob")]
     pub value: Vec<u8>,
 
-    pub hit_counter: u32,
     pub r#type: CacheType,
 
     pub media_type: Option<String>,
@@ -28,7 +28,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
 #[from(one_core::model::remote_entity_cache::CacheType)]
 #[into(one_core::model::remote_entity_cache::CacheType)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]

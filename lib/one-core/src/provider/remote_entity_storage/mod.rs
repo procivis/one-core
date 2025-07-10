@@ -12,8 +12,6 @@
 //!
 //! [cac]: https://docs.procivis.ch/api/caching
 
-use std::cmp::Ordering;
-
 use one_dto_mapper::From;
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -29,6 +27,7 @@ pub trait RemoteEntityStorage: Send + Sync {
     async fn delete_expired_or_least_used(
         &self,
         entity_type: RemoteEntityType,
+        target_max_size: usize,
     ) -> Result<(), RemoteEntityStorageError>;
 
     async fn get_by_key(&self, key: &str)
@@ -46,6 +45,8 @@ pub trait RemoteEntityStorage: Send + Sync {
 #[from(RemoteEntityCacheEntry)]
 pub struct RemoteEntity {
     pub last_modified: OffsetDateTime,
+
+    /// `None` means the entry is persistent
     pub expiration_date: Option<OffsetDateTime>,
 
     #[from(rename = "r#type")]
@@ -53,7 +54,7 @@ pub struct RemoteEntity {
     pub key: String,
     pub value: Vec<u8>,
 
-    pub hit_counter: u32,
+    pub last_used: OffsetDateTime,
 
     pub media_type: Option<String>,
 }
@@ -81,19 +82,4 @@ pub enum RemoteEntityStorageError {
     Insert(String),
     #[error("Not updated")]
     NotUpdated,
-}
-
-impl PartialOrd<Self> for RemoteEntity {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for RemoteEntity {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.hit_counter.cmp(&other.hit_counter) {
-            Ordering::Equal => self.last_modified.cmp(&other.last_modified),
-            value => value,
-        }
-    }
 }

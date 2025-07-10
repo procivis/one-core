@@ -41,7 +41,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 entity_type: RemoteEntityType::JsonLdContext,
                 value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
                 key: url.to_string(),
-                hit_counter: 0,
+                last_used: now,
                 media_type: None,
                 expiration_date: Some(now + Duration::days(1)),
             }))
@@ -57,7 +57,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 entity_type: RemoteEntityType::JsonLdContext,
                 value: BARCODE_CONTEXT.to_string().into_bytes(),
                 key: url.to_string(),
-                hit_counter: 0,
+                last_used: now,
                 media_type: None,
                 expiration_date: Some(now + Duration::days(1)),
             }))
@@ -73,13 +73,16 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 entity_type: RemoteEntityType::JsonLdContext,
                 value: UTOPIA_CONTEXT.to_string().into_bytes(),
                 key: url.to_string(),
-                hit_counter: 0,
+                last_used: now,
                 media_type: None,
                 expiration_date: Some(now + Duration::days(1)),
             }))
         });
 
     storage.expect_insert().times(..).returning(|_| Ok(()));
+    storage
+        .expect_delete_expired_or_least_used()
+        .returning(|_, _| Ok(()));
 
     storage
         .expect_get_storage_size()

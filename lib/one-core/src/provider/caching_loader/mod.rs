@@ -52,9 +52,9 @@ pub struct CachingLoader<E> {
     pub remote_entity_type: RemoteEntityType,
     pub storage: Arc<dyn RemoteEntityStorage>,
 
-    pub cache_size: usize,
-    pub cache_refresh_timeout: time::Duration,
-    pub refresh_after: time::Duration,
+    cache_size: usize,
+    cache_refresh_timeout: time::Duration,
+    refresh_after: time::Duration,
 
     clean_old_mutex: Arc<Mutex<()>>,
 
@@ -86,38 +86,51 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         resolver: Arc<dyn Resolver<Error = E>>,
         force_refresh: bool,
     ) -> Result<(Vec<u8>, Option<String>), E> {
-        let entry_opt = self.storage.get_by_key(url).await?;
-        let entry_persistent = entry_opt
-            .as_ref()
-            .map(|val| val.expiration_date.is_none())
-            .unwrap_or(false);
-        let context = if force_refresh && !entry_persistent {
-            self.new_cache_entry(url, &resolver).await?
-        } else {
-            self.resolve_with_caching(url, entry_opt, &resolver).await?
-        };
+        let cached_entry_opt = self.storage.get_by_key(url).await?;
+
+        let result = {
+            if let Some(cached_entry) = cached_entry_opt {
+                let persistent = cached_entry.expiration_date.is_none();
+
+                if force_refresh && !persistent {
+                    self.new_cache_entry(url, &resolver).await
+                } else {
+                    self.resolve_with_caching(url, cached_entry, &resolver)
+                        .await
+                }
+            } else {
+                self.new_cache_entry(url, &resolver).await
+            }
+        }?;
 
         self.clean_old_entries_if_needed().await?;
-        Ok(context)
+        Ok(result)
+    }
+
+    pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {
+        let entity = self.storage.get_by_key(key).await?;
+
+        Ok(entity.map(|v| v.value))
     }
 
     async fn resolve_with_caching(
         &self,
         url: &str,
-        entry_opt: Option<RemoteEntity>,
+        cached_entry: RemoteEntity,
         resolver: &Arc<dyn Resolver<Error = E>>,
     ) -> Result<(Vec<u8>, Option<String>), E> {
-        let Some(mut context) = entry_opt else {
-            return self.new_cache_entry(url, resolver).await;
-        };
-
-        let Some(expiration_date) = context.expiration_date else {
+        let Some(expiration_date) = cached_entry.expiration_date else {
             // persistent value --> always up-to-date
-            return Ok((context.value, context.media_type));
+            return Ok((cached_entry.value, cached_entry.media_type));
         };
 
-        let requires_update =
-            context_requires_update(context.last_modified, expiration_date, self.refresh_after);
+        let requires_update = context_requires_update(
+            cached_entry.last_modified,
+            expiration_date,
+            self.refresh_after,
+        );
+
+        let mut context = cached_entry;
 
         if requires_update != ContextRequiresUpdate::IsRecent {
             let result = resolver.do_resolve(url, Some(&context.last_modified)).await;
@@ -146,7 +159,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             }
         }
 
-        context.hit_counter += 1;
+        context.last_used = OffsetDateTime::now_utc();
 
         if let Err(error) = self.storage.insert(context.to_owned()).await {
             match error {
@@ -175,14 +188,15 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                 media_type,
                 expiry_date,
             } => {
+                let now = OffsetDateTime::now_utc();
                 self.storage
                     .insert(RemoteEntity {
-                        last_modified: OffsetDateTime::now_utc(),
+                        last_modified: now,
                         expiration_date: self.effective_expiry(expiry_date),
                         entity_type: self.remote_entity_type,
                         key: url.to_string(),
                         value: content.to_owned(),
-                        hit_counter: 0,
+                        last_used: now,
                         media_type: media_type.clone(),
                     })
                     .await?;
@@ -204,27 +218,15 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             .or(Some(default_exp))
     }
 
-    pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {
-        let entity = self.storage.get_by_key(key).await?;
-
-        Ok(entity.map(|v| v.value))
-    }
-
     async fn clean_old_entries_if_needed(&self) -> Result<(), RemoteEntityStorageError> {
-        let _lock = self.clean_old_mutex.lock().await;
+        let Ok(_lock) = self.clean_old_mutex.try_lock() else {
+            // cleaning already happening in another thread
+            return Ok(());
+        };
 
-        if self
-            .storage
-            .get_storage_size(self.remote_entity_type)
-            .await?
-            > self.cache_size
-        {
-            self.storage
-                .delete_expired_or_least_used(self.remote_entity_type)
-                .await?;
-        }
-
-        Ok(())
+        self.storage
+            .delete_expired_or_least_used(self.remote_entity_type, self.cache_size)
+            .await
     }
 }
 

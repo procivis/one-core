@@ -66,12 +66,13 @@ impl JsonSchemaCache {
             serde_json::from_str(schemas).context("Invalid JSON schema resource file")?;
 
         for schema in schemas {
+            let now = OffsetDateTime::now_utc();
             let request = RemoteEntity {
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: now,
                 entity_type: self.inner.remote_entity_type,
                 key: schema.key.clone(),
                 value: serde_json::to_vec(&schema).context("Failed to serialize schema")?,
-                hit_counter: 0,
+                last_used: now,
                 media_type: None,
                 expiration_date: None,
             };

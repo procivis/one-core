@@ -10,19 +10,17 @@ pub struct RemoteEntityCacheEntry {
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub last_used: OffsetDateTime,
     pub expiration_date: Option<OffsetDateTime>,
 
     pub key: String,
     pub value: Vec<u8>,
 
-    pub hit_counter: u32,
-
     pub r#type: CacheType,
-
     pub media_type: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, From, Into)]
 #[from(RemoteEntityType)]
 #[into(RemoteEntityType)]
 pub enum CacheType {

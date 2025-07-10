@@ -35,7 +35,6 @@ struct TestSetupWithContext {
     pub id: RemoteEntityCacheEntryId,
     pub context: Vec<u8>,
     pub url: String,
-    pub hit_counter: u32,
 }
 
 async fn setup_with_context() -> TestSetupWithContext {
@@ -43,9 +42,8 @@ async fn setup_with_context() -> TestSetupWithContext {
 
     let context = vec![1, 2, 3];
     let url = "http://www.host.co";
-    let hit_counter = 0u32;
 
-    let id = insert_json_ld_context(&setup.db, &context, url, hit_counter, None)
+    let id = insert_json_ld_context(&setup.db, &context, url, OffsetDateTime::now_utc(), None)
         .await
         .unwrap();
 
@@ -55,25 +53,24 @@ async fn setup_with_context() -> TestSetupWithContext {
         id,
         context,
         url: url.to_string(),
-        hit_counter,
     }
 }
 
-pub async fn insert_json_ld_context(
+async fn insert_json_ld_context(
     database: &DatabaseConnection,
     context: &[u8],
     url: &str,
-    hit_counter: u32,
-    last_modified: Option<OffsetDateTime>,
+    last_used: OffsetDateTime,
+    expiration_date: Option<OffsetDateTime>,
 ) -> Result<RemoteEntityCacheEntryId, DbErr> {
     let json_ld_context = remote_entity_cache::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
-        last_modified: Set(last_modified.unwrap_or(get_dummy_date())),
-        expiration_date: Set(Some(OffsetDateTime::now_utc() + Duration::days(1))),
+        last_modified: Set(last_used),
+        expiration_date: Set(expiration_date),
         key: Set(url.to_string()),
         value: Set(context.to_owned()),
-        hit_counter: Set(hit_counter),
+        last_used: Set(last_used),
         r#type: Set(remote_entity_cache::CacheType::JsonLdContext),
         media_type: Set(None),
     }
@@ -98,6 +95,7 @@ async fn test_create_context() {
     let setup = setup().await;
 
     let id = Uuid::new_v4();
+    let timestamp = OffsetDateTime::now_utc();
     let context = RemoteEntityCacheEntry {
         id: id.into(),
         created_date: get_dummy_date(),
@@ -105,7 +103,7 @@ async fn test_create_context() {
         expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
         value: vec![0, 1, 2, 3],
         key: "http://www.host.co".parse().unwrap(),
-        hit_counter: 1234,
+        last_used: timestamp,
         r#type: CacheType::JsonLdContext,
         media_type: None,
     };
@@ -116,7 +114,7 @@ async fn test_create_context() {
     let model = get_json_ld_context(&setup.db, &id.into()).await.unwrap();
     assert_eq!(model.value, [0, 1, 2, 3]);
     assert_eq!(model.key, "http://www.host.co");
-    assert_eq!(model.hit_counter, 1234);
+    assert_eq!(model.last_used, timestamp);
 }
 
 #[tokio::test]
@@ -132,7 +130,6 @@ async fn test_get_context_success() {
 
     assert_eq!(setup.context, result.value);
     assert_eq!(setup.url, result.key);
-    assert_eq!(setup.hit_counter, result.hit_counter);
 }
 
 #[tokio::test]
@@ -155,6 +152,7 @@ async fn test_get_context_failed_wrong_id() {
 async fn test_update_context_success() {
     let setup = setup_with_context().await;
 
+    let last_used = OffsetDateTime::now_utc() + Duration::days(2);
     setup
         .provider
         .update(RemoteEntityCacheEntry {
@@ -164,7 +162,7 @@ async fn test_update_context_success() {
             expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
             value: vec![1, 2, 3, 4, 5, 6],
             key: "http://127.0.0.1".parse().unwrap(),
-            hit_counter: 1234,
+            last_used,
             r#type: CacheType::JsonLdContext,
             media_type: None,
         })
@@ -174,7 +172,7 @@ async fn test_update_context_success() {
     let context = get_json_ld_context(&setup.db, &setup.id).await.unwrap();
     assert_eq!([1u8, 2, 3, 4, 5, 6], *context.value);
     assert_eq!("http://127.0.0.1", context.key);
-    assert_eq!(1234, context.hit_counter);
+    assert_eq!(last_used, context.last_used);
 }
 
 #[tokio::test]
@@ -190,142 +188,66 @@ async fn test_get_context_by_url_success() {
 
     assert_eq!(setup.context, result.value);
     assert_eq!(setup.url, result.key);
-    assert_eq!(setup.hit_counter, result.hit_counter);
 }
 
 #[tokio::test]
-async fn test_delete_oldest_context_success_simple() {
-    let setup = setup_with_context().await;
-
-    setup
-        .provider
-        .delete_expired_or_least_used(CacheType::JsonLdContext)
-        .await
-        .unwrap();
-
-    let result = setup
-        .provider
-        .get_by_id(&setup.id, &RemoteEntityCacheRelations::default())
-        .await
-        .unwrap();
-    assert!(result.is_none());
-
-    setup
-        .provider
-        .delete_expired_or_least_used(CacheType::JsonLdContext)
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn test_delete_oldest_context_success_complex_select_lowest_hit_count_and_modification_time()
-{
+async fn test_delete_oldest_context_success() {
     let setup = setup().await;
 
-    let hit_count_100_modified_years_ago = insert_json_ld_context(
+    let days_ago = OffsetDateTime::now_utc() - Duration::days(2);
+
+    let persistent = insert_json_ld_context(
         &setup.db,
         &[0, 1, 2, 3],
-        "http://127.0.0.1",
-        100,
-        Some(get_dummy_date()),
+        "http://127.0.0.1/0",
+        days_ago,
+        None,
     )
     .await
     .unwrap();
 
-    let hit_count_100_modified_now = insert_json_ld_context(
+    let expired = insert_json_ld_context(
         &setup.db,
         &[0, 1, 2, 3],
-        "http://127.0.0.1",
-        100,
-        Some(OffsetDateTime::now_utc()),
+        "http://127.0.0.1/1",
+        days_ago,
+        Some(days_ago),
     )
     .await
     .unwrap();
 
-    let hit_count_0_modified_years_ago = insert_json_ld_context(
+    let used_days_ago = insert_json_ld_context(
         &setup.db,
         &[0, 1, 2, 3],
-        "http://127.0.0.1",
-        0,
-        Some(get_dummy_date()),
+        "http://127.0.0.1/2",
+        days_ago,
+        Some(OffsetDateTime::now_utc() + Duration::days(1)),
     )
     .await
     .unwrap();
 
-    let hit_count_0_modified_now = insert_json_ld_context(
+    let used_now = insert_json_ld_context(
         &setup.db,
         &[0, 1, 2, 3],
-        "http://127.0.0.1",
-        0,
-        Some(OffsetDateTime::now_utc()),
+        "http://127.0.0.1/3",
+        OffsetDateTime::now_utc(),
+        Some(OffsetDateTime::now_utc() + Duration::days(1)),
     )
     .await
     .unwrap();
-
-    let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
-    let c2 = get_json_ld_context(&setup.db, &hit_count_0_modified_now).await;
-    let c3 = get_json_ld_context(&setup.db, &hit_count_100_modified_years_ago).await;
-    let c4 = get_json_ld_context(&setup.db, &hit_count_100_modified_now).await;
-    assert!(c1.is_ok());
-    assert!(c2.is_ok());
-    assert!(c3.is_ok());
-    assert!(c4.is_ok());
 
     setup
         .provider
-        .delete_expired_or_least_used(CacheType::JsonLdContext)
+        .delete_expired_or_least_used(CacheType::JsonLdContext, 2)
         .await
         .unwrap();
-    let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
-    let c2 = get_json_ld_context(&setup.db, &hit_count_0_modified_now).await;
-    let c3 = get_json_ld_context(&setup.db, &hit_count_100_modified_years_ago).await;
-    let c4 = get_json_ld_context(&setup.db, &hit_count_100_modified_now).await;
-    assert!(matches!(c1, Err(DbErr::RecordNotFound(_))));
-    assert!(c2.is_ok());
-    assert!(c3.is_ok());
-    assert!(c4.is_ok());
 
-    setup
-        .provider
-        .delete_expired_or_least_used(CacheType::JsonLdContext)
-        .await
-        .unwrap();
-    let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
-    let c2 = get_json_ld_context(&setup.db, &hit_count_0_modified_now).await;
-    let c3 = get_json_ld_context(&setup.db, &hit_count_100_modified_years_ago).await;
-    let c4 = get_json_ld_context(&setup.db, &hit_count_100_modified_now).await;
+    get_json_ld_context(&setup.db, &persistent).await.unwrap();
+    let c1 = get_json_ld_context(&setup.db, &expired).await;
     assert!(matches!(c1, Err(DbErr::RecordNotFound(_))));
+    let c2 = get_json_ld_context(&setup.db, &used_days_ago).await;
     assert!(matches!(c2, Err(DbErr::RecordNotFound(_))));
-    assert!(c3.is_ok());
-    assert!(c4.is_ok());
-
-    setup
-        .provider
-        .delete_expired_or_least_used(CacheType::JsonLdContext)
-        .await
-        .unwrap();
-    let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
-    let c2 = get_json_ld_context(&setup.db, &hit_count_0_modified_now).await;
-    let c3 = get_json_ld_context(&setup.db, &hit_count_100_modified_years_ago).await;
-    let c4 = get_json_ld_context(&setup.db, &hit_count_100_modified_now).await;
-    assert!(matches!(c1, Err(DbErr::RecordNotFound(_))));
-    assert!(matches!(c2, Err(DbErr::RecordNotFound(_))));
-    assert!(matches!(c3, Err(DbErr::RecordNotFound(_))));
-    assert!(c4.is_ok());
-
-    setup
-        .provider
-        .delete_expired_or_least_used(CacheType::JsonLdContext)
-        .await
-        .unwrap();
-    let c1 = get_json_ld_context(&setup.db, &hit_count_0_modified_years_ago).await;
-    let c2 = get_json_ld_context(&setup.db, &hit_count_0_modified_now).await;
-    let c3 = get_json_ld_context(&setup.db, &hit_count_100_modified_years_ago).await;
-    let c4 = get_json_ld_context(&setup.db, &hit_count_100_modified_now).await;
-    assert!(matches!(c1, Err(DbErr::RecordNotFound(_))));
-    assert!(matches!(c2, Err(DbErr::RecordNotFound(_))));
-    assert!(matches!(c3, Err(DbErr::RecordNotFound(_))));
-    assert!(matches!(c4, Err(DbErr::RecordNotFound(_))));
+    get_json_ld_context(&setup.db, &used_now).await.unwrap();
 }
 
 #[tokio::test]
@@ -341,9 +263,15 @@ async fn test_get_repository_size_success() {
             .unwrap()
     );
 
-    insert_json_ld_context(&setup.db, &[1, 2, 3], "http://1.2.3.4", 0, None)
-        .await
-        .unwrap();
+    insert_json_ld_context(
+        &setup.db,
+        &[1, 2, 3],
+        "http://1.2.3.4",
+        get_dummy_date(),
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(
         2,

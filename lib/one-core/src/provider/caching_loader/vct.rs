@@ -86,12 +86,13 @@ impl VctTypeMetadataCache {
             serde_json::from_str(schemas).context("Invalid VCT type metadata resource file")?;
 
         for vct in vcts {
+            let now = OffsetDateTime::now_utc();
             let request = RemoteEntity {
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: now,
                 entity_type: self.inner.remote_entity_type,
                 value: serde_json::to_vec(&vct).context("Serializing what we just deserialized")?,
                 key: vct.vct,
-                hit_counter: 0,
+                last_used: now,
                 media_type: None,
                 expiration_date: None,
             };
