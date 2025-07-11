@@ -6,6 +6,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
+use tokio_util::either::Either;
 use uuid::Uuid;
 
 use super::OID4VCIDraft13Service;
@@ -13,7 +14,7 @@ use super::dto::OpenID4VCICredentialResponseDTO;
 use crate::common_mapper::{
     DidRole, get_exchange_param_pre_authorization_expires_in,
     get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
-    get_or_create_did_and_identifier,
+    get_or_create_did_and_identifier, get_or_create_key_identifier,
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::IssuanceProtocolType;
@@ -333,7 +334,7 @@ impl OID4VCIDraft13Service {
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
 
         let (holder_did, holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
-            let (holder_did_value, key_id) = OpenID4VCIProofJWTFormatter::verify_proof(
+            let verified_proof = OpenID4VCIProofJWTFormatter::verify_proof(
                 &request.proof.jwt,
                 Box::new(KeyVerification {
                     key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -346,16 +347,32 @@ impl OID4VCIDraft13Service {
             .await
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
 
-            let (did, identifier) = get_or_create_did_and_identifier(
-                &*self.did_method_provider,
-                &*self.did_repository,
-                &*self.identifier_repository,
-                &schema.organisation,
-                &holder_did_value,
-                DidRole::Holder,
-            )
-            .await?;
-            Ok((did, identifier, key_id))
+            match verified_proof {
+                Either::Left((holder_did_value, holder_key_id)) => {
+                    let (did, identifier) = get_or_create_did_and_identifier(
+                        &*self.did_method_provider,
+                        &*self.did_repository,
+                        &*self.identifier_repository,
+                        &schema.organisation,
+                        &holder_did_value,
+                        DidRole::Holder,
+                    )
+                    .await?;
+                    Ok((Some(did), identifier, holder_key_id))
+                }
+                Either::Right(jwk) => {
+                    let (key, identifier) = get_or_create_key_identifier(
+                        self.key_repository.as_ref(),
+                        self.key_algorithm_provider.as_ref(),
+                        self.identifier_repository.as_ref(),
+                        &schema.organisation,
+                        &jwk,
+                    )
+                    .await?;
+
+                    Ok((None, identifier, key.id.to_string()))
+                }
+            }
         } else {
             Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidOrMissingProof,

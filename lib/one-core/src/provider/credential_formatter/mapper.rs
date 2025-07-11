@@ -20,7 +20,7 @@ use crate::service::error::ServiceError;
 pub fn credential_data_from_credential_detail_response(
     credential: CredentialDetailResponseDTO,
     issuer_certificate: Option<Certificate>,
-    holder_did: DidValue,
+    holder_did: Option<DidValue>,
     holder_key_id: String,
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
@@ -88,7 +88,7 @@ pub fn credential_data_from_credential_detail_response(
     Ok(CredentialData {
         vcdm,
         claims: flat_claims,
-        holder_did: Some(holder_did),
+        holder_did,
         holder_key_id: Some(holder_key_id),
         issuer_certificate,
     })

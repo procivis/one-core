@@ -1192,7 +1192,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
-        holder_did: Did,
+        holder_did: Option<Did>,
         holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
@@ -1344,7 +1344,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
             issuer_certificate,
-            holder_did.did,
+            holder_did.map(|d| d.did),
             holder_key_id,
             core_base_url,
             credential_status,

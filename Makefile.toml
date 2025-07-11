@@ -20,6 +20,10 @@ command = "cargo"
 args    = ["clippy", "--all-targets", "${@}"]
 command = "cargo"
 
+[tasks.clippy_warn]
+args    = ["clippy", "--all-targets", "--", "-D" ,"warnings"]
+command = "cargo"
+
 [tasks.format]
 args      = ["fmt"]
 command   = "cargo"
@@ -62,6 +66,9 @@ command = "cargo"
 [tasks.test]
 args    = ["test"]
 command = "cargo"
+
+[tasks.check]
+dependencies = ["format", "clippy_warn", "test"]
 
 [tasks.unit-tests]
 args    = ["test", "--lib"]

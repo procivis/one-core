@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
+use tokio_util::either::Either;
 
+use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
@@ -26,7 +28,7 @@ impl OpenID4VCIProofJWTFormatter {
         jwt: &str,
         verifier: Box<dyn TokenVerifier>,
         expected_nonce: &Option<String>,
-    ) -> Result<(DidValue, String), FormatterError> {
+    ) -> Result<Either<(DidValue, String), PublicKeyJwk>, FormatterError> {
         let DecomposedToken::<ProofOfPossession> {
             header,
             payload,
@@ -99,7 +101,7 @@ impl OpenID4VCIProofJWTFormatter {
                     .map_err(|e| {
                         FormatterError::CouldNotVerify(format!("Failed to verify proof.jwt: {e}"))
                     })?;
-                (did, key_id.clone())
+                Either::Left((did, key_id.clone()))
             }
             (None, Some(jwk)) => {
                 let jwk = jwk.into();
@@ -118,17 +120,8 @@ impl OpenID4VCIProofJWTFormatter {
                     .key
                     .verify(unverified_jwt.as_bytes(), &signature)
                     .map_err(|_| FormatterError::CouldNotVerify("Invalid signature".to_string()))?;
-                let multibase = key_handle.key.public_key_as_multibase().map_err(|err| {
-                    FormatterError::CouldNotVerify(format!(
-                        "Failed to encode public key as multibase: {err}"
-                    ))
-                })?;
-                let did_value = format!("did:key:{multibase}");
-                let key_id = format!("{did_value}#{multibase}");
-                let did_value = did_value
-                    .parse()
-                    .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid did: {e}")))?;
-                (did_value, key_id)
+
+                Either::Right(jwk)
             }
         };
         Ok(result)

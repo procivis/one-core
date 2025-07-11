@@ -47,6 +47,7 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
@@ -60,6 +61,7 @@ struct Mocks {
     pub interaction_repository: MockInteractionRepository,
     pub revocation_list_repository: MockRevocationListRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
+    pub key_repository: MockKeyRepository,
     pub config: CoreConfig,
     pub exchange_provider: MockIssuanceProtocolProvider,
     pub key_provider: MockKeyProvider,
@@ -81,6 +83,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.interaction_repository),
         Arc::new(mocks.revocation_list_repository),
         Arc::new(mocks.validity_credential_repository),
+        Arc::new(mocks.key_repository),
         Arc::new(mocks.config),
         Arc::new(mocks.exchange_provider),
         Arc::new(mocks.key_provider),

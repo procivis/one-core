@@ -241,7 +241,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
-        holder_did: Did,
+        holder_did: Option<Did>,
         holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError>;
