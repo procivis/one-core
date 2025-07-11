@@ -6,7 +6,6 @@ use one_core::service::trust_entity::dto::{
     GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
 use one_dto_mapper::convert_inner;
-use sea_orm::prelude::Expr;
 use sea_orm::sea_query::IntoCondition;
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
@@ -229,13 +228,13 @@ impl TrustEntityRepository for TrustEntityProvider {
                 trust_entity::Entity::belongs_to(did::Entity)
                     .from(trust_entity::Column::EntityKey)
                     .to(did::Column::Did)
-                    .on_condition(|left, right| {
-                        let did_org_id = (left, did::Column::OrganisationId);
-                        let trust_entity_org_id = (right, trust_entity::Column::OrganisationId);
-                        Expr::col(did_org_id.clone())
-                            .is_not_null()
-                            .and(Expr::col(trust_entity_org_id.clone()).is_not_null())
-                            .or(Expr::col(did_org_id).equals(trust_entity_org_id))
+                    .on_condition(|_, _| {
+                        did::Column::OrganisationId
+                            .into_expr()
+                            .equals((trust_entity::Entity, trust_entity::Column::OrganisationId))
+                            .or(did::Column::OrganisationId
+                                .is_null()
+                                .and(trust_entity::Column::OrganisationId.is_null()))
                             .into_condition()
                     })
                     .into(),
