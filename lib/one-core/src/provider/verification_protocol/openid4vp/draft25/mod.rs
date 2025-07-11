@@ -52,8 +52,8 @@ use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, JwePayload,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
-    PresentationSubmissionMappingDTO,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PexSubmission,
+    PresentationSubmissionMappingDTO, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -659,8 +659,10 @@ async fn encrypted_params(
     let payload = JwePayload {
         aud: Some(aud),
         exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
-        vp_token,
-        presentation_submission,
+        submission_data: VpSubmissionData::Pex(PexSubmission {
+            vp_token,
+            presentation_submission,
+        }),
         state: interaction_data.state,
     };
 

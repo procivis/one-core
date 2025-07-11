@@ -43,7 +43,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_fo
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
-    OpenID4VPVerifierInteractionContent, SubmissionRequestData,
+    OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::service::{
     create_open_id_for_vp_client_metadata, oid4vp_verifier_process_submission,
@@ -462,19 +463,17 @@ impl OID4VPDraft25Service {
     ) -> Result<SubmissionRequestData, ServiceError> {
         match request {
             OpenID4VPDirectPostRequestDTO {
-                presentation_submission: Some(presentation_submission),
-                vp_token: Some(vp_token),
+                submission_data: VpSubmissionData::Dcql(_) | VpSubmissionData::Pex(_),
                 state: Some(state),
-                response: None,
             } => Ok(SubmissionRequestData {
-                presentation_submission,
-                vp_token,
+                submission_data: request.submission_data,
                 state,
                 mdoc_generated_nonce: None,
                 encryption_key: None,
             }),
             OpenID4VPDirectPostRequestDTO {
-                response: Some(jwe),
+                submission_data:
+                    VpSubmissionData::EncryptedResponse(ResponseSubmission { response: jwe }),
                 ..
             } => {
                 let jwe_header = extract_jwe_header(&jwe).map_err(|err| {
@@ -521,8 +520,7 @@ impl OID4VPDraft25Service {
                 })?;
 
                 Ok(SubmissionRequestData {
-                    presentation_submission: payload.presentation_submission,
-                    vp_token: payload.vp_token,
+                    submission_data: payload.submission_data,
                     state: payload
                         .state
                         .ok_or(ServiceError::ValidationError(

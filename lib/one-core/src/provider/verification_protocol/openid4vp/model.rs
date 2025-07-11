@@ -26,8 +26,8 @@ pub(crate) struct JwePayload {
     pub aud: Option<Url>,
     #[serde(default, with = "unix_timestamp_option")]
     pub exp: Option<OffsetDateTime>,
-    pub vp_token: String,
-    pub presentation_submission: PresentationSubmissionMappingDTO,
+    #[serde(flatten)]
+    pub submission_data: VpSubmissionData,
     pub state: Option<String>,
 }
 
@@ -46,13 +46,35 @@ impl JwePayload {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DcqlSubmission {
+    pub vp_token: HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PexSubmission {
+    pub vp_token: String,
+    pub presentation_submission: PresentationSubmissionMappingDTO,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ResponseSubmission {
+    pub response: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum VpSubmissionData {
+    Dcql(DcqlSubmission),
+    Pex(PexSubmission),
+    EncryptedResponse(ResponseSubmission),
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostRequestDTO {
-    pub presentation_submission: Option<PresentationSubmissionMappingDTO>,
-    pub vp_token: Option<String>,
+    #[serde(flatten)]
+    pub submission_data: VpSubmissionData,
     pub state: Option<Uuid>,
-    pub response: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -251,8 +273,7 @@ pub struct LdpVcAlgs {
 
 #[derive(Debug)]
 pub(crate) struct SubmissionRequestData {
-    pub presentation_submission: PresentationSubmissionMappingDTO,
-    pub vp_token: String,
+    pub submission_data: VpSubmissionData,
     pub state: Uuid,
     pub mdoc_generated_nonce: Option<String>,
     pub encryption_key: Option<KeyId>,

@@ -26,7 +26,8 @@ use crate::model::validity_credential::Mdoc;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::credential_from_proved;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, SubmissionRequestData,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, PexSubmission,
+    SubmissionRequestData, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
@@ -93,8 +94,10 @@ impl ProofService {
                 let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
 
                 let request_data = SubmissionRequestData {
-                    presentation_submission: response.presentation_submission,
-                    vp_token: response.vp_token,
+                    submission_data: VpSubmissionData::Pex(PexSubmission {
+                        presentation_submission: response.presentation_submission,
+                        vp_token: response.vp_token,
+                    }),
                     state,
                     mdoc_generated_nonce: interaction_data.identity_request_nonce,
                     encryption_key: None,
@@ -112,8 +115,10 @@ impl ProofService {
                 let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
 
                 let request_data = SubmissionRequestData {
-                    presentation_submission: response.presentation_submission,
-                    vp_token: response.vp_token,
+                    submission_data: VpSubmissionData::Pex(PexSubmission {
+                        presentation_submission: response.presentation_submission,
+                        vp_token: response.vp_token,
+                    }),
                     state,
                     mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
                     encryption_key: None,

@@ -7,8 +7,8 @@ use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVcSdJwtAlgs,
-    OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO,
+    OpenID4VpPresentationFormat, PexSubmission, PresentationSubmissionDescriptorDTO,
+    PresentationSubmissionMappingDTO, ResponseSubmission, VpSubmissionData,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
@@ -28,24 +28,38 @@ use crate::serialize::front_time_option;
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(OpenID4VPDirectPostRequestDTO)]
 pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
-    #[into(with_fn = convert_inner)]
     #[serde(flatten)]
-    pub presentation_submission: Option<InternalPresentationSubmissionMappingRestDTO>,
-    #[schema(example = "<jwt/sd_jwt token>")]
-    #[into(with_fn = convert_inner)]
-    pub vp_token: Option<String>,
+    pub submission_data: VpSubmissionDataRestDTO,
     #[schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")]
     #[into(with_fn = convert_inner)]
     pub state: Option<Uuid>,
-    #[into(with_fn = convert_inner)]
-    pub response: Option<String>,
+}
+
+/// Represents the different types of VP token submissions supported by OpenID4VP Draft20.
+/// Untagged serialization automatically detects the submission type.
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(VpSubmissionData)]
+#[serde(untagged)]
+pub(crate) enum VpSubmissionDataRestDTO {
+    /// Presentation Exchange submission with presentation_submission field
+    Pex(PexSubmissionRestDTO),
+    /// Response submission with response field (JWE encrypted payload)
+    EncryptedResponse(ResponseSubmissionRestDTO),
 }
 
 #[serde_with::serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-pub(crate) struct InternalPresentationSubmissionMappingRestDTO {
+#[derive(Debug, Serialize, Deserialize, Clone, Into, ToSchema)]
+#[into(PexSubmission)]
+pub(crate) struct PexSubmissionRestDTO {
+    pub vp_token: String,
     #[serde_as(as = "JsonString")]
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, Into)]
+#[into(ResponseSubmission)]
+pub(crate) struct ResponseSubmissionRestDTO {
+    pub response: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
@@ -77,7 +91,7 @@ pub(crate) struct NestedPresentationSubmissionDescriptorRestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPDirectPostResponseDTO)]
 pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
     pub redirect_uri: Option<String>,

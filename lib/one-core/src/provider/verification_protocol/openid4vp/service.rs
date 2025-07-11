@@ -32,7 +32,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     vec_last_position_from_token_path,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    AcceptProofResult, OpenID4VPPresentationDefinition, SubmissionRequestData,
+    AcceptProofResult, OpenID4VPPresentationDefinition, PexSubmission, SubmissionRequestData,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
@@ -123,17 +124,44 @@ pub(crate) async fn oid4vp_verifier_process_submission(
         ))
         .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 
-    let proved_claims = process_proof_submission(
-        request,
-        &proof,
-        interaction_data,
-        did_method_provider,
-        formatter_provider,
-        key_algorithm_provider,
-        revocation_method_provider,
-        certificate_validator,
-    )
-    .await?;
+    let proved_claims = match (
+        &interaction_data.dcql_query,
+        &interaction_data.presentation_definition,
+    ) {
+        (Some(_), Some(_)) => Err(OpenID4VCError::ValidationError(
+            "DCQL query and presentation submission are not allowed at the same time".to_string(),
+        )),
+        (Some(_dcql_query), None) => {
+            process_proof_submission_dcql_query(
+                request,
+                &proof,
+                interaction_data,
+                did_method_provider,
+                formatter_provider,
+                key_algorithm_provider,
+                revocation_method_provider,
+                certificate_validator,
+            )
+            .await
+        }
+        (None, Some(_)) => {
+            process_proof_submission(
+                request,
+                &proof,
+                interaction_data,
+                did_method_provider,
+                formatter_provider,
+                key_algorithm_provider,
+                revocation_method_provider,
+                certificate_validator,
+            )
+            .await
+        }
+        (None, None) => Err(OpenID4VCError::ValidationError(
+            "Missing DCQL query and presentation submission".to_string(),
+        )),
+    }?;
+
     let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
     let result = accept_proof(proof, proved_claims).await?;
     Ok((result, OpenID4VPDirectPostResponseDTO { redirect_uri }))
@@ -146,6 +174,22 @@ pub type FnMapOidcFormatToExternalDetailed =
 pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String, OpenID4VCError>;
 
 #[allow(clippy::too_many_arguments)]
+async fn process_proof_submission_dcql_query(
+    _submission: SubmissionRequestData,
+    _proof: &Proof,
+    _interaction_data: OpenID4VPVerifierInteractionContent,
+    _did_method_provider: &Arc<dyn DidMethodProvider>,
+    _formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    _key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    _revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    _certificate_validator: &Arc<dyn CertificateValidator>,
+) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
+    Err(OpenID4VCError::ValidationError(
+        "DCQL query is not supported".to_string(),
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn process_proof_submission(
     submission: SubmissionRequestData,
     proof: &Proof,
@@ -156,10 +200,25 @@ async fn process_proof_submission(
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
-    let presentation_submission = &submission.presentation_submission;
+    let (presentation_submission, vp_token) = match submission.submission_data {
+        VpSubmissionData::Pex(PexSubmission {
+            presentation_submission,
+            vp_token,
+        }) => (presentation_submission, vp_token),
+        VpSubmissionData::Dcql(_) => {
+            return Err(OpenID4VCError::ValidationError(
+                "DCQL submission should be handled by process_proof_submission_dcql_query"
+                    .to_string(),
+            ));
+        }
+        VpSubmissionData::EncryptedResponse(_) => {
+            return Err(OpenID4VCError::ValidationError(
+                "Response submission should be unpacked before processing".to_string(),
+            ));
+        }
+    };
 
     let definition_id = presentation_submission.definition_id.clone();
-    let vp_token = submission.vp_token;
     let state = submission.state;
 
     if definition_id != state.to_string() {
@@ -191,7 +250,7 @@ async fn process_proof_submission(
 
     let extracted_lvvcs = extract_lvvcs(
         &presentation_strings,
-        presentation_submission,
+        &presentation_submission,
         formatter_provider,
     )
     .await?;

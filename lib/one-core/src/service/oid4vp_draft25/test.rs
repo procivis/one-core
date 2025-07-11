@@ -502,22 +502,23 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
-            presentation_submission: Some(PresentationSubmissionMappingDTO {
-                id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                definition_id: interaction_id.to_string(),
-                descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                    id: "input_0".to_string(),
-                    format: "jwt_vp_json".to_string(),
-                    path: "$".to_string(),
-                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                        format: "jwt_vc_json".to_string(),
-                        path: "$.vp.verifiableCredential[0]".to_string(),
-                    }),
-                }],
+            submission_data: VpSubmissionData::Pex(PexSubmission {
+                vp_token: vp_token.to_string(),
+                presentation_submission: PresentationSubmissionMappingDTO {
+                    id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
+                    definition_id: interaction_id.to_string(),
+                    descriptor_map: vec![PresentationSubmissionDescriptorDTO {
+                        id: "input_0".to_string(),
+                        format: "jwt_vp_json".to_string(),
+                        path: "$".to_string(),
+                        path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
+                            format: "jwt_vc_json".to_string(),
+                            path: "$.vp.verifiableCredential[0]".to_string(),
+                        }),
+                    }],
+                },
             }),
-            vp_token: Some(vp_token.to_string()),
             state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
-            response: None,
         })
         .await
         .unwrap_err();
@@ -825,22 +826,23 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
 
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
-            presentation_submission: Some(PresentationSubmissionMappingDTO {
-                id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                definition_id: interaction_id.to_string(),
-                descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                    id: "input_0".to_string(),
-                    format: "jwt_vp_json".to_string(),
-                    path: "$".to_string(),
-                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                        format: "jwt_vc_json".to_string(),
-                        path: "$.vp.verifiableCredential[0]".to_string(),
-                    }),
-                }],
+            submission_data: VpSubmissionData::Pex(PexSubmission {
+                vp_token: vp_token.to_string(),
+                presentation_submission: PresentationSubmissionMappingDTO {
+                    id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
+                    definition_id: interaction_id.to_string(),
+                    descriptor_map: vec![PresentationSubmissionDescriptorDTO {
+                        id: "input_0".to_string(),
+                        format: "jwt_vp_json".to_string(),
+                        path: "$".to_string(),
+                        path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
+                            format: "jwt_vc_json".to_string(),
+                            path: "$.vp.verifiableCredential[0]".to_string(),
+                        }),
+                    }],
+                },
             }),
-            vp_token: Some(vp_token.to_string()),
             state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
-            response: None,
         })
         .await
         .unwrap_err();
