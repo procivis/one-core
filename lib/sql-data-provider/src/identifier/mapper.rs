@@ -102,7 +102,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
                 .into_condition(),
             IdentifierFilterValue::KeyAlgorithms(key_algorithms) => key::Column::KeyType
-                .is_in(key_algorithms.clone())
+                .is_in(&key_algorithms)
                 .or(ColumnRef::TableColumn(
                     Alias::new("did_key").into_iden(),
                     key::Column::KeyType.into_iden(),
@@ -124,7 +124,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 .or(identifier::Column::Type.ne(identifier::IdentifierType::Did))
                 .into_condition(),
             IdentifierFilterValue::KeyStorages(key_storages) => key::Column::StorageType
-                .is_in(key_storages.clone())
+                .is_in(&key_storages)
                 .or(ColumnRef::TableColumn(
                     Alias::new("did_key").into_iden(),
                     key::Column::StorageType.into_iden(),
@@ -135,6 +135,19 @@ impl IntoFilterCondition for IdentifierFilterValue {
                     key::Column::StorageType.into_iden(),
                 )
                 .is_in(key_storages))
+                .into_condition(),
+            IdentifierFilterValue::KeyIds(key_ids) => key::Column::Id
+                .is_in(&key_ids)
+                .or(ColumnRef::TableColumn(
+                    Alias::new("did_key").into_iden(),
+                    key::Column::Id.into_iden(),
+                )
+                .is_in(&key_ids))
+                .or(ColumnRef::TableColumn(
+                    Alias::new("certificate_key").into_iden(),
+                    key::Column::Id.into_iden(),
+                )
+                .is_in(key_ids))
                 .into_condition(),
         }
     }

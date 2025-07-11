@@ -58,6 +58,9 @@ impl IntoFilterCondition for KeyFilterValue {
             Self::Remote(is_remote) => {
                 get_nullability_condition(entity::key::Column::KeyReference, is_remote)
             }
+            Self::RawPublicKey(raw_public_key) => {
+                get_equals_condition(entity::key::Column::PublicKey, raw_public_key)
+            }
         }
     }
 }

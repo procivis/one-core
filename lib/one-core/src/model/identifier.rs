@@ -1,6 +1,6 @@
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
-use shared_types::{IdentifierId, OrganisationId};
+use shared_types::{IdentifierId, KeyId, OrganisationId};
 use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 use url::Url;
@@ -120,6 +120,7 @@ pub enum IdentifierFilterValue {
     KeyAlgorithms(Vec<String>),
     KeyRoles(Vec<KeyRole>),
     KeyStorages(Vec<String>),
+    KeyIds(Vec<KeyId>),
 }
 
 impl ListFilterValue for IdentifierFilterValue {}

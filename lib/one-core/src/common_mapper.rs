@@ -24,8 +24,10 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
-use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::key::PublicKeyJwk;
+use crate::model::identifier::{
+    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
+};
+use crate::model::key::{Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -40,6 +42,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
@@ -258,6 +261,87 @@ pub(crate) async fn get_or_create_certificate_identifier(
     certificate_repository.create(certificate.clone()).await?;
 
     Ok((certificate, identifier))
+}
+
+#[allow(dead_code)] // to be used in ONE-6253
+pub(crate) async fn get_or_create_key_identifier(
+    key_repository: &dyn KeyRepository,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    identifier_repository: &dyn IdentifierRepository,
+    organisation: &Option<Organisation>,
+    public_key: &PublicKeyJwk,
+) -> Result<(Key, Identifier), ServiceError> {
+    let parsed_key = key_algorithm_provider.parse_jwk(public_key)?;
+    let organisation_id = organisation.as_ref().map(|org| org.id);
+    let now = OffsetDateTime::now_utc();
+
+    let list = key_repository
+        .get_key_list(KeyListQuery {
+            filtering: Some(
+                KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw()).condition()
+                    & KeyFilterValue::KeyType(parsed_key.algorithm_type.to_string())
+                    & organisation_id.map(KeyFilterValue::OrganisationId),
+            ),
+            ..Default::default()
+        })
+        .await?;
+
+    let key = if let Some(key) = list.values.into_iter().next() {
+        let identifier = identifier_repository
+            .get_identifier_list(IdentifierListQuery {
+                filtering: Some(
+                    IdentifierFilterValue::KeyIds(vec![key.id]).condition()
+                        & IdentifierFilterValue::Types(vec![IdentifierType::Key])
+                        & organisation_id.map(IdentifierFilterValue::OrganisationId),
+                ),
+                ..Default::default()
+            })
+            .await?
+            .values
+            .into_iter()
+            .next();
+
+        if let Some(identifier) = identifier {
+            return Ok((key, identifier));
+        };
+
+        key
+    } else {
+        let key_id = Uuid::new_v4().into();
+        let key = Key {
+            id: key_id,
+            created_date: now,
+            last_modified: now,
+            name: format!("Remote {key_id}"),
+            organisation: organisation.to_owned(),
+            public_key: parsed_key.key.public_key_as_raw(),
+            key_reference: None,
+            storage_type: "INTERNAL".to_string(),
+            key_type: parsed_key.algorithm_type.to_string(),
+        };
+
+        key_repository.create_key(key.clone()).await?;
+        key
+    };
+
+    let identifier_id = Uuid::new_v4().into();
+    let identifier = Identifier {
+        id: identifier_id,
+        created_date: now,
+        last_modified: now,
+        name: format!("Remote {identifier_id}"),
+        r#type: IdentifierType::Key,
+        is_remote: true,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: organisation.to_owned(),
+        did: None,
+        key: Some(key.clone()),
+        certificates: None,
+    };
+    identifier_repository.create(identifier.clone()).await?;
+
+    Ok((key, identifier))
 }
 
 pub(crate) fn value_to_model_claims(

@@ -58,6 +58,7 @@ pub enum KeyFilterValue {
     KeyStorage(String),
     Ids(Vec<KeyId>),
     Remote(bool),
+    RawPublicKey(Vec<u8>),
 }
 
 impl KeyFilterValue {
