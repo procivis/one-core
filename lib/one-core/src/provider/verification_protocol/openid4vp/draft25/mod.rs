@@ -16,7 +16,10 @@ use utils::{
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::{format_to_type, map_presented_credentials_to_presentation_format_type};
+use super::mapper::{
+    explode_validity_credentials, format_to_type,
+    map_presented_credentials_to_presentation_format_type,
+};
 use super::mdoc::mdoc_presentation_context;
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
@@ -183,6 +186,7 @@ impl OpenID4VP25HTTP {
         holder_did: &Did,
         holder_nonce: String,
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
+        let credential_presentations = explode_validity_credentials(credential_presentations);
         let format = map_presented_credentials_to_presentation_format_type(
             &credential_presentations,
             &self.config,
@@ -262,7 +266,9 @@ impl OpenID4VP25HTTP {
         for credential_presentation in credential_presentations {
             let credential_format = format_to_type(&credential_presentation, &self.config)?;
             let presentation_format = match credential_format {
-                FormatType::SdJwt | FormatType::SdJwtVc => FormatType::SdJwt,
+                // W3C SD-JWT will be enveloped using JWT presentation formatter
+                FormatType::SdJwt => FormatType::Jwt,
+                FormatType::SdJwtVc => FormatType::SdJwt,
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
                 FormatType::Mdoc => FormatType::Mdoc,
                 FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
@@ -291,12 +297,21 @@ impl OpenID4VP25HTTP {
                 )
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
+            let mut credentials = vec![CredentialToPresent {
+                raw_credential: credential_presentation.presentation,
+                credential_format,
+            }];
+            if let Some(validity_credential) =
+                credential_presentation.validity_credential_presentation
+            {
+                credentials.push(CredentialToPresent {
+                    raw_credential: validity_credential,
+                    credential_format,
+                })
+            }
             let formatted_presentation = presentation_formatter
                 .format_presentation(
-                    vec![CredentialToPresent {
-                        raw_credential: credential_presentation.presentation,
-                        credential_format,
-                    }],
+                    credentials,
                     auth_fn,
                     &holder_did.did,
                     format_presentation_context(

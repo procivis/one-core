@@ -42,10 +42,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::openid4vp::get_presentation_definition_with_local_credentials;
-use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_presentation_definition, create_presentation_submission,
-    map_presented_credentials_to_presentation_format_type,
-};
+use crate::provider::verification_protocol::openid4vp::mapper::{create_open_id_for_vp_presentation_definition, create_presentation_submission, explode_validity_credentials, map_presented_credentials_to_presentation_format_type};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{verifier_flow, AsyncVerifierFlowParams};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_verifier::{retract_proof_ble, schedule_ble_verifier_flow};
@@ -307,6 +304,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
+        let credential_presentations = explode_validity_credentials(credential_presentations);
 
         let interaction_data = interaction_data_from_proof(proof)?;
 

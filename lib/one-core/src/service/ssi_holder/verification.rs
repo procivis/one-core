@@ -353,11 +353,12 @@ impl SSIHolderService {
                 )
                 .await?;
 
-            credential_presentations.push(PresentedCredential {
+            let mut presented_credential = PresentedCredential {
                 presentation: formatted_credential_presentation.to_owned(),
+                validity_credential_presentation: None,
                 credential_schema: credential_schema.clone(),
                 request: requested_credential.to_owned(),
-            });
+            };
 
             let revocation_method: Fields<RevocationType> = self
                 .config
@@ -409,12 +410,10 @@ impl SSIHolderService {
                     .format_credential_presentation(lvvc_presentation, None, None)
                     .await?;
 
-                credential_presentations.push(PresentedCredential {
-                    presentation: formatted_lvvc_presentation,
-                    credential_schema: credential_schema.clone(),
-                    request: requested_credential.to_owned(),
-                });
+                presented_credential.validity_credential_presentation =
+                    Some(formatted_lvvc_presentation);
             }
+            credential_presentations.push(presented_credential);
         }
 
         let submit_result = verification_protocol

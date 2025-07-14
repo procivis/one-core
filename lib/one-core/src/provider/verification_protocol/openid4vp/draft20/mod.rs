@@ -15,7 +15,9 @@ use utils::{
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::map_presented_credentials_to_presentation_format_type;
+use super::mapper::{
+    explode_validity_credentials, map_presented_credentials_to_presentation_format_type,
+};
 use super::mdoc::mdoc_presentation_context;
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
@@ -315,6 +317,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             ))?
             .to_owned();
 
+        let credential_presentations = explode_validity_credentials(credential_presentations);
         let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data)?;
 

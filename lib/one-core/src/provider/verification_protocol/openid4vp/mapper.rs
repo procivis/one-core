@@ -606,6 +606,36 @@ pub(crate) fn format_to_type(
         .r#type)
 }
 
+/// Expands the list of credentials to have the validity credential be their own independent entry
+/// in the list. This is done to preserve legacy behaviour that heavily depends on the length of the
+/// list.
+pub(crate) fn explode_validity_credentials(
+    credential_presentations: Vec<PresentedCredential>,
+) -> Vec<PresentedCredential> {
+    credential_presentations
+        .into_iter()
+        .flat_map(|cred| {
+            if let Some(validity_cred) = cred.validity_credential_presentation {
+                let validity_credential_presentation = PresentedCredential {
+                    presentation: validity_cred,
+                    validity_credential_presentation: None,
+                    credential_schema: cred.credential_schema.clone(),
+                    request: cred.request.clone(),
+                };
+                vec![
+                    PresentedCredential {
+                        validity_credential_presentation: None,
+                        ..cred
+                    },
+                    validity_credential_presentation,
+                ]
+            } else {
+                vec![cred]
+            }
+        })
+        .collect()
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn credential_from_proved(
     proved_credential: ProvedCredential,

@@ -137,6 +137,7 @@ pub(crate) struct InvitationResponseDTO {
 #[derive(Clone, Debug)]
 pub(crate) struct PresentedCredential {
     pub presentation: String,
+    pub validity_credential_presentation: Option<String>,
     pub credential_schema: CredentialSchema,
     pub request: PresentationDefinitionRequestedCredentialResponseDTO,
 }
