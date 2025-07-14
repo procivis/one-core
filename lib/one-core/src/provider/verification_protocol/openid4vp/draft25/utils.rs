@@ -1,4 +1,5 @@
 use core::str;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -11,14 +12,16 @@ use super::model::{
     OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
 };
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::model::TokenVerifier;
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, IdentifierDetails, TokenVerifier,
+};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
-    OpenID4VPHolderInteractionDataVerifierCertificate, OpenID4VpPresentationFormat,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
@@ -47,13 +50,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
 async fn parse_referenced_data_from_x509_san_dns_token(
     request_token: DecomposedToken<OpenID4VP25AuthorizationRequest>,
     certificate_validator: &Arc<dyn CertificateValidator>,
-) -> Result<
-    (
-        OpenID4VP25AuthorizationRequest,
-        OpenID4VPHolderInteractionDataVerifierCertificate,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(OpenID4VP25AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
     let x5c = request_token
         .header
         .x5c
@@ -110,9 +107,10 @@ async fn parse_referenced_data_from_x509_san_dns_token(
 
     Ok((
         request_token.payload.custom,
-        OpenID4VPHolderInteractionDataVerifierCertificate {
+        CertificateDetails {
             chain: pem_chain,
             fingerprint: attributes.fingerprint,
+            expiry: attributes.not_after,
         },
     ))
 }
@@ -271,14 +269,8 @@ async fn retrieve_authorization_params_by_reference(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
     params: &OpenID4Vp25Params,
-) -> Result<
-    (
-        OpenID4VP25AuthorizationRequest,
-        Option<String>,
-        Option<OpenID4VPHolderInteractionDataVerifierCertificate>,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(OpenID4VP25AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError>
+{
     let token = client
         .get(url.as_str())
         .header("Accept", "application/oauth-authz-req+jwt")
@@ -319,10 +311,9 @@ async fn retrieve_authorization_params_by_reference(
         ));
     }
 
-    let (referenced_params, verifier_did, verifier_certificate): (
+    let (referenced_params, verifier_details): (
         OpenID4VP25AuthorizationRequest,
-        Option<String>,
-        Option<OpenID4VPHolderInteractionDataVerifierCertificate>,
+        Option<IdentifierDetails>,
     ) = match client_id_scheme {
         ClientIdScheme::VerifierAttestation => {
             let (request, did) = parse_referenced_data_from_verifier_attestation_token(
@@ -332,14 +323,21 @@ async fn retrieve_authorization_params_by_reference(
                 certificate_validator,
             )
             .await?;
-            (request, did, None)
+            (
+                request,
+                did.as_deref()
+                    .map(DidValue::from_str)
+                    .transpose()
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                    .map(IdentifierDetails::Did),
+            )
         }
-        ClientIdScheme::RedirectUri => (request_token.payload.custom, None, None),
+        ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
         ClientIdScheme::X509SanDns => {
             let (params, certificate) =
                 parse_referenced_data_from_x509_san_dns_token(request_token, certificate_validator)
                     .await?;
-            (params, None, Some(certificate))
+            (params, Some(IdentifierDetails::Certificate(certificate)))
         }
         ClientIdScheme::Did => {
             let (request, did) = parse_referenced_data_from_did_signed_token(
@@ -348,7 +346,7 @@ async fn retrieve_authorization_params_by_reference(
                 did_method_provider,
             )
             .await?;
-            (request, Some(did.to_string()), None)
+            (request, Some(IdentifierDetails::Did(did)))
         }
     };
 
@@ -359,7 +357,7 @@ async fn retrieve_authorization_params_by_reference(
         ));
     }
 
-    Ok((referenced_params, verifier_did, verifier_certificate))
+    Ok((referenced_params, verifier_details))
 }
 
 pub(crate) async fn interaction_data_from_openid4vp_25_query(
@@ -370,18 +368,12 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
     did_method_provider: &Arc<dyn DidMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
     params: &OpenID4Vp25Params,
-) -> Result<
-    (
-        OpenID4VP25AuthorizationRequest,
-        Option<String>,
-        Option<OpenID4VPHolderInteractionDataVerifierCertificate>,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(OpenID4VP25AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError>
+{
     let query_params: OpenID4VP25AuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
-    let (mut authorization_request, verifier_did, verifier_certificate) =
+    let (mut authorization_request, verifier_details) =
         match (&query_params.request_uri, &query_params.request) {
             (Some(_), Some(_)) => {
                 return Err(VerificationProtocolError::InvalidRequest(
@@ -415,7 +407,7 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
                         "Failed to parse request: {e}"
                     ))
                 })?;
-                Ok((authorization_request, None, None))
+                Ok((authorization_request, None))
             }
             (None, None) => {
                 return Err(VerificationProtocolError::InvalidRequest(
@@ -456,7 +448,7 @@ pub(crate) async fn interaction_data_from_openid4vp_25_query(
         authorization_request.presentation_definition = Some(presentation_definition);
     }
 
-    Ok((authorization_request, verifier_did, verifier_certificate))
+    Ok((authorization_request, verifier_details))
 }
 
 pub(crate) fn validate_interaction_data(

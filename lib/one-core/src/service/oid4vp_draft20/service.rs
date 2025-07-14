@@ -16,8 +16,7 @@ use super::proof_request::{
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
 use crate::common_mapper::{
-    DidRole, encode_cbor_base64, get_encryption_key_jwk_from_proof,
-    get_or_create_did_and_identifier,
+    IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType::{
@@ -296,23 +295,29 @@ impl OID4VPDraft20Service {
         {
             Ok((accept_proof_result, response)) => {
                 // store holder did on proof if it is not ambiguous
-                let holder_did_value = accept_proof_result
+                let holder_details = accept_proof_result
                     .proved_credentials
                     .iter()
-                    .map(|cred| &cred.holder_did_value)
+                    .map(|cred| &cred.holder_details)
                     .all_equal_value()
                     .ok();
-                let holder_identifier_id = if let Some(holder_did_value) = holder_did_value {
-                    let (_, identifer) = get_or_create_did_and_identifier(
-                        &*self.did_method_provider,
-                        &*self.did_repository,
-                        &*self.identifier_repository,
+
+                let holder_identifier_id = if let Some(holder_details) = holder_details {
+                    let (identifier, ..) = get_or_create_identifier(
+                        self.did_method_provider.as_ref(),
+                        self.did_repository.as_ref(),
+                        self.certificate_repository.as_ref(),
+                        self.certificate_validator.as_ref(),
+                        self.key_repository.as_ref(),
+                        self.key_algorithm_provider.as_ref(),
+                        self.identifier_repository.as_ref(),
                         &Some(organisation.to_owned()),
-                        holder_did_value,
-                        DidRole::Holder,
+                        holder_details,
+                        IdentifierRole::Holder,
                     )
                     .await?;
-                    Some(identifer.id)
+
+                    Some(identifier.id)
                 } else {
                     None
                 };
@@ -324,11 +329,13 @@ impl OID4VPDraft20Service {
                     let credential = credential_from_proved(
                         proved_credential,
                         organisation,
-                        &*self.did_repository,
-                        &*self.certificate_repository,
-                        &*self.identifier_repository,
-                        &*self.certificate_validator,
-                        &*self.did_method_provider,
+                        self.did_repository.as_ref(),
+                        self.certificate_repository.as_ref(),
+                        self.identifier_repository.as_ref(),
+                        self.certificate_validator.as_ref(),
+                        self.did_method_provider.as_ref(),
+                        self.key_repository.as_ref(),
+                        self.key_algorithm_provider.as_ref(),
                     )
                     .await?;
 

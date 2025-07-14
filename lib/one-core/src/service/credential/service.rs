@@ -25,7 +25,7 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::provider::credential_formatter::model::{CertificateDetails, IssuerDetails};
+use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
@@ -878,7 +878,7 @@ impl CredentialService {
                     .as_ref()
                     .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
-                IssuerDetails::Did(issuer_did.did.clone())
+                IdentifierDetails::Did(issuer_did.did.clone())
             }
             IdentifierType::Certificate => {
                 let certificate = issuer_identifier
@@ -893,7 +893,7 @@ impl CredentialService {
                     ))?
                     .to_owned();
 
-                IssuerDetails::Certificate(CertificateDetails {
+                IdentifierDetails::Certificate(CertificateDetails {
                     chain: certificate.chain,
                     fingerprint: certificate.fingerprint,
                     expiry: certificate.expiry_date,

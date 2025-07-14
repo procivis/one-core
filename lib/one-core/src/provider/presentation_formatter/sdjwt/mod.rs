@@ -163,7 +163,7 @@ impl SdjwtPresentationFormatter {
             id: proof_of_key_possesion.jwt_id,
             issued_at: proof_of_key_possesion.issued_at,
             expires_at: proof_of_key_possesion.expires_at,
-            issuer_did: credential.subject,
+            issuer: credential.subject,
             nonce: Some(proof_of_key_possesion.custom.nonce),
             credentials: vec![token.to_string()],
         };

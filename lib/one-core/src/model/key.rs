@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
 use secrecy::SecretString;
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 
@@ -73,16 +75,19 @@ pub type KeyListQuery = ListQuery<SortableKeyColumn, KeyFilterValue>;
 
 pub type GetKeyList = GetListResponse<Key>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kty", rename_all = "UPPERCASE")]
 pub enum PublicKeyJwk {
     Ec(PublicKeyJwkEllipticData),
     Rsa(PublicKeyJwkRsaData),
     Okp(PublicKeyJwkEllipticData),
+    #[serde(rename = "oct")]
     Oct(PublicKeyJwkOctData),
     Mlwe(PublicKeyJwkMlweData),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkRsaData {
     pub r#use: Option<String>,
     pub kid: Option<String>,
@@ -90,14 +95,16 @@ pub struct PublicKeyJwkRsaData {
     pub n: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkOctData {
     pub r#use: Option<String>,
     pub kid: Option<String>,
     pub k: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkMlweData {
     pub r#use: Option<String>,
     pub kid: Option<String>,
@@ -105,7 +112,8 @@ pub struct PublicKeyJwkMlweData {
     pub x: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkEllipticData {
     pub r#use: Option<String>,
     pub kid: Option<String>,

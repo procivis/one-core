@@ -16,7 +16,7 @@ use super::mapper::{
     trust_entity_from_identifier_and_anchor, trust_entity_from_partial_and_did_and_anchor,
     trust_entity_from_request, update_request_from_dto,
 };
-use crate::common_mapper::{DidRole, get_or_create_did_and_identifier};
+use crate::common_mapper::{IdentifierRole, get_or_create_did_and_identifier};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, DidType};
@@ -282,9 +282,9 @@ impl TrustEntityService {
         }
 
         let did_role = match request.role {
-            TrustEntityRole::Issuer => DidRole::Issuer,
-            TrustEntityRole::Verifier => DidRole::Verifier,
-            TrustEntityRole::Both => DidRole::Issuer,
+            TrustEntityRole::Issuer => IdentifierRole::Issuer,
+            TrustEntityRole::Verifier => IdentifierRole::Verifier,
+            TrustEntityRole::Both => IdentifierRole::Issuer,
         };
 
         // See: ONE-6304, we expect the remote DID to be available at a later stage

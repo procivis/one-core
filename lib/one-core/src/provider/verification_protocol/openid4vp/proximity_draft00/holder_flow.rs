@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 use url::Url;
 
-use crate::common_mapper::DidRole;
+use crate::common_mapper::IdentifierRole;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::model::VerificationFn;
+use crate::provider::credential_formatter::model::{IdentifierDetails, VerificationFn};
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
@@ -92,11 +92,11 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
                 presentation_request.payload.custom.client_id
             ))
         })?;
-    let (_, verifier_identifier) = storage_access
-        .get_or_create_did_and_identifier(
+    let (verifier_identifier, ..) = storage_access
+        .get_or_create_identifier(
             &Some(organisation.clone()),
-            &did_value,
-            DidRole::Verifier,
+            &IdentifierDetails::Did(did_value),
+            IdentifierRole::Verifier,
         )
         .await
         .map_err(|_| {

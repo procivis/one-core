@@ -1,13 +1,14 @@
-use similar_asserts::assert_eq;
 use futures::FutureExt;
 use mockall::predicate::eq;
 use serde_json::json;
 use shared_types::DidValue;
+use similar_asserts::assert_eq;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::common_mapper::RemoteIdentifierRelation;
 use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -141,23 +142,10 @@ async fn test_handle_invitation_success() {
         DidValue::from_str("did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y").unwrap();
     let mut mock_storage_access = MockStorageProxy::default();
     mock_storage_access
-        .expect_get_or_create_did_and_identifier()
+        .expect_get_or_create_identifier()
         .once()
         .returning(|_, did, _| {
             Ok((
-                Did {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    name: "did".to_string(),
-                    did: did.clone(),
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    deactivated: false,
-                    keys: None,
-                    organisation: None,
-                    log: None,
-                },
                 Identifier {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
@@ -172,6 +160,19 @@ async fn test_handle_invitation_success() {
                     state: IdentifierState::Active,
                     deleted_at: None,
                 },
+                RemoteIdentifierRelation::Did(Did {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "did".to_string(),
+                    did: did.did_value().unwrap().to_owned(),
+                    did_type: DidType::Remote,
+                    did_method: "KEY".to_string(),
+                    deactivated: false,
+                    keys: None,
+                    organisation: None,
+                    log: None,
+                }),
             ))
         });
     mock_storage_access

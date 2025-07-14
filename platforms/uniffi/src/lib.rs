@@ -583,7 +583,6 @@ async fn initialize(
                                     params,
                                     certificate_validator.clone(),
                                     did_method_provider.clone(),
-                                    key_algorithm_provider.clone(),
                                     datatype_config.clone(),
                                 )) as _
                             }

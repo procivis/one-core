@@ -23,7 +23,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormattedPresentation,
-    FormatterCapabilities, HolderBindingCtx, IssuerDetails, Presentation, SelectiveDisclosure,
+    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, Presentation, SelectiveDisclosure,
     VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
@@ -319,7 +319,7 @@ pub(crate) async fn extract_credentials_internal(
                 "Missing issuer in SD-JWT".to_string(),
             ));
         }
-        (None, Some(iss)) => IssuerDetails::Did(iss.to_did_value()?),
+        (None, Some(iss)) => IdentifierDetails::Did(iss.to_did_value()?),
         (Some(_), None) => issuer_details,
         (Some(i1), Some(i2)) => {
             if i1 != i2.as_url().as_str() {
@@ -327,7 +327,7 @@ pub(crate) async fn extract_credentials_internal(
                     "Invalid issuer in SD-JWT".to_string(),
                 ));
             }
-            IssuerDetails::Did(i2.to_did_value()?)
+            IdentifierDetails::Did(i2.to_did_value()?)
         }
     };
 
@@ -344,7 +344,8 @@ pub(crate) async fn extract_credentials_internal(
                 .subject
                 .map(|did| did.parse().context("did parsing error"))
                 .transpose()
-                .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                .map_err(|e| FormatterError::Failed(e.to_string()))?
+                .map(IdentifierDetails::Did),
             claims,
             status: jwt.payload.custom.vc.credential_status,
             credential_schema: jwt

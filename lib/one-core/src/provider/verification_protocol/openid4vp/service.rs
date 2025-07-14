@@ -559,7 +559,7 @@ async fn accept_proof(
             .ok_or(OpenID4VCError::MappingError("claims are empty".to_string()))?;
         let credential = &first_claim.credential;
 
-        let holder_did = credential
+        let holder_details = credential
             .subject
             .as_ref()
             .ok_or(OpenID4VCError::MappingError(
@@ -578,8 +578,8 @@ async fn accept_proof(
             claim_schemas,
             first_claim.credential_schema.to_owned(),
             claims,
-            &credential.issuer,
-            holder_did,
+            credential.issuer.to_owned(),
+            holder_details.to_owned(),
             first_claim.mdoc_mso.to_owned(),
             &proof.protocol,
         )?;

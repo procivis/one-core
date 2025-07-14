@@ -18,7 +18,8 @@ use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
-    Presentation, PublicKeySource, SignatureProvider, TokenVerifier, VerificationFn,
+    IdentifierDetails, Presentation, PublicKeySource, SignatureProvider, TokenVerifier,
+    VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
@@ -32,7 +33,7 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 use crate::service::certificate::validator::CertificateValidator;
 use crate::util::cose::{CoseSign1, CoseSign1Builder};
 use crate::util::mdoc::{
-    EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header, jwk_to_did,
+    EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header,
     try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
 };
 use crate::util::x509::pem_chain_into_x5c;
@@ -210,9 +211,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
-            issuer_did: presentation_issuer_jwk
-                .map(|jwk| jwk_to_did(&jwk, &*self.key_algorithm_provider))
-                .transpose()?,
+            issuer: presentation_issuer_jwk.map(IdentifierDetails::Key),
             nonce,
             credentials: tokens,
         })
@@ -242,7 +241,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
-            issuer_did: None,
+            issuer: None,
             nonce: context.nonce,
             credentials: tokens,
         })

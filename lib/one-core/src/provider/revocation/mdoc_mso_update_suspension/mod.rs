@@ -3,7 +3,7 @@
 
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::model::{CredentialStatus, IssuerDetails};
+use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -42,7 +42,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     async fn check_credential_revocation_status(
         &self,
         _credential_status: &CredentialStatus,
-        _issuer_details: &IssuerDetails,
+        _issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {

@@ -1,4 +1,5 @@
 use core::str;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -10,14 +11,16 @@ use super::model::{
     OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::model::TokenVerifier;
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, IdentifierDetails, TokenVerifier,
+};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
-    OpenID4VPHolderInteractionDataVerifierCertificate, OpenID4VpPresentationFormat,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
@@ -46,13 +49,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
 async fn parse_referenced_data_from_x509_san_dns_token(
     request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
     certificate_validator: &Arc<dyn CertificateValidator>,
-) -> Result<
-    (
-        OpenID4VP20AuthorizationRequest,
-        OpenID4VPHolderInteractionDataVerifierCertificate,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(OpenID4VP20AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
     let x5c = request_token
         .header
         .x5c
@@ -109,9 +106,10 @@ async fn parse_referenced_data_from_x509_san_dns_token(
 
     Ok((
         request_token.payload.custom,
-        OpenID4VPHolderInteractionDataVerifierCertificate {
+        CertificateDetails {
             chain: pem_chain,
             fingerprint: attributes.fingerprint,
+            expiry: attributes.not_after,
         },
     ))
 }
@@ -358,37 +356,43 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
             ));
         }
 
-        let (referenced_params, verifier_did, verifier_certificate) =
-            match &interaction_data.client_id_scheme {
-                ClientIdScheme::VerifierAttestation => {
-                    let (params, did) = parse_referenced_data_from_verifier_attestation_token(
-                        request_token,
-                        key_algorithm_provider,
-                        did_method_provider,
-                        certificate_validator,
-                    )
-                    .await?;
-                    (params, did, None)
-                }
-                ClientIdScheme::RedirectUri => (request_token.payload.custom, None, None),
-                ClientIdScheme::Did => {
-                    let (params, did) = parse_referenced_data_from_did_signed_token(
-                        request_token,
-                        key_algorithm_provider,
-                        did_method_provider,
-                    )
-                    .await?;
-                    (params, Some(did.to_string()), None)
-                }
-                ClientIdScheme::X509SanDns => {
-                    let (params, certificate) = parse_referenced_data_from_x509_san_dns_token(
-                        request_token,
-                        certificate_validator,
-                    )
-                    .await?;
-                    (params, None, Some(certificate))
-                }
-            };
+        let (referenced_params, verifier_details) = match &interaction_data.client_id_scheme {
+            ClientIdScheme::VerifierAttestation => {
+                let (params, did) = parse_referenced_data_from_verifier_attestation_token(
+                    request_token,
+                    key_algorithm_provider,
+                    did_method_provider,
+                    certificate_validator,
+                )
+                .await?;
+                (
+                    params,
+                    did.as_deref()
+                        .map(DidValue::from_str)
+                        .transpose()
+                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                        .map(IdentifierDetails::Did),
+                )
+            }
+            ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
+            ClientIdScheme::Did => {
+                let (params, did) = parse_referenced_data_from_did_signed_token(
+                    request_token,
+                    key_algorithm_provider,
+                    did_method_provider,
+                )
+                .await?;
+                (params, Some(IdentifierDetails::Did(did)))
+            }
+            ClientIdScheme::X509SanDns => {
+                let (params, certificate) = parse_referenced_data_from_x509_san_dns_token(
+                    request_token,
+                    certificate_validator,
+                )
+                .await?;
+                (params, Some(IdentifierDetails::Certificate(certificate)))
+            }
+        };
 
         // client_id from the query params must match client_id inside the token
         if referenced_params.client_id != interaction_data.client_id {
@@ -399,8 +403,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
 
         // use referenced params
         interaction_data = referenced_params.into();
-        interaction_data.verifier_did = verifier_did;
-        interaction_data.verifier_certificate = verifier_certificate;
+        interaction_data.verifier_details = verifier_details;
     }
 
     if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()

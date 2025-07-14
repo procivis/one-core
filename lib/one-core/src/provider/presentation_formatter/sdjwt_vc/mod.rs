@@ -10,7 +10,7 @@ use time::Duration;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
-    Presentation, VerificationFn,
+    IdentifierDetails, Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::sdjwt::SdJwtHolderBindingParams;
 use crate::provider::credential_formatter::sdjwt::model::KeyBindingPayload;
@@ -99,7 +99,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             id: proof_of_key_possession.jwt_id,
             issued_at: proof_of_key_possession.issued_at,
             expires_at: proof_of_key_possession.expires_at,
-            issuer_did: subject,
+            issuer: subject.map(IdentifierDetails::Did),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.to_string()],
         };
@@ -129,7 +129,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             id: proof_of_key_possession.jwt_id,
             issued_at: proof_of_key_possession.issued_at,
             expires_at: proof_of_key_possession.expires_at,
-            issuer_did: subject,
+            issuer: subject.map(IdentifierDetails::Did),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.to_string()],
         };

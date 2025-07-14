@@ -21,7 +21,8 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails, Presentation,
+    CredentialStatus, CredentialSubject, DetailCredential, FormatterCapabilities,
+    IdentifierDetails, Presentation,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -385,8 +386,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(holder_did_clone.to_owned()),
+                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
+                subject: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 claims: CredentialSubject {
                     claims: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -409,7 +410,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -425,7 +426,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -442,8 +443,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_owned()),
+                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
+                subject: Some(IdentifierDetails::Did(holder_did.to_owned())),
                 claims: CredentialSubject {
                     claims: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -685,8 +686,8 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(subject_did_clone.to_owned()),
+                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
+                subject: Some(IdentifierDetails::Did(subject_did_clone.to_owned())),
                 claims: CredentialSubject {
                     claims: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -709,7 +710,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -725,7 +726,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -742,8 +743,8 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(subject_did.to_owned()),
+                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
+                subject: Some(IdentifierDetails::Did(subject_did.to_owned())),
                 claims: CredentialSubject {
                     claims: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -759,6 +760,27 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 }],
                 credential_schema: None,
             })
+        });
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            features: vec![],
+            selective_disclosure: vec![],
+            issuance_did_methods: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec![],
+            signing_key_algorithms: vec![],
+            verification_key_algorithms: vec![],
+            verification_key_storages: vec![],
+            datatypes: vec![],
+            allowed_schema_ids: vec![],
+            forbidden_claim_names: vec![],
+            issuance_identifier_types: vec![],
+            verification_identifier_types: vec![],
+            holder_identifier_types: vec![],
+            holder_key_algorithms: vec![],
+            holder_did_methods: vec![],
         });
 
     let formatter = Arc::new(formatter);
@@ -848,7 +870,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         .unwrap_err();
     assert!(matches!(
         err,
-        ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(e)) if e == "Unsupported holder DID method: holder"));
+        ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(e)) if e == "Unsupported holder DID method: subject"));
 }
 
 #[tokio::test]

@@ -18,7 +18,7 @@ use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails, MockSignatureProvider,
+    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -127,7 +127,7 @@ fn extracted_credential(status: &str) -> DetailCredential {
         valid_until: None,
         update_at: None,
         invalid_before: None,
-        issuer: IssuerDetails::Did("did:example:123".parse().unwrap()),
+        issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
         subject: None,
         claims: CredentialSubject {
             claims: HashMap::from([("status".to_string(), json!(status))]),
@@ -217,7 +217,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
     let result = provider
         .check_credential_revocation_status(
             &status,
-            &IssuerDetails::Did(did.did),
+            &IdentifierDetails::Did(did.did),
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             false,
         )
@@ -275,7 +275,7 @@ async fn test_check_revocation_status_as_holder_cached() {
     let result = provider
         .check_credential_revocation_status(
             &status,
-            &IssuerDetails::Did(did.did),
+            &IdentifierDetails::Did(did.did),
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             false,
         )
@@ -346,7 +346,7 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
     let result = provider
         .check_credential_revocation_status(
             &status,
-            &IssuerDetails::Did(did.did),
+            &IdentifierDetails::Did(did.did),
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             true,
         )

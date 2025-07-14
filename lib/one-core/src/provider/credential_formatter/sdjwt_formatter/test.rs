@@ -15,7 +15,7 @@ use crate::config::core_config::KeyAlgorithmType;
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialStatus, Features, Issuer, IssuerDetails,
+    CredentialData, CredentialSchema, CredentialStatus, Features, IdentifierDetails, Issuer,
     MockTokenVerifier, PublicKeySource, PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
@@ -424,11 +424,11 @@ async fn test_extract_credentials() {
 
     assert_eq!(
         credentials.issuer,
-        IssuerDetails::Did("did:issuer:test".parse().unwrap())
+        IdentifierDetails::Did("did:issuer:test".parse().unwrap())
     );
     assert_eq!(
         credentials.subject,
-        Some("did:holder:test".parse().unwrap())
+        Some(IdentifierDetails::Did("did:holder:test".parse().unwrap()))
     );
 
     assert_eq!(1, credentials.status.len());

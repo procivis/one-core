@@ -17,8 +17,8 @@ use super::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use crate::common_mapper::{
-    DidRole, NESTED_CLAIM_MARKER, get_or_create_certificate_identifier,
-    get_or_create_did_and_identifier, value_to_model_claims,
+    IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation, get_or_create_identifier,
+    value_to_model_claims,
 };
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
@@ -30,11 +30,12 @@ use crate::model::interaction::InteractionId;
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CertificateDetails, ExtractPresentationCtx, IssuerDetails,
+    AuthenticationFn, ExtractPresentationCtx, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -54,6 +55,7 @@ use crate::provider::verification_protocol::openid4vp::{
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::jwt::Jwt;
@@ -464,8 +466,8 @@ pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
     claims: Vec<(serde_json::Value, ClaimSchema)>,
-    issuer_details: &IssuerDetails,
-    holder_did: &DidValue,
+    issuer_details: IdentifierDetails,
+    holder_details: IdentifierDetails,
     mdoc_mso: Option<MobileSecurityObject>,
     verification_protocol: &str,
 ) -> Result<ProvedCredential, OpenID4VCError> {
@@ -516,8 +518,8 @@ pub(crate) fn extracted_credential_to_model(
             interaction: None,
             revocation_list: None,
         },
-        issuer_details: issuer_details.to_owned(),
-        holder_did_value: holder_did.to_owned(),
+        issuer_details,
+        holder_details,
         mdoc_mso,
     })
 }
@@ -588,6 +590,7 @@ pub(crate) fn map_presented_credentials_to_presentation_format_type(
     Ok(FormatType::Jwt)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,
@@ -596,42 +599,41 @@ pub(crate) async fn credential_from_proved(
     identifier_repository: &dyn IdentifierRepository,
     certificate_validator: &dyn CertificateValidator,
     did_method_provider: &dyn DidMethodProvider,
+    key_repository: &dyn KeyRepository,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<Credential, ServiceError> {
-    let (issuer_identifier, issuer_cert) = match proved_credential.issuer_details {
-        IssuerDetails::Did(did) => {
-            let (_, issuer_identifier) = get_or_create_did_and_identifier(
-                did_method_provider,
-                did_repository,
-                identifier_repository,
-                &Some(organisation.to_owned()),
-                &did,
-                DidRole::Issuer,
-            )
-            .await?;
-            (issuer_identifier, None)
-        }
-        IssuerDetails::Certificate(CertificateDetails {
-            chain, fingerprint, ..
-        }) => {
-            let (cert, identifier) = get_or_create_certificate_identifier(
-                certificate_repository,
-                certificate_validator,
-                identifier_repository,
-                &Some(organisation.to_owned()),
-                chain,
-                fingerprint,
-            )
-            .await?;
-            (identifier, Some(cert))
-        }
-    };
-    let (_, holder_identifier) = get_or_create_did_and_identifier(
+    let (issuer_identifier, issuer_relation) = get_or_create_identifier(
         did_method_provider,
         did_repository,
+        certificate_repository,
+        certificate_validator,
+        key_repository,
+        key_algorithm_provider,
         identifier_repository,
         &Some(organisation.to_owned()),
-        &proved_credential.holder_did_value,
-        DidRole::Holder,
+        &proved_credential.issuer_details,
+        IdentifierRole::Issuer,
+    )
+    .await?;
+
+    let issuer_certificate =
+        if let RemoteIdentifierRelation::Certificate(certificate) = issuer_relation {
+            Some(certificate)
+        } else {
+            None
+        };
+
+    let (holder_identifier, ..) = get_or_create_identifier(
+        did_method_provider,
+        did_repository,
+        certificate_repository,
+        certificate_validator,
+        key_repository,
+        key_algorithm_provider,
+        identifier_repository,
+        &Some(organisation.to_owned()),
+        &proved_credential.holder_details,
+        IdentifierRole::Holder,
     )
     .await?;
 
@@ -648,7 +650,7 @@ pub(crate) async fn credential_from_proved(
         state: proved_credential.credential.state,
         claims: convert_inner_of_inner(proved_credential.credential.claims),
         issuer_identifier: Some(issuer_identifier),
-        issuer_certificate: issuer_cert,
+        issuer_certificate,
         holder_identifier: Some(holder_identifier),
         schema: proved_credential
             .credential

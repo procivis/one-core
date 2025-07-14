@@ -25,7 +25,7 @@ use crate::provider::caching_loader::vct::{
 };
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialStatus, Issuer, IssuerDetails,
+    CredentialData, CredentialSchema, CredentialStatus, IdentifierDetails, Issuer,
     MockSignatureProvider, MockTokenVerifier, PublicKeySource, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
@@ -451,7 +451,7 @@ async fn test_extract_credentials() {
 
     assert_eq!(
         credentials.issuer,
-        IssuerDetails::Did(
+        IdentifierDetails::Did(
             "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW"
                 .parse()
                 .unwrap()
@@ -459,7 +459,10 @@ async fn test_extract_credentials() {
     );
 
     let expected_subject = "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifQ";
-    assert_eq!(credentials.subject, Some(expected_subject.parse().unwrap()));
+    assert_eq!(
+        credentials.subject,
+        Some(IdentifierDetails::Did(expected_subject.parse().unwrap()))
+    );
 
     let expected_result = json!(
         {
@@ -615,7 +618,7 @@ async fn test_extract_credentials_swiyu() {
 
     assert_eq!(
         credentials.issuer,
-        IssuerDetails::Did(
+        IdentifierDetails::Did(
             "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527"
                 .parse()
                 .unwrap()
@@ -623,7 +626,10 @@ async fn test_extract_credentials_swiyu() {
     );
 
     let expected_subject = "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlpwOXFMYVRKTWh1UC1kcE1hOXBMbHBxWmNRNGNoVkRKeVNXcmlzQUFpMmciLCJ5IjoieHVWdTVYZ1BOUUstUDBUc0RsaGE4cDVNZkFEZVpoU2dTNzdLVVYzaGN2RSJ9";
-    assert_eq!(credentials.subject, Some(expected_subject.parse().unwrap()));
+    assert_eq!(
+        credentials.subject,
+        Some(IdentifierDetails::Did(expected_subject.parse().unwrap()))
+    );
 
     let expected_result = json!(
         {
@@ -777,7 +783,10 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         .await
         .unwrap();
 
-    assert_eq!(credentials.subject, Some(expected_holder_did));
+    assert_eq!(
+        credentials.subject,
+        Some(IdentifierDetails::Did(expected_holder_did))
+    );
 }
 
 #[test]

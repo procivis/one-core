@@ -688,6 +688,7 @@ impl OneCore {
                 data_provider.get_organisation_repository().clone(),
                 data_provider.get_validity_credential_repository().clone(),
                 certificate_validator.clone(),
+                data_provider.get_key_repository().clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
@@ -715,6 +716,7 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_validity_credential_repository(),
                 data_provider.get_did_repository(),
+                data_provider.get_key_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_certificate_repository(),
                 data_provider.get_history_repository(),

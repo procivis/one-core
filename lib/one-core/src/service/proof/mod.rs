@@ -15,6 +15,7 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -40,6 +41,7 @@ pub struct ProofService {
     identifier_repository: Arc<dyn IdentifierRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
+    key_repository: Arc<dyn KeyRepository>,
     credential_schema: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -81,6 +83,7 @@ impl ProofService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        key_repository: Arc<dyn KeyRepository>,
     ) -> Self {
         Self {
             proof_repository,
@@ -95,6 +98,7 @@ impl ProofService {
             credential_schema,
             history_repository,
             interaction_repository,
+            key_repository,
             credential_formatter_provider,
             revocation_method_provider,
             protocol_provider,

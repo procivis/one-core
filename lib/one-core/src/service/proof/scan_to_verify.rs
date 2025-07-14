@@ -4,7 +4,7 @@ use super::ProofService;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use crate::common_mapper::{
-    DidRole, extracted_credential_to_model, get_or_create_did_and_identifier,
+    IdentifierRole, extracted_credential_to_model, get_or_create_identifier,
 };
 use crate::config::validator::transport::get_first_available_transport;
 use crate::model::claim::Claim;
@@ -13,7 +13,6 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::credential_formatter::model::IssuerDetails;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
@@ -129,12 +128,6 @@ impl ProofService {
             proof_input: input_schema.clone(),
         }));
 
-        let IssuerDetails::Did(ref issuer_did) = credential.issuer else {
-            return Err(ServiceError::MappingError(
-                "issuer did is missing".to_string(),
-            ));
-        };
-
         // check revocation
         for status in &credential.status {
             let (revocation_method, _) = self
@@ -210,13 +203,17 @@ impl ProofService {
             claim_schemas.push(claim_schema.to_owned());
         }
 
-        let (_, issuer_identifier) = get_or_create_did_and_identifier(
+        let (issuer_identifier, ..) = get_or_create_identifier(
             &*self.did_method_provider,
             &*self.did_repository,
+            &*self.certificate_repository,
+            &*self.certificate_validator,
+            &*self.key_repository,
+            &*self.key_algorithm_provider,
             &*self.identifier_repository,
             &proof_schema.organisation,
-            issuer_did,
-            DidRole::Issuer,
+            &credential.issuer,
+            IdentifierRole::Issuer,
         )
         .await?;
 

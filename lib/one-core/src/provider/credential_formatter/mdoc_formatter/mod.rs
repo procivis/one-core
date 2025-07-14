@@ -23,9 +23,6 @@ use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
 
-use super::model::{
-    CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails, PublicKeySource,
-};
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{
@@ -39,13 +36,13 @@ use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialSubject, DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
-    FormatterCapabilities, Presentation, PublishedClaim, SelectiveDisclosure, TokenVerifier,
-    VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
+    CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
+    Features, FormatPresentationCtx, FormattedPresentation, FormatterCapabilities,
+    HolderBindingCtx, IdentifierDetails, Presentation, PublicKeySource, PublishedClaim,
+    SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -54,7 +51,7 @@ use crate::util::mdoc::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
     EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
     MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
-    extract_algorithm_from_header, extract_certificate_from_x5chain_header, jwk_to_did,
+    extract_algorithm_from_header, extract_certificate_from_x5chain_header,
     try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
 };
 use crate::util::x509::pem_chain_into_x5c;
@@ -70,7 +67,6 @@ pub struct MdocFormatter {
     certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     datatype_config: DatatypeConfig,
 }
 
@@ -93,14 +89,12 @@ impl MdocFormatter {
         params: Params,
         certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         datatype_config: DatatypeConfig,
     ) -> Self {
         Self {
             certificate_validator,
             params,
             did_method_provider,
-            key_algorithm_provider,
             datatype_config,
         }
     }
@@ -239,13 +233,7 @@ impl CredentialFormatter for MdocFormatter {
         _verification: VerificationFn,
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(
-            &*self.key_algorithm_provider,
-            &*self.certificate_validator,
-            token,
-            true,
-        )
-        .await
+        extract_credentials_internal(&*self.certificate_validator, token, true).await
     }
 
     async fn extract_credentials_unverified<'a>(
@@ -253,13 +241,7 @@ impl CredentialFormatter for MdocFormatter {
         token: &str,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(
-            &*self.key_algorithm_provider,
-            &*self.certificate_validator,
-            token,
-            false,
-        )
-        .await
+        extract_credentials_internal(&*self.certificate_validator, token, false).await
     }
 
     async fn format_presentation(
@@ -425,7 +407,6 @@ impl CredentialFormatter for MdocFormatter {
 }
 
 async fn extract_credentials_internal(
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     certificate_validator: &dyn CertificateValidator,
     token: &str,
     verify: bool,
@@ -497,8 +478,8 @@ async fn extract_credentials_internal(
             .expected_update
             .map(|update| update.into()),
         invalid_before: None,
-        issuer: IssuerDetails::Certificate(issuer_cert),
-        subject: Some(jwk_to_did(&holder_jwk, key_algorithm_provider)?),
+        issuer: IdentifierDetails::Certificate(issuer_cert),
+        subject: Some(IdentifierDetails::Key(holder_jwk)),
         claims: CredentialSubject { claims, id: None },
         status: vec![],
         credential_schema: Some(CredentialSchema {

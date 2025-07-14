@@ -15,6 +15,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::common_mapper::RemoteIdentifierRelation;
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
@@ -29,7 +30,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, IssuerDetails, MockSignatureProvider,
+    CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -475,7 +476,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
     let mut storage_proxy = MockStorageProxy::default();
     let credential_clone = credential.clone();
     storage_proxy
-        .expect_get_or_create_did_and_identifier()
+        .expect_get_or_create_identifier()
         .times(1)
         .returning(move |_, _, _| {
             let did = credential_clone
@@ -486,8 +487,8 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
                 .as_ref()
                 .unwrap()
                 .clone();
+            let relation = RemoteIdentifierRelation::Did(did.clone());
             Ok((
-                did.clone(),
                 Identifier {
                     id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                         .unwrap()
@@ -504,6 +505,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
                     key: None,
                     certificates: None,
                 },
+                relation,
             ))
         });
 
@@ -611,7 +613,7 @@ async fn test_holder_accept_credential_success() {
                         valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
                         update_at: None,
                         invalid_before: None,
-                        issuer: IssuerDetails::Did(dummy_did().did),
+                        issuer: IdentifierDetails::Did(dummy_did().did),
                         subject: None,
                         claims: CredentialSubject {
                             id: None,
@@ -786,7 +788,7 @@ async fn test_holder_accept_expired_credential_fails() {
                         valid_until: Some(get_dummy_date() - Duration::weeks(1)),
                         update_at: None,
                         invalid_before: None,
-                        issuer: IssuerDetails::Did(dummy_did().did),
+                        issuer: IdentifierDetails::Did(dummy_did().did),
                         subject: None,
                         claims: CredentialSubject {
                             id: None,

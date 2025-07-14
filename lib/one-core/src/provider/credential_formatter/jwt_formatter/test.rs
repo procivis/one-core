@@ -16,7 +16,8 @@ use crate::provider::credential_formatter::jwt_formatter::Params;
 use crate::provider::credential_formatter::jwt_formatter::model::VcClaim;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialStatus, Issuer, IssuerDetails, MockTokenVerifier, PublicKeySource, PublishedClaim,
+    CredentialStatus, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource,
+    PublishedClaim,
 };
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
@@ -454,11 +455,11 @@ async fn test_extract_credentials() {
 
     assert_eq!(
         credentials.issuer,
-        IssuerDetails::Did("did:issuer:test".parse().unwrap()),
+        IdentifierDetails::Did("did:issuer:test".parse().unwrap()),
     );
     assert_eq!(
         credentials.subject,
-        Some("did:holder:test".parse().unwrap())
+        Some(IdentifierDetails::Did("did:holder:test".parse().unwrap()))
     );
 
     assert_eq!(1, credentials.status.len());
@@ -536,11 +537,11 @@ async fn test_extract_credentials_nested_array() {
 
     assert_eq!(
         credentials.issuer,
-        IssuerDetails::Did("did:issuer:test".parse().unwrap()),
+        IdentifierDetails::Did("did:issuer:test".parse().unwrap()),
     );
     assert_eq!(
         credentials.subject,
-        Some("did:holder:test".parse().unwrap()),
+        Some(IdentifierDetails::Did("did:holder:test".parse().unwrap())),
     );
 
     assert_eq!(1, credentials.status.len());

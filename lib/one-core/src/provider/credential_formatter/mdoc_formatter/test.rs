@@ -18,11 +18,9 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, OID4VPHandover};
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::certificate::validator::{MockCertificateValidator, ParsedCertificate};
@@ -321,23 +319,12 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         embed_layout_properties: None,
     };
 
-    let key_algorithm = MockKeyAlgorithm::new();
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .never()
-        .returning({
-            let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
-        });
-
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
         params,
         Arc::new(MockCertificateValidator::new()),
         Arc::new(did_method_provider),
-        Arc::new(key_algorithm_provider),
         config.datatype,
     );
 
@@ -538,26 +525,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         embed_layout_properties: None,
     };
 
-    let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm.expect_parse_jwk().return_once(|_| {
-        let mut public_key_handle = MockSignaturePublicKeyHandle::default();
-        public_key_handle
-            .expect_as_multibase()
-            .return_once(|| Ok("zAbCd".to_string()));
-
-        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-            Arc::new(public_key_handle),
-        )))
-    });
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .returning({
-            let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
-        });
     let mut certificate_validator = MockCertificateValidator::new();
     let expiry = OffsetDateTime::now_utc() + Duration::days(1);
     certificate_validator
@@ -592,7 +559,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         params,
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
-        Arc::new(key_algorithm_provider),
         config.datatype,
     );
 
@@ -615,7 +581,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 
     // assert
     assert_eq!(
-        IssuerDetails::Certificate(CertificateDetails {
+        IdentifierDetails::Certificate(CertificateDetails {
             chain: r#"-----BEGIN CERTIFICATE-----
 MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
 YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
@@ -815,26 +781,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         leeway: 60_u64,
         embed_layout_properties: Some(embed_layout),
     };
-    let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm.expect_parse_jwk().return_once(|_| {
-        let mut public_key_handle = MockSignaturePublicKeyHandle::default();
-        public_key_handle
-            .expect_as_multibase()
-            .return_once(|| Ok("abcd".to_string()));
-
-        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-            Arc::new(public_key_handle),
-        )))
-    });
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .returning({
-            let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
-        });
 
     let mut certificate_validator = MockCertificateValidator::new();
     certificate_validator
@@ -869,7 +815,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         params,
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
-        Arc::new(key_algorithm_provider),
         config.datatype,
     );
 
@@ -909,7 +854,6 @@ fn test_credential_schema_id() {
         params,
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
         generic_config().core.datatype,
     );
     let schema_id = "schema_id_name".to_string();

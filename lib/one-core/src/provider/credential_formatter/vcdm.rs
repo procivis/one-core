@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use url::Url;
 
 use super::error::FormatterError;
-use super::model::{CredentialSubject, DetailCredential, IssuerDetails};
+use super::model::{CredentialSubject, DetailCredential, IdentifierDetails};
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
@@ -440,7 +440,8 @@ impl TryFrom<VcdmCredential> for DetailCredential {
         // this is not always DID, for example LVVC credentials use URN schema as and id
         let subject = credential_subject
             .id
-            .and_then(|id| DidValue::from_did_url(id).ok());
+            .and_then(|id| DidValue::from_did_url(id).ok())
+            .map(IdentifierDetails::Did);
 
         Ok(Self {
             id: vcdm.id.map(|url| url.to_string()),
@@ -448,7 +449,7 @@ impl TryFrom<VcdmCredential> for DetailCredential {
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             update_at: None,
             invalid_before: None,
-            issuer: IssuerDetails::Did(vcdm.issuer.to_did_value()?),
+            issuer: IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
             subject,
             claims,
             status: vcdm.credential_status,

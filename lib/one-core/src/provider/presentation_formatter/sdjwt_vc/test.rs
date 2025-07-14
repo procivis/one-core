@@ -12,7 +12,7 @@ use time::OffsetDateTime;
 use super::SdjwtVCPresentationFormatter;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::model::{
-    ExtractPresentationCtx, MockTokenVerifier, PublicKeySource,
+    ExtractPresentationCtx, IdentifierDetails, MockTokenVerifier, PublicKeySource,
 };
 use crate::provider::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
@@ -141,6 +141,9 @@ async fn test_extract_presentation() {
         Some(OffsetDateTime::from_unix_timestamp(1733230140).unwrap())
     );
     assert_eq!(presentation.credentials.len(), 1);
-    assert_eq!(presentation.issuer_did, Some(expected_holder_did));
+    assert_eq!(
+        presentation.issuer,
+        Some(IdentifierDetails::Did(expected_holder_did))
+    );
     assert_eq!(presentation.nonce, Some("1234567890".to_string()));
 }

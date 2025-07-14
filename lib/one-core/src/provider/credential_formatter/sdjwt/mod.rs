@@ -11,7 +11,7 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use super::model::{
-    AuthenticationFn, CertificateDetails, HolderBindingCtx, IssuerDetails, PublicKeySource,
+    AuthenticationFn, CertificateDetails, HolderBindingCtx, IdentifierDetails, PublicKeySource,
     TokenVerifier, VerificationFn,
 };
 use crate::model::did::KeyRole;
@@ -241,7 +241,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         (
             Jwt<Payload>,
             Option<JWTPayload<KeyBindingPayload>>,
-            IssuerDetails,
+            IdentifierDetails,
         ),
         FormatterError,
     > {
@@ -296,7 +296,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                 did: Cow::Owned(did.clone()),
                 key_id: decomposed_token.header.key_id.as_deref(),
             };
-            (issuer.clone(), params, IssuerDetails::Did(did))
+            (issuer.clone(), params, IdentifierDetails::Did(did))
         } else {
             match decomposed_token.header.x5c.as_ref() {
                 None => {
@@ -325,7 +325,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                         did: Cow::Owned(did.clone()),
                         key_id: decomposed_token.header.key_id.as_deref(),
                     };
-                    (issuer.clone(), params, IssuerDetails::Did(did))
+                    (issuer.clone(), params, IdentifierDetails::Did(did))
                 }
                 Some(x5c) => {
                     let certificate_validator = certificate_validator.ok_or(
@@ -346,7 +346,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                     (
                         issuer.clone(),
                         params,
-                        IssuerDetails::Certificate(CertificateDetails {
+                        IdentifierDetails::Certificate(CertificateDetails {
                             chain,
                             fingerprint: attributes.fingerprint,
                             expiry: attributes.not_after,

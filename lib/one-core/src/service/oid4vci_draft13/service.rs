@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::OID4VCIDraft13Service;
 use super::dto::OpenID4VCICredentialResponseDTO;
 use crate::common_mapper::{
-    DidRole, get_exchange_param_pre_authorization_expires_in,
+    IdentifierRole, get_exchange_param_pre_authorization_expires_in,
     get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
     get_or_create_did_and_identifier, get_or_create_key_identifier,
 };
@@ -355,7 +355,7 @@ impl OID4VCIDraft13Service {
                         &*self.identifier_repository,
                         &schema.organisation,
                         &holder_did_value,
-                        DidRole::Holder,
+                        IdentifierRole::Holder,
                     )
                     .await?;
                     Ok((Some(did), identifier, holder_key_id))
@@ -365,8 +365,9 @@ impl OID4VCIDraft13Service {
                         self.key_repository.as_ref(),
                         self.key_algorithm_provider.as_ref(),
                         self.identifier_repository.as_ref(),
-                        &schema.organisation,
+                        schema.organisation.as_ref(),
                         &jwk,
+                        IdentifierRole::Holder,
                     )
                     .await?;
 

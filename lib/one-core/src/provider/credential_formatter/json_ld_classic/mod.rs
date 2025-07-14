@@ -14,7 +14,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::model::{
-    CredentialData, FormattedPresentation, HolderBindingCtx, IssuerDetails, PublicKeySource,
+    CredentialData, FormattedPresentation, HolderBindingCtx, IdentifierDetails, PublicKeySource,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
@@ -315,10 +315,11 @@ impl JsonLdClassic {
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             update_at: None,
             invalid_before: None,
-            issuer: IssuerDetails::Did(vcdm.issuer.to_did_value()?),
+            issuer: IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
             subject: credential_subject
                 .id
-                .and_then(|id| DidValue::from_did_url(id).ok()),
+                .and_then(|id| DidValue::from_did_url(id).ok())
+                .map(IdentifierDetails::Did),
             claims,
             status: vcdm.credential_status,
             credential_schema: vcdm.credential_schema.map(|v| v[0].clone()),

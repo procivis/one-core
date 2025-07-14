@@ -8,7 +8,8 @@ use time::Duration;
 use crate::config::core_config::{FormatType, KeyAlgorithmType};
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    ExtractPresentationCtx, FormattedPresentation, MockTokenVerifier, PublicKeySource,
+    ExtractPresentationCtx, FormattedPresentation, IdentifierDetails, MockTokenVerifier,
+    PublicKeySource,
 };
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -78,8 +79,8 @@ async fn test_extract_presentation() {
 
     assert_eq!(presentation.credentials.len(), 1);
     assert_eq!(
-        presentation.issuer_did,
-        Some("did:issuer:123".parse().unwrap())
+        presentation.issuer,
+        Some(IdentifierDetails::Did("did:issuer:123".parse().unwrap()))
     );
 }
 

@@ -6,7 +6,7 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::model::{
-    CertificateDetails, DetailCredential, IssuerDetails,
+    CertificateDetails, DetailCredential, IdentifierDetails,
 };
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
@@ -118,7 +118,7 @@ pub(crate) async fn validate_issuer(
     };
 
     match &received_credential.issuer {
-        IssuerDetails::Did(response_did) => {
+        IdentifierDetails::Did(response_did) => {
             if offer_identifier.r#type != IdentifierType::Did {
                 return Err(IssuanceProtocolError::DidMismatch);
             }
@@ -132,7 +132,7 @@ pub(crate) async fn validate_issuer(
                 return Err(IssuanceProtocolError::DidMismatch);
             }
         }
-        IssuerDetails::Certificate(CertificateDetails { fingerprint, .. }) => {
+        IdentifierDetails::Certificate(CertificateDetails { fingerprint, .. }) => {
             if offer_identifier.r#type != IdentifierType::Certificate {
                 return Err(IssuanceProtocolError::CertificateMismatch);
             }
@@ -145,6 +145,11 @@ pub(crate) async fn validate_issuer(
             if offer_cert.fingerprint != *fingerprint {
                 return Err(IssuanceProtocolError::CertificateMismatch);
             }
+        }
+        IdentifierDetails::Key(_) => {
+            return Err(IssuanceProtocolError::Failed(
+                "Invalid issuer identifier type".to_string(),
+            ));
         }
     }
     Ok(())

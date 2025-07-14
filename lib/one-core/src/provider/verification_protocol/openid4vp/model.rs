@@ -6,7 +6,7 @@ use one_crypto::jwe::EncryptionAlgorithm;
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, DidValue, KeyId};
+use shared_types::{ClaimSchemaId, KeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
@@ -17,7 +17,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::credential_formatter::model::{DetailCredential, IssuerDetails};
+use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::mdoc::MobileSecurityObject;
 
@@ -282,8 +282,8 @@ pub(crate) struct SubmissionRequestData {
 #[derive(Clone, Debug)]
 pub(crate) struct ProvedCredential {
     pub credential: Credential,
-    pub issuer_details: IssuerDetails,
-    pub holder_did_value: DidValue,
+    pub issuer_details: IdentifierDetails,
+    pub holder_details: IdentifierDetails,
     pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
@@ -291,12 +291,6 @@ pub(crate) struct ProvedCredential {
 pub(crate) struct AcceptProofResult {
     pub proved_credentials: Vec<ProvedCredential>,
     pub proved_claims: Vec<Claim>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub(crate) struct OpenID4VPHolderInteractionDataVerifierCertificate {
-    pub chain: String,
-    pub fingerprint: String,
 }
 
 /// Interaction data used for OpenID4VP (HTTP) on holder side
@@ -326,9 +320,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub redirect_uri: Option<String>,
 
     #[serde(default)]
-    pub verifier_did: Option<String>, // did value
-    #[serde(default)]
-    pub verifier_certificate: Option<OpenID4VPHolderInteractionDataVerifierCertificate>,
+    pub verifier_details: Option<IdentifierDetails>,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368

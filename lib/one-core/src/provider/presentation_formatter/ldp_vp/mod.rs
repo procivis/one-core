@@ -20,7 +20,7 @@ use crate::provider::credential_formatter::json_ld_classic::{
 };
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, ExtractPresentationCtx, FormatPresentationCtx,
-    FormattedPresentation, Issuer, Presentation, VerificationFn,
+    FormattedPresentation, IdentifierDetails, Issuer, Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
 use crate::provider::http_client::HttpClient;
@@ -259,7 +259,7 @@ impl LdpVpPresentationFormatter {
             id: None,
             issued_at: proof.and_then(|p| p.created),
             expires_at: None,
-            issuer_did: Some(presentation.holder.to_did_value()?),
+            issuer: Some(IdentifierDetails::Did(presentation.holder.to_did_value()?)),
             nonce: proof.and_then(|p| p.nonce.to_owned()),
             credentials,
         })

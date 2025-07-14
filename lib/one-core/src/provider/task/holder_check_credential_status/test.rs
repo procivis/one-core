@@ -20,7 +20,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails,
+    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -66,7 +66,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
                 valid_until: None,
                 update_at: None,
                 invalid_before: None,
-                issuer: IssuerDetails::Did("did:example:123".parse().unwrap()),
+                issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
                     claims: Default::default(),

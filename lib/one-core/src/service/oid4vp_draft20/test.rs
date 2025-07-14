@@ -20,7 +20,7 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IssuerDetails, Presentation,
+    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails, Presentation,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -383,8 +383,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(holder_did_clone.to_owned()),
+                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
+                subject: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 claims: CredentialSubject {
                     claims: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -407,7 +407,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -423,7 +423,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -440,8 +440,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_owned()),
+                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
+                subject: Some(IdentifierDetails::Did(holder_did.to_owned())),
                 claims: CredentialSubject {
                     claims: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),

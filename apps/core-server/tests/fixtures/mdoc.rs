@@ -108,7 +108,6 @@ pub(crate) async fn format_mdoc_credential(
             crl_cache,
         )) as _,
         did_method_provider.clone(),
-        key_algorithm_provider.clone(),
         datatype_config(),
     );
     formatter

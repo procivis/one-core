@@ -2,7 +2,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::Presentation;
+use crate::provider::credential_formatter::model::{IdentifierDetails, Presentation};
 use crate::util::jwt::Jwt;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,12 +31,13 @@ impl TryFrom<Jwt<Sdvp>> for Presentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer_did: jwt
+            issuer: jwt
                 .payload
                 .issuer
                 .map(|did| did.parse().context("did parsing error"))
                 .transpose()
-                .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                .map_err(|e| FormatterError::Failed(e.to_string()))?
+                .map(IdentifierDetails::Did),
             nonce: jwt.payload.custom.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })

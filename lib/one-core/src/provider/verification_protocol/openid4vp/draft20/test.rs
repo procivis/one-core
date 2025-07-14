@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use serde_json::{Value, json};
+use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
@@ -23,7 +25,7 @@ use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::model::{FormatterCapabilities, IdentifierDetails};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -793,7 +795,10 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
             let data: OpenID4VPHolderInteractionData =
                 deserialize_interaction_data(interaction.data.as_ref()).unwrap();
             data.client_id_scheme == ClientIdScheme::Did
-                && data.verifier_did == Some(client_id.to_string())
+                && data.verifier_details
+                    == Some(IdentifierDetails::Did(
+                        DidValue::from_str(client_id).unwrap(),
+                    ))
         })
         .returning(move |request| Ok(request.id));
 

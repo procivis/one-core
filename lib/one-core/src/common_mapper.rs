@@ -32,6 +32,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -101,7 +102,7 @@ pub(crate) fn get_exchange_param_refresh_token_expires_in(
 }
 
 #[derive(Debug, Display)]
-pub(crate) enum DidRole {
+pub(crate) enum IdentifierRole {
     #[strum(to_string = "holder")]
     Holder,
     #[strum(to_string = "issuer")]
@@ -110,13 +111,83 @@ pub(crate) enum DidRole {
     Verifier,
 }
 
+#[derive(Debug)]
+#[allow(dead_code)]
+pub(crate) enum RemoteIdentifierRelation {
+    Did(Did),
+    Certificate(Certificate),
+    Key(Key),
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_or_create_identifier(
+    did_method_provider: &dyn DidMethodProvider,
+    did_repository: &dyn DidRepository,
+    certificate_repository: &dyn CertificateRepository,
+    certificate_validator: &dyn CertificateValidator,
+    key_repository: &dyn KeyRepository,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    identifier_repository: &dyn IdentifierRepository,
+    organisation: &Option<Organisation>,
+    details: &IdentifierDetails,
+    role: IdentifierRole,
+) -> Result<(Identifier, RemoteIdentifierRelation), ServiceError> {
+    Ok(match details {
+        IdentifierDetails::Did(did_value) => {
+            let (did, identifier) = get_or_create_did_and_identifier(
+                did_method_provider,
+                did_repository,
+                identifier_repository,
+                organisation,
+                did_value,
+                role,
+            )
+            .await?;
+
+            (identifier, RemoteIdentifierRelation::Did(did))
+        }
+        IdentifierDetails::Certificate(CertificateDetails {
+            chain, fingerprint, ..
+        }) => {
+            let (certificate, identifier) = get_or_create_certificate_identifier(
+                certificate_repository,
+                certificate_validator,
+                identifier_repository,
+                organisation,
+                chain.to_owned(),
+                fingerprint.to_owned(),
+                role,
+            )
+            .await?;
+
+            (
+                identifier,
+                RemoteIdentifierRelation::Certificate(certificate),
+            )
+        }
+        IdentifierDetails::Key(public_key_jwk) => {
+            let (key, identifier) = get_or_create_key_identifier(
+                key_repository,
+                key_algorithm_provider,
+                identifier_repository,
+                organisation.as_ref(),
+                public_key_jwk,
+                role,
+            )
+            .await?;
+
+            (identifier, RemoteIdentifierRelation::Key(key))
+        }
+    })
+}
+
 pub(crate) async fn get_or_create_did_and_identifier(
     did_method_provider: &dyn DidMethodProvider,
     did_repository: &dyn DidRepository,
     identifier_repository: &dyn IdentifierRepository,
     organisation: &Option<Organisation>,
     did_value: &DidValue,
-    did_role: DidRole,
+    role: IdentifierRole,
 ) -> Result<(Did, Identifier), ServiceError> {
     let did = match did_repository
         .get_did_by_value(
@@ -138,7 +209,7 @@ pub(crate) async fn get_or_create_did_and_identifier(
                 id: DidId::from(id),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                name: format!("{did_role} {id}"),
+                name: format!("{role} {id}"),
                 organisation: organisation.to_owned(),
                 did: did_value.to_owned(),
                 did_method,
@@ -187,6 +258,7 @@ pub(crate) async fn get_or_create_certificate_identifier(
     organisation: &Option<Organisation>,
     chain: String,
     fingerprint: String,
+    role: IdentifierRole,
 ) -> Result<(Certificate, Identifier), ServiceError> {
     let organisation_id = organisation
         .as_ref()
@@ -227,7 +299,7 @@ pub(crate) async fn get_or_create_certificate_identifier(
     }
 
     let identifier_id = Uuid::new_v4().into();
-    let name = format!("Remote {identifier_id}");
+    let name = format!("{role} {identifier_id}");
 
     let identifier = Identifier {
         id: identifier_id,
@@ -263,13 +335,13 @@ pub(crate) async fn get_or_create_certificate_identifier(
     Ok((certificate, identifier))
 }
 
-#[allow(dead_code)] // to be used in ONE-6253
 pub(crate) async fn get_or_create_key_identifier(
     key_repository: &dyn KeyRepository,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     identifier_repository: &dyn IdentifierRepository,
-    organisation: &Option<Organisation>,
+    organisation: Option<&Organisation>,
     public_key: &PublicKeyJwk,
+    role: IdentifierRole,
 ) -> Result<(Key, Identifier), ServiceError> {
     let parsed_key = key_algorithm_provider.parse_jwk(public_key)?;
     let organisation_id = organisation.as_ref().map(|org| org.id);
@@ -312,8 +384,8 @@ pub(crate) async fn get_or_create_key_identifier(
             id: key_id,
             created_date: now,
             last_modified: now,
-            name: format!("Remote {key_id}"),
-            organisation: organisation.to_owned(),
+            name: format!("{role} {key_id}"),
+            organisation: organisation.cloned(),
             public_key: parsed_key.key.public_key_as_raw(),
             key_reference: None,
             storage_type: "INTERNAL".to_string(),
@@ -329,12 +401,12 @@ pub(crate) async fn get_or_create_key_identifier(
         id: identifier_id,
         created_date: now,
         last_modified: now,
-        name: format!("Remote {identifier_id}"),
+        name: format!("{role} {identifier_id}"),
         r#type: IdentifierType::Key,
         is_remote: true,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation: organisation.to_owned(),
+        organisation: organisation.cloned(),
         did: None,
         key: Some(key.clone()),
         certificates: None,

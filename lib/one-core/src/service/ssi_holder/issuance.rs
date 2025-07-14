@@ -221,8 +221,10 @@ impl SSIHolderService {
             self.did_repository.clone(),
             self.certificate_repository.clone(),
             self.certificate_validator.clone(),
+            self.key_repository.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
         );
 
         let schema = credential
@@ -429,8 +431,10 @@ impl SSIHolderService {
             self.did_repository.clone(),
             self.certificate_repository.clone(),
             self.certificate_validator.clone(),
+            self.key_repository.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
         );
 
         let handle_operations = HandleInvitationOperationsImpl::new(

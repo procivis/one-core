@@ -1,12 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 
 use super::common::to_cbor;
 use crate::common_mapper::{
-    DidRole, NESTED_CLAIM_MARKER, extracted_credential_to_model,
-    get_or_create_certificate_identifier, get_or_create_did_and_identifier,
+    IdentifierRole, NESTED_CLAIM_MARKER, extracted_credential_to_model, get_or_create_identifier,
 };
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
@@ -16,7 +15,7 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, IssuerDetails,
+    DetailCredential, ExtractPresentationCtx, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -26,6 +25,7 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError};
@@ -45,10 +45,10 @@ pub(crate) async fn validate_proof(
     presentation: &str,
     session_transcript: SessionTranscript,
     formatter_provider: &dyn CredentialFormatterProvider,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
-) -> Result<(DidValue, Vec<ValidatedProofClaimDTO>), ServiceError> {
+) -> Result<(IdentifierDetails, Vec<ValidatedProofClaimDTO>), ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),
         did_method_provider: did_method_provider.clone(),
@@ -57,7 +57,7 @@ pub(crate) async fn validate_proof(
     });
 
     let key_verification_credentials = Box::new(KeyVerification {
-        key_algorithm_provider,
+        key_algorithm_provider: key_algorithm_provider.to_owned(),
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
         certificate_validator: certificate_validator.clone(),
@@ -79,9 +79,9 @@ pub(crate) async fn validate_proof(
         )
         .await?;
 
-    let holder_did = presentation
-        .issuer_did
-        .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+    let holder_identifier = presentation.issuer.ok_or(ServiceError::MappingError(
+        "presentation issuer is None".to_string(),
+    ))?;
 
     // Check if presentation is expired
     let leeway = presentation_formatter.get_leeway();
@@ -187,10 +187,10 @@ pub(crate) async fn validate_proof(
                     "Claim Holder DID missing".to_owned(),
                 ));
             }
-            Some(did) => did,
+            Some(identifier) => identifier,
         };
 
-        if claim_subject != &holder_did {
+        if claim_subject != &holder_identifier {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
             ));
@@ -220,7 +220,7 @@ pub(crate) async fn validate_proof(
     }
 
     Ok((
-        holder_did,
+        holder_identifier,
         proved_credentials
             .into_iter()
             .flat_map(|(.., claims)| claims)
@@ -307,7 +307,7 @@ fn extract_matching_requested_claim(
 pub(crate) async fn accept_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
-    holder_did: DidValue,
+    holder_identifier: IdentifierDetails,
     did_repository: &dyn DidRepository,
     identifier_repository: &dyn IdentifierRepository,
     did_method_provider: &dyn DidMethodProvider,
@@ -315,6 +315,8 @@ pub(crate) async fn accept_proof(
     proof_repository: &dyn ProofRepository,
     certificate_validator: &dyn CertificateValidator,
     certificate_repository: &dyn CertificateRepository,
+    key_repository: &dyn KeyRepository,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof schema is None".to_string(),
@@ -391,13 +393,17 @@ pub(crate) async fn accept_proof(
             .push(proved_claim);
     }
 
-    let (_, holder_identifier) = get_or_create_did_and_identifier(
+    let (holder_identifier, ..) = get_or_create_identifier(
         did_method_provider,
         did_repository,
+        certificate_repository,
+        certificate_validator,
+        key_repository,
+        key_algorithm_provider,
         identifier_repository,
         &proof_schema.organisation,
-        &holder_did,
-        DidRole::Holder,
+        &holder_identifier,
+        IdentifierRole::Holder,
     )
     .await?;
 
@@ -412,32 +418,19 @@ pub(crate) async fn accept_proof(
             .first()
             .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
 
-        let issuer_identifier = match &first_claim.credential.issuer {
-            IssuerDetails::Did(issuer_did) => {
-                let (_, identifier) = get_or_create_did_and_identifier(
-                    did_method_provider,
-                    did_repository,
-                    identifier_repository,
-                    &proof_schema.organisation,
-                    issuer_did,
-                    DidRole::Issuer,
-                )
-                .await?;
-                identifier
-            }
-            IssuerDetails::Certificate(details) => {
-                let (_, identifier) = get_or_create_certificate_identifier(
-                    certificate_repository,
-                    certificate_validator,
-                    identifier_repository,
-                    &proof_schema.organisation,
-                    details.chain.clone(),
-                    details.fingerprint.clone(),
-                )
-                .await?;
-                identifier
-            }
-        };
+        let (issuer_identifier, ..) = get_or_create_identifier(
+            did_method_provider,
+            did_repository,
+            certificate_repository,
+            certificate_validator,
+            key_repository,
+            key_algorithm_provider,
+            identifier_repository,
+            &proof_schema.organisation,
+            &first_claim.credential.issuer,
+            IdentifierRole::Issuer,
+        )
+        .await?;
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas =

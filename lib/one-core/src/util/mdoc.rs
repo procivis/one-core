@@ -9,7 +9,6 @@ use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use serde_with::skip_serializing_none;
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
@@ -17,7 +16,6 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CertificateDetails;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
 use crate::util::cose::CoseSign1;
 
@@ -465,35 +463,4 @@ pub(crate) fn try_extract_holder_public_key(
             "CoseKey contains invalid kty `{other:?}`, only EC2 and OKP keys are supported"
         ))),
     }
-}
-
-pub(crate) fn jwk_to_did(
-    jwk: &PublicKeyJwk,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<DidValue, FormatterError> {
-    let algorithm = match jwk {
-        PublicKeyJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
-        PublicKeyJwk::Okp(_) => KeyAlgorithmType::Eddsa,
-        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
-            return Err(FormatterError::Failed(format!(
-                "Key `{key:?}` should not be available for mdoc",
-            )));
-        }
-    };
-
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_type(algorithm)
-        .ok_or(FormatterError::CouldNotVerify(format!(
-            "Key algorithm `{algorithm}` not configured"
-        )))?;
-    let multibase = key_algorithm
-        .parse_jwk(jwk)
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?
-        .public_key_as_multibase()
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
-
-    format!("did:key:{multibase}")
-        .parse()
-        .context("did parsing error")
-        .map_err(|e| FormatterError::Failed(e.to_string()))
 }

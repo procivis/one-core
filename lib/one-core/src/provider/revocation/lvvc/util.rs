@@ -1,4 +1,4 @@
-use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
 
 // TODO
 // remove this and find a better solution in ONE-3520
@@ -15,8 +15,8 @@ pub fn is_lvvc_credential(credential: &DetailCredential) -> bool {
 
 pub fn get_lvvc_credential_subject(credential: &DetailCredential) -> Option<&str> {
     match credential.subject.as_ref() {
-        Some(subject) => Some(subject.as_str()),
-        None => credential
+        Some(IdentifierDetails::Did(did_value)) => Some(did_value.as_str()),
+        _ => credential
             .claims
             .id
             .as_ref()
@@ -38,7 +38,7 @@ mod tests {
 
     use super::*;
     use crate::provider::credential_formatter::model::{
-        CredentialSubject, DetailCredential, IssuerDetails,
+        CredentialSubject, DetailCredential, IdentifierDetails,
     };
 
     fn create_test_detail_credential(
@@ -51,8 +51,8 @@ mod tests {
             valid_until: None,
             update_at: None,
             invalid_before: None,
-            issuer: IssuerDetails::Did("did:example:123".parse().unwrap()),
-            subject,
+            issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
+            subject: subject.map(IdentifierDetails::Did),
             claims,
             status: vec![],
             credential_schema: None,

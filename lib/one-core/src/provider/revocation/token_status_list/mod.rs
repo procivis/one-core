@@ -16,7 +16,7 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, IssuerDetails, TokenVerifier,
+    CredentialStatus, IdentifierDetails, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
@@ -171,7 +171,7 @@ impl RevocationMethod for TokenStatusList {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_details: &IssuerDetails,
+        issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
@@ -218,7 +218,7 @@ impl RevocationMethod for TokenStatusList {
 
         // TODO: ONE-6158 validate issuer certificate/CA of status-list is trusted
 
-        let issuer_did = if let IssuerDetails::Did(issuer_did) = issuer_details {
+        let issuer_did = if let IdentifierDetails::Did(issuer_did) = issuer_details {
             Some(issuer_did.to_owned())
         } else {
             None

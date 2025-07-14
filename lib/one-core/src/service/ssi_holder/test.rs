@@ -22,7 +22,7 @@ use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, IssuerDetails,
+    CredentialSubject, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -54,6 +54,7 @@ use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -999,7 +1000,7 @@ async fn test_accept_credential() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did("did:test:123".parse().unwrap()),
+                issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
                     claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),
@@ -1150,7 +1151,7 @@ async fn test_accept_credential_with_did() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IssuerDetails::Did("did:test:123".parse().unwrap()),
+                issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
                     claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),
@@ -1259,6 +1260,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         validity_credential_repository: Arc::new(MockValidityCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
+        key_repository: Arc::new(MockKeyRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
         certificate_repository: Arc::new(MockCertificateRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),

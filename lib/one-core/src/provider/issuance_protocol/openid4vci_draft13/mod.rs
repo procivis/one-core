@@ -22,7 +22,7 @@ use super::dto::IssuanceProtocolCapabilities;
 use super::{
     HandleInvitationOperationsAccess, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
 };
-use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
@@ -50,7 +50,7 @@ use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CertificateDetails, IssuerDetails,
+    AuthenticationFn, CertificateDetails, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
@@ -607,7 +607,7 @@ impl OpenID4VCI13 {
             ))?;
 
         let identifier_updates = match response_credential.issuer {
-            IssuerDetails::Did(did) => {
+            IdentifierDetails::Did(did) => {
                 prepare_did_identifier(
                     did,
                     organisation,
@@ -616,7 +616,7 @@ impl OpenID4VCI13 {
                 )
                 .await?
             }
-            IssuerDetails::Certificate(CertificateDetails {
+            IdentifierDetails::Certificate(CertificateDetails {
                 chain,
                 fingerprint,
                 expiry,
@@ -629,6 +629,11 @@ impl OpenID4VCI13 {
                     storage_access,
                 )
                 .await?
+            }
+            IdentifierDetails::Key(_) => {
+                return Err(IssuanceProtocolError::Failed(
+                    "Invalid issuer identifier type".to_string(),
+                ));
             }
         };
         let redirect_uri = issuer_response.redirect_uri.clone();
@@ -1456,24 +1461,28 @@ async fn handle_credential_invitation(
 ) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
-    let (issuer, issuer_cert) = match (
+    let remote_identifier = match (
         credential_offer.issuer_did,
         credential_offer.issuer_certificate,
     ) {
-        (Some(issuer_did), None) => {
-            let (_, identifier) = storage_access
-                .get_or_create_did_and_identifier(
+        (Some(issuer_did), None) => Some(
+            storage_access
+                .get_or_create_identifier(
                     &Some(organisation.clone()),
-                    &issuer_did,
-                    DidRole::Issuer,
+                    &IdentifierDetails::Did(issuer_did),
+                    IdentifierRole::Issuer,
                 )
                 .await
-                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-            (Some(identifier), None)
-        }
+                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?,
+        ),
         (None, Some(issuer_certificate)) => {
             let ParsedCertificate {
-                attributes: CertificateX509AttributesDTO { fingerprint, .. },
+                attributes:
+                    CertificateX509AttributesDTO {
+                        fingerprint,
+                        not_after,
+                        ..
+                    },
                 ..
             } = certificate_validator
                 .parse_pem_chain(issuer_certificate.as_bytes(), true)
@@ -1482,15 +1491,20 @@ async fn handle_credential_invitation(
                     IssuanceProtocolError::Failed(format!("Invalid issuer certificate: {err}"))
                 })?;
 
-            let (cert, identifier) = storage_access
-                .get_or_create_certificate_and_identifier(
-                    &Some(organisation.clone()),
-                    issuer_certificate,
-                    fingerprint,
-                )
-                .await
-                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-            (Some(identifier), Some(cert))
+            Some(
+                storage_access
+                    .get_or_create_identifier(
+                        &Some(organisation.clone()),
+                        &IdentifierDetails::Certificate(CertificateDetails {
+                            chain: issuer_certificate,
+                            fingerprint,
+                            expiry: not_after,
+                        }),
+                        IdentifierRole::Issuer,
+                    )
+                    .await
+                    .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?,
+            )
         }
         (Some(_), Some(_)) => {
             return Err(IssuanceProtocolError::InvalidRequest(
@@ -1498,8 +1512,21 @@ async fn handle_credential_invitation(
                     .to_string(),
             ));
         }
-        (None, None) => (None, None),
+        (None, None) => None,
     };
+
+    let (issuer, issuer_certificate) = remote_identifier
+        .map(|(identifier, relation)| {
+            (
+                Some(identifier),
+                if let RemoteIdentifierRelation::Certificate(certificate) = relation {
+                    Some(certificate)
+                } else {
+                    None
+                },
+            )
+        })
+        .unwrap_or((None, None));
 
     let tx_code = credential_offer.grants.code.tx_code.clone();
 
@@ -1625,7 +1652,7 @@ async fn handle_credential_invitation(
         interaction,
         None,
         issuer,
-        issuer_cert,
+        issuer_certificate,
     );
 
     Ok(InvitationResponseDTO {

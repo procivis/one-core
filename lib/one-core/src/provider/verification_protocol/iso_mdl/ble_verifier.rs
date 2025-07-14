@@ -33,6 +33,7 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::ErrorCode::BR_0000;
@@ -116,6 +117,7 @@ pub(crate) async fn start_client(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     certificate_repository: Arc<dyn CertificateRepository>,
+    key_repository: Arc<dyn KeyRepository>,
 ) -> Result<(), ServiceError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
 
@@ -139,6 +141,7 @@ pub(crate) async fn start_client(
                 proof_repository.clone(),
                 certificate_validator.clone(),
                 certificate_repository.clone(),
+                &*key_repository,
             )
             .await;
 
@@ -201,6 +204,7 @@ async fn verifier_flow(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     certificate_repository: Arc<dyn CertificateRepository>,
+    key_repository: &dyn KeyRepository,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
@@ -227,6 +231,7 @@ async fn verifier_flow(
         proof_repository,
         certificate_validator,
         certificate_repository,
+        key_repository,
     )
     .await;
     if let Err(_error) = &result {
@@ -258,6 +263,7 @@ async fn process_proof(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     certificate_repository: Arc<dyn CertificateRepository>,
+    key_repository: &dyn KeyRepository,
 ) -> Result<(), anyhow::Error> {
     send_session_establishment(
         central,
@@ -364,6 +370,7 @@ async fn process_proof(
         &*proof_repository,
         certificate_validator,
         certificate_repository,
+        key_repository,
     )
     .await
     {
@@ -430,6 +437,7 @@ async fn fill_proof_claims_and_credentials(
     proof_repository: &dyn ProofRepository,
     certificate_validator: Arc<dyn CertificateValidator>,
     certificate_repository: Arc<dyn CertificateRepository>,
+    key_repository: &dyn KeyRepository,
 ) -> Result<(), anyhow::Error> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof_schema is None".to_string(),
@@ -437,12 +445,12 @@ async fn fill_proof_claims_and_credentials(
 
     let encoded = encode_cbor_base64(&device_response)?;
 
-    let (holder_did, proved_claims) = super::verify_proof::validate_proof(
+    let (holder_identifier, proved_claims) = super::verify_proof::validate_proof(
         proof_schema,
         &encoded,
         session_transcript,
         credential_formatter_provider,
-        key_algorithm_provider,
+        &key_algorithm_provider,
         did_method_provider.clone(),
         certificate_validator.clone(),
     )
@@ -451,7 +459,7 @@ async fn fill_proof_claims_and_credentials(
     super::verify_proof::accept_proof(
         proof.clone(),
         proved_claims,
-        holder_did,
+        holder_identifier,
         &*did_repository,
         &*identifier_repository,
         &*did_method_provider,
@@ -459,6 +467,8 @@ async fn fill_proof_claims_and_credentials(
         proof_repository,
         &*certificate_validator,
         &*certificate_repository,
+        key_repository,
+        &*key_algorithm_provider,
     )
     .await?;
 

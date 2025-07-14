@@ -19,7 +19,7 @@ use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialStatus, Issuer, IssuerDetails,
+    CredentialData, CredentialStatus, IdentifierDetails, Issuer,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::{
@@ -209,7 +209,7 @@ impl LvvcProvider {
                 "no matching LVVC found among credentials".to_string(),
             ))?;
 
-        let IssuerDetails::Did(ref lvvc_issuer_did) = lvvc.issuer else {
+        let IdentifierDetails::Did(ref lvvc_issuer_did) = lvvc.issuer else {
             return Err(RevocationError::ValidationError(
                 "LVVC issuer DID missing".to_string(),
             ));
@@ -318,11 +318,11 @@ impl RevocationMethod for LvvcProvider {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_details: &IssuerDetails,
+        issuer_details: &IdentifierDetails,
         additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
-        let IssuerDetails::Did(issuer_did) = issuer_details else {
+        let IdentifierDetails::Did(issuer_did) = issuer_details else {
             return Err(RevocationError::ValidationError(
                 "issuer did is missing".to_string(),
             ));

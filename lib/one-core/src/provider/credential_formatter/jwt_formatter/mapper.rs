@@ -4,7 +4,7 @@ use shared_types::DidValue;
 
 use super::model::VcClaim;
 use crate::provider::credential_formatter::model::{
-    CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IssuerDetails,
+    CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IdentifierDetails,
 };
 use crate::util::jwt::Jwt;
 
@@ -41,7 +41,8 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             .subject
             .as_deref()
             .or(credential_subject.id.as_ref().map(|url| url.as_str()))
-            .and_then(|did| DidValue::from_did_url(did).ok());
+            .and_then(|did| DidValue::from_did_url(did).ok())
+            .map(IdentifierDetails::Did);
 
         let did = jwt
             .payload
@@ -55,7 +56,7 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             valid_until: jwt.payload.expires_at,
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
-            issuer: IssuerDetails::Did(did),
+            issuer: IdentifierDetails::Did(did),
             subject,
             claims: CredentialSubject {
                 id: credential_subject.id,

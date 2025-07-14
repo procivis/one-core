@@ -67,17 +67,44 @@ pub trait SignatureProvider: Send + Sync {
     fn get_public_key(&self) -> Vec<u8>;
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CertificateDetails {
     pub chain: String,
     pub fingerprint: String,
     pub expiry: OffsetDateTime,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum IssuerDetails {
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum IdentifierDetails {
     Did(DidValue),
     Certificate(CertificateDetails),
+    Key(PublicKeyJwk),
+}
+
+impl IdentifierDetails {
+    #[allow(dead_code)]
+    pub(crate) fn did_value(&self) -> Option<&DidValue> {
+        match &self {
+            IdentifierDetails::Did(did_value) => Some(did_value),
+            _ => None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn certificate_details(&self) -> Option<&CertificateDetails> {
+        match &self {
+            IdentifierDetails::Certificate(certificate) => Some(certificate),
+            _ => None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn public_key_jwk(&self) -> Option<&PublicKeyJwk> {
+        match &self {
+            IdentifierDetails::Key(key) => Some(key),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -87,8 +114,8 @@ pub struct DetailCredential {
     pub valid_until: Option<OffsetDateTime>,
     pub update_at: Option<OffsetDateTime>,
     pub invalid_before: Option<OffsetDateTime>,
-    pub issuer: IssuerDetails,
-    pub subject: Option<DidValue>,
+    pub issuer: IdentifierDetails,
+    pub subject: Option<IdentifierDetails>,
     pub claims: CredentialSubject,
     pub status: Vec<CredentialStatus>,
     pub credential_schema: Option<CredentialSchema>,
@@ -248,7 +275,7 @@ pub struct Presentation {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
-    pub issuer_did: Option<DidValue>,
+    pub issuer: Option<IdentifierDetails>,
     pub nonce: Option<String>,
     pub credentials: Vec<String>,
 }

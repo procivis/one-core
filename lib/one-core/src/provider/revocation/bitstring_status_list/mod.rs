@@ -17,7 +17,7 @@ use crate::model::revocation_list::{
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{CredentialStatus, IssuerDetails};
+use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -210,7 +210,7 @@ impl RevocationMethod for BitstringStatusList {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        _issuer_details: &IssuerDetails,
+        _issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {

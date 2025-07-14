@@ -701,21 +701,19 @@ async fn handle_proof_invitation(
         ))?;
 
     let holder_interaction_data = {
-        let (interaction_data, verifier_did, verifier_certificate) =
-            interaction_data_from_openid4vp_25_query(
-                query,
-                client,
-                allow_insecure_http_transport,
-                key_algorithm_provider,
-                did_method_provider,
-                certificate_validator,
-                params,
-            )
-            .await?;
+        let (interaction_data, verifier_details) = interaction_data_from_openid4vp_25_query(
+            query,
+            client,
+            allow_insecure_http_transport,
+            key_algorithm_provider,
+            did_method_provider,
+            certificate_validator,
+            params,
+        )
+        .await?;
 
         let mut holder_state: OpenID4VPHolderInteractionData = interaction_data.try_into()?;
-        holder_state.verifier_did = verifier_did;
-        holder_state.verifier_certificate = verifier_certificate;
+        holder_state.verifier_details = verifier_details;
         holder_state
     };
 

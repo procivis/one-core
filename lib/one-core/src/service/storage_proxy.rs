@@ -3,9 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{DidId, DidValue, OrganisationId};
 
-use crate::common_mapper::{
-    DidRole, get_or_create_certificate_identifier, get_or_create_did_and_identifier,
-};
+use crate::common_mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
 use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
@@ -17,13 +15,16 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::service::certificate::validator::CertificateValidator;
 
 /// Interface to be implemented in order to use an exchange protocol.
@@ -61,6 +62,7 @@ pub(crate) trait StorageProxy: Send + Sync {
         value: &DidValue,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<Did>>;
+
     async fn get_certificate_by_fingerprint(
         &self,
         fingerprint: &str,
@@ -69,19 +71,12 @@ pub(crate) trait StorageProxy: Send + Sync {
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
 
-    async fn get_or_create_did_and_identifier(
+    async fn get_or_create_identifier(
         &self,
         organisation: &Option<Organisation>,
-        did_value: &DidValue,
-        did_role: DidRole,
-    ) -> anyhow::Result<(Did, Identifier)>;
-
-    async fn get_or_create_certificate_and_identifier(
-        &self,
-        organisation: &Option<Organisation>,
-        chain: String,
-        fingerprint: String,
-    ) -> anyhow::Result<(Certificate, Identifier)>;
+        details: &IdentifierDetails,
+        role: IdentifierRole,
+    ) -> anyhow::Result<(Identifier, RemoteIdentifierRelation)>;
 }
 pub(crate) type StorageAccess = dyn StorageProxy;
 
@@ -92,8 +87,10 @@ pub(crate) struct StorageProxyImpl {
     pub dids: Arc<dyn DidRepository>,
     pub certificates: Arc<dyn CertificateRepository>,
     pub certificate_validator: Arc<dyn CertificateValidator>,
+    pub keys: Arc<dyn KeyRepository>,
     pub identifiers: Arc<dyn IdentifierRepository>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl StorageProxyImpl {
@@ -105,8 +102,10 @@ impl StorageProxyImpl {
         dids: Arc<dyn DidRepository>,
         certificates: Arc<dyn CertificateRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        keys: Arc<dyn KeyRepository>,
         identifiers: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             interactions,
@@ -115,8 +114,10 @@ impl StorageProxyImpl {
             dids,
             certificates,
             certificate_validator,
+            keys,
             identifiers,
             did_method_provider,
+            key_algorithm_provider,
         }
     }
 }
@@ -239,39 +240,25 @@ impl StorageProxy for StorageProxyImpl {
             })
     }
 
-    async fn get_or_create_did_and_identifier(
+    async fn get_or_create_identifier(
         &self,
         organisation: &Option<Organisation>,
-        did_value: &DidValue,
-        did_role: DidRole,
-    ) -> anyhow::Result<(Did, Identifier)> {
-        get_or_create_did_and_identifier(
+        details: &IdentifierDetails,
+        role: IdentifierRole,
+    ) -> anyhow::Result<(Identifier, RemoteIdentifierRelation)> {
+        get_or_create_identifier(
             &*self.did_method_provider,
             &*self.dids,
-            &*self.identifiers,
-            organisation,
-            did_value,
-            did_role,
-        )
-        .await
-        .context("get or create did and identifier")
-    }
-
-    async fn get_or_create_certificate_and_identifier(
-        &self,
-        organisation: &Option<Organisation>,
-        chain: String,
-        fingerprint: String,
-    ) -> anyhow::Result<(Certificate, Identifier)> {
-        get_or_create_certificate_identifier(
             &*self.certificates,
             &*self.certificate_validator,
+            &*self.keys,
+            &*self.key_algorithm_provider,
             &*self.identifiers,
             organisation,
-            chain,
-            fingerprint,
+            details,
+            role,
         )
         .await
-        .context("get or create certificate and identifier")
+        .context("get or create identifier")
     }
 }

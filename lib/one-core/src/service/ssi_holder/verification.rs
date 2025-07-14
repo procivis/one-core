@@ -1,15 +1,10 @@
-use std::str::FromStr;
-
 use futures::TryFutureExt;
-use shared_types::{DidValue, ProofId};
+use shared_types::ProofId;
 use url::Url;
 
 use super::SSIHolderService;
 use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
-use crate::common_mapper::{
-    DidRole, NESTED_CLAIM_MARKER, get_or_create_certificate_identifier,
-    get_or_create_did_and_identifier,
-};
+use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, get_or_create_identifier};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
@@ -208,8 +203,10 @@ impl SSIHolderService {
             self.did_repository.clone(),
             self.certificate_repository.clone(),
             self.certificate_validator.clone(),
+            self.key_repository.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
         );
 
         let presentation_definition = verification_protocol
@@ -483,8 +480,10 @@ impl SSIHolderService {
             self.did_repository.clone(),
             self.certificate_repository.clone(),
             self.certificate_validator.clone(),
+            self.key_repository.clone(),
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
         );
 
         let transport = validate_and_select_transport_type(
@@ -524,31 +523,18 @@ impl SSIHolderService {
             let deserialized: Result<OpenID4VPHolderInteractionData, _> =
                 deserialize_interaction_data(interaction.data.as_ref());
             if let Ok(data) = deserialized {
-                if let Some(did_value) = data.verifier_did {
-                    let did_value = DidValue::from_str(&did_value).map_err(|_| {
-                        ServiceError::MappingError("failed to parse did value".to_string())
-                    })?;
-                    let (_, identifier) = get_or_create_did_and_identifier(
+                if let Some(details) = data.verifier_details {
+                    let (identifier, ..) = get_or_create_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
-                        &*self.identifier_repository,
-                        &interaction.organisation,
-                        &did_value,
-                        DidRole::Verifier,
-                    )
-                    .await?;
-
-                    proof.verifier_identifier = Some(identifier);
-                }
-
-                if let Some(verifier_certificate) = data.verifier_certificate {
-                    let (_, identifier) = get_or_create_certificate_identifier(
                         &*self.certificate_repository,
                         &*self.certificate_validator,
+                        &*self.key_repository,
+                        &*self.key_algorithm_provider,
                         &*self.identifier_repository,
                         &interaction.organisation,
-                        verifier_certificate.chain,
-                        verifier_certificate.fingerprint,
+                        &details,
+                        IdentifierRole::Verifier,
                     )
                     .await?;
 

@@ -38,8 +38,8 @@ use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    SelectiveDisclosure, VerificationFn,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities,
+    IdentifierDetails, Presentation, SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
@@ -406,7 +406,8 @@ impl SDJWTVCFormatter {
             .subject
             .map(|did| DidValue::from_str(&did))
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map(IdentifierDetails::Did);
 
         Ok((
             DetailCredential {

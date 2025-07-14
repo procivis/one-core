@@ -177,7 +177,9 @@ impl IntoJoinRelations for IdentifierFilterValue {
                     },
                 ]
             }
-            IdentifierFilterValue::KeyAlgorithms(_) | IdentifierFilterValue::KeyStorages(_) => {
+            IdentifierFilterValue::KeyAlgorithms(_)
+            | IdentifierFilterValue::KeyStorages(_)
+            | IdentifierFilterValue::KeyIds(_) => {
                 vec![
                     // IdentifierType::Did
                     JoinRelation {
