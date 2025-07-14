@@ -1,5 +1,7 @@
 use convert_case::{Case, Casing};
-use dcql::{ClaimQuery, ClaimQueryId, CredentialFormat, CredentialQuery, DcqlQuery};
+use dcql::{
+    ClaimQuery, ClaimQueryId, CredentialFormat, CredentialMeta, CredentialQuery, DcqlQuery,
+};
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::FormatType;
@@ -48,6 +50,9 @@ pub fn create_dcql_query(
                     CredentialFormat::JwtVc => {
                         CredentialQuery::jwt_vc(w3c_credential_query_type_values(credential_schema))
                     }
+                    CredentialFormat::W3cSdJwt => CredentialQuery::w3c_sd_jwt(
+                        w3c_credential_query_type_values(credential_schema),
+                    ),
                 };
 
                 // Build claim queries
@@ -56,7 +61,10 @@ pub fn create_dcql_query(
                     .map(|claim_schema| {
                         let claim_query_builder = ClaimQuery::builder()
                             .id(claim_schema.schema.id.to_string())
-                            .path(format_dcql_path(&claim_schema.schema.key, &dcql_format))
+                            .path(format_dcql_path(
+                                &claim_schema.schema.key,
+                                base_credential_query.get_meta(),
+                            ))
                             .required(claim_schema.required);
 
                         // Add intent_to_retain for MDOC format
@@ -115,14 +123,20 @@ fn w3c_credential_query_type_values(credential_schema: &CredentialSchema) -> Vec
     ]
 }
 
-fn format_dcql_path<'a>(claim_key: &'a str, dcql_format: &dcql::CredentialFormat) -> Vec<&'a str> {
-    let key_split = claim_key.split(NESTED_CLAIM_MARKER).collect::<Vec<_>>();
+fn format_dcql_path(claim_key: &str, credential_meta: &CredentialMeta) -> Vec<String> {
+    let key_split: Vec<String> = claim_key
+        .split(NESTED_CLAIM_MARKER)
+        .map(str::to_string)
+        .collect();
 
-    match dcql_format {
-        CredentialFormat::LdpVc | CredentialFormat::JwtVc => {
-            [&["credentialSubject"], &key_split[..]].concat()
-        }
-        _ => key_split,
+    match credential_meta {
+        CredentialMeta::MsoMdoc { doctype_value } => std::iter::once(doctype_value.clone())
+            .chain(key_split)
+            .collect(),
+        CredentialMeta::W3cVc { .. } => std::iter::once("credentialSubject".to_string())
+            .chain(key_split)
+            .collect(),
+        CredentialMeta::SdJwtVc { .. } => key_split,
     }
 }
 
@@ -131,7 +145,7 @@ impl From<FormatType> for dcql::CredentialFormat {
         match value {
             FormatType::Jwt => CredentialFormat::JwtVc,
             FormatType::PhysicalCard => CredentialFormat::LdpVc,
-            FormatType::SdJwt => CredentialFormat::SdJwt,
+            FormatType::SdJwt => CredentialFormat::W3cSdJwt,
             FormatType::SdJwtVc => CredentialFormat::SdJwt,
             FormatType::JsonLdClassic => CredentialFormat::LdpVc,
             FormatType::JsonLdBbsPlus => CredentialFormat::LdpVc,

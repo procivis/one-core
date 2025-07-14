@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{ClaimPath, ClaimQueryId, CredentialQueryId, PathSegment};
+use crate::{ClaimPath, ClaimQueryId, CredentialFormat, CredentialQueryId, PathSegment};
 
 impl Display for CredentialQueryId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -32,6 +32,18 @@ impl Display for PathSegment {
             PathSegment::PropertyName(name) => write!(f, "\"{name}\""),
             PathSegment::ArrayIndex(idx) => write!(f, "{idx}"),
             PathSegment::ArrayAll => write!(f, "null"),
+        }
+    }
+}
+
+impl Display for CredentialFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CredentialFormat::MsoMdoc => write!(f, "mso_mdoc"),
+            CredentialFormat::LdpVc => write!(f, "ldp_vc"),
+            CredentialFormat::JwtVc => write!(f, "jwt_vc_json"),
+            CredentialFormat::SdJwt => write!(f, "dc+sd-jwt"),
+            CredentialFormat::W3cSdJwt => write!(f, "vc+sd-jwt"),
         }
     }
 }

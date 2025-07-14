@@ -371,14 +371,16 @@ async fn fetch_credentials_for_schema_ids(
 
     for schema_id in &filter.schema_ids {
         let schema_id = match filter.format {
-            CredentialFormat::JwtVc | CredentialFormat::LdpVc => schema_id
-                // Make use of the fact that Procivis One issuers put the schema id into the context,
-                // hence we can potentially parse it out of the supplied types.
-                // Note: This will most likely fail with third party issuers. Improve the logic,
-                // once we need to interop with such issuers.
-                .split_once("#")
-                .map(|(first, _)| first)
-                .unwrap_or(schema_id),
+            CredentialFormat::JwtVc | CredentialFormat::LdpVc | CredentialFormat::W3cSdJwt => {
+                schema_id
+                    // Make use of the fact that Procivis One issuers put the schema id into the context,
+                    // hence we can potentially parse it out of the supplied types.
+                    // Note: This will most likely fail with third party issuers. Improve the logic,
+                    // once we need to interop with such issuers.
+                    .split_once("#")
+                    .map(|(first, _)| first)
+                    .unwrap_or(schema_id)
+            }
             CredentialFormat::MsoMdoc | CredentialFormat::SdJwt => schema_id,
         };
 

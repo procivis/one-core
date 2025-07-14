@@ -29,6 +29,12 @@ impl CredentialQuery {
             .format(CredentialFormat::LdpVc)
             .meta(CredentialMeta::W3cVc { type_values })
     }
+
+    pub fn w3c_sd_jwt(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetMetaAndFormat> {
+        Self::builder()
+            .format(CredentialFormat::W3cSdJwt)
+            .meta(CredentialMeta::W3cVc { type_values })
+    }
 }
 
 #[cfg(test)]
@@ -160,6 +166,30 @@ mod tests {
     }
 
     #[test]
+    fn test_w3c_sd_jwt_credential_builder() {
+        let credential = CredentialQuery::w3c_sd_jwt(vec![vec![
+            "VerifiableCredential".to_string(),
+            "DriverLicense".to_string(),
+        ]])
+        .id("w3c_sd_jwt")
+        .build();
+
+        assert_eq!(credential.id, CredentialQueryId::from("w3c_sd_jwt"));
+        assert_eq!(credential.format, CredentialFormat::W3cSdJwt);
+
+        match &credential.meta {
+            CredentialMeta::W3cVc { type_values } => {
+                assert_eq!(type_values.len(), 1);
+                assert_eq!(
+                    type_values[0],
+                    vec!["VerifiableCredential", "DriverLicense"]
+                );
+            }
+            _ => panic!("Expected W3cVc metadata"),
+        }
+    }
+
+    #[test]
     fn test_dcql_query_builder_with_multiple_formats() {
         let mso_mdoc_cred = CredentialQuery::mso_mdoc("org.iso.18013.5.1.mDL".to_string())
             .id("mdoc_id")
@@ -174,14 +204,27 @@ mod tests {
             .id("jwt_vc_id")
             .build();
 
+        let w3c_sd_jwt_cred = CredentialQuery::w3c_sd_jwt(vec![vec![
+            "VerifiableCredential".to_string(),
+            "DriverLicense".to_string(),
+        ]])
+        .id("w3c_sd_jwt_id")
+        .build();
+
         let query = DcqlQuery::builder()
-            .credentials(vec![mso_mdoc_cred, sd_jwt_cred, jwt_vc_cred])
+            .credentials(vec![
+                mso_mdoc_cred,
+                sd_jwt_cred,
+                jwt_vc_cred,
+                w3c_sd_jwt_cred,
+            ])
             .build();
 
-        assert_eq!(query.credentials.len(), 3);
+        assert_eq!(query.credentials.len(), 4);
         assert_eq!(query.credentials[0].format, CredentialFormat::MsoMdoc);
         assert_eq!(query.credentials[1].format, CredentialFormat::SdJwt);
         assert_eq!(query.credentials[2].format, CredentialFormat::JwtVc);
+        assert_eq!(query.credentials[3].format, CredentialFormat::W3cSdJwt);
     }
 
     #[test]

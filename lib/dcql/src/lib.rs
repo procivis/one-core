@@ -41,6 +41,7 @@ pub struct CredentialQuery {
     #[builder(into)]
     pub id: CredentialQueryId,
     pub format: CredentialFormat,
+    #[builder(getter)]
     pub meta: CredentialMeta,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claims: Option<Vec<ClaimQuery>>,
@@ -89,6 +90,8 @@ pub enum CredentialFormat {
     MsoMdoc,
     #[serde(rename = "dc+sd-jwt")]
     SdJwt,
+    #[serde(rename = "vc+sd-jwt")]
+    W3cSdJwt,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
