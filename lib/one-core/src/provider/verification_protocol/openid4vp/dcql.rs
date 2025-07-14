@@ -123,7 +123,7 @@ fn to_requested_credential(
             .claims
             .iter()
             .flatten()
-            .find(|claim| dcql_path_to_claim_key(&claim.path) == claim_path);
+            .find(|claim| dcql_path_to_claim_key(&claim.path, &query.format) == claim_path);
 
         // The query is absent in case `claims` was not provided in the DCQL query, or we have a
         // credential that does not support selective disclosure and more claims are revealed than
@@ -242,11 +242,11 @@ fn first_applicable_claim_set(
             // Let's use that as the minimum requirement the credentials in the wallet failed to match.
             .last()
             .iter()
-            .flat_map(|filter| &filter.claims)
-            .filter(|claim| claim.required)
-            .map(|claim| {
+            .flat_map(|filter| filter.claims.iter().map(|claim| (claim, &filter.format)))
+            .filter(|(claim, _)| claim.required)
+            .map(|(claim, format)| {
                 (
-                    dcql_path_to_claim_key(&claim.path),
+                    dcql_path_to_claim_key(&claim.path, format),
                     ClaimToCredentials {
                         credentials: vec![],
                         // the empty set of credentials is always selectively disclosable
@@ -326,7 +326,7 @@ fn select_claims(
                 claim_filter.path
             )));
         }
-        let path_prefix = dcql_path_to_claim_key(&claim_filter.path);
+        let path_prefix = dcql_path_to_claim_key(&claim_filter.path, &filter.format);
         if claims
             .iter()
             .any(|claim| claim.path.starts_with(&path_prefix))
@@ -399,9 +399,20 @@ async fn fetch_credentials_for_schema_ids(
     Ok(credentials)
 }
 
-fn dcql_path_to_claim_key(path: &ClaimPath) -> String {
-    path.segments
-        .iter()
+fn dcql_path_to_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String {
+    let mut segments_iter = path.segments.iter().peekable();
+    match format {
+        CredentialFormat::JwtVc | CredentialFormat::LdpVc | CredentialFormat::W3cSdJwt => {
+            // skip the credentialSubject for W3C credentials
+            segments_iter
+                .next_if(|val| *val == &PathSegment::PropertyName("credentialSubject".to_string()));
+        }
+        CredentialFormat::MsoMdoc | CredentialFormat::SdJwt => {
+            // nothing to do
+        }
+    }
+
+    segments_iter
         .map(ToString::to_string)
         // remove the quotes around strings
         .map(|s| s.replace("\"", ""))
