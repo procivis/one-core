@@ -115,7 +115,18 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
                               "name": "TestNestedHell"
                           }
                           ],
-                          "wallet_storage_type": "SOFTWARE"
+                          "wallet_storage_type": "SOFTWARE",
+                          "proof_types_supported": {
+                            "jwt": {
+                              "proof_signing_alg_values_supported": [
+                                "ES256",
+                                "EdDSA",
+                                "EDDSA",
+                                "BBS_PLUS",
+                                "DILITHIUM"
+                              ]
+                            }
+                          }
                       }
               }
             }
@@ -309,10 +320,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
             .parse::<Vec<String>>();
     assert!(proof_types.contains(&"EdDSA".to_string()));
     assert!(proof_types.contains(&"EDDSA".to_string()));
-    assert!(proof_types.contains(&"CRYDI3".to_string()));
     assert!(proof_types.contains(&"DILITHIUM".to_string()));
     assert!(proof_types.contains(&"ES256".to_string()));
     assert!(proof_types.contains(&"BBS_PLUS".to_string()));
+
+    assert!(!proof_types.contains(&"CRYDI3".to_string()));
 }
 
 #[tokio::test]

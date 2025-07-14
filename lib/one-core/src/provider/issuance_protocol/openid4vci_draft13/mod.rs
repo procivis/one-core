@@ -1659,6 +1659,10 @@ async fn handle_credential_invitation(
         interaction_id,
         credentials: vec![credential],
         tx_code,
+        issuer_proof_type_supported: HashMap::from([(
+            credential_id,
+            credential_config.proof_types_supported.clone(),
+        )]),
     })
 }
 

@@ -1,5 +1,7 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
@@ -28,7 +30,7 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    InvitationResponseDTO, SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCIProofTypeSupported, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::{
@@ -448,23 +450,35 @@ impl SSIHolderService {
             credentials,
             interaction_id,
             tx_code,
+            mut issuer_proof_type_supported,
         } = issuance_protocol
             .holder_handle_invitation(url, organisation, &storage_access, &handle_operations)
             .await?;
 
-        let credential_configuration = CredentialConfigurationSupportedResponseDTO {
-            proof_types_supported: Some(map_proof_types_supported(
-                self.key_algorithm_provider
-                    .supported_verification_jose_alg_ids(),
-            )),
-        };
+        let mut holder_proof_types_supported = self
+            .key_algorithm_provider
+            .supported_verification_jose_alg_ids();
+        holder_proof_types_supported.sort();
+
         let result = HandleInvitationResultDTO::Credential {
             interaction_id,
             credential_ids: credentials.iter().map(|c| c.id).collect(),
             tx_code,
             credential_configurations_supported: credentials
                 .iter()
-                .map(|c| (c.id, credential_configuration.clone()))
+                .map(|c| {
+                    (
+                        c.id,
+                        CredentialConfigurationSupportedResponseDTO {
+                            proof_types_supported: Some(map_proof_types_supported(
+                                self.resolve_proof_types_supported(
+                                    issuer_proof_type_supported.remove(&c.id).flatten(),
+                                    &holder_proof_types_supported,
+                                ),
+                            )),
+                        },
+                    )
+                })
                 .collect(),
         };
 
@@ -502,5 +516,34 @@ impl SSIHolderService {
                 .await?;
         }
         Ok(update_response.result)
+    }
+
+    fn resolve_proof_types_supported(
+        &self,
+        issuer_proof_type_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+        holder_proof_type_supported: &[String],
+    ) -> Vec<String> {
+        let Some(mut issuer_proof_type_supported) = issuer_proof_type_supported else {
+            return holder_proof_type_supported.to_vec();
+        };
+
+        let Some(issuer_proof_type_supported) = issuer_proof_type_supported.shift_remove("jwt")
+        else {
+            return vec![];
+        };
+
+        let holder_proof_type_supported = if !holder_proof_type_supported.is_sorted() {
+            let mut sorted_holder_proof_type = holder_proof_type_supported.to_vec();
+            sorted_holder_proof_type.sort();
+            Cow::Owned(sorted_holder_proof_type)
+        } else {
+            Cow::Borrowed(holder_proof_type_supported)
+        };
+
+        issuer_proof_type_supported
+            .proof_signing_alg_values_supported
+            .into_iter()
+            .filter(|t| holder_proof_type_supported.binary_search(t).is_ok())
+            .collect()
     }
 }

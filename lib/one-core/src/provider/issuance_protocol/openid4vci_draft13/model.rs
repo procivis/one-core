@@ -224,6 +224,8 @@ pub(crate) struct InvitationResponseDTO {
     pub interaction_id: InteractionId,
     pub credentials: Vec<Credential>,
     pub tx_code: Option<OpenID4VCITxCode>,
+    pub issuer_proof_type_supported:
+        HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
 }
 
 #[skip_serializing_none]
