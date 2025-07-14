@@ -666,7 +666,7 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id1.to_string()),
-                format: Some("JWT".to_owned()),
+                format: Some("JSON_LD_CLASSIC".to_owned()),
                 schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
@@ -721,7 +721,7 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         .await;
 
     // Allow both credential schemas
-    let credential_query = CredentialQuery::jwt_vc(vec![
+    let credential_query = CredentialQuery::ldp_vc(vec![
         vec![
             "https://www.w3.org/ns/credentials/v2".to_owned(),
             "https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json".to_owned(),

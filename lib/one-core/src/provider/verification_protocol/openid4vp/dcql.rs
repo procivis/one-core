@@ -4,7 +4,7 @@ use dcql::matching::CredentialFilter;
 use dcql::{ClaimPath, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
 use shared_types::{CredentialId, OrganisationId};
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof::Proof;
@@ -78,6 +78,13 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
                 .await?;
 
         credential_candidates.retain(|credential| {
+            let Some(schema) = &credential.schema else {
+                return false;
+            };
+            format_matches(&query.format, &schema.format, config)
+        });
+
+        credential_candidates.retain(|credential| {
             credential.state == CredentialStateEnum::Accepted
                 && credential.role == CredentialRole::Holder
         });
@@ -105,6 +112,27 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
         }],
         credentials: credential_model_to_credential_dto(relevant_credentials, config)?,
     })
+}
+
+fn format_matches(dcql_format: &CredentialFormat, format: &str, config: &CoreConfig) -> bool {
+    let Some(credential_format) = config
+        .format
+        .get_fields(format)
+        .ok()
+        .map(|field| field.r#type)
+    else {
+        return false;
+    };
+    match dcql_format {
+        CredentialFormat::JwtVc => credential_format == FormatType::Jwt,
+        CredentialFormat::LdpVc => {
+            credential_format == FormatType::JsonLdBbsPlus
+                || credential_format == FormatType::JsonLdClassic
+        }
+        CredentialFormat::MsoMdoc => credential_format == FormatType::Mdoc,
+        CredentialFormat::SdJwt => credential_format == FormatType::SdJwtVc,
+        CredentialFormat::W3cSdJwt => credential_format == FormatType::SdJwt,
+    }
 }
 
 fn to_requested_credential(
