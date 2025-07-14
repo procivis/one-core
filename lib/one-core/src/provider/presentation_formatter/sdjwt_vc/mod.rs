@@ -7,6 +7,7 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
+use crate::config::core_config::FormatType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
@@ -67,13 +68,28 @@ impl SdjwtVCPresentationFormatter {
 impl PresentationFormatter for SdjwtVCPresentationFormatter {
     async fn format_presentation(
         &self,
-        _credentials: Vec<CredentialToPresent>,
+        credentials: Vec<CredentialToPresent>,
         _holder_binding_fn: AuthenticationFn,
         _holder_did: &DidValue,
         _context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        // for presentation the SD-JWT formatter is used
-        unreachable!()
+        if credentials.len() != 1 {
+            return Err(FormatterError::Failed(
+                "SD-JWT VC formatter only supports single credential presentations".to_string(),
+            ));
+        }
+        let credential = credentials
+            .into_iter()
+            .next()
+            .ok_or(FormatterError::Failed(
+                "Empty credential list passed to format_presentation".to_string(),
+            ))?;
+
+        // The holder binding has been added by the credential formatter already
+        Ok(FormattedPresentation {
+            vp_token: credential.raw_credential,
+            oidc_format: "vc+sd-jwt".to_string(),
+        })
     }
 
     async fn extract_presentation(
@@ -92,7 +108,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             .await?;
 
         let proof_of_key_possession = proof_of_key_possession.ok_or(FormatterError::Failed(
-            "Missing proof of key possesion".to_string(),
+            "Missing proof of key possession".to_string(),
         ))?;
 
         let presentation = Presentation {
@@ -143,7 +159,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
 
     fn get_capabilities(&self) -> PresentationFormatterCapabilities {
         PresentationFormatterCapabilities {
-            supported_credential_formats: vec![],
+            supported_credential_formats: vec![FormatType::SdJwtVc],
         }
     }
 }

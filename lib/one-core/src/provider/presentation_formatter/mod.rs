@@ -15,7 +15,6 @@ pub mod jwt_vp_json;
 pub mod ldp_vp;
 pub mod model;
 pub mod mso_mdoc;
-pub mod sdjwt;
 pub mod sdjwt_vc;
 
 /// PresentationFormatter is a trait that defines the methods for formatting and extracting presentations.

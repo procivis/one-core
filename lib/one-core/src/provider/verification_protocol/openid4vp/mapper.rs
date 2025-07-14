@@ -566,11 +566,9 @@ pub(crate) fn map_presented_credentials_to_presentation_format_type(
         return Ok(FormatType::Mdoc);
     }
 
-    // The SD_JWT presentations can contain only one credential
-    if presented.len() == 1
-        && matches_format_types(presented, &[FormatType::SdJwt, FormatType::SdJwtVc], config)
-    {
-        return Ok(FormatType::SdJwt);
+    // The SD-JWT VC presentations can contain only one credential
+    if presented.len() == 1 && matches_format_types(presented, &[FormatType::SdJwtVc], config) {
+        return Ok(FormatType::SdJwtVc);
     }
 
     if matches_format_types(
