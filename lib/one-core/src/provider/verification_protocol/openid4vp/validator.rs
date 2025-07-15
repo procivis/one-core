@@ -7,7 +7,6 @@ use std::time::Duration;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use super::model::PresentationSubmissionDescriptorDTO;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::DidType;
 use crate::model::key::PublicKeyJwk;
@@ -27,7 +26,6 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp::mapper::vec_last_position_from_token_path;
 use crate::provider::verification_protocol::openid4vp::model::ValidatedProofClaimDTO;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::util::key_verification::KeyVerification;
@@ -63,15 +61,13 @@ pub(super) async fn peek_presentation(
 pub(super) async fn validate_presentation(
     presentation_string: &str,
     nonce: &str,
-    oidc_format: &str,
+    presentation_format: &str,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<dyn TokenVerifier>,
     context: ExtractPresentationCtx,
 ) -> Result<Presentation, OpenID4VCError> {
-    let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
-        .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
     let presentation_formatter = formatter_provider
-        .get_presentation_formatter(&format)
+        .get_presentation_formatter(presentation_format)
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
     let presentation = presentation_formatter
@@ -131,8 +127,8 @@ pub(super) fn validate_against_redirect_uris(
 }
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
-    presentation: Presentation,
-    presentation_submitted: &PresentationSubmissionDescriptorDTO,
+    holder_details: &IdentifierDetails,
+    credential_token: &str,
     extracted_lvvcs: &[DetailCredential],
     proof_schema_input: &ProofInputSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
@@ -141,28 +137,6 @@ pub(super) async fn validate_credential(
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     holder_binding_ctx: HolderBindingCtx,
 ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
-    let holder_details = presentation
-        .issuer
-        .as_ref()
-        .ok_or(OpenID4VCError::ValidationError(
-            "Presentation missing holder id".to_string(),
-        ))?;
-
-    let credential_index = presentation_submitted
-        .path_nested
-        .as_ref()
-        .map(|p| vec_last_position_from_token_path(&p.path))
-        .transpose()?
-        .unwrap_or(0);
-
-    let credential_token =
-        presentation
-            .credentials
-            .get(credential_index)
-            .ok_or(OpenID4VCError::ValidationError(format!(
-                "Credential at index {credential_index} not found",
-            )))?;
-
     let format = proof_schema_input
         .credential_schema
         .as_ref()

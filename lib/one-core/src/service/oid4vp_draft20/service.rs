@@ -459,8 +459,13 @@ impl OID4VPDraft20Service {
         request: OpenID4VPDirectPostRequestDTO,
     ) -> Result<SubmissionRequestData, ServiceError> {
         match request {
+            // DCQL is not supported in draft 20
             OpenID4VPDirectPostRequestDTO {
-                submission_data: VpSubmissionData::Dcql(_) | VpSubmissionData::Pex(_),
+                submission_data: VpSubmissionData::Dcql(_),
+                ..
+            } => Err(ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest)),
+            OpenID4VPDirectPostRequestDTO {
+                submission_data: VpSubmissionData::Pex(_),
                 state: Some(state),
             } => Ok(SubmissionRequestData {
                 submission_data: request.submission_data,
@@ -515,6 +520,12 @@ impl OID4VPDraft20Service {
                 let payload = JwePayload::try_from_json_base64_decode(&payload).map_err(|err| {
                     ServiceError::Other(format!("Failed deserializing JWE payload: {err}"))
                 })?;
+
+                if let VpSubmissionData::EncryptedResponse(ResponseSubmission { response: _ }) =
+                    payload.submission_data
+                {
+                    return Err(ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest));
+                }
 
                 Ok(SubmissionRequestData {
                     submission_data: payload.submission_data,

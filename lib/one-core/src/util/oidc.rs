@@ -1,7 +1,6 @@
 use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::sdjwt::{SdJwtType, detect_sdjwt_type_from_token};
-use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::issuance_protocol::openid4vci_draft13::error::{
     OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -123,8 +122,12 @@ pub(crate) fn determine_response_mode(proof: &Proof) -> Result<String, Verificat
 }
 
 fn get_crypto_suite(json_ld_str: &str) -> Option<String> {
-    match serde_json::from_str::<VcdmCredential>(json_ld_str) {
-        Ok(json_ld) => json_ld.proof.map(|proof| proof.cryptosuite),
+    match serde_json::from_str::<serde_json::Value>(json_ld_str) {
+        Ok(json_ld) => json_ld.get("proof").and_then(|proof| {
+            proof
+                .get("cryptosuite")
+                .and_then(|cryptosuite| cryptosuite.as_str().map(|s| s.to_string()))
+        }),
         Err(_) => None,
     }
 }

@@ -130,13 +130,10 @@ fn format_dcql_path(claim_key: &str, credential_meta: &CredentialMeta) -> Vec<St
         .collect();
 
     match credential_meta {
-        CredentialMeta::MsoMdoc { doctype_value } => std::iter::once(doctype_value.clone())
-            .chain(key_split)
-            .collect(),
         CredentialMeta::W3cVc { .. } => std::iter::once("credentialSubject".to_string())
             .chain(key_split)
             .collect(),
-        CredentialMeta::SdJwtVc { .. } => key_split,
+        _ => key_split,
     }
 }
 

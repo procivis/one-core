@@ -220,14 +220,40 @@ async fn test_share_proof_dcql_mdoc_success() {
     // GIVEN
     let (context, organisation, _, identifier, key) = create_dcql_test_context().await;
 
+    let namespace_claim_id = Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap();
     let given_name_claim_id = Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c41").unwrap();
     let family_name_claim_id = Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c42").unwrap();
     let birth_date_claim_id = Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c43").unwrap();
 
     let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
-        (given_name_claim_id, "given_name", true, "STRING", false),
-        (family_name_claim_id, "family_name", true, "STRING", false),
-        (birth_date_claim_id, "birth_date", true, "STRING", false),
+        (
+            namespace_claim_id,
+            "org.iso.18013.5.1",
+            true,
+            "OBJECT",
+            false,
+        ),
+        (
+            given_name_claim_id,
+            "org.iso.18013.5.1/given_name",
+            true,
+            "STRING",
+            false,
+        ),
+        (
+            family_name_claim_id,
+            "org.iso.18013.5.1/family_name",
+            true,
+            "STRING",
+            false,
+        ),
+        (
+            birth_date_claim_id,
+            "org.iso.18013.5.1/birth_date",
+            true,
+            "STRING",
+            false,
+        ),
     ];
 
     let credential_schema = create_credential_schema_with_claims(
@@ -249,21 +275,21 @@ async fn test_share_proof_dcql_mdoc_success() {
         vec![
             CreateProofClaim {
                 id: given_name_claim_id.into(),
-                key: "given_name",
+                key: "org.iso.18013.5.1/given_name",
                 required: true,
                 data_type: "STRING",
                 array: false,
             },
             CreateProofClaim {
                 id: family_name_claim_id.into(),
-                key: "family_name",
+                key: "org.iso.18013.5.1/family_name",
                 required: true,
                 data_type: "STRING",
                 array: false,
             },
             CreateProofClaim {
                 id: birth_date_claim_id.into(),
-                key: "birth_date",
+                key: "org.iso.18013.5.1/birth_date",
                 required: false,
                 data_type: "STRING",
                 array: false,
@@ -291,19 +317,19 @@ async fn test_share_proof_dcql_mdoc_success() {
                 "claims": [
                     {
                         "id": given_name_claim_id,
-                        "path": ["org.iso.18013.5.1.mDL", "given_name"],
+                        "path": ["org.iso.18013.5.1", "given_name"],
                         "required": true,
                         "intent_to_retain": true
                     },
                     {
                         "id": family_name_claim_id,
-                        "path": ["org.iso.18013.5.1.mDL", "family_name"],
+                        "path": ["org.iso.18013.5.1", "family_name"],
                         "required": true,
                         "intent_to_retain": true
                     },
                     {
                         "id": birth_date_claim_id,
-                        "path": ["org.iso.18013.5.1.mDL", "birth_date"],
+                        "path": ["org.iso.18013.5.1", "birth_date"],
                         "required": false,
                         "intent_to_retain": true
                     }

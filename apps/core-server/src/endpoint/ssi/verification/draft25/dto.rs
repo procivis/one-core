@@ -58,9 +58,11 @@ pub(crate) struct PexSubmissionRestDTO {
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
 }
 
+#[serde_with::serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema, Into)]
 #[into(DcqlSubmission)]
 pub(crate) struct DcqlSubmissionRestDTO {
+    #[serde_as(as = "JsonString")]
     pub vp_token: HashMap<String, Vec<String>>,
 }
 

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use dcql::CredentialFormat;
 use shared_types::CredentialSchemaId;
 use time::{Duration, OffsetDateTime};
 
@@ -32,8 +33,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     vec_last_position_from_token_path,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    AcceptProofResult, OpenID4VPPresentationDefinition, PexSubmission, SubmissionRequestData,
-    VpSubmissionData,
+    AcceptProofResult, DcqlSubmission, OpenID4VPPresentationDefinition, PexSubmission,
+    SubmissionRequestData, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
@@ -145,7 +146,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
             .await
         }
         (None, Some(_)) => {
-            process_proof_submission(
+            process_proof_submission_presentation_exchange(
                 request,
                 &proof,
                 interaction_data,
@@ -175,22 +176,6 @@ pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String
 
 #[allow(clippy::too_many_arguments)]
 async fn process_proof_submission_dcql_query(
-    _submission: SubmissionRequestData,
-    _proof: &Proof,
-    _interaction_data: OpenID4VPVerifierInteractionContent,
-    _did_method_provider: &Arc<dyn DidMethodProvider>,
-    _formatter_provider: &Arc<dyn CredentialFormatterProvider>,
-    _key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    _revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
-    _certificate_validator: &Arc<dyn CertificateValidator>,
-) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
-    Err(OpenID4VCError::ValidationError(
-        "DCQL query is not supported".to_string(),
-    ))
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn process_proof_submission(
     submission: SubmissionRequestData,
     proof: &Proof,
     interaction_data: OpenID4VPVerifierInteractionContent,
@@ -200,22 +185,213 @@ async fn process_proof_submission(
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
-    let (presentation_submission, vp_token) = match submission.submission_data {
-        VpSubmissionData::Pex(PexSubmission {
-            presentation_submission,
-            vp_token,
-        }) => (presentation_submission, vp_token),
-        VpSubmissionData::Dcql(_) => {
-            return Err(OpenID4VCError::ValidationError(
-                "DCQL submission should be handled by process_proof_submission_dcql_query"
-                    .to_string(),
-            ));
+    let VpSubmissionData::Dcql(DcqlSubmission { vp_token }) = submission.submission_data else {
+        return Err(OpenID4VCError::ValidationError(
+            "Missing DCQL VP token".to_string(),
+        ));
+    };
+
+    let Some(dcql_query) = interaction_data.dcql_query.as_ref() else {
+        return Err(OpenID4VCError::ValidationError(
+            "Missing DCQL query in interaction data".to_string(),
+        ));
+    };
+
+    let Some(proof_input_schemas) = proof
+        .schema
+        .as_ref()
+        .and_then(|schema| schema.input_schemas.as_ref())
+    else {
+        return Err(OpenID4VCError::MappingError(
+            "Missing proof schema".to_string(),
+        ));
+    };
+
+    if vp_token.len() != dcql_query.credentials.len() {
+        return Err(OpenID4VCError::ValidationError(
+            "Different count of requested and submitted credentials".to_string(),
+        ));
+    }
+
+    let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+
+    for credential_query in &dcql_query.credentials {
+        let Some(presentation_strings) = vp_token.get(&credential_query.id.to_string()) else {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "No presentation found for credential query {}",
+                credential_query.id
+            )));
+        };
+
+        let proof_input_schema = proof_input_schemas
+            .iter()
+            .find(|input| {
+                input
+                    .credential_schema
+                    .as_ref()
+                    .is_some_and(|schema| schema.id.to_string() == credential_query.id.to_string())
+            })
+            .ok_or(OpenID4VCError::Other(
+                "Missing proof input schema for credential schema".to_owned(),
+            ))?;
+
+        let requested_credential_schema =
+            proof_input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(OpenID4VCError::Other(
+                    "Missing credential schema".to_owned(),
+                ))?;
+
+        let [credential_presentation] = presentation_strings.as_slice() else {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "Expected one presentation for credential query {}",
+                credential_query.id
+            )));
+        };
+
+        let context = if credential_query.format == CredentialFormat::MsoMdoc {
+            ExtractPresentationCtx {
+                format_nonce: submission.mdoc_generated_nonce.clone(),
+                ..extract_presentation_ctx_from_interaction_content(interaction_data.clone())
+            }
+        } else {
+            ExtractPresentationCtx::default()
+        };
+
+        let key_verification = build_key_verification(
+            KeyRole::Authentication,
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            certificate_validator.clone(),
+        );
+
+        // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
+        // The SD_JWT(_VC) presentation formatter was used for both W3C and IETF SD-JWTs.
+        // This match ensures the correct w3c presentation format is used for W3C SD-JWTs.
+        let presentation_format = match credential_query.format {
+            CredentialFormat::W3cSdJwt => "JWT".to_string(),
+            _ => map_from_oidc_format_to_core_detailed(
+                &credential_query.format.to_string(),
+                Some(credential_presentation),
+            )
+            .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,
+        };
+
+        let credential_presentation = validate_presentation(
+            credential_presentation,
+            &interaction_data.nonce,
+            &presentation_format,
+            formatter_provider,
+            key_verification.clone(),
+            context.clone(),
+        )
+        .await?;
+
+        let holder_binding_ctx = HolderBindingCtx {
+            nonce: interaction_data.nonce.clone(),
+            audience: interaction_data.client_id.clone(),
+        };
+
+        let holder_details =
+            credential_presentation
+                .issuer
+                .as_ref()
+                .ok_or(OpenID4VCError::ValidationError(
+                    "Presentation missing holder id".to_string(),
+                ))?;
+
+        let (credential_token, lvvc_credential) = {
+            let lvvc_credential_expected = requested_credential_schema.revocation_method == "LVVC";
+
+            match credential_presentation.credentials.as_slice() {
+                [cred, lvvc] if lvvc_credential_expected => (cred, Some(lvvc)),
+                [cred] if !lvvc_credential_expected => (cred, None),
+                _ if lvvc_credential_expected => {
+                    return Err(OpenID4VCError::ValidationError(
+                        "Missing LVVC credential presentation".to_string(),
+                    ));
+                }
+                _ => {
+                    return Err(OpenID4VCError::ValidationError(
+                        "Expected one presentation".to_string(),
+                    ));
+                }
+            }
+        };
+
+        let lvvc_credential = {
+            if let Some(lvvc) = lvvc_credential {
+                let formatter = formatter_provider
+                    .get_credential_formatter(requested_credential_schema.format.as_str())
+                    .ok_or(OpenID4VCError::ValidationError(format!(
+                        "Could not find format: {}",
+                        requested_credential_schema.format
+                    )))?;
+                let lvvc_credential = formatter
+                    .extract_credentials_unverified(lvvc, None)
+                    .await
+                    .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+                vec![lvvc_credential]
+            } else {
+                vec![]
+            }
+        };
+
+        let (credential, mso) = validate_credential(
+            holder_details,
+            credential_token,
+            &lvvc_credential,
+            proof_input_schema,
+            formatter_provider,
+            key_verification,
+            did_method_provider,
+            revocation_method_provider,
+            holder_binding_ctx,
+        )
+        .await?;
+
+        let proved_claims: Vec<ValidatedProofClaimDTO> =
+            validate_claims(credential, proof_input_schema, mso)?;
+
+        if let Some(claim_sets) = credential_query.claim_sets.as_ref() {
+            if claim_sets.iter().any(|claim_set| {
+                claim_set.iter().all(|claim| {
+                    proved_claims.iter().any(|proved_claim| {
+                        proved_claim.proof_input_claim.schema.key == claim.to_string()
+                    })
+                })
+            }) {
+                return Err(OpenID4VCError::ValidationError(
+                    "Claim set is not satisfied".to_string(),
+                ));
+            }
         }
-        VpSubmissionData::EncryptedResponse(_) => {
-            return Err(OpenID4VCError::ValidationError(
-                "Response submission should be unpacked before processing".to_string(),
-            ));
-        }
+        total_proved_claims.extend(proved_claims);
+    }
+
+    Ok(total_proved_claims)
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn process_proof_submission_presentation_exchange(
+    submission: SubmissionRequestData,
+    proof: &Proof,
+    interaction_data: OpenID4VPVerifierInteractionContent,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
+) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
+    let VpSubmissionData::Pex(PexSubmission {
+        presentation_submission,
+        vp_token,
+    }) = submission.submission_data
+    else {
+        return Err(OpenID4VCError::ValidationError(
+            "Missing presentation submission".to_string(),
+        ));
     };
 
     let definition_id = presentation_submission.definition_id.clone();
@@ -300,10 +476,16 @@ async fn process_proof_submission(
             ExtractPresentationCtx::default()
         };
 
+        let presentation_format = map_from_oidc_format_to_core_detailed(
+            &presentation_submitted.format,
+            Some(presentation_string),
+        )
+        .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
+
         let presentation = validate_presentation(
             presentation_string,
             &interaction_data.nonce,
-            &presentation_submitted.format,
+            &presentation_format,
             formatter_provider,
             build_key_verification(
                 KeyRole::Authentication,
@@ -381,9 +563,30 @@ async fn process_proof_submission(
             audience: interaction_data.client_id.clone(),
         };
 
+        let holder_details =
+            presentation
+                .issuer
+                .as_ref()
+                .ok_or(OpenID4VCError::ValidationError(
+                    "Presentation missing holder id".to_string(),
+                ))?;
+
+        let credential_index = presentation_submitted
+            .path_nested
+            .as_ref()
+            .map(|p| vec_last_position_from_token_path(&p.path))
+            .transpose()?
+            .unwrap_or(0);
+
+        let credential_token = presentation.credentials.get(credential_index).ok_or(
+            OpenID4VCError::ValidationError(format!(
+                "Credential at index {credential_index} not found",
+            )),
+        )?;
+
         let (credential, mso) = validate_credential(
-            presentation,
-            presentation_submitted,
+            holder_details,
+            credential_token,
             &extracted_lvvcs,
             proof_schema_input,
             formatter_provider,
