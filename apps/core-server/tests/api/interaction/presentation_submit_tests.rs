@@ -16,6 +16,7 @@ use crate::fixtures::{
     TestingIdentifierParams, TestingKeyParams, create_credential_schema_with_claims,
 };
 use crate::utils;
+use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
 use crate::utils::server::run_server;
 
@@ -1056,4 +1057,100 @@ async fn setup_submittable_presentation_dcql(
         interaction,
         proof,
     )
+}
+
+#[tokio::test]
+async fn test_presentation_submit_endpoint_wrong_identifier_type() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let client_metadata = json!(
+    {
+        "jwks": {
+            "keys": [{
+                "crv": "P-256",
+                "kid": "not-a-uuid",
+                "kty": "EC",
+                "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
+                "use": "enc"
+            }]
+        },
+        "vp_formats":
+        {
+            "jwt_vp_json":
+            {
+                "alg":["EdDSA"]
+            },
+            "jwt_vc_json":{
+                "alg":["EdDSA"]
+            },
+            "ldp_vp":{
+                "proof_type":["DataIntegrityProof"]
+            },
+            "mso_mdoc":{
+                "alg":["EdDSA"]
+            },
+            "vc+sd-jwt": {
+                "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                "sd-jwt_alg_values": ["EdDSA", "ES256"]
+            }
+        }
+    });
+
+    let new_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: None,
+                r#type: Some(IdentifierType::Key),
+                is_remote: Some(false),
+                key: Some(new_key),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let (.., credential, interaction, _) = setup_submittable_presentation(
+        &context,
+        &organisation,
+        &identifier,
+        &client_metadata.to_string(),
+    )
+    .await;
+
+    // WHEN
+    let url = format!(
+        "{}/api/interaction/v1/presentation-submit",
+        context.config.app.core_base_url
+    );
+
+    let resp = utils::client()
+        .post(url)
+        .bearer_auth("test")
+        .json(&json!({
+          "interactionId": interaction.id,
+          "identifierId": holder_identifier.id,
+          "submitCredentials": {
+            "input_0": {
+              "credentialId": credential.id,
+              "submitClaims": [
+                credential.claims.unwrap().first().unwrap().id
+              ]
+            }
+          }
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(Response::from(resp).error_code().await, "BR_0218")
 }

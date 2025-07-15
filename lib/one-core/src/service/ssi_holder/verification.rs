@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use futures::TryFutureExt;
 use shared_types::ProofId;
 use url::Url;
@@ -157,6 +159,55 @@ impl SSIHolderService {
             }
         };
 
+        let mut credentials = HashMap::new();
+        for submitted_credential in submission.submit_credentials.values() {
+            let credential = self
+                .credential_repository
+                .get_credential(
+                    &submitted_credential.credential_id,
+                    &CredentialRelations {
+                        claims: Some(ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        }),
+                        holder_identifier: Some(IdentifierRelations {
+                            did: Some(DidRelations {
+                                keys: Some(KeyRelations::default()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        }),
+                        key: Some(KeyRelations::default()),
+                        schema: Some(CredentialSchemaRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(EntityNotFoundError::Credential(
+                    submitted_credential.credential_id,
+                ))?;
+            credentials.insert(credential.id, credential);
+        }
+
+        for credential in credentials.values() {
+            let Some(schema) = &credential.schema else {
+                return Err(ServiceError::MappingError(format!(
+                    "missing credential schema for credential {}",
+                    credential.id
+                )));
+            };
+            let formatter = self
+                .formatter_provider
+                .get_credential_formatter(&schema.format)
+                .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
+            if !formatter
+                .get_capabilities()
+                .holder_identifier_types
+                .contains(&holder_identifier.r#type.clone().into())
+            {
+                Err(BusinessLogicError::IncompatibleHolderIdentifier)?
+            }
+        }
+
         let holder_did = holder_identifier
             .did
             .to_owned()
@@ -247,30 +298,13 @@ impl SSIHolderService {
                 })
                 .collect::<Result<Vec<String>, ServiceError>>()?;
 
-            let credential = self
-                .credential_repository
-                .get_credential(
-                    &credential_request.credential_id,
-                    &CredentialRelations {
-                        claims: Some(ClaimRelations {
-                            schema: Some(ClaimSchemaRelations::default()),
-                        }),
-                        holder_identifier: Some(IdentifierRelations {
-                            did: Some(DidRelations {
-                                keys: Some(KeyRelations::default()),
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        }),
-                        key: Some(KeyRelations::default()),
-                        schema: Some(CredentialSchemaRelations::default()),
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .ok_or(EntityNotFoundError::Credential(
-                    credential_request.credential_id,
-                ))?;
+            let credential =
+                credentials
+                    .get(&credential_request.credential_id)
+                    .ok_or(ServiceError::Other(format!(
+                        "Failed to find preloaded credential with id {}",
+                        credential_request.credential_id
+                    )))?;
             let credential_data = credential.credential.as_slice();
             if credential_data.is_empty() {
                 return Err(BusinessLogicError::MissingCredentialData {
@@ -385,7 +419,7 @@ impl SSIHolderService {
                     .get(&credential_schema.revocation_method)?;
 
                 let lvvc = holder_get_lvvc(
-                    &credential,
+                    credential,
                     &credential_status,
                     &*self.validity_credential_repository,
                     &*self.key_provider,

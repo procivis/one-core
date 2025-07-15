@@ -343,14 +343,14 @@ async fn test_submit_proof_succeeds() {
 
     formatter
         .expect_get_capabilities()
-        .once()
+        .times(2)
         .returning(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .times(1)
+        .times(2)
         .returning(move |_| Some(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
@@ -540,14 +540,14 @@ async fn test_submit_proof_succeeds_with_did() {
 
     formatter
         .expect_get_capabilities()
-        .once()
+        .times(2)
         .returning(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .times(1)
+        .times(2)
         .returning(move |_| Some(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
@@ -735,7 +735,7 @@ async fn test_submit_proof_repeating_claims() {
 
     formatter
         .expect_get_capabilities()
-        .times(2)
+        .times(3)
         .returning(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();

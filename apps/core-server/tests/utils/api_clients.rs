@@ -147,6 +147,12 @@ pub struct Response {
     resp: reqwest::Response,
 }
 
+impl From<reqwest::Response> for Response {
+    fn from(resp: reqwest::Response) -> Self {
+        Self { resp }
+    }
+}
+
 impl Response {
     pub fn status(&self) -> u16 {
         self.resp.status().into()
