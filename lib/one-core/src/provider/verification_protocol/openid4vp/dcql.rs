@@ -149,7 +149,7 @@ fn to_requested_credential(
             }
         } else {
             PresentationDefinitionFieldDTO {
-                id: claim_path.clone(),
+                id: format!("{}:{}", query.id, claim_path),
                 name: Some(claim_path.clone()),
                 purpose: None,
                 // Required if selective disclosure is _not_ supported

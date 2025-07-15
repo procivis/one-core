@@ -159,7 +159,7 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
     });
     // also shown because JWT does not support selective disclosure
     let field2 = json!({
-        "id": "isOver18",
+        "id": "test_id:isOver18",
         "keyMap": {
             credential.id.to_string(): "isOver18"
         },
@@ -776,6 +776,6 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
 
     // This claim was not asked for by the verifier but since it is included in credential1, and it is not selectively disclosable, it is listed.
     // For credential2 this claim is not even selectable, as it was never asked for.
-    assert!(fields.iter().any(|field| field["id"] == "isOver18"
+    assert!(fields.iter().any(|field| field["id"] == "test_id:isOver18"
         && field["keyMap"] == json!({credential1.id.to_string(): "isOver18"})));
 }
