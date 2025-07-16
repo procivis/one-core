@@ -499,6 +499,9 @@ impl SSIHolderService {
         if let Some(create_did) = update_response.create_did {
             self.did_repository.create_did(create_did).await?;
         }
+        if let Some(create_key) = update_response.create_key {
+            self.key_repository.create_key(create_key).await?;
+        }
         if let Some(create_identifier) = update_response.create_identifier {
             self.identifier_repository.create(create_identifier).await?;
         }

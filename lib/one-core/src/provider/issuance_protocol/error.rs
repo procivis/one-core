@@ -28,6 +28,8 @@ pub enum IssuanceProtocolError {
     DidMismatch,
     #[error("Credential offer issuer certificate does not match credential issuer certificate")]
     CertificateMismatch,
+    #[error("Credential offer issuer key does not match credential issuer certificate")]
+    KeyMismatch,
     #[error("Credential signature verification failed: `{0}`")]
     CredentialVerificationFailed(anyhow::Error),
     #[error("Credential is suspended")]

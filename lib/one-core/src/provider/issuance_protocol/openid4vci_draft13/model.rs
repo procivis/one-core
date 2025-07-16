@@ -23,6 +23,7 @@ use crate::model::credential_schema::{
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
+use crate::model::key::Key;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::util::params::deserialize_encryption_key;
@@ -295,6 +296,7 @@ pub(crate) struct SubmitIssuerResponse {
 pub(crate) struct UpdateResponse<T> {
     pub result: T,
     pub create_did: Option<Did>,
+    pub create_key: Option<Key>,
     pub create_certificate: Option<Certificate>,
     pub create_identifier: Option<Identifier>,
     pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,

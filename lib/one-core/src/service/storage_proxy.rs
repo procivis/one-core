@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{DidId, DidValue, OrganisationId};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 
 use crate::common_mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
@@ -11,8 +12,11 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
 };
 use crate::model::did::Did;
-use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::identifier::{
+    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierType,
+};
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
+use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -68,6 +72,19 @@ pub(crate) trait StorageProxy: Send + Sync {
         fingerprint: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<Certificate>>;
+
+    async fn get_key_by_raw_key_and_type(
+        &self,
+        raw_key: Vec<u8>,
+        key_type: KeyAlgorithmType,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Key>>;
+
+    async fn get_identifier_for_key(
+        &self,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Identifier>>;
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
 
@@ -228,6 +245,45 @@ impl StorageProxy for StorageProxyImpl {
             })
             .await?;
         Ok(list.values.into_iter().next())
+    }
+
+    async fn get_key_by_raw_key_and_type(
+        &self,
+        raw_key: Vec<u8>,
+        key_type: KeyAlgorithmType,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Key>> {
+        let keys = self
+            .keys
+            .get_key_list(KeyListQuery {
+                filtering: Some(
+                    KeyFilterValue::RawPublicKey(raw_key).condition()
+                        & KeyFilterValue::KeyType(key_type.to_string())
+                        & KeyFilterValue::OrganisationId(organisation_id),
+                ),
+                ..Default::default()
+            })
+            .await?;
+        Ok(keys.values.into_iter().next())
+    }
+
+    async fn get_identifier_for_key(
+        &self,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<Identifier>> {
+        let identifiers = self
+            .identifiers
+            .get_identifier_list(IdentifierListQuery {
+                filtering: Some(
+                    IdentifierFilterValue::KeyIds(vec![key_id]).condition()
+                        & IdentifierFilterValue::Types(vec![IdentifierType::Key])
+                        & IdentifierFilterValue::OrganisationId(organisation_id),
+                ),
+                ..Default::default()
+            })
+            .await?;
+        Ok(identifiers.values.into_iter().next())
     }
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier> {

@@ -28,6 +28,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
@@ -49,12 +50,15 @@ use crate::provider::issuance_protocol::{
     BasicSchemaData, BuildCredentialSchemaResponse, IssuanceProtocol,
     MockHandleInvitationOperations,
 };
-use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::model::GeneratedKey;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::provider::{
+    KeyAlgorithmProvider, KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
+};
+use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -184,6 +188,43 @@ fn generic_credential_certificate() -> Credential {
             state: CertificateState::Active,
             key: None,
         }]),
+    };
+    generic_credential(issuer_identifier)
+}
+
+fn generic_credential_key() -> Credential {
+    let now = OffsetDateTime::now_utc();
+    let issuer_key = Key {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        public_key: vec![
+            3, 74, 21, 88, 157, 81, 251, 128, 145, 27, 187, 39, 111, 10, 236, 74, 221, 234, 194,
+            44, 131, 73, 67, 110, 216, 155, 241, 212, 248, 141, 174, 74, 68,
+        ],
+        name: "key1".to_string(),
+        key_reference: None,
+        storage_type: "LOCAL".to_string(),
+        organisation: Some(dummy_organisation(None)),
+        key_type: "ECDSA".to_string(),
+    };
+    let issuer_identifier = Identifier {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        name: "key1".to_string(),
+        r#type: IdentifierType::Key,
+        is_remote: true,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: None,
+        did: None,
+        key: Some(issuer_key),
+        certificates: None,
     };
     generic_credential(issuer_identifier)
 }
@@ -688,6 +729,191 @@ async fn test_holder_accept_credential_success() {
     assert_eq!(
         update_credential.1.issuer_identifier_id.unwrap(),
         identifier.id
+    );
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut storage_access = MockStorageProxy::default();
+    let mut key_provider = MockKeyProvider::default();
+
+    let credential = {
+        let mut credential = generic_credential_key();
+
+        let interaction_data = HolderInteractionData {
+            issuer_url: mock_server.uri(),
+            credential_endpoint: format!("{}/credential", mock_server.uri()),
+            token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            notification_endpoint: None,
+            grants: Some(OpenID4VCIGrants {
+                code: OpenID4VCIGrant {
+                    pre_authorized_code: "code".to_string(),
+                    tx_code: None,
+                },
+            }),
+            access_token: None,
+            access_token_expires_at: None,
+            refresh_token: None,
+            nonce: None,
+            refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
+        };
+
+        credential.interaction = Some(Interaction {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            host: Some(mock_server.uri().parse().unwrap()),
+            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+            organisation: None,
+        });
+
+        credential
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                   "access_token": "321",
+                   "token_type": "bearer",
+                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                   "refresh_token": "321",
+                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential": "credential",
+                "notification_id": "notification_id"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(predicate::eq("JWT"))
+        .returning(move |_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_get_leeway().returning(|| 1000);
+
+            formatter
+                .expect_extract_credentials()
+                .returning(move |_, _, _, _| {
+                    Ok(DetailCredential {
+                        id: None,
+                        valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
+                        valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+                        update_at: None,
+                        invalid_before: None,
+                        issuer: IdentifierDetails::Key(PublicKeyJwk::Ec(
+                            PublicKeyJwkEllipticData {
+                                r#use: None,
+                                kid: None,
+                                crv: "P-256".to_string(),
+                                x: "ShVYnVH7gJEbuydvCuxK3erCLINJQ27Ym_HU-I2uSkQ".to_string(),
+                                y: Some("4oKwI2kCcDpDpC6ZNVpkO9v0UjLKqMNEXuMDHjRMnPM".to_string()),
+                            },
+                        )),
+                        subject: None,
+                        claims: CredentialSubject {
+                            id: None,
+                            claims: HashMap::new(),
+                        },
+                        status: vec![],
+                        credential_schema: None,
+                    })
+                });
+
+            Some(Arc::new(formatter))
+        });
+
+    storage_access
+        .expect_update_interaction()
+        .returning(|_| Ok(()));
+
+    storage_access
+        .expect_get_key_by_raw_key_and_type()
+        .returning(|_, _, _| Ok(None));
+
+    storage_access
+        .expect_get_identifier_for_key()
+        .returning(move |_, _| Ok(None));
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let arc: Arc<dyn KeyAlgorithm + 'static> = Arc::new(Ecdsa);
+    let real_key_algorithm_provider =
+        KeyAlgorithmProviderImpl::new(HashMap::from([(KeyAlgorithmType::Ecdsa, arc)]));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_parse_jwk()
+        .returning(move |k| real_key_algorithm_provider.parse_jwk(k));
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        config: dummy_config(),
+        ..Default::default()
+    });
+
+    let result = openid_provider
+        .holder_accept_credential(
+            &credential,
+            &dummy_did(),
+            &dummy_key(),
+            None,
+            &storage_access,
+            None,
+        )
+        .await
+        .unwrap();
+
+    let issuer_response = result.result;
+    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+
+    let create_key = result.create_key.expect("should return create key");
+    let create_identifier = result
+        .create_identifier
+        .expect("should return create identifier");
+    assert_eq!(Some(create_key), create_identifier.key);
+
+    let update_credential = result.update_credential.unwrap();
+    assert_eq!(update_credential.0, credential.id);
+    assert_eq!(
+        update_credential.1.issuer_identifier_id.unwrap(),
+        create_identifier.id
     );
 }
 

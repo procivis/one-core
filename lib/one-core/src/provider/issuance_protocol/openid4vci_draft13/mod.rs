@@ -41,7 +41,7 @@ use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
@@ -568,7 +568,12 @@ impl OpenID4VCI13 {
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
         validate_expiration_time(&response_credential.valid_until, formatter.get_leeway())
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        validate_issuer(credential, &response_credential).await?;
+        validate_issuer(
+            credential,
+            &response_credential,
+            self.key_algorithm_provider.as_ref(),
+        )
+        .await?;
 
         let layout = schema.layout_properties.clone();
 
@@ -630,10 +635,14 @@ impl OpenID4VCI13 {
                 )
                 .await?
             }
-            IdentifierDetails::Key(_) => {
-                return Err(IssuanceProtocolError::Failed(
-                    "Invalid issuer identifier type".to_string(),
-                ));
+            IdentifierDetails::Key(public_key) => {
+                prepare_key_identifier(
+                    &public_key,
+                    organisation,
+                    storage_access,
+                    self.key_algorithm_provider.as_ref(),
+                )
+                .await?
             }
         };
         let redirect_uri = issuer_response.redirect_uri.clone();
@@ -661,6 +670,7 @@ impl OpenID4VCI13 {
                     ..Default::default()
                 },
             )),
+            create_key: identifier_updates.create_key,
         })
     }
 
@@ -1886,6 +1896,7 @@ struct IdentifierUpdates {
     create_did: Option<Did>,
     create_identifier: Option<Identifier>,
     create_certificate: Option<Certificate>,
+    create_key: Option<Key>,
 }
 
 async fn prepare_did_identifier(
@@ -1911,6 +1922,7 @@ async fn prepare_did_identifier(
                 create_did: None,
                 create_identifier: None,
                 create_certificate: None,
+                create_key: None,
             })
         }
         None => {
@@ -1955,6 +1967,7 @@ async fn prepare_did_identifier(
                     organisation: Some(organisation.clone()),
                 }),
                 create_certificate: None,
+                create_key: None,
             })
         }
     }
@@ -1978,6 +1991,7 @@ async fn prepare_certificate_identifier(
             create_did: None,
             create_identifier: None,
             create_certificate: None,
+            create_key: None,
         }),
 
         None => {
@@ -2017,7 +2031,86 @@ async fn prepare_certificate_identifier(
                     organisation: Some(organisation.clone()),
                 }),
                 create_certificate: Some(certificate),
+                create_key: None,
             })
         }
+    }
+}
+
+async fn prepare_key_identifier(
+    public_key: &PublicKeyJwk,
+    organisation: &Organisation,
+    storage_access: &StorageAccess,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<IdentifierUpdates, IssuanceProtocolError> {
+    let parsed_key = key_algorithm_provider
+        .parse_jwk(public_key)
+        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+    let now = OffsetDateTime::now_utc();
+
+    let key = storage_access
+        .get_key_by_raw_key_and_type(
+            parsed_key.key.public_key_as_raw(),
+            parsed_key.algorithm_type,
+            organisation.id,
+        )
+        .await
+        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+
+    let (key, create_key) = if let Some(key) = key {
+        (key, None)
+    } else {
+        let key_id = Uuid::new_v4().into();
+        let key = Key {
+            id: key_id,
+            created_date: now,
+            last_modified: now,
+            name: format!("Issuer {key_id}"),
+            organisation: Some(organisation.clone()),
+            public_key: parsed_key.key.public_key_as_raw(),
+            key_reference: None,
+            storage_type: "INTERNAL".to_string(),
+            key_type: parsed_key.algorithm_type.to_string(),
+        };
+        (key.clone(), Some(key))
+    };
+
+    let identifier = storage_access
+        .get_identifier_for_key(key.id, organisation.id)
+        .await
+        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+
+    if let Some(identifier) = identifier {
+        Ok(IdentifierUpdates {
+            issuer_identifier_id: identifier.id,
+            issuer_certificate_id: None,
+            create_did: None,
+            create_identifier: None,
+            create_certificate: None,
+            create_key,
+        })
+    } else {
+        let identifier_id = Uuid::new_v4().into();
+        Ok(IdentifierUpdates {
+            issuer_identifier_id: identifier_id,
+            issuer_certificate_id: None,
+            create_did: None,
+            create_identifier: Some(Identifier {
+                id: identifier_id,
+                created_date: now,
+                last_modified: now,
+                name: format!("Issuer {identifier_id}"),
+                r#type: IdentifierType::Key,
+                is_remote: true,
+                state: IdentifierState::Active,
+                deleted_at: None,
+                organisation: Some(organisation.clone()),
+                did: None,
+                key: Some(key.clone()),
+                certificates: None,
+            }),
+            create_certificate: None,
+            create_key,
+        })
     }
 }

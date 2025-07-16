@@ -979,6 +979,7 @@ async fn test_accept_credential() {
                 create_identifier: None,
                 update_credential: None,
                 update_credential_schema: None,
+                create_key: None,
             })
         });
 
@@ -1130,6 +1131,7 @@ async fn test_accept_credential_with_did() {
                 create_identifier: None,
                 update_credential: None,
                 update_credential_schema: None,
+                create_key: None,
             })
         });
 

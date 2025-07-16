@@ -15,6 +15,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::error::{
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCITokenRequestDTO,
 };
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
@@ -111,6 +112,7 @@ pub(super) fn validate_refresh_token(
 pub(crate) async fn validate_issuer(
     offered_credential: &Credential,
     received_credential: &DetailCredential,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), IssuanceProtocolError> {
     let Some(offer_identifier) = &offered_credential.issuer_identifier else {
         // the offer did not make any promises about the issuer, hence consistency is given anyway
@@ -146,10 +148,25 @@ pub(crate) async fn validate_issuer(
                 return Err(IssuanceProtocolError::CertificateMismatch);
             }
         }
-        IdentifierDetails::Key(_) => {
-            return Err(IssuanceProtocolError::Failed(
-                "Invalid issuer identifier type".to_string(),
-            ));
+        IdentifierDetails::Key(public_key) => {
+            if offer_identifier.r#type != IdentifierType::Key {
+                return Err(IssuanceProtocolError::KeyMismatch);
+            }
+            let Some(offer_key) = &offer_identifier.key else {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Missing key on identifier {}",
+                    offer_identifier.id
+                )));
+            };
+            let pk = key_algorithm_provider.parse_jwk(public_key).map_err(|e| {
+                IssuanceProtocolError::Failed(format!(
+                    "Failed to parse received issuer JWK {}, cause: {e}",
+                    offer_identifier.id
+                ))
+            })?;
+            if pk.key.public_key_as_raw() != offer_key.public_key {
+                return Err(IssuanceProtocolError::KeyMismatch);
+            }
         }
     }
     Ok(())
