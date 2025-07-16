@@ -277,14 +277,14 @@ pub(crate) struct GetTrustAnchorResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     #[from(with_fn = convert_inner)]
-    pub entities: Vec<GetTrustEntityResponseRestDTO>,
+    pub entities: Vec<GetSsiTrustEntityResponseRestDTO>,
 }
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
 #[from(GetTrustAnchorEntityListResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct GetTrustEntityResponseRestDTO {
+pub(crate) struct GetSsiTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
     pub name: String,
 
