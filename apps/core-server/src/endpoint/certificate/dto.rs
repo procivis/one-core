@@ -3,8 +3,8 @@ use one_core::service::certificate::dto::{
     CertificateResponseDTO, CertificateX509AttributesDTO, CertificateX509ExtensionDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{CertificateId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -13,7 +13,7 @@ use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
 #[try_from(T = CertificateResponseDTO, Error = MapperError)]

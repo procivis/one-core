@@ -5,8 +5,8 @@ use one_core::service::credential_schema::dto::{
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -17,7 +17,7 @@ use crate::dto::common::ListQueryParamsRest;
 use crate::serialize::{front_time, front_time_option};
 
 /// Credential schema details.
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialSchemaListItemResponseDTO)]
@@ -100,7 +100,7 @@ impl utoipa::PartialSchema for CredentialSchemaType {
 
 impl utoipa::ToSchema for CredentialSchemaType {}
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(CredentialSchemaDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -133,7 +133,7 @@ pub struct CredentialSchemaResponseRestDTO {
     pub external_schema: bool,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialClaimSchemaDTO)]
@@ -217,7 +217,7 @@ pub enum WalletStorageTypeRestEnum {
     RemoteSecureElement,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto)]
 #[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
@@ -289,7 +289,7 @@ pub enum CredentialSchemaLayoutType {
     SingleAttribute,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
 #[into(CredentialClaimSchemaRequestDTO)]
 pub struct CredentialClaimSchemaRequestRestDTO {
@@ -311,7 +311,7 @@ pub struct CredentialClaimSchemaRequestRestDTO {
 }
 
 /// Design the appearance of the credential in the holder's wallet.
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO, Error=ServiceError)]
@@ -340,7 +340,7 @@ pub struct CredentialSchemaLayoutPropertiesRestDTO {
     pub code: Option<CredentialSchemaCodePropertiesRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[try_into(T = one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO, Error = ServiceError)]
@@ -354,7 +354,7 @@ pub struct CredentialSchemaBackgroundPropertiesRestDTO {
     pub image: Option<String>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO, Error = ServiceError)]
@@ -405,6 +405,7 @@ pub struct ImportCredentialSchemaRequestRestDTO {
     pub schema: ImportCredentialSchemaRequestSchemaRestDTO,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
@@ -451,6 +452,7 @@ pub struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub external_schema: bool,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Into, ToSchema)]
 #[into(one_core::service::credential_schema::dto::ImportCredentialSchemaClaimSchemaDTO)]
 #[serde(rename_all = "camelCase")]
@@ -473,6 +475,7 @@ pub struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO, Error=ServiceError)]

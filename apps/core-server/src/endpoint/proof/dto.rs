@@ -13,6 +13,7 @@ use one_core::service::proof::dto::{
     ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
@@ -21,6 +22,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
@@ -55,6 +57,7 @@ pub enum ProofRoleRestEnum {
     Verifier,
 }
 
+#[options_not_nullable(skip_serializing_none = false)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -82,29 +85,24 @@ pub struct CreateProofRequestRestDTO {
     /// the resource specified here, if redirects are enabled in the system
     /// configuration. The URI must use a scheme (for example `https`, `myapp`)
     /// that is allowed by the system configuration.
-    #[schema(nullable = false)]
     pub redirect_uri: Option<String>,
     /// If multiple keys are specified for the authentication method of the
     /// DID, use this value to specify which key should be used as the
     /// authentication method for this proof request. If a key isn't
     /// specified here, the first key listed during DID creation will be
     /// used.
-    #[schema(nullable = false)]
     pub verifier_key: Option<KeyId>,
     /// If multiple active certificates are available under the verifier,
     /// use this value to specify which certificate should be used
     /// for this proof request. If a certificate isn't specified here,
     /// an active certificate will be used.
-    #[schema(nullable = false)]
     pub verifier_certificate: Option<CertificateId>,
     /// Only for use when verifying VC Barcodes.
     #[into(with_fn = convert_inner)]
-    #[schema(nullable = false)]
     pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
     /// Not for use via the API; for ISO mDL verification over BLE using the
     /// SDK.
     #[into(with_fn = convert_inner)]
-    #[schema(nullable = false)]
     pub iso_mdl_engagement: Option<String>,
     /// Specify the transport protocol to use for credential exchange. Check
     /// the `transport` object of the configuration for supported options and
@@ -173,11 +171,7 @@ pub struct ProofsFilterQueryParamsRest {
 pub type GetProofQuery =
     ListQueryParamsRest<ProofsFilterQueryParamsRest, SortableProofColumnRestEnum>;
 
-use serde_with::skip_serializing_none;
-
-use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
-
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -237,7 +231,7 @@ pub struct PresentationDefinitionResponseRestDTO {
     pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestGroupResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -252,7 +246,7 @@ pub struct PresentationDefinitionRequestGroupResponseRestDTO {
 
 /// Summary of the credentials requested by the verifier, including suitable
 /// credentials filtered from the wallet.
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestedCredentialResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -272,7 +266,7 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     validity_credential_nbf: Option<OffsetDateTime>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionFieldDTO)]
@@ -293,7 +287,7 @@ pub enum PresentationDefinitionRuleTypeRestEnum {
     Pick,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionRuleDTO)]
@@ -305,7 +299,7 @@ pub struct PresentationDefinitionRuleRestDTO {
 }
 
 // detail endpoint
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = ProofDetailResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -382,6 +376,7 @@ pub struct ProofDetailResponseRestDTO {
     pub claims_removed_at: Option<OffsetDateTime>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimDTO)]
@@ -401,7 +396,7 @@ pub enum ProofClaimValueRestDTO {
     Claims(#[from(with_fn = convert_inner)] Vec<ProofClaimRestDTO>),
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
 #[try_from(T = ProofInputDTO, Error = MapperError)]
@@ -423,6 +418,7 @@ pub struct ProofInputRestDTO {
     pub validity_constraint: Option<i64>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[into(ShareProofRequestDTO)]
 pub struct ShareProofRequestRestDTO {
@@ -431,6 +427,7 @@ pub struct ShareProofRequestRestDTO {
     pub params: Option<ShareProofRequestParamsRestDTO>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[into(ShareProofRequestParamsDTO)]
 #[serde(rename_all = "camelCase")]

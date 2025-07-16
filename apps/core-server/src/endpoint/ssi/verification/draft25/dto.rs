@@ -11,9 +11,10 @@ use one_core::provider::verification_protocol::openid4vp::model::{
     PresentationSubmissionMappingDTO, ResponseSubmission, VpSubmissionData,
 };
 use one_dto_mapper::{From, Into, convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::serde_as;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -24,7 +25,7 @@ use crate::endpoint::ssi::dto::{
 };
 use crate::serialize::front_time_option;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(OpenID4VPDirectPostRequestDTO)]
 pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
@@ -81,7 +82,7 @@ pub(crate) struct PresentationSubmissionMappingRestDTO {
     pub descriptor_map: Vec<PresentationSubmissionDescriptorRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(PresentationSubmissionDescriptorDTO)]
 pub(crate) struct PresentationSubmissionDescriptorRestDTO {
@@ -100,14 +101,14 @@ pub(crate) struct NestedPresentationSubmissionDescriptorRestDTO {
     pub path: String,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VPDirectPostResponseDTO)]
 pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
     pub redirect_uri: Option<String>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPClientMetadata)]
 pub(crate) struct OpenID4VPClientMetadataResponseRestDTO {
@@ -184,7 +185,7 @@ pub(crate) struct OpenID4VPPresentationDefinitionResponseRestDTO {
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptorRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionInputDescriptor)]
 pub(crate) struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
@@ -196,7 +197,7 @@ pub(crate) struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
     pub constraints: OpenID4VPPresentationDefinitionConstraintRestDTO,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionConstraint)]
 pub(crate) struct OpenID4VPPresentationDefinitionConstraintRestDTO {
@@ -207,7 +208,7 @@ pub(crate) struct OpenID4VPPresentationDefinitionConstraintRestDTO {
     pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionConstraintField)]
 pub(crate) struct OpenID4VPPresentationDefinitionConstraintFieldRestDTO {

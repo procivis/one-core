@@ -9,15 +9,15 @@ use one_core::service::ssi_holder::dto::{
     PresentationSubmitRequestDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
 use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationRequestRestDTO {
@@ -27,7 +27,7 @@ pub struct HandleInvitationRequestRestDTO {
     pub transport: Option<Vec<String>>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationResponseRestDTO {
@@ -43,7 +43,7 @@ pub struct HandleInvitationResponseRestDTO {
         Option<HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(CredentialConfigurationSupportedResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -60,7 +60,7 @@ pub struct ProofTypeSupported {
     pub proof_signing_alg_values_supported: Vec<String>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
 #[from(OpenID4VCITxCode)]
 pub struct OpenID4VCITxCodeRestDTO {
@@ -93,7 +93,7 @@ pub enum OpenID4VCITxCodeInputModeRestDTO {
     Text,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuanceAcceptRequestRestDTO {
@@ -121,7 +121,7 @@ pub struct PresentationRejectRequestRestDTO {
     pub interaction_id: Uuid,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]

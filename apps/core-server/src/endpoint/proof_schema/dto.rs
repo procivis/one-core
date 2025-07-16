@@ -7,8 +7,8 @@ use one_core::service::proof_schema::dto::{
     ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -22,7 +22,7 @@ use crate::endpoint::credential_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(CreateProofSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -42,7 +42,7 @@ pub struct CreateProofSchemaRequestRestDTO {
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -105,6 +105,7 @@ pub struct ImportProofSchemaRestDTO {
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaRestDTO>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaInputSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
@@ -133,6 +134,7 @@ pub struct ImportProofSchemaClaimSchemaRestDTO {
     pub array: bool,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaCredentialSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
@@ -196,7 +198,7 @@ pub struct ProofSchemasFilterQueryParamsRest {
     pub exact: Option<Vec<ExactColumn>>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetProofSchemaListItemDTO)]
@@ -218,7 +220,7 @@ pub struct GetProofSchemaListItemResponseRestDTO {
 }
 
 // detail endpoint
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(GetProofSchemaResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -239,7 +241,7 @@ pub struct GetProofSchemaResponseRestDTO {
 }
 
 /// The set of attributes being requested when using this proof schema.
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimSchemaResponseDTO)]
@@ -259,7 +261,7 @@ pub struct ProofClaimSchemaResponseRestDTO {
     pub array: bool,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputSchemaResponseDTO)]

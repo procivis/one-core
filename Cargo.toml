@@ -18,7 +18,7 @@ members = [
   "platforms/uniffi-bindgen",
 
   "apps/core-server",
-  "examples",
+  "examples", "lib/proc-macros",
 ]
 resolver = "2"
 

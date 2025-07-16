@@ -1,7 +1,7 @@
 use one_core::service::history::dto::{HistoryErrorMetadataDTO, HistoryResponseDTO};
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
     ProofSchemaId,
@@ -21,7 +21,7 @@ use crate::serialize::front_time;
 pub type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(HistoryResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +39,7 @@ pub struct HistoryResponseRestDTO {
     pub target: Option<String>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Serialize, ToSchema, TryFrom)]
 #[try_from(T = HistoryResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]

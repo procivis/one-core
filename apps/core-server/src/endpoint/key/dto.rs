@@ -4,8 +4,8 @@ use one_core::service::key::dto::{
     KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -15,7 +15,7 @@ use crate::dto::common::{Boolean, ExactColumn, ListQueryParamsRest};
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(KeyRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -28,7 +28,7 @@ pub struct KeyRequestRestDTO {
     #[schema(example = "EDDSA")]
     pub key_type: String,
     /// The parameters passed into the key algorithm.
-    #[schema(value_type = Option<Object>)]
+    #[schema(value_type = Object)]
     pub key_params: serde_json::Value,
     /// Must be unique within the organization.
     pub name: String,
@@ -38,7 +38,7 @@ pub struct KeyRequestRestDTO {
     #[schema(example = "INTERNAL")]
     pub storage_type: String,
     /// The parameters passed into the storage type.
-    #[schema(value_type = Option<Object>)]
+    #[schema(value_type = Object)]
     pub storage_params: serde_json::Value,
 }
 
@@ -148,6 +148,7 @@ pub enum KeyGenerateCSRRequestProfileRest {
     Mdl,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestSubjectDTO)]
 #[serde(rename_all = "camelCase")]

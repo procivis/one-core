@@ -3,6 +3,7 @@ use one_core::service::did::dto::{
     DidResponseKeysDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -47,9 +48,7 @@ pub struct DidListItemResponseRestDTO {
     pub deactivated: bool,
 }
 
-use serde_with::skip_serializing_none;
-
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -98,7 +97,7 @@ pub struct DidResponseKeysRestDTO {
     pub capability_delegation: Vec<KeyListItemResponseRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestRestDTO {
@@ -113,7 +112,7 @@ pub struct CreateDidRequestRestDTO {
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     /// The parameters passed into the DID method.
-    #[schema(value_type = Option<Object>)]
+    #[schema(value_type = Object)]
     pub params: Option<serde_json::Value>,
 }
 
@@ -205,6 +204,7 @@ pub struct DidFilterQueryParamsRest {
     pub did_methods: Option<Vec<String>>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(DidPatchRequestDTO)]

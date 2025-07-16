@@ -31,6 +31,7 @@ use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
     try_convert_inner_of_inner,
 };
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
@@ -46,7 +47,7 @@ use crate::endpoint::trust_entity::dto::{
 };
 use crate::serialize::front_time;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidDocumentDTO)]
@@ -105,7 +106,7 @@ pub enum PublicKeyJwkRestDTO {
     Mlwe(PublicKeyJwkMlweDataRestDTO),
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkMlweDataDTO)]
 pub struct PublicKeyJwkMlweDataRestDTO {
@@ -114,7 +115,7 @@ pub struct PublicKeyJwkMlweDataRestDTO {
     pub x: String,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkOctDataDTO)]
 pub struct PublicKeyJwkOctDataRestDTO {
@@ -122,7 +123,7 @@ pub struct PublicKeyJwkOctDataRestDTO {
     pub k: String,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkRsaDataDTO)]
 pub struct PublicKeyJwkRsaDataRestDTO {
@@ -131,7 +132,7 @@ pub struct PublicKeyJwkRsaDataRestDTO {
     pub n: String,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkEllipticDataDTO)]
 pub struct PublicKeyJwkEllipticDataRestDTO {
@@ -250,7 +251,7 @@ pub(crate) struct JsonLDNestedContextRestDTO {
     pub entities: HashMap<String, JsonLDEntityRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(JsonLDInlineEntityDTO)]
 pub(crate) struct JsonLDInlineEntityRestDTO {
@@ -280,7 +281,7 @@ pub(crate) struct GetTrustAnchorResponseRestDTO {
     pub entities: Vec<GetSsiTrustEntityResponseRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
 #[from(GetTrustAnchorEntityListResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -307,7 +308,7 @@ pub(crate) struct GetSsiTrustEntityResponseRestDTO {
     pub did: Option<DidValue>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcTypeMetadataResponseDTO)]
 pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
@@ -327,7 +328,7 @@ pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcDisplayMetadataDTO)]
 pub(crate) struct SdJwtVcDisplayMetadataRestDTO {
@@ -337,7 +338,7 @@ pub(crate) struct SdJwtVcDisplayMetadataRestDTO {
     pub rendering: Option<SdJwtVcRenderingRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcRenderingDTO)]
 pub(crate) struct SdJwtVcRenderingRestDTO {
@@ -345,7 +346,7 @@ pub(crate) struct SdJwtVcRenderingRestDTO {
     pub simple: Option<SdJwtVcSimpleRenderingRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcSimpleRenderingDTO)]
 #[serde(rename_all = "camelCase")]
@@ -356,7 +357,7 @@ pub(crate) struct SdJwtVcSimpleRenderingRestDTO {
     pub text_color: Option<String>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcSimpleRenderingLogoDTO)]
 #[serde(rename_all = "camelCase")]
@@ -365,7 +366,7 @@ pub(crate) struct SdJwtVcSimpleRenderingLogoRestDTO {
     pub alt_text: Option<String>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcClaimDTO)]
 pub(crate) struct SdJwtVcClaimRestDTO {
@@ -452,6 +453,7 @@ pub enum PatchTrustEntityActionRestDTO {
     Remove,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = CreateTrustEntityFromDidPublisherRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]

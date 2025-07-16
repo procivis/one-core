@@ -2,8 +2,8 @@ use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::serialize::{front_time, front_time_option};
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateOrganisationRequestDTO)]
@@ -20,6 +21,7 @@ pub struct CreateOrganisationRequestRestDTO {
     pub name: Option<String>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpsertOrganisationRequestRestDTO {
@@ -35,7 +37,7 @@ pub struct CreateOrganisationResponseRestDTO {
     pub id: OrganisationId,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetOrganisationDetailsResponseDTO)]

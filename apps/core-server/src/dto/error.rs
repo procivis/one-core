@@ -4,11 +4,11 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum_extra::typed_header::TypedHeaderRejection;
 use one_core::service::error::ErrorCode;
+use proc_macros::options_not_nullable;
 use serde::Serialize;
-use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Serialize, ToSchema)]
 pub struct ErrorResponseRestDTO {
     pub code: &'static str,

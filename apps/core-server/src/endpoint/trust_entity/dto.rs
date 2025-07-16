@@ -5,8 +5,8 @@ use one_core::service::trust_entity::dto::{
     SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{
     DidId, IdentifierId, OrganisationId, TrustAnchorId, TrustEntityId, TrustEntityKey,
 };
@@ -76,7 +76,7 @@ pub enum TrustEntityStateRest {
     RemovedAndWithdrawn,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -117,7 +117,7 @@ pub struct GetTrustEntityResponseRestDTO {
     pub ca: Option<TrustEntityCertificateResponseRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(TrustEntityCertificateResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -139,7 +139,7 @@ pub struct TrustEntityCertificateResponseRestDTO {
     pub extensions: Vec<CertificateX509ExtensionRestDTO>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetRemoteTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -204,7 +204,7 @@ pub struct TrustEntityFilterQueryParamsRestDto {
     pub organisation_id: Option<OrganisationId>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(TrustEntitiesResponseItemDTO)]

@@ -6,8 +6,8 @@ use one_core::service::credential::dto::{
     MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{
     CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
 };
@@ -27,7 +27,7 @@ use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialListItemResponseDTO)]
@@ -71,7 +71,7 @@ pub struct MdocMsoValidityResponseRestDTO {
     pub last_update: OffsetDateTime,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = CredentialDetailResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -158,7 +158,7 @@ pub enum CredentialRoleRestEnum {
 }
 
 /// Credential schema being used to issue the credential.
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DetailCredentialSchemaResponseDTO)]
@@ -289,7 +289,7 @@ pub enum SortableCredentialColumnRestEnum {
     State,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -344,7 +344,7 @@ pub struct CredentialRequestClaimRestDTO {
 }
 
 /// Array of credentials to be checked for revocation status.
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialRevocationCheckRequestRestDTO {
@@ -352,7 +352,7 @@ pub struct CredentialRevocationCheckRequestRestDTO {
     pub force_refresh: Option<bool>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, IntoParams)]
 #[serde(rename_all = "camelCase")]
 #[into(SuspendCredentialRequestDTO)]
@@ -363,7 +363,7 @@ pub struct SuspendCredentialRequestRestDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialRevocationCheckResponseDTO)]

@@ -13,8 +13,8 @@ use one_dto_mapper::{
     From, Into, TryFrom, convert_inner, convert_inner_of_inner, try_convert_inner,
     try_convert_inner_of_inner,
 };
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -28,7 +28,7 @@ use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateIdentifierRequestDTO)]
@@ -42,7 +42,7 @@ pub struct CreateIdentifierRequestRestDTO {
     pub organisation_id: OrganisationId,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateIdentifierDidRequestDTO)]
@@ -55,7 +55,7 @@ pub struct CreateIdentifierDidRequestRestDTO {
     pub params: Option<serde_json::Value>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateCertificateRequestDTO)]
@@ -65,7 +65,7 @@ pub struct CreateCertificateRequestRestDTO {
     pub key_id: KeyId,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetIdentifierListItemResponseDTO)]
@@ -86,7 +86,7 @@ pub struct GetIdentifierListItemResponseRestDTO {
     pub organisation_id: Option<OrganisationId>,
 }
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
 #[try_from(T = GetIdentifierResponseDTO, Error = MapperError)]
@@ -198,7 +198,7 @@ pub enum ExactIdentifierFilterColumnRestEnum {
 pub type GetIdentifierQuery =
     ListQueryParamsRest<IdentifierFilterQueryParamsRestDTO, SortableIdentifierColumnRest>;
 
-#[skip_serializing_none]
+#[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetIdentifierListResponseDTO)]
@@ -217,6 +217,7 @@ pub struct ResolveTrustEntitiesRequestRestDTO {
     pub identifiers: Vec<ResolveTrustEntityRequestRestDTO>,
 }
 
+#[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(ResolveTrustEntityRequestDTO)]
