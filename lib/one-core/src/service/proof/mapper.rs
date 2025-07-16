@@ -116,11 +116,6 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             _ => None,
         };
 
-        let verifier_did = value
-            .verifier_identifier
-            .as_ref()
-            .and_then(|identifier| identifier.did.to_owned());
-
         Ok(ProofListItemResponseDTO {
             id: value.id,
             created_date: value.created_date,
@@ -130,7 +125,6 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             retain_until_date,
             transport: value.transport,
             completed_date: value.completed_date,
-            verifier_did: convert_inner(verifier_did),
             verifier: convert_inner(value.verifier_identifier),
             protocol: value.protocol,
             state: value.state,
@@ -401,13 +395,6 @@ pub(super) async fn get_verifier_proof_detail(
 
     let redirect_uri = proof.redirect_uri.to_owned();
 
-    let holder_did = convert_inner(
-        proof
-            .holder_identifier
-            .as_ref()
-            .and_then(|identifier| identifier.did.to_owned()),
-    );
-
     let holder = convert_inner(proof.holder_identifier.to_owned());
 
     let verifier_certificate = proof
@@ -426,10 +413,8 @@ pub(super) async fn get_verifier_proof_detail(
         requested_date: list_item_response.requested_date,
         retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
-        verifier_did: list_item_response.verifier_did,
         verifier: list_item_response.verifier,
         verifier_certificate,
-        holder_did,
         holder,
         transport: list_item_response.transport,
         protocol: list_item_response.protocol,
@@ -637,12 +622,6 @@ pub(super) async fn get_holder_proof_detail(
         })
         .collect();
 
-    let holder_did = convert_inner(
-        value
-            .holder_identifier
-            .as_ref()
-            .and_then(|identifier| identifier.did.to_owned()),
-    );
     let holder = convert_inner(value.holder_identifier.to_owned());
 
     let verifier_certificate = value
@@ -661,10 +640,8 @@ pub(super) async fn get_holder_proof_detail(
         requested_date: list_item_response.requested_date,
         retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
-        verifier_did: list_item_response.verifier_did,
         verifier: list_item_response.verifier,
         verifier_certificate,
-        holder_did,
         holder,
         transport: list_item_response.transport,
         protocol: list_item_response.protocol,

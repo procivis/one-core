@@ -1358,6 +1358,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
+            &credential,
             issuer_certificate,
             holder_did.map(|d| d.did),
             holder_key_id,

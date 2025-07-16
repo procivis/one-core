@@ -125,13 +125,11 @@ impl ProofService {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),

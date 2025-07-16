@@ -7,7 +7,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{self, DatatypeConfig, DatatypeType};
-use crate::model::did::DidType;
+use crate::model::credential::Credential;
+use crate::model::credential_schema::CredentialSchema;
+use crate::model::did::{Did, DidType};
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 use crate::service::credential::dto::{
@@ -16,7 +19,6 @@ use crate::service::credential::dto::{
     DetailCredentialSchemaResponseDTO,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::did::dto::DidListItemResponseDTO;
 
 fn generate_credential_detail_response(
     claims: Vec<DetailCredentialClaimResponseDTO>,
@@ -48,16 +50,6 @@ fn generate_credential_detail_response(
             layout_properties: None,
             allow_suspension: true,
         },
-        issuer_did: Some(DidListItemResponseDTO {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "".to_string(),
-            did: DidValue::from_str("did:key:1234").unwrap(),
-            did_type: DidType::Remote,
-            did_method: "".to_string(),
-            deactivated: false,
-        }),
         issuer: None,
         issuer_certificate: None,
         claims,
@@ -66,18 +58,101 @@ fn generate_credential_detail_response(
         lvvc_issuance_date: None,
         suspend_end_date: None,
         mdoc_mso_validity: None,
-        holder_did: Some(DidListItemResponseDTO {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            name: "".to_string(),
-            did: DidValue::from_str("did:key:holder").unwrap(),
-            did_type: DidType::Remote,
-            did_method: "".to_string(),
-            deactivated: false,
-        }),
         holder: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
+    }
+}
+
+fn generate_credential_matching_detail(detail: &CredentialDetailResponseDTO) -> Credential {
+    let detail = detail.clone();
+    Credential {
+        id: detail.id,
+        created_date: detail.created_date,
+        issuance_date: detail.issuance_date,
+        last_modified: detail.last_modified,
+        deleted_at: None,
+        credential: vec![],
+        protocol: detail.protocol,
+        redirect_uri: detail.redirect_uri,
+        role: crate::model::credential::CredentialRole::Holder,
+        state: crate::model::credential::CredentialStateEnum::Created,
+        suspend_end_date: detail.suspend_end_date,
+        claims: None,
+        issuer_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: detail.created_date,
+            last_modified: detail.last_modified,
+            name: "issuer".to_string(),
+            r#type: crate::model::identifier::IdentifierType::Did,
+            is_remote: true,
+            state: crate::model::identifier::IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: detail.created_date,
+                last_modified: detail.last_modified,
+                name: "issuer".to_string(),
+                did: DidValue::from_str("did:key:issuer").unwrap(),
+                did_type: DidType::Remote,
+                did_method: "".to_string(),
+                deactivated: false,
+                log: None,
+                keys: None,
+                organisation: None,
+            }),
+            key: None,
+            certificates: None,
+        }),
+        issuer_certificate: None,
+        holder_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: detail.created_date,
+            last_modified: detail.last_modified,
+            name: "holder".to_string(),
+            r#type: crate::model::identifier::IdentifierType::Did,
+            is_remote: true,
+            state: crate::model::identifier::IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: detail.created_date,
+                last_modified: detail.last_modified,
+                name: "holder".to_string(),
+                did: DidValue::from_str("did:key:holder").unwrap(),
+                did_type: DidType::Remote,
+                did_method: "".to_string(),
+                deactivated: false,
+                log: None,
+                keys: None,
+                organisation: None,
+            }),
+            key: None,
+            certificates: None,
+        }),
+        schema: Some(CredentialSchema {
+            id: detail.schema.id,
+            deleted_at: None,
+            created_date: detail.schema.created_date,
+            last_modified: detail.schema.last_modified,
+            name: detail.schema.name,
+            format: detail.schema.format,
+            revocation_method: detail.schema.revocation_method,
+            wallet_storage_type: detail.schema.wallet_storage_type,
+            layout_type: crate::model::credential_schema::LayoutType::Card,
+            layout_properties: None,
+            schema_id: detail.schema.schema_id,
+            schema_type: detail.schema.schema_type.into(),
+            imported_source_url: detail.schema.imported_source_url,
+            allow_suspension: detail.schema.allow_suspension,
+            external_schema: detail.schema.external_schema,
+            claim_schemas: None,
+            organisation: None,
+        }),
+        interaction: None,
+        revocation_list: None,
+        key: None,
     }
 }
 
@@ -86,66 +161,70 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     let now = OffsetDateTime::now_utc();
     let holder_did = DidValue::from_str("did:key:holder").unwrap();
 
+    let credential_detail = generate_credential_detail_response(vec![
+        DetailCredentialClaimResponseDTO {
+            path: "location".to_string(),
+            schema: CredentialClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: false,
+                array: false,
+                claims: vec![],
+            },
+            value: DetailCredentialClaimValueResponseDTO::Nested(vec![
+                DetailCredentialClaimResponseDTO {
+                    path: "location/x".to_string(),
+                    schema: CredentialClaimSchemaDTO {
+                        id: Uuid::new_v4().into(),
+                        created_date: now,
+                        last_modified: now,
+                        key: "x".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: false,
+                        array: false,
+                        claims: vec![],
+                    },
+                    value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+                },
+                DetailCredentialClaimResponseDTO {
+                    path: "location/y".to_string(),
+                    schema: CredentialClaimSchemaDTO {
+                        id: Uuid::new_v4().into(),
+                        created_date: now,
+                        last_modified: now,
+                        key: "y".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: false,
+                        array: false,
+                        claims: vec![],
+                    },
+                    value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
+                },
+            ]),
+        },
+        DetailCredentialClaimResponseDTO {
+            path: "street".to_string(),
+            schema: CredentialClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: "street".to_string(),
+                datatype: "STRING".to_string(),
+                required: false,
+                array: false,
+                claims: vec![],
+            },
+            value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
+        },
+    ]);
+    let credential = generate_credential_matching_detail(&credential_detail);
+
     let actual = credential_data_from_credential_detail_response(
-        generate_credential_detail_response(vec![
-            DetailCredentialClaimResponseDTO {
-                path: "location".to_string(),
-                schema: CredentialClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: "location".to_string(),
-                    datatype: "OBJECT".to_string(),
-                    required: false,
-                    array: false,
-                    claims: vec![],
-                },
-                value: DetailCredentialClaimValueResponseDTO::Nested(vec![
-                    DetailCredentialClaimResponseDTO {
-                        path: "location/x".to_string(),
-                        schema: CredentialClaimSchemaDTO {
-                            id: Uuid::new_v4().into(),
-                            created_date: now,
-                            last_modified: now,
-                            key: "x".to_string(),
-                            datatype: "STRING".to_string(),
-                            required: false,
-                            array: false,
-                            claims: vec![],
-                        },
-                        value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
-                    },
-                    DetailCredentialClaimResponseDTO {
-                        path: "location/y".to_string(),
-                        schema: CredentialClaimSchemaDTO {
-                            id: Uuid::new_v4().into(),
-                            created_date: now,
-                            last_modified: now,
-                            key: "y".to_string(),
-                            datatype: "STRING".to_string(),
-                            required: false,
-                            array: false,
-                            claims: vec![],
-                        },
-                        value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
-                    },
-                ]),
-            },
-            DetailCredentialClaimResponseDTO {
-                path: "street".to_string(),
-                schema: CredentialClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: "street".to_string(),
-                    datatype: "STRING".to_string(),
-                    required: false,
-                    array: false,
-                    claims: vec![],
-                },
-                value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
-            },
-        ]),
+        credential_detail,
+        &credential,
         None,
         Some(holder_did.clone()),
         format!("{holder_did}#0"),
@@ -197,66 +276,70 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
             params: None,
         },
     );
+    let credential_detail = generate_credential_detail_response(vec![
+        DetailCredentialClaimResponseDTO {
+            schema: CredentialClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: false,
+                array: true,
+                claims: vec![],
+            },
+            path: "location".to_string(),
+            value: DetailCredentialClaimValueResponseDTO::Nested(vec![
+                DetailCredentialClaimResponseDTO {
+                    schema: CredentialClaimSchemaDTO {
+                        id: Uuid::new_v4().into(),
+                        created_date: now,
+                        last_modified: now,
+                        key: "location/x".to_string(),
+                        datatype: "STRING".to_string(),
+                        array: false,
+                        required: false,
+                        claims: vec![],
+                    },
+                    path: "location/0/x".to_string(),
+                    value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+                },
+                DetailCredentialClaimResponseDTO {
+                    schema: CredentialClaimSchemaDTO {
+                        id: Uuid::new_v4().into(),
+                        created_date: now,
+                        last_modified: now,
+                        key: "location/y".to_string(),
+                        array: false,
+                        datatype: "STRING".to_string(),
+                        required: false,
+                        claims: vec![],
+                    },
+                    path: "location/0/y".to_string(),
+                    value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
+                },
+            ]),
+        },
+        DetailCredentialClaimResponseDTO {
+            schema: CredentialClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: "street".to_string(),
+                array: false,
+                datatype: "STRING".to_string(),
+                required: false,
+                claims: vec![],
+            },
+            path: "street".to_string(),
+            value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
+        },
+    ]);
+    let credential = generate_credential_matching_detail(&credential_detail);
+
     let actual = credential_data_from_credential_detail_response(
-        generate_credential_detail_response(vec![
-            DetailCredentialClaimResponseDTO {
-                schema: CredentialClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: "location".to_string(),
-                    datatype: "OBJECT".to_string(),
-                    required: false,
-                    array: true,
-                    claims: vec![],
-                },
-                path: "location".to_string(),
-                value: DetailCredentialClaimValueResponseDTO::Nested(vec![
-                    DetailCredentialClaimResponseDTO {
-                        schema: CredentialClaimSchemaDTO {
-                            id: Uuid::new_v4().into(),
-                            created_date: now,
-                            last_modified: now,
-                            key: "location/x".to_string(),
-                            datatype: "STRING".to_string(),
-                            array: false,
-                            required: false,
-                            claims: vec![],
-                        },
-                        path: "location/0/x".to_string(),
-                        value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
-                    },
-                    DetailCredentialClaimResponseDTO {
-                        schema: CredentialClaimSchemaDTO {
-                            id: Uuid::new_v4().into(),
-                            created_date: now,
-                            last_modified: now,
-                            key: "location/y".to_string(),
-                            array: false,
-                            datatype: "STRING".to_string(),
-                            required: false,
-                            claims: vec![],
-                        },
-                        path: "location/0/y".to_string(),
-                        value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
-                    },
-                ]),
-            },
-            DetailCredentialClaimResponseDTO {
-                schema: CredentialClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: "street".to_string(),
-                    array: false,
-                    datatype: "STRING".to_string(),
-                    required: false,
-                    claims: vec![],
-                },
-                path: "street".to_string(),
-                value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
-            },
-        ]),
+        credential_detail,
+        &credential,
         None,
         Some(holder_did.clone()),
         format!("{holder_did}#0"),

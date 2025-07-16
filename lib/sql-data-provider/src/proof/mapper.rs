@@ -1,5 +1,4 @@
 use one_core::model::claim::Claim;
-use one_core::model::did::Did;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::proof::{GetProofList, Proof, SortableProofColumn};
@@ -87,34 +86,6 @@ impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
 
     fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
-        let verifier_did = match value.verifier_did_id {
-            None => None,
-            Some(verifier_did_id) => Some(Did {
-                id: verifier_did_id,
-                created_date: value
-                    .verifier_did_created_date
-                    .ok_or(DataLayerError::MappingError)?,
-                last_modified: value
-                    .verifier_did_last_modified
-                    .ok_or(DataLayerError::MappingError)?,
-                name: value
-                    .verifier_did_name
-                    .ok_or(DataLayerError::MappingError)?,
-                did: value.verifier_did.ok_or(DataLayerError::MappingError)?,
-                did_type: value
-                    .verifier_did_type
-                    .ok_or(DataLayerError::MappingError)?
-                    .into(),
-                did_method: value
-                    .verifier_did_method
-                    .ok_or(DataLayerError::MappingError)?,
-                organisation: None,
-                keys: None,
-                deactivated: false,
-                log: None,
-            }),
-        };
-
         let verifier_identifier = match value.verifier_identifier_id {
             None => None,
             Some(verifier_identifier_id) => Some(Identifier {
@@ -128,7 +99,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 name: value
                     .verifier_identifier_name
                     .ok_or(DataLayerError::MappingError)?,
-                did: verifier_did,
+                did: None,
                 key: None,
                 certificates: None,
                 organisation: None,

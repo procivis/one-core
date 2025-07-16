@@ -22,9 +22,8 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use super::common::SortDirection;
 use super::credential::CredentialDetailBindingDTO;
 use super::credential_schema::CredentialSchemaBindingDTO;
-use super::did::DidListItemBindingDTO;
 use super::identifier::GetIdentifierListItemBindingDTO;
-use super::mapper::{optional_did_id_string, optional_identifier_id_string, optional_time};
+use super::mapper::{optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofRequestClaimBindingDTO};
 use crate::OneCoreBinding;
 use crate::error::BindingError;
@@ -236,8 +235,6 @@ pub struct ProofListItemBindingDTO {
     pub requested_date: Option<String>,
     #[from(with_fn = optional_time)]
     pub completed_date: Option<String>,
-    #[from(with_fn = optional_did_id_string)]
-    pub verifier_did: Option<String>,
     #[from(with_fn = optional_identifier_id_string)]
     pub verifier: Option<String>,
     pub protocol: String,
@@ -255,9 +252,7 @@ pub struct ProofResponseBindingDTO {
     pub id: String,
     pub created_date: String,
     pub last_modified: String,
-    pub verifier_did: Option<DidListItemBindingDTO>,
     pub verifier: Option<GetIdentifierListItemBindingDTO>,
-    pub holder_did: Option<DidListItemBindingDTO>,
     pub holder: Option<GetIdentifierListItemBindingDTO>,
     pub state: ProofStateBindingEnum,
     pub role: ProofRoleBindingEnum,

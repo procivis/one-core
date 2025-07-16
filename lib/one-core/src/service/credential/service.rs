@@ -301,15 +301,9 @@ impl CredentialService {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(OrganisationRelations::default()),
                     }),
-                    issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    issuer_identifier: Some(Default::default()),
                     issuer_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    holder_identifier: Some(Default::default()),
                     ..Default::default()
                 },
             )

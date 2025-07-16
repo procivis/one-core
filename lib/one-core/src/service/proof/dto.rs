@@ -13,7 +13,6 @@ use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
-use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::proof_schema::dto::{GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO};
 
@@ -59,10 +58,8 @@ pub struct ProofDetailResponseDTO {
     pub requested_date: Option<OffsetDateTime>,
     pub retain_until_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
-    pub verifier_did: Option<DidListItemResponseDTO>,
     pub verifier: Option<GetIdentifierListItemResponseDTO>,
     pub verifier_certificate: Option<CertificateResponseDTO>,
-    pub holder_did: Option<DidListItemResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
     pub transport: String,
@@ -84,7 +81,6 @@ pub struct ProofListItemResponseDTO {
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub retain_until_date: Option<OffsetDateTime>,
-    pub verifier_did: Option<DidListItemResponseDTO>,
     pub verifier: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
     pub transport: String,

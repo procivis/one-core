@@ -23,7 +23,6 @@ use utoipa::{IntoParams, ToSchema};
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
-use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::{
     GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
@@ -216,8 +215,6 @@ pub struct ProofListItemResponseRestDTO {
     pub completed_date: Option<OffsetDateTime>,
 
     #[from(with_fn = convert_inner)]
-    pub verifier_did: Option<DidListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
     pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
 
     /// Verification protocol used.
@@ -347,16 +344,10 @@ pub struct ProofDetailResponseRestDTO {
     pub completed_date: Option<OffsetDateTime>,
 
     #[try_from(with_fn = convert_inner, infallible)]
-    pub verifier_did: Option<DidListItemResponseRestDTO>,
-
-    #[try_from(with_fn = convert_inner, infallible)]
     pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
 
     #[try_from(with_fn = try_convert_inner)]
     pub verifier_certificate: Option<CertificateResponseRestDTO>,
-
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub holder_did: Option<DidListItemResponseRestDTO>,
 
     #[try_from(with_fn = convert_inner, infallible)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,

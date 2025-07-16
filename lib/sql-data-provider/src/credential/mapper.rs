@@ -1,6 +1,5 @@
 use one_core::model::credential::{Credential, CredentialRole, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
-use one_core::model::did::Did;
 use one_core::model::identifier::Identifier;
 use one_core::model::interaction::InteractionId;
 use one_core::model::list_filter::ListFilterCondition;
@@ -168,38 +167,6 @@ pub(super) fn credential_list_model_to_repository_model(
         allow_suspension: credential.credential_schema_allow_suspension,
     };
 
-    let issuer_did = match credential.issuer_did_id {
-        None => None,
-        Some(issuer_did_id) => Some(Did {
-            id: issuer_did_id,
-            created_date: credential
-                .issuer_did_created_date
-                .ok_or(DataLayerError::MappingError)?,
-            last_modified: credential
-                .issuer_did_last_modified
-                .ok_or(DataLayerError::MappingError)?,
-            name: credential
-                .issuer_did_name
-                .ok_or(DataLayerError::MappingError)?,
-            did: credential
-                .issuer_did_did
-                .ok_or(DataLayerError::MappingError)?,
-            did_type: credential
-                .issuer_did_type_field
-                .ok_or(DataLayerError::MappingError)?
-                .into(),
-            did_method: credential
-                .issuer_did_method
-                .ok_or(DataLayerError::MappingError)?,
-            deactivated: credential
-                .issuer_did_deactivated
-                .ok_or(DataLayerError::MappingError)?,
-            keys: None,
-            organisation: None,
-            log: None,
-        }),
-    };
-
     let issuer_identifier = match credential.issuer_identifier_id {
         None => None,
         Some(issuer_identifier_id) => Some(Identifier {
@@ -213,7 +180,7 @@ pub(super) fn credential_list_model_to_repository_model(
             name: credential
                 .issuer_identifier_name
                 .ok_or(DataLayerError::MappingError)?,
-            did: issuer_did,
+            did: None,
             key: None,
             certificates: None,
             organisation: None,

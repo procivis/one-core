@@ -23,7 +23,6 @@ use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO, CredentialSchemaType,
     WalletStorageTypeRestEnum,
 };
-use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
@@ -48,8 +47,6 @@ pub struct CredentialListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseRestDTO,
-    #[from(with_fn = convert_inner)]
-    pub issuer_did: Option<DidListItemResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
     pub role: CredentialRoleRestEnum,
@@ -108,10 +105,6 @@ pub struct GetCredentialResponseRestDTO {
     #[try_from(infallible)]
     pub schema: CredentialDetailSchemaResponseRestDTO,
 
-    /// DID details if issuer is using a DID.
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub issuer_did: Option<DidListItemResponseRestDTO>,
-
     /// Identifier ID of the issuer.
     #[try_from(with_fn = convert_inner, infallible)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
@@ -145,9 +138,6 @@ pub struct GetCredentialResponseRestDTO {
 
     #[try_from(with_fn = convert_inner, infallible)]
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
-
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub holder_did: Option<DidListItemResponseRestDTO>,
 
     #[try_from(with_fn = convert_inner, infallible)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,

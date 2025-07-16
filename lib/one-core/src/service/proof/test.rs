@@ -512,13 +512,11 @@ async fn test_get_proof_exists() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -724,13 +722,11 @@ async fn test_get_proof_with_array_holder() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -963,13 +959,11 @@ async fn test_get_proof_with_array_in_object_holder() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -1207,13 +1201,11 @@ async fn test_get_proof_with_object_array_holder() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -1448,13 +1440,11 @@ async fn test_get_proof_with_array() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -1701,13 +1691,11 @@ async fn test_get_proof_with_array_in_object() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -1960,13 +1948,11 @@ async fn test_get_proof_with_object_array() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),

@@ -21,7 +21,6 @@ use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
     CredentialSchemaListItemResponseDTO,
 };
-use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
 #[derive(Clone, Debug)]
@@ -33,7 +32,6 @@ pub struct CredentialListItemResponseDTO {
     pub state: CredentialStateEnum,
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
-    pub issuer_did: Option<DidListItemResponseDTO>,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
     pub credential: Vec<u8>,
     pub role: CredentialRole,
@@ -56,7 +54,6 @@ pub struct CredentialDetailResponseDTO {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,
-    pub issuer_did: Option<DidListItemResponseDTO>,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
     #[serde(skip)]
     pub issuer_certificate: Option<CertificateResponseDTO>,
@@ -68,7 +65,6 @@ pub struct CredentialDetailResponseDTO {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
-    pub holder_did: Option<DidListItemResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
 }

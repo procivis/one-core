@@ -34,8 +34,7 @@ use crate::credential::CredentialProvider;
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
-    identifier,
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, identifier,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
@@ -321,15 +320,6 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .column_as(identifier::Column::Type, "issuer_identifier_type")
         .column_as(identifier::Column::IsRemote, "issuer_identifier_is_remote")
         .column_as(identifier::Column::State, "issuer_identifier_state")
-        .join(JoinType::LeftJoin, identifier::Relation::Did.def())
-        .column_as(did::Column::CreatedDate, "issuer_did_created_date")
-        .column_as(did::Column::Deactivated, "issuer_did_deactivated")
-        .column_as(did::Column::Did, "issuer_did_did")
-        .column_as(did::Column::Id, "issuer_did_id")
-        .column_as(did::Column::LastModified, "issuer_did_last_modified")
-        .column_as(did::Column::Method, "issuer_did_method")
-        .column_as(did::Column::Name, "issuer_did_name")
-        .column_as(did::Column::TypeField, "issuer_did_type_field")
         .filter(credential::Column::DeletedAt.is_null())
         // list query
         .with_filter_join(&query_params)

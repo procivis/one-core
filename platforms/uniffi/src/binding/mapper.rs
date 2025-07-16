@@ -13,9 +13,7 @@ use one_core::service::credential::dto::{
 use one_core::service::credential_schema::dto::{
     CredentialSchemaListItemResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
 };
-use one_core::service::did::dto::{
-    CreateDidRequestDTO, CreateDidRequestKeysDTO, DidListItemResponseDTO,
-};
+use one_core::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::identifier::dto::{
@@ -84,9 +82,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             issuance_date: value.issuance_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
-            issuer_did: value.issuer_did.map(Into::into),
             issuer: value.issuer.map(Into::into),
-            holder_did: value.holder_did.map(Into::into),
             holder: value.holder.map(Into::into),
             state: value.state.into(),
             schema: value.schema.into(),
@@ -123,7 +119,6 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             issuance_date: value.issuance_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
-            issuer_did: optional_did_id_string(value.issuer_did),
             issuer: optional_identifier_id_string(value.issuer),
             state: value.state.into(),
             schema: value.schema.into(),
@@ -144,9 +139,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             state: value.state.into(),
             last_modified: value.last_modified.format_timestamp(),
             proof_schema: convert_inner(value.schema),
-            verifier_did: value.verifier_did.map(Into::into),
             verifier: value.verifier.map(Into::into),
-            holder_did: value.holder_did.map(Into::into),
             holder: value.holder.map(Into::into),
             protocol: value.protocol,
             transport: value.transport,
@@ -679,10 +672,6 @@ impl TryFrom<OptionalString> for Option<TrustListLogo> {
 
 pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
     value.as_ref().map(TimestampFormat::format_timestamp)
-}
-
-pub fn optional_did_id_string(value: Option<DidListItemResponseDTO>) -> Option<String> {
-    value.map(|inner| inner.id.to_string())
 }
 
 pub fn optional_identifier_id_string(

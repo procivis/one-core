@@ -24,7 +24,7 @@ use super::mapper::{
     create_list_response, get_proof_claim_active_model, needs_interaction_table_for_filter,
 };
 use super::model::ProofListItemModel;
-use crate::entity::{did, identifier, proof, proof_claim, proof_schema};
+use crate::entity::{identifier, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_update_data_layer_error;
 
@@ -259,15 +259,6 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             "verifier_identifier_is_remote",
         )
         .column_as(identifier::Column::State, "verifier_identifier_state")
-        // add related verifierDid
-        .join(sea_orm::JoinType::LeftJoin, identifier::Relation::Did.def())
-        .column_as(did::Column::Id, "verifier_did_id")
-        .column_as(did::Column::Did, "verifier_did")
-        .column_as(did::Column::CreatedDate, "verifier_did_created_date")
-        .column_as(did::Column::LastModified, "verifier_did_last_modified")
-        .column_as(did::Column::Name, "verifier_did_name")
-        .column_as(did::Column::TypeField, "verifier_did_type")
-        .column_as(did::Column::Method, "verifier_did_method")
         // add related proof schema
         .join(
             sea_orm::JoinType::LeftJoin,
