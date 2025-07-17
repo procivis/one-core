@@ -268,7 +268,7 @@ impl OpenID4VP25HTTP {
             let presentation_format = match credential_format {
                 // W3C SD-JWT will be enveloped using JWT presentation formatter
                 FormatType::SdJwt => FormatType::Jwt,
-                FormatType::SdJwtVc => FormatType::SdJwt,
+                FormatType::SdJwtVc => FormatType::SdJwtVc,
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
                 FormatType::Mdoc => FormatType::Mdoc,
                 FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
