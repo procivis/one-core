@@ -375,6 +375,7 @@ tests:api:
     DEPLOY_IMAGE_TAG: $APP_VERSION
     PROJECT_TITLE: $CI_PROJECT_TITLE
     HELM_TIMEOUT: 15m
+    DEPLOYMENT_NAME: one-core-onecorechart
 
 deploy:dev:
   resource_group: core-dev
