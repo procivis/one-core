@@ -2,44 +2,20 @@ use std::sync::Arc;
 
 use time::OffsetDateTime;
 
-use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
-use crate::provider::http_client::{self, HttpClient};
-use crate::provider::remote_entity_storage::{
-    RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
+use super::{
+    CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
 };
-
-#[derive(Debug, thiserror::Error)]
-pub enum TrustListResolverError {
-    #[error("Http client error: {0}")]
-    HttpClient(#[from] http_client::Error),
-
-    #[error("Failed deserializing response body: {0}")]
-    InvalidResponseBody(#[from] serde_json::Error),
-
-    #[error("Storage error: {0}")]
-    Storage(#[from] RemoteEntityStorageError),
-
-    #[error("Caching loader error: {0}")]
-    CachingLoader(#[from] CachingLoaderError),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum TrustListCacheError {
-    #[error(transparent)]
-    Resolver(#[from] TrustListResolverError),
-
-    #[error("Failed deserializing cached value: {0}")]
-    InvalidCachedValue(#[from] serde_json::Error),
-}
+use crate::provider::http_client::HttpClient;
+use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 
 pub struct TrustListCache {
-    inner: CachingLoader<TrustListResolverError>,
-    resolver: Arc<dyn Resolver<Error = TrustListResolverError>>,
+    inner: CachingLoader,
+    resolver: Arc<dyn Resolver<Error = ResolverError>>,
 }
 
 impl TrustListCache {
     pub fn new(
-        resolver: Arc<dyn Resolver<Error = TrustListResolverError>>,
+        resolver: Arc<dyn Resolver<Error = ResolverError>>,
         storage: Arc<dyn RemoteEntityStorage>,
         cache_size: usize,
         cache_refresh_timeout: time::Duration,
@@ -57,10 +33,10 @@ impl TrustListCache {
         }
     }
 
-    pub async fn get(&self, key: &str) -> Result<serde_json::Value, TrustListResolverError> {
+    pub async fn get(&self, key: &str) -> Result<serde_json::Value, CacheError> {
         let (schema, _) = self.inner.get(key, self.resolver.clone(), false).await?;
 
-        Ok(serde_json::from_slice(&schema)?)
+        Ok(serde_json::from_slice(&schema).map_err(Into::<InvalidCachedValueError>::into)?)
     }
 }
 
@@ -76,7 +52,7 @@ impl TrustListResolver {
 
 #[async_trait::async_trait]
 impl Resolver for TrustListResolver {
-    type Error = TrustListResolverError;
+    type Error = ResolverError;
 
     async fn do_resolve(
         &self,

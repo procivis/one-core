@@ -13,13 +13,13 @@ use std::cmp::min;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use thiserror::Error;
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
+use crate::provider::http_client;
 
 pub mod json_ld_context;
 pub mod json_schema;
@@ -38,6 +38,46 @@ pub trait Resolver: Send + Sync {
     ) -> Result<ResolveResult, Self::Error>;
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum CacheError {
+    #[error(transparent)]
+    Resolver(#[from] ResolverError),
+
+    #[error("Failed deserializing cached value: {0}")]
+    InvalidCachedValue(#[from] InvalidCachedValueError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ResolverError {
+    #[error("Http client error: {0}")]
+    HttpClient(#[from] http_client::Error),
+
+    #[error("Invalid response: {0}")]
+    InvalidResponse(String),
+
+    #[error("Failed deserializing response body: {0}")]
+    InvalidResponseBody(#[from] serde_json::Error),
+
+    #[error("Storage error: {0}")]
+    Storage(#[from] RemoteEntityStorageError),
+
+    #[error("Caching loader error: {0}")]
+    CachingLoader(#[from] CachingLoaderError),
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub enum InvalidCachedValueError {
+    SerdeJson(#[from] serde_json::Error),
+    Hasher(#[from] one_crypto::HasherError),
+}
+
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum CachingLoaderError {
+    #[error("Unexpected resolve result")]
+    UnexpectedResolveResult,
+}
+
 pub enum ResolveResult {
     NewValue {
         content: Vec<u8>,
@@ -48,7 +88,7 @@ pub enum ResolveResult {
 }
 
 #[derive(Clone)]
-pub struct CachingLoader<E> {
+pub struct CachingLoader<E = ResolverError> {
     pub remote_entity_type: RemoteEntityType,
     pub storage: Arc<dyn RemoteEntityStorage>,
 
@@ -228,12 +268,6 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             .delete_expired_or_least_used(self.remote_entity_type, self.cache_size)
             .await
     }
-}
-
-#[derive(Clone, Debug, Error)]
-pub enum CachingLoaderError {
-    #[error("Unexpected resolve result")]
-    UnexpectedResolveResult,
 }
 
 fn context_requires_update(

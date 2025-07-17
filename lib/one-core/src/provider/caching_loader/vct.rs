@@ -5,49 +5,22 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
-use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
-use crate::provider::http_client::{self, HttpClient};
-use crate::provider::remote_entity_storage::{
-    RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
+use super::{
+    CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
 };
+use crate::provider::http_client::HttpClient;
+use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityStorage, RemoteEntityType};
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
-
-#[derive(Debug, thiserror::Error)]
-pub enum VctTypeMetadataResolverError {
-    #[error("Http client error: {0}")]
-    HttpClient(#[from] http_client::Error),
-
-    #[error("Failed deserializing response body: {0}")]
-    InvalidResponseBody(#[from] serde_json::Error),
-
-    #[error("Storage error: {0}")]
-    Storage(#[from] RemoteEntityStorageError),
-
-    #[error("Caching loader error: {0}")]
-    CachingLoader(#[from] CachingLoaderError),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum VctCacheError {
-    #[error(transparent)]
-    Resolver(#[from] VctTypeMetadataResolverError),
-
-    #[error("Failed deserializing value: {0}")]
-    InvalidValue(#[from] serde_json::Error),
-
-    #[error("VCT cache failure: {0}")]
-    Failed(String),
-}
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait VctTypeMetadataFetcher: Send + Sync {
-    async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, VctCacheError>;
+    async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, CacheError>;
 }
 
 pub struct VctTypeMetadataCache {
-    inner: CachingLoader<VctTypeMetadataResolverError>,
-    resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError> + Send>,
+    inner: CachingLoader,
+    resolver: Arc<dyn Resolver<Error = ResolverError> + Send>,
 }
 
 #[derive(Clone, Debug)]
@@ -60,7 +33,7 @@ pub struct SdJwtVcTypeMetadataCacheItem {
 
 impl VctTypeMetadataCache {
     pub fn new(
-        resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError>>,
+        resolver: Arc<dyn Resolver<Error = ResolverError> + Send>,
         storage: Arc<dyn RemoteEntityStorage>,
         cache_size: usize,
         cache_refresh_timeout: time::Duration,
@@ -110,7 +83,7 @@ impl VctTypeMetadataCache {
 
 #[async_trait::async_trait]
 impl VctTypeMetadataFetcher for VctTypeMetadataCache {
-    async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, VctCacheError> {
+    async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, CacheError> {
         // Only make HTTP requests for http and https schemes
         if let Ok(url) = url::Url::parse(vct) {
             if url.scheme() == "http" || url.scheme() == "https" {
@@ -118,10 +91,11 @@ impl VctTypeMetadataFetcher for VctTypeMetadataCache {
 
                 let hash_base64 = SHA256
                     .hash_base64(&bytes)
-                    .map_err(|e| VctCacheError::Failed(e.to_string()))?;
+                    .map_err(Into::<InvalidCachedValueError>::into)?;
 
                 return Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                    metadata: serde_json::from_slice(&bytes)?,
+                    metadata: serde_json::from_slice(&bytes)
+                        .map_err(Into::<InvalidCachedValueError>::into)?,
                     integrity: Some(format!("sha256-{hash_base64}")),
                 }));
             }
@@ -134,7 +108,8 @@ impl VctTypeMetadataFetcher for VctTypeMetadataCache {
             .await?
             .as_deref()
             .map(serde_json::from_slice)
-            .transpose()?;
+            .transpose()
+            .map_err(Into::<InvalidCachedValueError>::into)?;
 
         Ok(metadata.map(|metadata| SdJwtVcTypeMetadataCacheItem {
             metadata,
@@ -155,7 +130,7 @@ impl VctTypeMetadataResolver {
 
 #[async_trait::async_trait]
 impl Resolver for VctTypeMetadataResolver {
-    type Error = VctTypeMetadataResolverError;
+    type Error = ResolverError;
 
     async fn do_resolve(
         &self,

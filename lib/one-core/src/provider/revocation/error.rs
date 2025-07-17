@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::KeyRole;
-use crate::provider::caching_loader::CachingLoaderError;
+use crate::provider::caching_loader::ResolverError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::http_client;
@@ -35,8 +35,8 @@ pub enum RevocationError {
 
     #[error("Bitstring error: `{0}`")]
     BitstringError(#[from] BitstringError),
-    #[error("Caching loader error: `{0}`")]
-    CachingLoader(#[from] CachingLoaderError),
+    #[error("Resolver error: `{0}`")]
+    ResolverError(#[from] ResolverError),
     #[error("Did method provider error: `{0}`")]
     DidMethodProviderError(#[from] DidMethodProviderError),
     #[error("Formatter error: `{0}`")]

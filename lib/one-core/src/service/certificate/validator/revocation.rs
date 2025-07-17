@@ -7,7 +7,7 @@ use x509_parser::prelude::{
 };
 
 use super::CertificateValidatorImpl;
-use crate::provider::caching_loader::CachingLoaderError;
+use crate::provider::caching_loader::{CachingLoaderError, ResolverError};
 use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
 
@@ -179,7 +179,9 @@ impl CertificateValidatorImpl {
 
     async fn download_crl(&self, uri: &str) -> Result<Vec<u8>, RevocationError> {
         self.crl_cache.get(uri).await.map_err(|_err| {
-            RevocationError::CachingLoader(CachingLoaderError::UnexpectedResolveResult)
+            RevocationError::ResolverError(ResolverError::CachingLoader(
+                CachingLoaderError::UnexpectedResolveResult,
+            ))
         })
     }
 }

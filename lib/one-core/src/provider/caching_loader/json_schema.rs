@@ -3,44 +3,20 @@ use std::sync::Arc;
 use anyhow::Context;
 use time::OffsetDateTime;
 
-use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
-use crate::provider::http_client::{self, HttpClient};
-use crate::provider::remote_entity_storage::{
-    RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
+use super::{
+    CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
 };
-
-#[derive(Debug, thiserror::Error)]
-pub enum JsonSchemaResolverError {
-    #[error("Http client error: {0}")]
-    HttpClient(#[from] http_client::Error),
-
-    #[error("Failed deserializing response body: {0}")]
-    InvalidResponseBody(#[from] serde_json::Error),
-
-    #[error("Storage error: {0}")]
-    Storage(#[from] RemoteEntityStorageError),
-
-    #[error("Caching loader error: {0}")]
-    CachingLoader(#[from] CachingLoaderError),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum JsonSchemaCacheError {
-    #[error(transparent)]
-    Resolver(#[from] JsonSchemaResolverError),
-
-    #[error("Failed deserializing cached value: {0}")]
-    InvalidCachedValue(#[from] serde_json::Error),
-}
+use crate::provider::http_client::HttpClient;
+use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityStorage, RemoteEntityType};
 
 pub struct JsonSchemaCache {
-    inner: CachingLoader<JsonSchemaResolverError>,
-    resolver: Arc<dyn Resolver<Error = JsonSchemaResolverError>>,
+    inner: CachingLoader,
+    resolver: Arc<dyn Resolver<Error = ResolverError>>,
 }
 
 impl JsonSchemaCache {
     pub fn new(
-        resolver: Arc<dyn Resolver<Error = JsonSchemaResolverError>>,
+        resolver: Arc<dyn Resolver<Error = ResolverError>>,
         storage: Arc<dyn RemoteEntityStorage>,
         cache_size: usize,
         cache_refresh_timeout: time::Duration,
@@ -95,10 +71,10 @@ impl JsonSchemaCache {
         }
     }
 
-    pub async fn get(&self, key: &str) -> Result<serde_json::Value, JsonSchemaCacheError> {
+    pub async fn get(&self, key: &str) -> Result<serde_json::Value, CacheError> {
         let (schema, _) = self.inner.get(key, self.resolver.clone(), false).await?;
 
-        Ok(serde_json::from_slice(&schema)?)
+        Ok(serde_json::from_slice(&schema).map_err(Into::<InvalidCachedValueError>::into)?)
     }
 }
 
@@ -114,7 +90,7 @@ impl JsonSchemaResolver {
 
 #[async_trait::async_trait]
 impl Resolver for JsonSchemaResolver {
-    type Error = JsonSchemaResolverError;
+    type Error = ResolverError;
 
     async fn do_resolve(
         &self,
