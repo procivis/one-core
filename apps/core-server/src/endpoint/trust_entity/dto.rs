@@ -22,6 +22,7 @@ use crate::endpoint::trust_anchor::dto::{
 };
 use crate::serialize::front_time;
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustEntityRequestRestDTO {
