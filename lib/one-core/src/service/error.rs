@@ -424,6 +424,9 @@ pub enum BusinessLogicError {
 
     #[error("Certificate already exists")]
     CertificateAlreadyExists,
+
+    #[error("Presentation submission must contain at least one credential")]
+    EmptyPresentationSubmission,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1232,6 +1235,9 @@ pub enum ErrorCode {
     #[strum(message = "Unsupported claim data type")]
     BR_0245,
 
+    #[strum(message = "Presentation submission must contain at least one credential")]
+    BR_0246,
+
     #[strum(message = "Certificate already exists")]
     BR_0247,
 }
@@ -1396,6 +1402,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IdentifierCertificateIdMismatch { .. } | Self::CertificateIdNotSpecified => {
                 ErrorCode::BR_0242
             }
+            Self::EmptyPresentationSubmission => ErrorCode::BR_0246,
             Self::CertificateAlreadyExists => ErrorCode::BR_0247,
         }
     }

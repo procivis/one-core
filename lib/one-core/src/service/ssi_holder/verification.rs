@@ -100,6 +100,10 @@ impl SSIHolderService {
         &self,
         submission: PresentationSubmitRequestDTO,
     ) -> Result<(), ServiceError> {
+        if submission.submit_credentials.is_empty() {
+            return Err(BusinessLogicError::EmptyPresentationSubmission.into());
+        }
+
         let Some(proof) = self
             .proof_repository
             .get_proof_by_interaction_id(

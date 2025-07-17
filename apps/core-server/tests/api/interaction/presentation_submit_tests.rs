@@ -1154,3 +1154,30 @@ async fn test_presentation_submit_endpoint_wrong_identifier_type() {
     assert_eq!(resp.status(), 400);
     assert_eq!(Response::from(resp).error_code().await, "BR_0218")
 }
+
+#[tokio::test]
+async fn test_presentation_submit_endpoint_empty() {
+    let (context, _, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    // WHEN
+    let url = format!(
+        "{}/api/interaction/v1/presentation-submit",
+        context.config.app.core_base_url
+    );
+
+    let resp = utils::client()
+        .post(url)
+        .bearer_auth("test")
+        .json(&json!({
+          "interactionId": Uuid::new_v4(),
+          "identifierId": identifier.id,
+          "submitCredentials": {}
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(Response::from(resp).error_code().await, "BR_0246")
+}
