@@ -210,3 +210,42 @@ async fn test_create_certificate_identifier_with_crl_revoked() {
     assert_eq!(result.status(), 400);
     assert_eq!(result.error_code().await, "BR_0212");
 }
+
+#[tokio::test]
+async fn test_create_certificate_identifier_cert_already_exists() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+
+    let cert = create_cert(
+        CertificateParams::default(),
+        ecdsa::key(),
+        &ca_cert,
+        eddsa::key(),
+    );
+
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    assert_eq!(result.status(), 201);
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier("test-identifier2", key.id, organisation.id, &chain)
+        .await;
+
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0247");
+}

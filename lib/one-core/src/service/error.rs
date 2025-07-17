@@ -421,6 +421,9 @@ pub enum BusinessLogicError {
 
     #[error("Certificate id not specified")]
     CertificateIdNotSpecified,
+
+    #[error("Certificate already exists")]
+    CertificateAlreadyExists,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1228,6 +1231,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Unsupported claim data type")]
     BR_0245,
+
+    #[strum(message = "Certificate already exists")]
+    BR_0247,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1390,6 +1396,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IdentifierCertificateIdMismatch { .. } | Self::CertificateIdNotSpecified => {
                 ErrorCode::BR_0242
             }
+            Self::CertificateAlreadyExists => ErrorCode::BR_0247,
         }
     }
 }

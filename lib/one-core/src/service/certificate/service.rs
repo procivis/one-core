@@ -5,10 +5,16 @@ use uuid::Uuid;
 use super::CertificateService;
 use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use super::validator::ParsedCertificate;
-use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
+use crate::model::certificate::{
+    Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
+    CertificateState,
+};
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterCondition;
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
 
 impl CertificateService {
     pub async fn get_certificate(
@@ -60,6 +66,22 @@ impl CertificateService {
                 ValidationError::CertificateParsingFailed("missing common-name".to_string())
             })?,
         };
+
+        if self
+            .certificate_repository
+            .list(CertificateListQuery {
+                filtering: Some(ListFilterCondition::Value(
+                    CertificateFilterValue::Fingerprint(attributes.fingerprint.clone()),
+                )),
+                ..Default::default()
+            })
+            .await?
+            .total_items
+            > 0
+        {
+            return Err(BusinessLogicError::CertificateAlreadyExists.into());
+        };
+
         Ok(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
