@@ -4,7 +4,8 @@ use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEnti
 use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityRequestDTO,
     GetRemoteTrustEntityResponseDTO, GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO,
-    ResolveTrustEntitiesRequestDTO, ResolveTrustEntityRequestDTO, SortableTrustEntityColumnEnum,
+    ResolveTrustEntitiesRequestDTO, ResolveTrustEntityRequestDTO,
+    ResolvedIdentifierTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
     TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
@@ -121,7 +122,8 @@ impl OneCoreBinding {
     pub async fn resolve_trust_entity_by_identifier(
         &self,
         request: ResolveTrustEntitiesRequestBindingDTO,
-    ) -> Result<HashMap<String, GetTrustEntityResponseBindingDTO>, BindingError> {
+    ) -> Result<HashMap<String, Vec<ResolvedIdentifierTrustEntityResponseBindingDTO>>, BindingError>
+    {
         let core = self.use_core().await?;
         let result = core
             .trust_entity_service
@@ -130,7 +132,7 @@ impl OneCoreBinding {
         Ok(result
             .identifier_to_trust_entity
             .into_iter()
-            .map(|(key, value)| (key.to_string(), value.into()))
+            .map(|(key, value)| (key.to_string(), convert_inner(value)))
             .collect())
     }
 }
@@ -406,4 +408,31 @@ pub struct ResolveTrustEntityRequestBindingDTO {
     pub id: String,
     #[try_into(with_fn = into_id_opt)]
     pub certificate_id: Option<String>,
+}
+
+#[derive(Debug, uniffi::Record)]
+pub struct ResolvedIdentifierTrustEntityResponseBindingDTO {
+    pub trust_entity: GetTrustEntityResponseBindingDTO,
+    pub certificate_ids: Option<Vec<String>>,
+}
+
+impl From<ResolvedIdentifierTrustEntityResponseDTO>
+    for ResolvedIdentifierTrustEntityResponseBindingDTO
+{
+    fn from(value: ResolvedIdentifierTrustEntityResponseDTO) -> Self {
+        let certificate_ids: Vec<_> = value
+            .certificate_ids
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+
+        Self {
+            trust_entity: value.trust_entity.into(),
+            certificate_ids: if certificate_ids.is_empty() {
+                None
+            } else {
+                Some(certificate_ids)
+            },
+        }
+    }
 }

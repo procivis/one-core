@@ -38,7 +38,9 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
-use crate::service::trust_entity::dto::UpdateTrustEntityActionFromDidRequestDTO;
+use crate::service::trust_entity::dto::{
+    ResolvedIdentifierTrustEntityResponseDTO, UpdateTrustEntityActionFromDidRequestDTO,
+};
 use crate::service::trust_entity::mapper::get_detail_trust_entity_response;
 use crate::util::bearer_token::validate_bearer_token;
 use crate::util::x509::pem_chain_to_authority_key_identifiers;
@@ -652,7 +654,7 @@ impl TrustEntityService {
         &self,
         request: ResolveTrustEntitiesRequestDTO,
     ) -> Result<ResolveTrustEntitiesResponseDTO, ServiceError> {
-        let (mut batches, mut identifier_map) = self.prepare_lookup_batches(request).await?;
+        let (mut batches, mut batch_map) = self.prepare_lookup_batches(request).await?;
 
         let trust_anchor_list = self
             .trust_anchor_repository
@@ -667,7 +669,8 @@ impl TrustEntityService {
             })
             .await?;
 
-        let mut result = HashMap::new();
+        let mut result: HashMap<IdentifierId, Vec<ResolvedIdentifierTrustEntityResponseDTO>> =
+            HashMap::new();
         for trust_anchor in trust_anchor_list.values.into_iter().map(TrustAnchor::from) {
             let trust = self
                 .trust_provider
@@ -684,7 +687,7 @@ impl TrustEntityService {
             batches.retain(|batch| !trust_entities.contains_key(&batch.batch_id));
 
             for (batch_id, trust_entity) in trust_entities {
-                let Some((identifier, certificate)) = identifier_map.remove(&batch_id) else {
+                let Some((identifier, certificate)) = batch_map.remove(&batch_id) else {
                     return Err(ServiceError::Other(format!(
                         "failed to retrieve identifier and certificate for batch {}",
                         &batch_id
@@ -707,8 +710,8 @@ impl TrustEntityService {
                         None,
                     )),
                     IdentifierType::Certificate => {
-                        if let Some(certificate) = certificate {
-                            self.validate_ca(&trust_entity, &certificate)
+                        if let Some(certificate) = &certificate {
+                            self.validate_ca(&trust_entity, certificate)
                                 .await
                                 .map(|ca_cert| {
                                     trust_entity_from_identifier_and_anchor(
@@ -728,11 +731,38 @@ impl TrustEntityService {
                 };
 
                 // validation is allowed to fail, silently ignore and drop it from the results
-                if let Ok(validated_trust_entity) = validated_trust_entity {
-                    result.insert(identifier_id, validated_trust_entity);
+                let Ok(validated_trust_entity) = validated_trust_entity else {
+                    continue;
+                };
+
+                let certificate_id = certificate.map(|c| c.id);
+                let mut certificate_ids = certificate_id.map(|id| vec![id]).unwrap_or_default();
+
+                // insert into result structure
+                if let Some(previous_entry) = result.get_mut(&identifier_id) {
+                    if let Some(previous_entity) = previous_entry
+                        .iter_mut()
+                        .find(|item| item.trust_entity.id == validated_trust_entity.id)
+                    {
+                        previous_entity.certificate_ids.append(&mut certificate_ids);
+                    } else {
+                        previous_entry.push(ResolvedIdentifierTrustEntityResponseDTO {
+                            trust_entity: validated_trust_entity,
+                            certificate_ids,
+                        });
+                    }
+                } else {
+                    result.insert(
+                        identifier_id,
+                        vec![ResolvedIdentifierTrustEntityResponseDTO {
+                            trust_entity: validated_trust_entity,
+                            certificate_ids,
+                        }],
+                    );
                 }
             }
         }
+
         Ok(ResolveTrustEntitiesResponseDTO {
             identifier_to_trust_entity: result,
         })
@@ -789,7 +819,7 @@ impl TrustEntityService {
         ServiceError,
     > {
         let mut batches = vec![];
-        let mut identifier_to_certs = HashMap::new();
+        let mut batch_to_identifier_and_cert_map = HashMap::new();
 
         // This could be optimized to use batch lookup but that would require to implement the option
         // to include dids and certificates in the list lookup.
@@ -809,10 +839,11 @@ impl TrustEntityService {
                     EntityNotFoundError::Identifier(request.id),
                 ))?;
             let (batch, certificate) = prepare_batch(&request, &identifier)?;
+            batch_to_identifier_and_cert_map
+                .insert(batch.batch_id.to_owned(), (identifier, certificate));
             batches.push(batch);
-            identifier_to_certs.insert(identifier.id.to_string(), (identifier, certificate));
         }
-        Ok((batches, identifier_to_certs))
+        Ok((batches, batch_to_identifier_and_cert_map))
     }
 }
 
@@ -834,22 +865,18 @@ fn prepare_batch(
                 }
                 .into());
             }
-            identifier
-                .did
-                .as_ref()
-                .map(|did| {
-                    (
-                        TrustEntityKeyBatch {
-                            batch_id: identifier.id.to_string(),
-                            trust_entity_keys: vec![TrustEntityKey::from(did.did.clone())],
-                        },
-                        None,
-                    )
-                })
-                .ok_or(MappingError(format!(
-                    "missing did on did identifier {}",
-                    identifier.id
-                )))
+            let did = identifier.did.as_ref().ok_or(MappingError(format!(
+                "missing did on did identifier {}",
+                identifier.id
+            )))?;
+
+            Ok((
+                TrustEntityKeyBatch {
+                    batch_id: identifier.id.to_string(),
+                    trust_entity_keys: vec![TrustEntityKey::from(did.did.clone())],
+                },
+                None,
+            ))
         }
         IdentifierType::Certificate => {
             let Some(certificate_id) = identifier_request.certificate_id else {
@@ -880,9 +907,10 @@ fn prepare_batch(
                 .map(TrustEntityKey::from)
                 .collect();
             let batch = TrustEntityKeyBatch {
-                batch_id: identifier.id.to_string(),
+                batch_id: certificate.id.to_string(),
                 trust_entity_keys,
             };
+
             Ok((batch, Some(certificate.clone())))
         }
     }

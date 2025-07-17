@@ -277,5 +277,12 @@ pub struct ResolveTrustEntityRequestDTO {
 
 #[derive(Debug)]
 pub struct ResolveTrustEntitiesResponseDTO {
-    pub identifier_to_trust_entity: HashMap<IdentifierId, GetTrustEntityResponseDTO>,
+    pub identifier_to_trust_entity:
+        HashMap<IdentifierId, Vec<ResolvedIdentifierTrustEntityResponseDTO>>,
+}
+
+#[derive(Debug)]
+pub struct ResolvedIdentifierTrustEntityResponseDTO {
+    pub trust_entity: GetTrustEntityResponseDTO,
+    pub certificate_ids: Vec<CertificateId>,
 }

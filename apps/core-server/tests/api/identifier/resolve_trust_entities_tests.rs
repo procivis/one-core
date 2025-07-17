@@ -93,7 +93,7 @@ async fn test_identifier_resolve_trust_entity_did_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    body[identifier.id.to_string()]["entityKey"].assert_eq(&entity.entity_key);
+    body[identifier.id.to_string()][0]["entityKey"].assert_eq(&entity.entity_key);
 }
 
 #[tokio::test]
@@ -172,7 +172,7 @@ async fn test_identifier_resolve_trust_entity_certificate_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    body[identifier.id.to_string()]["entityKey"].assert_eq(&entity.entity_key);
+    body[identifier.id.to_string()][0]["entityKey"].assert_eq(&entity.entity_key);
 }
 
 #[tokio::test]
@@ -306,8 +306,8 @@ async fn test_identifier_resolve_did_and_cert_different_anchors_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    body[did_identifier.id.to_string()]["entityKey"].assert_eq(&did_entity.entity_key);
-    body[cert_identifier.id.to_string()]["entityKey"].assert_eq(&ca_entity.entity_key);
+    body[did_identifier.id.to_string()][0]["entityKey"].assert_eq(&did_entity.entity_key);
+    body[cert_identifier.id.to_string()][0]["entityKey"].assert_eq(&ca_entity.entity_key);
 }
 
 async fn prepare_certificate_identifier(

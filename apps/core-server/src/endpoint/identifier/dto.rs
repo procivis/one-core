@@ -8,6 +8,7 @@ use one_core::service::identifier::dto::{
 };
 use one_core::service::trust_entity::dto::{
     ResolveTrustEntitiesRequestDTO, ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
+    ResolvedIdentifierTrustEntityResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryFrom, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -20,7 +21,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
-use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
 use crate::endpoint::key::dto::KeyResponseRestDTO;
@@ -169,9 +170,8 @@ pub struct IdentifierFilterQueryParamsRestDTO {
     pub did_methods: Option<Vec<String>>,
     /// If true, return only identifiers from interactions with external
     /// actors. If false, return only identifiers local to the system.
-    #[param(nullable = false)]
-    #[serde(default, deserialize_with = "deserialize_bool_from_string")]
-    pub is_remote: Option<bool>,
+    #[param(inline, nullable = false)]
+    pub is_remote: Option<Boolean>,
     /// Return keys or DIDs whose keys use the specified algorithm. Check the
     /// `keyAlgorithm` object of the configuration for supported options.
     #[param(rename = "keyAlgorithms[]", nullable = false)]
@@ -226,26 +226,23 @@ pub struct ResolveTrustEntityRequestRestDTO {
     pub certificate_id: Option<CertificateId>,
 }
 
-#[derive(Debug, Serialize, ToSchema, Validate, From)]
+#[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ResolveTrustEntitiesResponseDTO)]
 pub struct ResolveTrustEntitiesResponseRestDTO {
     #[serde(flatten)]
-    #[from(with_fn = "convert_inner")]
-    pub identifier_to_trust_entity: HashMap<IdentifierId, GetTrustEntityResponseRestDTO>,
+    #[from(with_fn = "convert_inner_of_inner")]
+    pub identifier_to_trust_entity:
+        HashMap<IdentifierId, Vec<ResolvedIdentifierTrustEntityResponseRestDTO>>,
 }
 
-fn deserialize_bool_from_string<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: Option<String> = Option::deserialize(deserializer)?;
-    match s {
-        Some(s) => match s.to_lowercase().as_str() {
-            "true" => Ok(Some(true)),
-            "false" => Ok(Some(false)),
-            _ => Err(serde::de::Error::custom("invalid boolean value")),
-        },
-        None => Ok(None),
-    }
+#[options_not_nullable]
+#[derive(Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(ResolvedIdentifierTrustEntityResponseDTO)]
+pub struct ResolvedIdentifierTrustEntityResponseRestDTO {
+    #[serde(flatten)]
+    pub trust_entity: GetTrustEntityResponseRestDTO,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub certificate_ids: Vec<CertificateId>,
 }
