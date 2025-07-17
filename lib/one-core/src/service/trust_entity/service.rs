@@ -464,7 +464,13 @@ impl TrustEntityService {
 
         self.trust_entity_repository
             .update(entity.id, request)
-            .await?;
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    ServiceError::BusinessLogic(BusinessLogicError::TrustEntityAlreadyPresent)
+                }
+                err => err.into(),
+            })?;
 
         Ok(())
     }

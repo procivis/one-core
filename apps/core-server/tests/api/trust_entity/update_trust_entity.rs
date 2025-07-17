@@ -228,6 +228,65 @@ async fn test_patch_trust_entity_did() {
 }
 
 #[tokio::test]
+async fn test_patch_trust_entity_duplicate_name() {
+    // GIVEN
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    context
+        .db
+        .trust_entities
+        .create(
+            "trust-entity",
+            TrustEntityRole::Both,
+            TrustEntityState::Active,
+            anchor.clone(),
+            TrustEntityType::Did,
+            did.did.clone().into(),
+            None,
+            did.organisation.clone(),
+        )
+        .await;
+
+    let entity = context
+        .db
+        .trust_entities
+        .create(
+            "trust-entity",
+            TrustEntityRole::Both,
+            TrustEntityState::Withdrawn,
+            anchor,
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .update(
+            entity.id,
+            PatchTrustEntityRequestRestDTO {
+                action: Some(PatchTrustEntityActionRestDTO::Activate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0120");
+}
+
+#[tokio::test]
 async fn test_patch_name_trust_entity_did() {
     // GIVEN
     let (context, _, did, ..) = TestContext::new_with_did(None).await;

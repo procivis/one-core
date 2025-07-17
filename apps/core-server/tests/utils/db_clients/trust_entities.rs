@@ -32,11 +32,18 @@ impl TrustEntityDB {
         content: Option<TrustEntityContent>,
         organisation: Option<Organisation>,
     ) -> TrustEntity {
+        let deactivated_at = match state {
+            TrustEntityState::Active => None,
+            TrustEntityState::Removed
+            | TrustEntityState::Withdrawn
+            | TrustEntityState::RemovedAndWithdrawn => Some(get_dummy_date()),
+        };
+
         let trust_entity = TrustEntity {
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            deactivated_at: None,
+            deactivated_at,
             name: name.into(),
             logo: Some("Logo".to_owned()),
             website: Some("Website".to_owned()),
