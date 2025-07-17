@@ -150,10 +150,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         wallet_storage_type: procivis_schema.wallet_storage_type,
                         layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
                         layout_properties: procivis_schema.layout_properties,
-                        schema_id: Some(schema.id.clone()),
+                        schema_id: schema.id.clone(),
+                        imported_source_url: schema_url,
                     },
                     self.organisation.clone(),
-                    "",
                     procivis_schema.schema_type,
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
@@ -213,10 +213,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         layout_type,
                         external_schema: false,
                         layout_properties,
-                        schema_id: Some(schema.id.clone()),
+                        schema_id: schema.id.clone(),
+                        imported_source_url: schema_url,
                     },
                     self.organisation.clone(),
-                    "",
                     "mdoc".to_string(),
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;

@@ -585,7 +585,8 @@ pub(crate) struct CreateCredentialSchemaRequestDTO {
     pub layout_type: LayoutType,
     pub external_schema: bool,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
-    pub schema_id: Option<String>,
+    pub schema_id: String,
+    pub imported_source_url: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -446,23 +446,15 @@ pub(crate) async fn fetch_procivis_schema(
 pub(crate) fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    core_base_url: &str,
     schema_type: String,
 ) -> Result<CredentialSchema, IssuanceProtocolError> {
-    from_create_request_with_id(
-        Uuid::new_v4().into(),
-        request,
-        organisation,
-        core_base_url,
-        schema_type,
-    )
+    from_create_request_with_id(Uuid::new_v4().into(), request, organisation, schema_type)
 }
 
 fn from_create_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    core_base_url: &str,
     schema_type: String,
 ) -> Result<CredentialSchema, IssuanceProtocolError> {
     if request.claims.is_empty() {
@@ -474,9 +466,6 @@ fn from_create_request_with_id(
     let now = OffsetDateTime::now_utc();
 
     let claim_schemas = unnest_claim_schemas(request.claims);
-
-    let url = format!("{core_base_url}/ssi/schema/v1/{id}");
-    let schema_id = request.schema_id.unwrap_or(url.clone());
 
     Ok(CredentialSchema {
         id,
@@ -506,8 +495,8 @@ fn from_create_request_with_id(
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         schema_type: schema_type.into(),
-        imported_source_url: url,
-        schema_id,
+        imported_source_url: request.imported_source_url,
+        schema_id: request.schema_id,
         organisation: Some(organisation),
         allow_suspension: false,
     })
