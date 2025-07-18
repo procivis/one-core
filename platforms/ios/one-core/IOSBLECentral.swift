@@ -2,10 +2,15 @@ import CoreBluetooth
 
 public class IOSBLECentral: NSObject {
     
-    private lazy var centralManager: CBCentralManager = {
-        return CBCentralManager(delegate: self,
-                                queue: nil)
-    }()
+    private var _centralManager: CBCentralManager?
+    private var centralManager: CBCentralManager {
+        get {
+            if _centralManager == nil {
+                _centralManager = CBCentralManager(delegate: self, queue: nil)
+            }
+            return _centralManager!
+        }
+    }
     
     private var discoverServicesResultCallback: BLEThrowingResultCallback<[ServiceDescriptionBindingDto]>?
     private var discoverCharacteristicsResultCallbacks: [CBUUID: BLEThrowingResultCallback<ServiceDescriptionBindingDto>] = [:]
@@ -14,7 +19,7 @@ public class IOSBLECentral: NSObject {
     private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     
     private let deviceDiscoveryLock = NSLock()
-    private var getDiscoveredDevicesCallback: BLEResultCallback<[PeripheralDiscoveryDataBindingDto]>?
+    private var getDiscoveredDevicesCallback: BLEThrowingResultCallback<[PeripheralDiscoveryDataBindingDto]>?
     private var discoveredPeripheralsQueue: [PeripheralDiscoveryDataBindingDto] = []
     
     private let deviceConnectionLock = NSLock()
@@ -87,6 +92,10 @@ extension IOSBLECentral: BleCentral {
             return
         }
         centralManager.stopScan()
+        
+        deviceDiscoveryLock.withLock {
+            getDiscoveredDevicesCallback?(Result.failure(BleError.ScanNotStarted))
+        }
     }
     
     public func isScanning() async throws -> Bool {
@@ -149,7 +158,7 @@ extension IOSBLECentral: BleCentral {
     }
     
     public func getDiscoveredDevices() async throws -> [PeripheralDiscoveryDataBindingDto] {
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             deviceDiscoveryLock.withLock {
                 guard discoveredPeripheralsQueue.isEmpty else {
                     let peripherals = discoveredPeripheralsQueue
@@ -276,8 +285,8 @@ extension IOSBLECentral: BleCentral {
                 guard unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] == nil &&
                         !subscribedCharacteristics.contains(characteristicKey) else {
                     continuation.resume(throwing: BleError.InvalidCharacteristicOperation(service: service,
-                                                                                                                     characteristic: characteristic,
-                                                                                                                     operation: "subscribe"))
+                                                                                          characteristic: characteristic,
+                                                                                          operation: "subscribe"))
                     return
                 }
                 subscribedCharacteristics.insert(characteristicKey)
@@ -306,8 +315,8 @@ extension IOSBLECentral: BleCentral {
                 guard subscribedCharacteristics.contains(characteristicKey) &&
                         subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] == nil else {
                     continuation.resume(throwing: BleError.InvalidCharacteristicOperation(service: service,
-                                                                                                                     characteristic: characteristic,
-                                                                                                                     operation: "unsubscribe"))
+                                                                                          characteristic: characteristic,
+                                                                                          operation: "unsubscribe"))
                     return
                 }
                 subscribedCharacteristics.remove(characteristicKey)
@@ -495,6 +504,9 @@ extension IOSBLECentral: CBCentralManagerDelegate {
     }
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+#if DEBUG
+        print("central manager did discover \(peripheral)")
+#endif
         let uuids = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?.map { $0.uuidString } ?? []
         let peripheral = PeripheralDiscoveryDataBindingDto(deviceAddress: peripheral.identifier.uuidString,
                                                            localDeviceName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
@@ -537,6 +549,10 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         deviceConnectionLock.withLock {
             peripheralDisconnectResultCallback?(Result.success(()))
             connectedPeripherals.remove(peripheral)
+            
+            if connectedPeripherals.isEmpty && !central.isScanning {
+                _centralManager = nil
+            }
         }
     }
     
