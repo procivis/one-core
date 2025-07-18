@@ -117,20 +117,12 @@ impl TrustEntityService {
         trust_anchor: TrustAnchor,
         organisation: Organisation,
     ) -> Result<TrustEntity, ServiceError> {
-        let cert = self
+        let certificate = self
             .certificate_validator
             .parse_pem_chain(content.as_bytes(), true)
             .await?;
 
-        let entity_key = TrustEntityKey::try_from(&cert)?;
-        if self
-            .trust_entity_repository
-            .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
-            .await?
-            .is_some()
-        {
-            return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
-        }
+        let entity_key = TrustEntityKey::try_from(&certificate)?;
 
         Ok(trust_entity_from_request(
             entity_key,
@@ -181,14 +173,6 @@ impl TrustEntityService {
         }
 
         let entity_key = (&did.did).into();
-        if self
-            .trust_entity_repository
-            .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
-            .await?
-            .is_some()
-        {
-            return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
-        }
 
         Ok(trust_entity_from_request(
             entity_key,
@@ -227,14 +211,6 @@ impl TrustEntityService {
         }
 
         let entity_key = (&did.did).into();
-        if self
-            .trust_entity_repository
-            .get_by_entity_key_and_trust_anchor_id(&entity_key, trust_anchor.id)
-            .await?
-            .is_some()
-        {
-            return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
-        }
 
         Ok(trust_entity_from_request(
             entity_key,

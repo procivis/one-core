@@ -40,16 +40,6 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         self.inner.get_by_entity_key(entity_key).await
     }
 
-    async fn get_by_entity_key_and_trust_anchor_id(
-        &self,
-        entity_key: &TrustEntityKey,
-        trust_anchor_id: TrustAnchorId,
-    ) -> Result<Option<TrustEntity>, DataLayerError> {
-        self.inner
-            .get_by_entity_key_and_trust_anchor_id(entity_key, trust_anchor_id)
-            .await
-    }
-
     async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,

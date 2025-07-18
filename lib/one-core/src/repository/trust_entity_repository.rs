@@ -14,12 +14,6 @@ pub trait TrustEntityRepository: Send + Sync {
         entity_key: &TrustEntityKey,
     ) -> Result<Option<TrustEntity>, DataLayerError>;
 
-    async fn get_by_entity_key_and_trust_anchor_id(
-        &self,
-        entity_key: &TrustEntityKey,
-        trust_anchor_id: TrustAnchorId,
-    ) -> Result<Option<TrustEntity>, DataLayerError>;
-
     async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,

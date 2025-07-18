@@ -73,28 +73,6 @@ impl TrustEntityRepository for TrustEntityProvider {
         Ok(Some(entity))
     }
 
-    async fn get_by_entity_key_and_trust_anchor_id(
-        &self,
-        entity_key: &TrustEntityKey,
-        trust_anchor_id: TrustAnchorId,
-    ) -> Result<Option<TrustEntity>, DataLayerError> {
-        let Some((entity_model, trust_anchor)) = trust_entity::Entity::find()
-            .filter(trust_entity::Column::EntityKey.eq(entity_key))
-            .filter(trust_entity::Column::TrustAnchorId.eq(trust_anchor_id))
-            .find_also_related(trust_anchor::Entity)
-            .one(&self.db)
-            .await
-            .map_err(to_data_layer_error)?
-        else {
-            return Ok(None);
-        };
-
-        let mut entity = TrustEntity::from(entity_model);
-        entity.trust_anchor = trust_anchor.map(Into::into);
-
-        Ok(Some(entity))
-    }
-
     async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,
