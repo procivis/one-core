@@ -6,9 +6,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::VcClaim;
 use serde::Deserialize;
-use shared_types::DidValue;
 
-use super::model::{CredentialData, Features, FormattedPresentation, HolderBindingCtx};
+use super::model::{CredentialData, Features, HolderBindingCtx};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
@@ -19,8 +18,8 @@ use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,
+    AuthenticationFn, CredentialPresentation, DetailCredential, FormatterCapabilities,
+    VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -176,26 +175,6 @@ impl CredentialFormatter for JWTFormatter {
         Ok(credential.token)
     }
 
-    async fn format_presentation(
-        &self,
-        _tokens: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _token: &str,
-        _verification: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
-    }
-
     fn get_leeway(&self) -> u64 {
         self.params.leeway
     }
@@ -256,13 +235,5 @@ impl CredentialFormatter for JWTFormatter {
             ],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _token: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
     }
 }

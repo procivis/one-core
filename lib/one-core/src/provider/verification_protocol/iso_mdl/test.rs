@@ -20,9 +20,9 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionRuleTypeEnum;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -78,7 +78,7 @@ async fn test_presentation_reject_ok() {
 
     let provider = IsoMdl::new(
         Arc::new(core_config),
-        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Some(ble_waiter),
@@ -188,7 +188,7 @@ async fn test_get_presentation_definition_ok() {
     let core_config = generic_config().core;
     let service = IsoMdl::new(
         Arc::new(core_config),
-        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         None,

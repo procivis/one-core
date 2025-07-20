@@ -13,9 +13,7 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
-use super::model::{
-    CredentialData, FormattedPresentation, HolderBindingCtx, IdentifierDetails, PublicKeySource,
-};
+use super::model::{CredentialData, HolderBindingCtx, IdentifierDetails, PublicKeySource};
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -28,9 +26,8 @@ use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachi
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Issuer,
-    Presentation, VerificationFn,
+    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
+    FormatterCapabilities, Issuer, VerificationFn,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -169,26 +166,6 @@ impl CredentialFormatter for JsonLdClassic {
         Ok(credential.token)
     }
 
-    async fn format_presentation(
-        &self,
-        _tokens: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _ctx: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _json_ld: &str,
-        _verification_fn: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
-    }
-
     fn get_leeway(&self) -> u64 {
         self.params.leeway.whole_seconds() as u64
     }
@@ -237,14 +214,6 @@ impl CredentialFormatter for JsonLdClassic {
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _json_ld: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
     }
 }
 

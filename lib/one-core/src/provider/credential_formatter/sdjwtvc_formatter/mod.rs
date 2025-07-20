@@ -21,9 +21,7 @@ use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
 use url::Url;
 
-use super::model::{
-    CredentialData, CredentialStatus, FormattedPresentation, HolderBindingCtx, PublishedClaim,
-};
+use super::model::{CredentialData, CredentialStatus, HolderBindingCtx, PublishedClaim};
 use super::sdjwt;
 use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
@@ -37,9 +35,8 @@ use crate::model::identifier::Identifier;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities,
-    IdentifierDetails, Presentation, SelectiveDisclosure, VerificationFn,
+    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
+    FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
@@ -198,34 +195,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .await?;
 
         Ok(credential)
-    }
-
-    async fn format_presentation(
-        &self,
-        _credentials: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _token: &str,
-        _verification: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _token: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
     }
 
     fn get_leeway(&self) -> u64 {

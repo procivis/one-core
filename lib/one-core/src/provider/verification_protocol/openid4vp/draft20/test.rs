@@ -37,6 +37,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VC20PresentationVerifierParams;
@@ -55,7 +56,8 @@ use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
 
 #[derive(Default)]
 struct TestInputs {
-    pub formatter_provider: MockCredentialFormatterProvider,
+    pub credential_formatter_provider: MockCredentialFormatterProvider,
+    pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -66,7 +68,8 @@ struct TestInputs {
 fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
     OpenID4VP20HTTP::new(
         Some("http://base_url".to_string()),
-        Arc::new(inputs.formatter_provider),
+        Arc::new(inputs.credential_formatter_provider),
+        Arc::new(inputs.presentation_formatter_provider),
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
@@ -187,17 +190,17 @@ fn test_client_request_response(
 
 #[tokio::test]
 async fn test_share_proof() {
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
         .expect_get_capabilities()
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
-    formatter_provider
+    credential_formatter_provider
         .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
-        formatter_provider,
+        credential_formatter_provider,
         ..Default::default()
     });
 
@@ -295,17 +298,17 @@ async fn test_share_proof() {
 
 #[tokio::test]
 async fn test_response_mode_direct_post_jwt_for_mdoc() {
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
         .expect_get_capabilities()
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
-    formatter_provider
+    credential_formatter_provider
         .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
-        formatter_provider,
+        credential_formatter_provider,
         ..Default::default()
     });
 
@@ -538,18 +541,18 @@ async fn test_share_proof_with_use_request_uri() {
 
 #[tokio::test]
 async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
         .expect_get_capabilities()
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
-    formatter_provider
+    credential_formatter_provider
         .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
 
     let protocol = setup_protocol(TestInputs {
-        formatter_provider,
+        credential_formatter_provider,
         params: Some(OpenID4Vp20Params {
             use_request_uri: true,
             ..generic_params()
@@ -1073,17 +1076,17 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
 #[tokio::test]
 async fn test_share_proof_custom_scheme() {
     let url_scheme = "my-custom-scheme";
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
         .expect_get_capabilities()
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
-    formatter_provider
+    credential_formatter_provider
         .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
-        formatter_provider,
+        credential_formatter_provider,
         params: Some(test_params(url_scheme)),
         ..Default::default()
     });

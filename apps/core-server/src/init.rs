@@ -44,9 +44,11 @@ use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
+use one_core::provider::presentation_formatter::PresentationFormatter;
 use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
 use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::presentation_formatter::mso_mdoc::MsoMdocPresentationFormatter;
+use one_core::provider::presentation_formatter::provider::PresentationFormatterProviderImpl;
 use one_core::provider::presentation_formatter::sdjwt_vc::SdjwtVCPresentationFormatter;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -336,7 +338,8 @@ pub async fn initialize_core(
         let vct_type_metadata_cache = vct_type_metadata_cache.clone();
         let client = client.clone();
         Box::new(move |format_config, datatype_config, providers| {
-            let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
+            let mut credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>> =
+                HashMap::new();
 
             let did_method_provider = providers.did_method_provider.as_ref().ok_or(
                 OneCoreBuildError::MissingDependency("did method provider".to_string()),
@@ -435,11 +438,11 @@ pub async fn initialize_core(
                         )) as _
                     }
                 };
-                formatters.insert(name.to_owned(), formatter);
+                credential_formatters.insert(name.to_owned(), formatter);
             }
 
             for (key, value) in format_config.iter_mut() {
-                if let Some(entity) = formatters.get(key) {
+                if let Some(entity) = credential_formatters.get(key) {
                     value.capabilities = Some(json!(entity.get_capabilities()));
                     if let Some(params) = &mut value.params {
                         if let Some(public) = &mut params.public {
@@ -462,41 +465,47 @@ pub async fn initialize_core(
                 }
             }
 
-            let presentation_formatters = HashMap::from_iter([
-                (
-                    "JSON_LD_CLASSIC".to_owned(),
-                    Arc::new(LdpVpPresentationFormatter::new(
-                        crypto.clone(),
-                        caching_loader.clone(),
-                        client.clone(),
-                    )) as _,
-                ),
-                (
-                    "MDOC".to_owned(),
-                    Arc::new(MsoMdocPresentationFormatter::new(
-                        key_algorithm_provider.clone(),
-                        certificate_validator.clone(),
-                        providers.core_base_url.clone(),
-                    )) as _,
-                ),
-                (
-                    "JWT".to_owned(),
-                    Arc::new(JwtVpPresentationFormatter::new()) as _,
-                ),
-                (
-                    "SD_JWT_VC".to_owned(),
-                    Arc::new(SdjwtVCPresentationFormatter::new(
-                        client.clone(),
-                        crypto.clone(),
-                        certificate_validator.clone(),
-                        false,
-                    )) as _,
-                ),
-            ]);
-            Ok(Arc::new(CredentialFormatterProviderImpl::new(
-                formatters,
-                presentation_formatters,
-            )))
+            let presentation_formatters: HashMap<String, Arc<dyn PresentationFormatter>> =
+                HashMap::from_iter([
+                    (
+                        "JSON_LD_CLASSIC".to_owned(),
+                        Arc::new(LdpVpPresentationFormatter::new(
+                            crypto.clone(),
+                            caching_loader.clone(),
+                            client.clone(),
+                        )) as _,
+                    ),
+                    (
+                        "MDOC".to_owned(),
+                        Arc::new(MsoMdocPresentationFormatter::new(
+                            key_algorithm_provider.clone(),
+                            certificate_validator.clone(),
+                            providers.core_base_url.clone(),
+                        )) as _,
+                    ),
+                    (
+                        "JWT".to_owned(),
+                        Arc::new(JwtVpPresentationFormatter::new()) as _,
+                    ),
+                    (
+                        "SD_JWT_VC".to_owned(),
+                        Arc::new(SdjwtVCPresentationFormatter::new(
+                            client.clone(),
+                            crypto.clone(),
+                            certificate_validator.clone(),
+                            false,
+                        )) as _,
+                    ),
+                ]);
+
+            let credential_formatter_provider =
+                CredentialFormatterProviderImpl::new(credential_formatters);
+            let presentation_formatter_provider =
+                PresentationFormatterProviderImpl::new(presentation_formatters);
+            Ok((
+                Arc::new(credential_formatter_provider),
+                Arc::new(presentation_formatter_provider),
+            ))
         })
     };
 
@@ -542,7 +551,7 @@ pub async fn initialize_core(
                 OneCoreBuildError::MissingDependency("key storage provider".to_string()),
             )?;
 
-            let formatter_provider = providers.formatter_provider.clone().ok_or(
+            let formatter_provider = providers.credential_formatter_provider.clone().ok_or(
                 OneCoreBuildError::MissingDependency("credential formatter provider".to_string()),
             )?;
 

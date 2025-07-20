@@ -4,10 +4,10 @@ use std::vec;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
 use one_crypto::CryptoProvider;
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::CredentialSchemaId;
 
 use super::json_ld_classic::verify_credential_signature;
-use super::model::{CredentialData, FormattedPresentation, HolderBindingCtx};
+use super::model::{CredentialData, HolderBindingCtx};
 use crate::config::core_config::{
     DidType, IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
@@ -17,8 +17,8 @@ use crate::model::identifier::Identifier;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx, Features,
-    FormatPresentationCtx, FormatterCapabilities, Presentation, VerificationFn,
+    AuthenticationFn, CredentialPresentation, DetailCredential, Features, FormatterCapabilities,
+    VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::http_client::HttpClient;
@@ -91,26 +91,6 @@ impl CredentialFormatter for PhysicalCardFormatter {
         OptiocalBarcodeCredential::from_token(token)?.try_into()
     }
 
-    async fn format_presentation(
-        &self,
-        _credentials: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        todo!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _token: &str,
-        _verification: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        todo!()
-    }
-
     async fn format_credential_presentation(
         &self,
         _credential: CredentialPresentation,
@@ -172,14 +152,6 @@ impl CredentialFormatter for PhysicalCardFormatter {
             ],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _token: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        todo!()
     }
 
     fn credential_schema_id(

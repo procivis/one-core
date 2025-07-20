@@ -76,6 +76,7 @@ impl ProofService {
             verifier_session,
             proof,
             self.credential_formatter_provider.clone(),
+            self.presentation_formatter_provider.clone(),
             self.did_method_provider.clone(),
             self.key_algorithm_provider.clone(),
             self.credential_repository.clone(),

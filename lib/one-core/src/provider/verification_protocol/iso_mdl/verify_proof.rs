@@ -21,6 +21,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::SessionTranscript;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
@@ -40,11 +41,13 @@ pub(crate) struct ValidatedProofClaimDTO {
 
 // copied from lib/one-core/src/service/ssi_verifier/validator.rs
 // just adapted to always use MDOC
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn validate_proof(
     proof_schema: &ProofSchema,
     presentation: &str,
     session_transcript: SessionTranscript,
-    formatter_provider: &dyn CredentialFormatterProvider,
+    credential_formatter_provider: &dyn CredentialFormatterProvider,
+    presentation_formatter_provider: &dyn PresentationFormatterProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
@@ -64,7 +67,7 @@ pub(crate) async fn validate_proof(
     });
 
     let format = "MDOC";
-    let presentation_formatter = formatter_provider
+    let presentation_formatter = presentation_formatter_provider
         .get_presentation_formatter(format)
         .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
@@ -158,7 +161,7 @@ pub(crate) async fn validate_proof(
     let mut proved_credentials: HashMap<CredentialSchemaId, Vec<ValidatedProofClaimDTO>> =
         HashMap::new();
 
-    let credential_formatter = formatter_provider
+    let credential_formatter = credential_formatter_provider
         .get_credential_formatter(format)
         .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 

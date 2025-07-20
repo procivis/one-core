@@ -37,10 +37,9 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
-    CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
-    Features, FormatPresentationCtx, FormattedPresentation, FormatterCapabilities,
-    HolderBindingCtx, IdentifierDetails, Presentation, PublicKeySource, PublishedClaim,
-    SelectiveDisclosure, TokenVerifier, VerificationFn,
+    CredentialSchemaMetadata, CredentialSubject, DetailCredential, Features, FormatterCapabilities,
+    HolderBindingCtx, IdentifierDetails, PublicKeySource, PublishedClaim, SelectiveDisclosure,
+    TokenVerifier, VerificationFn,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -244,26 +243,6 @@ impl CredentialFormatter for MdocFormatter {
         extract_credentials_internal(&*self.certificate_validator, token, false).await
     }
 
-    async fn format_presentation(
-        &self,
-        _tokens: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _token: &str,
-        _verification: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
-    }
-
     // Extract issuer_signed, keep only the claims that the verifier asked for, re-encode issuer_signed that back to the same format
     async fn format_credential_presentation(
         &self,
@@ -383,14 +362,6 @@ impl CredentialFormatter for MdocFormatter {
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _token: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
     }
 
     fn credential_schema_id(

@@ -126,7 +126,6 @@ use one_core::provider::key_storage::internal::{
     InternalKeyProvider, Params as InternalKeyProviderParams,
 };
 use one_core::provider::key_storage::provider::KeyProviderImpl;
-use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::service::certificate::validator::CertificateValidatorImpl;
@@ -273,6 +272,7 @@ impl OneDevCore {
             config.caching_config.json_ld_context.cache_refresh_timeout,
             config.caching_config.json_ld_context.refresh_after,
         );
+
         let credential_formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             HashMap::from_iter(vec![
                 (
@@ -315,19 +315,11 @@ impl OneDevCore {
                         None,
                         did_method_provider.clone(),
                         key_algorithm_provider.clone(),
-                        json_ld_caching_loader.clone(),
+                        json_ld_caching_loader,
                         client.clone(),
                     )) as _,
                 ),
             ]),
-            HashMap::from_iter(vec![(
-                "JSON_LD_CLASSIC".to_string(),
-                Arc::new(LdpVpPresentationFormatter::new(
-                    crypto_provider.clone(),
-                    json_ld_caching_loader,
-                    client.clone(),
-                )) as _,
-            )]),
         ));
 
         let signature_service =

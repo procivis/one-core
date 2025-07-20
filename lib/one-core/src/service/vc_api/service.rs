@@ -21,6 +21,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
@@ -34,7 +35,8 @@ use crate::util::revocation_update::get_or_create_revocation_list_id;
 impl VCAPIService {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        credential_formatter: Arc<dyn CredentialFormatterProvider>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         did_repository: Arc<dyn DidRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
@@ -46,7 +48,8 @@ impl VCAPIService {
         base_url: Option<String>,
     ) -> Self {
         Self {
-            credential_formatter,
+            credential_formatter_provider,
+            presentation_formatter_provider,
             key_provider,
             did_repository,
             identifier_repository,
@@ -126,7 +129,7 @@ impl VCAPIService {
         let credential_format = credential_format.as_deref().unwrap_or("JSON_LD_CLASSIC");
 
         let formatter = self
-            .credential_formatter
+            .credential_formatter_provider
             .get_credential_formatter(credential_format)
             .ok_or(ServiceError::MissingProvider(
                 MissingProviderError::Formatter(credential_format.to_string()),
@@ -232,7 +235,7 @@ impl VCAPIService {
         };
 
         let formatter = self
-            .credential_formatter
+            .credential_formatter_provider
             .get_credential_formatter(format)
             .ok_or(ServiceError::Other(format!(
                 "Formatter not found for credential format {format}"
@@ -275,7 +278,7 @@ impl VCAPIService {
         const CREDENTIAL_FORMAT: &str = "JSON_LD_CLASSIC";
 
         let presentation_formatter = self
-            .credential_formatter
+            .presentation_formatter_provider
             .get_presentation_formatter(CREDENTIAL_FORMAT)
             .ok_or(ServiceError::MissingProvider(
                 MissingProviderError::Formatter(CREDENTIAL_FORMAT.to_string()),

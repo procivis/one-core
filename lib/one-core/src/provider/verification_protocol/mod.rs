@@ -34,6 +34,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp20SwiyuParams;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
@@ -77,7 +78,8 @@ pub(crate) fn verification_protocol_providers_from_config(
     exchange_config: &mut VerificationProtocolConfig,
     core_base_url: Option<String>,
     data_provider: Arc<dyn DataRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -94,7 +96,7 @@ pub(crate) fn verification_protocol_providers_from_config(
         match fields.r#type {
             VerificationProtocolType::ScanToVerify => {
                 let protocol = Arc::new(ScanToVerify::new(
-                    formatter_provider.clone(),
+                    credential_formatter_provider.clone(),
                     key_algorithm_provider.clone(),
                     did_method_provider.clone(),
                     certificate_validator.clone(),
@@ -112,7 +114,8 @@ pub(crate) fn verification_protocol_providers_from_config(
 
                 let http25 = OpenID4VP25HTTP::new(
                     core_base_url.clone(),
-                    formatter_provider.clone(),
+                    credential_formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
@@ -141,7 +144,8 @@ pub(crate) fn verification_protocol_providers_from_config(
                 )?;
                 let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
-                    formatter_provider.clone(),
+                    credential_formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
@@ -165,7 +169,8 @@ pub(crate) fn verification_protocol_providers_from_config(
                 validate_url_scheme_unique(&mut openid_url_schemes, name, "https".to_string())?;
                 let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
-                    formatter_provider.clone(),
+                    credential_formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
@@ -193,7 +198,8 @@ pub(crate) fn verification_protocol_providers_from_config(
                     data_provider.get_interaction_repository(),
                     data_provider.get_proof_repository(),
                     key_algorithm_provider.clone(),
-                    formatter_provider.clone(),
+                    credential_formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
@@ -205,7 +211,7 @@ pub(crate) fn verification_protocol_providers_from_config(
             VerificationProtocolType::IsoMdl => {
                 let protocol = Arc::new(IsoMdl::new(
                     config.clone(),
-                    formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     ble.clone(),
@@ -222,7 +228,8 @@ pub(crate) fn verification_protocol_providers_from_config(
 #[allow(clippy::too_many_arguments)]
 fn openid4vp_draft20_from_params(
     core_base_url: Option<String>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -233,7 +240,8 @@ fn openid4vp_draft20_from_params(
 ) -> Result<OpenID4VP20HTTP, ConfigValidationError> {
     Ok(OpenID4VP20HTTP::new(
         core_base_url,
-        formatter_provider,
+        credential_formatter_provider,
+        presentation_formatter_provider,
         did_method_provider,
         key_algorithm_provider,
         key_provider,

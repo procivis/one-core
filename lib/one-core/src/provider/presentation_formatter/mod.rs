@@ -10,14 +10,15 @@ use crate::provider::presentation_formatter::model::{
     CredentialToPresent, PresentationFormatterCapabilities,
 };
 
-pub mod adapter;
 pub mod jwt_vp_json;
 pub mod ldp_vp;
 pub mod model;
 pub mod mso_mdoc;
+pub mod provider;
 pub mod sdjwt_vc;
 
 /// PresentationFormatter is a trait that defines the methods for formatting and extracting presentations.
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait PresentationFormatter: Send + Sync {
     /// Formats a set of credentials into a presentation, signed by the holder.

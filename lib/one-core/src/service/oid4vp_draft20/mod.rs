@@ -5,6 +5,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -29,7 +30,8 @@ pub struct OID4VPDraft20Service {
     config: Arc<core_config::CoreConfig>,
     did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -48,7 +50,8 @@ impl OID4VPDraft20Service {
         config: Arc<core_config::CoreConfig>,
         did_repository: Arc<dyn DidRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -64,7 +67,8 @@ impl OID4VPDraft20Service {
             config,
             did_repository,
             identifier_repository,
-            formatter_provider,
+            credential_formatter_provider,
+            presentation_formatter_provider,
             did_method_provider,
             key_algorithm_provider,
             revocation_method_provider,

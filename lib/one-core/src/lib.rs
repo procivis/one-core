@@ -48,6 +48,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::issuance_protocol_providers_from_config;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::cache::CacheService;
 use crate::service::certificate::validator::CertificateValidator;
@@ -97,8 +98,13 @@ pub type FormatterProviderCreator = Box<
             &mut FormatConfig,
             &DatatypeConfig,
             &OneCoreBuilderProviders,
-        ) -> Result<Arc<dyn CredentialFormatterProvider>, OneCoreBuildError>
-        + Send,
+        ) -> Result<
+            (
+                Arc<dyn CredentialFormatterProvider>,
+                Arc<dyn PresentationFormatterProvider>,
+            ),
+            OneCoreBuildError,
+        > + Send,
 >;
 
 pub type DataProviderCreator =
@@ -156,7 +162,8 @@ pub struct OneCoreBuilderProviders {
     pub did_method_provider: Option<Arc<dyn DidMethodProvider>>,
     pub key_algorithm_provider: Option<Arc<dyn KeyAlgorithmProvider>>,
     pub key_storage_provider: Option<Arc<dyn KeyProvider>>,
-    pub formatter_provider: Option<Arc<dyn CredentialFormatterProvider>>,
+    pub credential_formatter_provider: Option<Arc<dyn CredentialFormatterProvider>>,
+    pub presentation_formatter_provider: Option<Arc<dyn PresentationFormatterProvider>>,
     pub revocation_method_provider: Option<Arc<dyn RevocationMethodProvider>>,
     pub certificate_validator: Option<Arc<dyn CertificateValidator>>,
     //repository and providers that we initialize as we build
@@ -253,12 +260,15 @@ impl OneCoreBuilder {
         mut self,
         key_storage_creator: FormatterProviderCreator,
     ) -> Result<Self, OneCoreBuildError> {
-        let formatter_provider = key_storage_creator(
+        let (credential_formatter_provider, presentation_formatter_provider) = key_storage_creator(
             &mut self.core_config.format,
             &self.core_config.datatype,
             &self.providers,
         )?;
-        self.providers.formatter_provider = Some(formatter_provider);
+
+        self.providers.credential_formatter_provider = Some(credential_formatter_provider);
+        self.providers.presentation_formatter_provider = Some(presentation_formatter_provider);
+
         Ok(self)
     }
 
@@ -413,8 +423,16 @@ impl OneCore {
 
         let data_provider = data_provider_creator()?;
 
-        let formatter_provider = providers
-            .formatter_provider
+        let credential_formatter_provider = providers
+            .credential_formatter_provider
+            .as_ref()
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "Formatter provider is required",
+            ))?
+            .clone();
+
+        let presentation_formatter_provider = providers
+            .presentation_formatter_provider
             .as_ref()
             .ok_or(OneCoreBuildError::MissingRequiredField(
                 "Formatter provider is required",
@@ -437,7 +455,7 @@ impl OneCore {
             data_provider.get_validity_credential_repository(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_history_repository(),
-            formatter_provider.clone(),
+            credential_formatter_provider.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
@@ -452,7 +470,8 @@ impl OneCore {
             &mut core_config.verification_protocol,
             providers.core_base_url.clone(),
             data_provider.clone(),
-            formatter_provider.clone(),
+            credential_formatter_provider.clone(),
+            presentation_formatter_provider.clone(),
             key_provider.clone(),
             certificate_validator.clone(),
             key_algorithm_provider.clone(),
@@ -495,7 +514,7 @@ impl OneCore {
             data_provider.get_interaction_repository(),
             data_provider.get_revocation_list_repository(),
             revocation_method_provider.clone(),
-            formatter_provider.clone(),
+            credential_formatter_provider.clone(),
             issuance_provider.clone(),
             did_method_provider.clone(),
             key_provider.clone(),
@@ -559,7 +578,7 @@ impl OneCore {
                 data_provider.get_validity_credential_repository(),
                 data_provider.get_revocation_list_repository(),
                 did_method_provider.clone(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
@@ -581,7 +600,7 @@ impl OneCore {
                 data_provider.get_identifier_repository(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
             ),
@@ -600,7 +619,7 @@ impl OneCore {
                 data_provider.get_identifier_repository(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
             ),
@@ -612,7 +631,8 @@ impl OneCore {
                 config.clone(),
                 data_provider.get_did_repository(),
                 data_provider.get_identifier_repository(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
+                presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
@@ -628,7 +648,8 @@ impl OneCore {
                 config.clone(),
                 data_provider.get_did_repository(),
                 data_provider.get_identifier_repository(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
+                presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
@@ -641,7 +662,7 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
             ),
@@ -659,7 +680,7 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
                 providers.core_base_url.clone(),
@@ -678,7 +699,8 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_interaction_repository(),
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
+                presentation_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 verification_provider.clone(),
                 did_method_provider.clone(),
@@ -697,7 +719,8 @@ impl OneCore {
             ),
             // TODO - config based
             vc_api_service: VCAPIService::new(
-                formatter_provider.clone(),
+                credential_formatter_provider.clone(),
+                presentation_formatter_provider.clone(),
                 key_provider.clone(),
                 data_provider.get_did_repository(),
                 data_provider.get_identifier_repository(),
@@ -722,7 +745,7 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 key_provider,
                 key_algorithm_provider,
-                formatter_provider,
+                credential_formatter_provider,
                 issuance_provider,
                 verification_provider,
                 did_method_provider,

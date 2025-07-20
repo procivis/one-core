@@ -28,6 +28,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, SessionTranscript};
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -109,6 +110,7 @@ pub(crate) async fn start_client(
     verifier_session: VerifierSession,
     proof: Proof,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -133,6 +135,7 @@ pub(crate) async fn start_client(
                 &central,
                 sender,
                 credential_formatter_provider.clone(),
+                presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_repository.clone(),
@@ -196,6 +199,7 @@ async fn verifier_flow(
     central: &TrackingBleCentral,
     sender: oneshot::Sender<PeripheralDiscoveryData>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -223,6 +227,7 @@ async fn verifier_flow(
         &device,
         mtu_size,
         credential_formatter_provider,
+        presentation_formatter_provider,
         did_method_provider,
         key_algorithm_provider,
         credential_repository,
@@ -255,6 +260,7 @@ async fn process_proof(
     device: &PeripheralDiscoveryData,
     mtu_size: usize,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -362,6 +368,7 @@ async fn process_proof(
         proof,
         verifier_session.session_transcript,
         &*credential_formatter_provider,
+        &*presentation_formatter_provider,
         did_method_provider,
         key_algorithm_provider,
         credential_repository,
@@ -429,6 +436,7 @@ async fn fill_proof_claims_and_credentials(
     proof: &Proof,
     session_transcript: SessionTranscript,
     credential_formatter_provider: &dyn CredentialFormatterProvider,
+    presentation_formatter_provider: &dyn PresentationFormatterProvider,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -450,6 +458,7 @@ async fn fill_proof_claims_and_credentials(
         &encoded,
         session_transcript,
         credential_formatter_provider,
+        presentation_formatter_provider,
         &key_algorithm_provider,
         did_method_provider.clone(),
         certificate_validator.clone(),

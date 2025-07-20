@@ -32,7 +32,8 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::presentation_formatter::adapter::PresentationFormatterAdapter;
+use crate::provider::presentation_formatter::MockPresentationFormatter;
+use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -59,7 +60,8 @@ struct Mocks {
     pub config: CoreConfig,
     pub did_repository: MockDidRepository,
     pub identifier_repository: MockIdentifierRepository,
-    pub formatter_provider: MockCredentialFormatterProvider,
+    pub credential_formatter_provider: MockCredentialFormatterProvider,
+    pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
@@ -78,7 +80,8 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
         Arc::new(mocks.config),
         Arc::new(mocks.did_repository),
         Arc::new(mocks.identifier_repository),
-        Arc::new(mocks.formatter_provider),
+        Arc::new(mocks.credential_formatter_provider),
+        Arc::new(mocks.presentation_formatter_provider),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
@@ -369,11 +372,12 @@ async fn test_submit_proof_failed_credential_suspended() {
         .once()
         .returning(|_, _, _| Ok(()));
 
-    let mut formatter = MockCredentialFormatter::new();
+    let mut credential_formatter = MockCredentialFormatter::new();
+    let mut presentation_formatter = MockPresentationFormatter::new();
 
     let holder_did_clone = holder_did.clone();
     let issuer_did_clone = issuer_did.clone();
-    formatter
+    credential_formatter
         .expect_extract_credentials_unverified()
         .once()
         .returning(move |_, _| {
@@ -399,7 +403,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let holder_did_clone = holder_did.clone();
     let nonce_clone = nonce.clone();
-    formatter
+    presentation_formatter
         .expect_extract_presentation_unverified()
         .once()
         .returning(move |_, _| {
@@ -415,7 +419,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let holder_did_clone = holder_did.clone();
     let nonce_clone = nonce.clone();
-    formatter
+    presentation_formatter
         .expect_extract_presentation()
         .once()
         .returning(move |_, _, _| {
@@ -428,9 +432,10 @@ async fn test_submit_proof_failed_credential_suspended() {
                 credentials: vec!["credential".to_string()],
             })
         });
-    formatter.expect_get_leeway().returning(|| 10);
+    credential_formatter.expect_get_leeway().returning(|| 10);
+    presentation_formatter.expect_get_leeway().returning(|| 10);
     let issuer_did_clone = issuer_did.clone();
-    formatter
+    credential_formatter
         .expect_extract_credentials()
         .once()
         .returning(move |_, _, _, _| {
@@ -459,19 +464,21 @@ async fn test_submit_proof_failed_credential_suspended() {
             })
         });
 
-    let formatter = Arc::new(formatter);
-    let presentation_formatter = Arc::new(PresentationFormatterAdapter::new(formatter.clone()));
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let credential_formatter = Arc::new(credential_formatter);
+    let presentation_formatter = Arc::new(presentation_formatter);
 
-    formatter_provider
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
+    let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
+
+    presentation_formatter_provider
         .expect_get_presentation_formatter()
         .times(2)
         .returning(move |_| Some(presentation_formatter.clone()));
 
-    formatter_provider
+    credential_formatter_provider
         .expect_get_credential_formatter()
         .times(2)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Some(credential_formatter.clone()));
 
     let mut revocation_method = MockRevocationMethod::new();
     revocation_method
@@ -491,7 +498,8 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let service = setup_service(Mocks {
         proof_repository,
-        formatter_provider,
+        credential_formatter_provider,
+        presentation_formatter_provider,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()

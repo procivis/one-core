@@ -19,6 +19,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
@@ -36,7 +37,7 @@ use crate::util::x509::is_dns_name_matching;
 pub(super) async fn peek_presentation(
     presentation_string: &str,
     oidc_format: &str,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &Arc<dyn PresentationFormatterProvider>,
 ) -> Result<Presentation, OpenID4VCError> {
     let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
         .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
@@ -62,7 +63,7 @@ pub(super) async fn validate_presentation(
     presentation_string: &str,
     nonce: &str,
     presentation_format: &str,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &Arc<dyn PresentationFormatterProvider>,
     key_verification: Box<dyn TokenVerifier>,
     context: ExtractPresentationCtx,
 ) -> Result<Presentation, OpenID4VCError> {

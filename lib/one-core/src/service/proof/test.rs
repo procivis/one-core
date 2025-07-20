@@ -53,6 +53,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
@@ -106,6 +107,7 @@ struct Repositories {
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
+    pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub protocol_provider: MockVerificationProtocolProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -133,6 +135,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),
+        Arc::new(repositories.presentation_formatter_provider),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.did_method_provider),

@@ -1,10 +1,7 @@
 use async_trait::async_trait;
 use error::FormatterError;
-use model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx,
-    FormatPresentationCtx, Presentation, TokenVerifier,
-};
-use shared_types::{CredentialSchemaId, DidValue};
+use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
+use shared_types::CredentialSchemaId;
 
 use crate::model::revocation_list::StatusListType;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -18,7 +15,7 @@ pub use common::nest_claims;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
-use crate::provider::credential_formatter::model::{FormattedPresentation, HolderBindingCtx};
+use crate::provider::credential_formatter::model::HolderBindingCtx;
 
 // Implementation
 pub mod json_ld_bbsplus;
@@ -89,35 +86,6 @@ pub trait CredentialFormatter: Send + Sync {
         holder_binding_ctx: Option<HolderBindingCtx>,
         holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError>;
-
-    /// Formats a presentation of credentials and signs it.
-    async fn format_presentation(
-        &self,
-        tokens: &[String],
-        holder_did: &DidValue,
-        algorithm: KeyAlgorithmType,
-        auth_fn: AuthenticationFn,
-        ctx: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError>;
-
-    /// Parses a presentation and verifies the signature.
-    async fn extract_presentation(
-        &self,
-        token: &str,
-        verification: Box<dyn TokenVerifier>,
-        ctx: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError>;
-
-    /// Parses a presentation without verifying the signature.
-    ///
-    /// This can be useful for checking the validity of a presentation (e.g.
-    /// expiration and revocation status) before committing to verifying a
-    /// signature.
-    async fn extract_presentation_unverified(
-        &self,
-        token: &str,
-        ctx: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError>;
 
     /// Returns the leeway time.
     ///

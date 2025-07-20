@@ -10,7 +10,6 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
-use shared_types::DidValue;
 use time::Duration;
 
 use crate::config::core_config::{
@@ -21,9 +20,8 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, Features, FormatPresentationCtx, FormattedPresentation,
-    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, Presentation, SelectiveDisclosure,
+    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
+    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, SelectiveDisclosure,
     VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
@@ -164,34 +162,6 @@ impl CredentialFormatter for SDJWTFormatter {
         .await?;
 
         Ok(credential)
-    }
-
-    async fn format_presentation(
-        &self,
-        _credentials: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _token: &str,
-        _verification: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _token: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
     }
 
     fn get_leeway(&self) -> u64 {

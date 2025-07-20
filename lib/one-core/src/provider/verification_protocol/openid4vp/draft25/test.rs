@@ -23,6 +23,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VC25PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -39,7 +40,8 @@ use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 #[derive(Default)]
 struct TestInputs {
-    pub formatter_provider: MockCredentialFormatterProvider,
+    pub credential_formatter_provider: MockCredentialFormatterProvider,
+    pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -50,7 +52,8 @@ struct TestInputs {
 fn setup_protocol(inputs: TestInputs) -> OpenID4VP25HTTP {
     OpenID4VP25HTTP::new(
         Some("http://base_url".to_string()),
-        Arc::new(inputs.formatter_provider),
+        Arc::new(inputs.credential_formatter_provider),
+        Arc::new(inputs.presentation_formatter_provider),
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
@@ -88,17 +91,17 @@ fn generic_params() -> OpenID4Vp25Params {
 
 #[tokio::test]
 async fn test_share_proof() {
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
         .expect_get_capabilities()
         .returning(FormatterCapabilities::default);
     let arc = Arc::new(credential_formatter);
-    formatter_provider
+    credential_formatter_provider
         .expect_get_credential_formatter()
         .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
-        formatter_provider,
+        credential_formatter_provider,
         ..Default::default()
     });
 

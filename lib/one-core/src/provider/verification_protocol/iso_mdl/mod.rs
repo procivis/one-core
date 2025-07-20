@@ -34,13 +34,13 @@ use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::{
     DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
 };
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::CredentialToPresent;
 use crate::provider::presentation_formatter::mso_mdoc::model::{
     DeviceResponse, DeviceResponseVersion, DocumentError, SessionTranscript,
 };
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -61,7 +61,7 @@ mod verify_proof;
 
 pub(crate) struct IsoMdl {
     config: Arc<CoreConfig>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ble: Option<BleWaiter>,
@@ -70,14 +70,14 @@ pub(crate) struct IsoMdl {
 impl IsoMdl {
     pub(crate) fn new(
         config: Arc<CoreConfig>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         ble: Option<BleWaiter>,
     ) -> Self {
         Self {
             config,
-            formatter_provider,
+            presentation_formatter_provider,
             key_provider,
             key_algorithm_provider,
             ble,
@@ -186,7 +186,7 @@ impl VerificationProtocol for IsoMdl {
                 ))?;
 
         let presentation_formatter = self
-            .formatter_provider
+            .presentation_formatter_provider
             .get_presentation_formatter(&credential_presentation.credential_schema.format)
             .ok_or(VerificationProtocolError::Failed(format!(
                 "unknown format: {}",

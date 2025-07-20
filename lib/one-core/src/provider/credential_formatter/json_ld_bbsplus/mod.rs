@@ -9,12 +9,11 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use super::CredentialFormatter;
-use super::model::{CredentialData, FormattedPresentation, HolderBindingCtx, Issuer};
+use super::model::{CredentialData, HolderBindingCtx, Issuer};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
@@ -25,9 +24,8 @@ use crate::model::revocation_list::StatusListType;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, ExtractPresentationCtx, Features,
-    FormatPresentationCtx, FormatterCapabilities, Presentation, SelectiveDisclosure,
-    VerificationFn,
+    AuthenticationFn, CredentialPresentation, DetailCredential, Features, FormatterCapabilities,
+    SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -265,26 +263,6 @@ impl CredentialFormatter for JsonLdBbsplus {
         Ok(resp)
     }
 
-    async fn format_presentation(
-        &self,
-        _tokens: &[String],
-        _holder_did: &DidValue,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _context: FormatPresentationCtx,
-    ) -> Result<FormattedPresentation, FormatterError> {
-        unimplemented!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        _json_ld: &str,
-        _verification_fn: VerificationFn,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
-    }
-
     fn get_leeway(&self) -> u64 {
         self.params.leeway.whole_seconds() as u64
     }
@@ -340,14 +318,6 @@ impl CredentialFormatter for JsonLdBbsplus {
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
-    }
-
-    async fn extract_presentation_unverified(
-        &self,
-        _token: &str,
-        _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
-        unimplemented!()
     }
 }
 

@@ -7,6 +7,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -18,7 +19,8 @@ pub mod model;
 mod validation;
 
 pub struct VCAPIService {
-    credential_formatter: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,

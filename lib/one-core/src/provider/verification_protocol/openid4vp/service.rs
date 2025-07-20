@@ -26,6 +26,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::mapper::{
@@ -113,7 +114,8 @@ pub(crate) async fn oid4vp_verifier_process_submission(
     proof: Proof,
     interaction_data: OpenID4VPVerifierInteractionContent,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: &Arc<dyn PresentationFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
@@ -138,7 +140,8 @@ pub(crate) async fn oid4vp_verifier_process_submission(
                 &proof,
                 interaction_data,
                 did_method_provider,
-                formatter_provider,
+                credential_formatter_provider,
+                presentation_formatter_provider,
                 key_algorithm_provider,
                 revocation_method_provider,
                 certificate_validator,
@@ -151,7 +154,8 @@ pub(crate) async fn oid4vp_verifier_process_submission(
                 &proof,
                 interaction_data,
                 did_method_provider,
-                formatter_provider,
+                credential_formatter_provider,
+                presentation_formatter_provider,
                 key_algorithm_provider,
                 revocation_method_provider,
                 certificate_validator,
@@ -180,7 +184,8 @@ async fn process_proof_submission_dcql_query(
     proof: &Proof,
     interaction_data: OpenID4VPVerifierInteractionContent,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: &Arc<dyn PresentationFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
@@ -282,7 +287,7 @@ async fn process_proof_submission_dcql_query(
             credential_presentation,
             &interaction_data.nonce,
             &presentation_format,
-            formatter_provider,
+            presentation_formatter_provider,
             key_verification.clone(),
             context.clone(),
         )
@@ -322,7 +327,7 @@ async fn process_proof_submission_dcql_query(
 
         let lvvc_credential = {
             if let Some(lvvc) = lvvc_credential {
-                let formatter = formatter_provider
+                let formatter = credential_formatter_provider
                     .get_credential_formatter(requested_credential_schema.format.as_str())
                     .ok_or(OpenID4VCError::ValidationError(format!(
                         "Could not find format: {}",
@@ -343,7 +348,7 @@ async fn process_proof_submission_dcql_query(
             credential_token,
             &lvvc_credential,
             proof_input_schema,
-            formatter_provider,
+            credential_formatter_provider,
             key_verification,
             did_method_provider,
             revocation_method_provider,
@@ -379,7 +384,8 @@ async fn process_proof_submission_presentation_exchange(
     proof: &Proof,
     interaction_data: OpenID4VPVerifierInteractionContent,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: &Arc<dyn PresentationFormatterProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
@@ -427,7 +433,8 @@ async fn process_proof_submission_presentation_exchange(
     let extracted_lvvcs = extract_lvvcs(
         &presentation_strings,
         &presentation_submission,
-        formatter_provider,
+        credential_formatter_provider,
+        presentation_formatter_provider,
     )
     .await?;
 
@@ -486,7 +493,7 @@ async fn process_proof_submission_presentation_exchange(
             presentation_string,
             &interaction_data.nonce,
             &presentation_format,
-            formatter_provider,
+            presentation_formatter_provider,
             build_key_verification(
                 KeyRole::Authentication,
                 did_method_provider.clone(),
@@ -589,7 +596,7 @@ async fn process_proof_submission_presentation_exchange(
             credential_token,
             &extracted_lvvcs,
             proof_schema_input,
-            formatter_provider,
+            credential_formatter_provider,
             build_key_verification(
                 KeyRole::AssertionMethod,
                 did_method_provider.clone(),
@@ -618,7 +625,8 @@ async fn process_proof_submission_presentation_exchange(
 async fn extract_lvvcs(
     presentation_strings: &[String],
     presentation_submission: &PresentationSubmissionMappingDTO,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: &Arc<dyn PresentationFormatterProvider>,
 ) -> Result<Vec<DetailCredential>, OpenID4VCError> {
     let mut result = vec![];
 
@@ -634,7 +642,7 @@ async fn extract_lvvcs(
         let presentation = peek_presentation(
             presentation_string,
             &presentation_submitted.format,
-            formatter_provider,
+            presentation_formatter_provider,
         )
         .await?;
 
@@ -653,9 +661,11 @@ async fn extract_lvvcs(
         let oidc_format = &path_nested.format;
         let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential))
             .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-        let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
-            OpenID4VCError::ValidationError(format!("Could not find format: {format}",)),
-        )?;
+        let formatter = credential_formatter_provider
+            .get_credential_formatter(&format)
+            .ok_or(OpenID4VCError::ValidationError(format!(
+                "Could not find format: {format}",
+            )))?;
 
         let credential = formatter
             .extract_credentials_unverified(credential, None)

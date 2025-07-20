@@ -34,6 +34,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::MqttClient;
 use crate::provider::presentation_formatter::mso_mdoc::model::{OID4VPHandover, SessionTranscript};
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
     UpdateResponse, VerificationProtocolCapabilities,
@@ -82,7 +83,8 @@ pub struct OpenID4VPProximityDraft00 {
     mqtt_verifier: Option<MqttVerifier>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -100,7 +102,8 @@ impl OpenID4VPProximityDraft00 {
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
@@ -131,7 +134,8 @@ impl OpenID4VPProximityDraft00 {
             did_method_provider,
             key_algorithm_provider,
             key_provider,
-            formatter_provider,
+            credential_formatter_provider,
+            presentation_formatter_provider,
             interaction_repository,
             proof_repository,
             certificate_validator,
@@ -313,7 +317,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             holder_did,
             key,
             jwk_key_id,
-            formatter_provider: &*self.formatter_provider,
+            presentation_formatter_provider: &*self.presentation_formatter_provider,
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             key_provider: &*self.key_provider,
             config: self.config.clone(),
@@ -422,7 +426,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 format_to_type_mapper,
                 key_id,
                 did_method_provider: &*self.did_method_provider,
-                formatter_provider: &*self.formatter_provider,
+                formatter_provider: &*self.credential_formatter_provider,
                 key_provider: &*self.key_provider,
                 key_algorithm_provider: self.key_algorithm_provider.clone(),
             })
@@ -716,7 +720,7 @@ pub(super) struct CreatePresentationParams<'a> {
     identity_request_nonce: Option<&'a str>,
     nonce: &'a str,
 
-    formatter_provider: &'a dyn CredentialFormatterProvider,
+    presentation_formatter_provider: &'a dyn PresentationFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: &'a dyn KeyProvider,
 
@@ -732,7 +736,7 @@ pub(super) async fn create_presentation(
     )?;
 
     let presentation_formatter = params
-        .formatter_provider
+        .presentation_formatter_provider
         .get_presentation_formatter(&format.to_string())
         .ok_or(VerificationProtocolError::Failed(
             "Formatter not found".to_string(),

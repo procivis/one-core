@@ -199,6 +199,7 @@ impl ProofService {
             interaction_data,
             &self.did_method_provider,
             &self.credential_formatter_provider,
+            &self.presentation_formatter_provider,
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
             &self.certificate_validator,

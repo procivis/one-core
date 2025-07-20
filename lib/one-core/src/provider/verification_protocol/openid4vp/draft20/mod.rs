@@ -37,6 +37,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
@@ -77,7 +78,8 @@ const REQUEST_QUERY_PARAM_KEY: &str = "request";
 
 pub(crate) struct OpenID4VP20HTTP {
     client: Arc<dyn HttpClient>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -91,7 +93,8 @@ impl OpenID4VP20HTTP {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         base_url: Option<String>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
@@ -102,7 +105,8 @@ impl OpenID4VP20HTTP {
     ) -> Self {
         Self {
             base_url,
-            formatter_provider,
+            credential_formatter_provider,
+            presentation_formatter_provider,
             did_method_provider,
             key_algorithm_provider,
             key_provider,
@@ -327,7 +331,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         )?;
 
         let presentation_formatter = self
-            .formatter_provider
+            .presentation_formatter_provider
             .get_presentation_formatter(&format.to_string())
             .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
 
@@ -486,7 +490,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             proof_schema,
             type_to_descriptor,
             format_to_type_mapper,
-            &*self.formatter_provider,
+            &*self.credential_formatter_provider,
         )?;
 
         let Some(base_url) = &self.base_url else {
