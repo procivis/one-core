@@ -122,7 +122,14 @@ pub(crate) async fn receive_mdl_request(
         .schedule_continuation(
             interaction_data.continuation_task_id,
             |task_id, _, peripheral| async move {
-                let info = wait_for_device(&peripheral, interaction_data.service_uuid).await?;
+                let info =
+                    wait_for_active_device(&peripheral, interaction_data.service_uuid).await?;
+
+                peripheral
+                    .stop_advertisement()
+                    .await
+                    .context("failed to stop advertisement")
+                    .map_err(VerificationProtocolError::Transport)?;
 
                 let result = tx.send(info.clone());
                 if let Err(device_info) = result {
@@ -306,12 +313,12 @@ pub(crate) async fn send_mdl_response(
     Ok(())
 }
 
-async fn wait_for_device(
+async fn wait_for_active_device(
     peripheral: &TrackingBlePeripheral,
     service_uuid: Uuid,
 ) -> Result<DeviceInfo, VerificationProtocolError> {
-    let info = loop {
-        if let Some(info) = peripheral
+    loop {
+        let connected_devices = peripheral
             .get_connection_change_events()
             .await
             .context("failed to get connection change events")
@@ -320,44 +327,50 @@ async fn wait_for_device(
             .filter_map(|info| match info {
                 ConnectionEvent::Connected { device_info } => Some(device_info),
                 ConnectionEvent::Disconnected { .. } => None,
-            })
-            .next()
-        {
-            break info;
+            });
+
+        for connected_device in connected_devices {
+            tracing::debug!("device connected: {connected_device:?}");
+
+            if wait_for_start(peripheral, &connected_device, service_uuid).await? {
+                return Ok(connected_device);
+            }
         }
-    };
-
-    peripheral
-        .stop_advertisement()
-        .await
-        .context("failed to stop advertisement")
-        .map_err(VerificationProtocolError::Transport)?;
-
-    wait_for_start(peripheral, &info, service_uuid).await?;
-
-    Ok(info)
+    }
 }
 
+/// Wait for Start command according to ISO 18013-5 (8.3.3.1.1.6 Data retrieval)
+///
+/// - returns `true` if Start command was written
+/// - returns `false` if no command was written and reconnection should happen
 async fn wait_for_start(
     peripheral: &TrackingBlePeripheral,
     info: &DeviceInfo,
     service_uuid: Uuid,
-) -> Result<(), VerificationProtocolError> {
-    let command: Command = peripheral
+) -> Result<bool, VerificationProtocolError> {
+    let command_written = match peripheral
         .get_characteristic_writes(
             info.address.clone(),
             service_uuid.to_string(),
             STATE.to_string(),
         )
         .await
-        .context("failed to read client state")
-        .map_err(VerificationProtocolError::Transport)?
-        .concat()
+    {
+        Ok(writes) => writes.concat(),
+        Err(err) => {
+            tracing::warn!("Failed to receive State command: {err}");
+            // according to ISO 18013-5 (8.3.3.1.1.8 Connection re-establishment),
+            // re-connection in this phase is allowed
+            return Ok(false);
+        }
+    };
+
+    let command: Command = command_written
         .try_into()
         .map_err(VerificationProtocolError::Transport)?;
 
     if command == Command::Start {
-        Ok(())
+        Ok(true)
     } else {
         Err(VerificationProtocolError::Transport(anyhow!(
             "invalid command"

@@ -99,7 +99,10 @@ extension IOSBLECentral: BleCentral {
     }
     
     public func isScanning() async throws -> Bool {
-        return centralManager.isScanning
+        guard let manager = _centralManager else {
+            return false
+        }
+        return manager.isScanning
     }
     
     public func connect(peripheral: String) async throws -> UInt16 {

@@ -20,6 +20,8 @@ impl TrackingBlePeripheral {
 
     /// Stop advertising and server, cleaning up all resources
     pub async fn teardown(&self) -> Result<(), BleError> {
+        tracing::debug!("teardown");
+
         // Stop advertising if currently active
         if let Ok(true) = self.inner.is_advertising().await {
             if let Err(err) = self.inner.stop_advertisement().await {
