@@ -39,7 +39,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
-use crate::util::ble_resource::{BleWaiter, OnConflict};
+use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Clone)]
@@ -125,63 +125,68 @@ pub(crate) async fn start_client(
 
     let (sender, receiver) = oneshot::channel();
 
-    ble.schedule(
-        *ISO_MDL_FLOW,
-        move |_, central, _| async move {
-            let result = verifier_flow(
-                ble_options,
-                verifier_session,
-                &proof,
-                &central,
-                sender,
-                credential_formatter_provider.clone(),
-                presentation_formatter_provider.clone(),
-                did_method_provider.clone(),
-                key_algorithm_provider.clone(),
-                credential_repository.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
-                proof_repository.clone(),
-                certificate_validator.clone(),
-                certificate_repository.clone(),
-                &*key_repository,
-            )
-            .await;
-
-            if let Err(error) = &result {
-                {
-                    let message = format!("mDL verifier failure: {error:#?}");
-                    tracing::info!(message);
-                    let error_metadata = HistoryErrorMetadata {
-                        error_code: BR_0000,
-                        message,
-                    };
-                    if let Err(err) =
-                        set_proof_to_error(&*proof_repository, proof.id, error_metadata).await
-                    {
-                        tracing::warn!("failed to set proof to error: {err}");
-                    }
-                }
-            };
-
-            result
-        },
-        move |central, _| async move {
-            let message = "Cancelling mDL verifier flow".to_string();
-            tracing::info!(message);
-            if let Ok(device_info) = receiver.await {
-                send_end(
-                    device_info.device_address.clone(),
-                    &peripheral_server_uuid,
+    let schedule_result = ble
+        .schedule(
+            *ISO_MDL_FLOW,
+            move |_, central, _| async move {
+                let result = verifier_flow(
+                    ble_options,
+                    verifier_session,
+                    &proof,
                     &central,
+                    sender,
+                    credential_formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    credential_repository.clone(),
+                    did_repository.clone(),
+                    identifier_repository.clone(),
+                    proof_repository.clone(),
+                    certificate_validator.clone(),
+                    certificate_repository.clone(),
+                    &*key_repository,
                 )
                 .await;
-            }
-        },
-        OnConflict::ReplaceIfSameFlow,
-        false,
-    )
-    .await;
+
+                if let Err(error) = &result {
+                    {
+                        let message = format!("mDL verifier failure: {error:#?}");
+                        tracing::info!(message);
+                        let error_metadata = HistoryErrorMetadata {
+                            error_code: BR_0000,
+                            message,
+                        };
+                        if let Err(err) =
+                            set_proof_to_error(&*proof_repository, proof.id, error_metadata).await
+                        {
+                            tracing::warn!("failed to set proof to error: {err}");
+                        }
+                    }
+                };
+
+                result
+            },
+            move |central, _| async move {
+                let message = "Cancelling mDL verifier flow".to_string();
+                tracing::info!(message);
+                if let Ok(device_info) = receiver.await {
+                    send_end(
+                        device_info.device_address.clone(),
+                        &peripheral_server_uuid,
+                        &central,
+                    )
+                    .await;
+                }
+            },
+            OnConflict::ReplaceIfSameFlow,
+            false,
+        )
+        .await;
+
+    if matches!(schedule_result, ScheduleResult::Busy) {
+        return Err(ServiceError::Other("BLE is busy".into()));
+    }
 
     Ok(())
 }
