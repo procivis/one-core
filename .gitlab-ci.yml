@@ -15,7 +15,6 @@ variables:
   DOCKER_DRIVER: overlay2
   DEPENDENCY_TRACK_PROJECT_NAME: "ONE-Core"
   CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
-  GITHUB_PROJECT: "procivis/one-core"
   GITHUB_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
   CARGO_TARGET_DIR: "/build-cache/target"
   CARGO_HOME: "/build-cache/cargo-home"
@@ -512,6 +511,8 @@ dtrack:metrics:
 github:push:
   stage: github
   variables:
+    GITHUB_PROJECT: "procivis/one-core"
+    PROJECT: $CI_PROJECT_NAME
     FILES_TO_ATTACH: >-
       one-core.json
   extends:
