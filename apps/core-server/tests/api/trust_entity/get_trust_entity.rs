@@ -63,15 +63,16 @@ async fn test_get_trust_entity_ca() {
         .await;
 
     let pem_certificate = "-----BEGIN CERTIFICATE-----
-MIIBJjCB2aADAgECAhRzWkNCwN3ySyHodhYOzXij/kB1XDAFBgMrZXAwITEfMB0G
-A1UEAwwWKi5kZXYucHJvY2l2aXMtb25lLmNvbTAgFw0yNTA2MTcwODUyNTdaGA80
-NzYzMDUxNDA4NTI1N1owITEfMB0GA1UEAwwWKi5kZXYucHJvY2l2aXMtb25lLmNv
-bTAqMAUGAytlcAMhAAz4HUs33yQ+dRBOD/Ib0cXMLLlQG325/+l6MxW5+Bk/oyEw
-HzAdBgNVHQ4EFgQUbJ2IBqjaP9GK2qbe/YHc3NufIW0wBQYDK2VwA0EAsAaCzr02
-rpezgIUbslWYL837hwBg08vTFJjBsY0O/D6QTozuYYCSUooMc2izJqcJ9Ga76LS3
-JupK8gddPJ2WCw==
------END CERTIFICATE-----
-";
+MIIBjTCCAT+gAwIBAgIUc1pDQsDd8ksh6HYWDs14o/5AdVwwBQYDK2VwMCExHzAd
+BgNVBAMMFiouZGV2LnByb2NpdmlzLW9uZS5jb20wHhcNMjMwODE2MTYwOTUxWhcN
+MzUwMjE0MTYwOTUxWjAhMR8wHQYDVQQDDBYqLmRldi5wcm9jaXZpcy1vbmUuY29t
+MCowBQYDK2VwAyEASgRJyZPui8lPLXDEmCMPJr6NOhNluCVU0mUT9SWr71+jgYgw
+gYUwHwYDVR0jBBgwFoAUYSDrfq7B9LW8JqFf8Goypix19fswIQYDVR0RBBowGIIW
+Ki5kZXYucHJvY2l2aXMtb25lLmNvbTAPBgNVHQ8BAf8EBQMDBwYAMB0GA1UdDgQW
+BBRhIOt+rsH0tbwmoV/wajKmLHX1+zAPBgNVHRMBAf8EBTADAQH/MAUGAytlcANB
+AOQMEUipnD5WaMEfgd7HwW3sNf9ksH7velfQTrXvTOz86JJgWHcgyOHT8Mq/c2j/
+4/iRErr7nVno0osnVOpwfA4=
+-----END CERTIFICATE-----";
 
     let trust_entity = context
         .db
@@ -108,7 +109,7 @@ JupK8gddPJ2WCw==
     body["ca"]["subject"].assert_eq(&"CN=*.dev.procivis-one.com".to_owned());
     body["ca"]["commonName"].assert_eq(&"*.dev.procivis-one.com".to_owned());
     body["ca"]["publicKey"]
-        .assert_eq(&"0cf81d4b37df243e75104e0ff21bd1c5cc2cb9501b7db9ffe97a3315b9f8193f".to_owned());
+        .assert_eq(&"4a0449c993ee8bc94f2d70c498230f26be8d3a1365b82554d26513f525abef5f".to_owned());
     body["ca"]["state"].assert_eq(&"ACTIVE".to_owned());
     body["ca"]["serialNumber"]
         .assert_eq(&"73:5a:43:42:c0:dd:f2:4b:21:e8:76:16:0e:cd:78:a3:fe:40:75:5c".to_owned());

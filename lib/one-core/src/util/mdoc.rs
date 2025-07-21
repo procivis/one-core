@@ -16,7 +16,9 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CertificateDetails;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::util::cose::CoseSign1;
 
 const EMBEDDED_CBOR_TAG: u64 = 24;
@@ -316,8 +318,14 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
             })?;
     let chain = encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF));
 
+    let validation_context = if verify {
+        CertificateValidationOptions::signature_and_revocation()
+    } else {
+        CertificateValidationOptions::no_validation()
+    };
+
     let ParsedCertificate { attributes, .. } = certificate_validator
-        .parse_pem_chain(chain.as_bytes(), verify)
+        .parse_pem_chain(chain.as_bytes(), validation_context)
         .await
         .map_err(|err| FormatterError::Failed(format!("Failed to validate pem chain: {err}")))?;
 

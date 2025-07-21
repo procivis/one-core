@@ -1,5 +1,6 @@
 use rcgen::{
-    CertificateParams, CertificateRevocationListParams, CrlDistributionPoint, RevokedCertParams,
+    CertificateParams, CertificateRevocationListParams, CrlDistributionPoint, CustomExtension,
+    KeyUsagePurpose, RevokedCertParams,
 };
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -248,4 +249,96 @@ async fn test_create_certificate_identifier_cert_already_exists() {
 
     assert_eq!(result.status(), 400);
     assert_eq!(result.error_code().await, "BR_0247");
+}
+
+#[tokio::test]
+async fn test_create_certificate_identifier_unknown_critical_extension() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let mut ca_params = CertificateParams::default();
+    let mut custom_extension = CustomExtension::new_acme_identifier(&[0; 32]);
+    custom_extension.set_criticality(true);
+    ca_params.custom_extensions = vec![custom_extension];
+
+    let ca_cert = create_ca_cert(ca_params, eddsa::key());
+    let chain = format!("{}{}", ca_cert.pem(), ca_cert.pem());
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0248");
+}
+
+#[tokio::test]
+async fn test_create_certificate_identifier_ca_incorrect_key_usage() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // CA with incorrect key usage (missing KeyCertSign)
+    let mut ca_params = CertificateParams::default();
+    ca_params.key_usages = vec![KeyUsagePurpose::DigitalSignature]; // Missing KeyCertSign
+    let ca_cert = create_ca_cert(ca_params, eddsa::key());
+
+    // Leaf certificate
+    let mut leaf_params = CertificateParams::default();
+    leaf_params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+    let leaf_cert = create_cert(leaf_params, ecdsa::key(), &ca_cert, eddsa::key());
+
+    let chain = format!("{}{}", leaf_cert.pem(), ca_cert.pem());
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0249");
+}
+
+#[tokio::test]
+async fn test_create_certificate_identifier_missing_digital_signature() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // CA with proper key usage
+    let mut ca_params = CertificateParams::default();
+    ca_params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+    let ca_cert = create_ca_cert(ca_params, eddsa::key());
+
+    // End-entity certificate missing DigitalSignature
+    let mut cert_params = CertificateParams::default();
+    cert_params.key_usages = vec![KeyUsagePurpose::KeyEncipherment]; // Missing DigitalSignature
+    let cert = create_cert(cert_params, ecdsa::key(), &ca_cert, eddsa::key());
+
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0249"); // Key usage violation
 }

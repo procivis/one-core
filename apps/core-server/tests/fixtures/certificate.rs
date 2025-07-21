@@ -3,7 +3,8 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, CertificateRevocationList,
-    CertificateRevocationListParams, DistinguishedName, DnType, IsCa, KeyPair, RemoteKeyPair,
+    CertificateRevocationListParams, DistinguishedName, DnType, IsCa, KeyPair, KeyUsagePurpose,
+    RemoteKeyPair,
 };
 use time::{Duration, OffsetDateTime};
 
@@ -194,11 +195,20 @@ pub mod eddsa {
 
 pub(crate) fn create_ca_cert(mut params: CertificateParams, key: InputKey) -> Certificate {
     let key = KeyPair::from_remote(key).unwrap();
-    params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+
+    params.is_ca = if params.is_ca == IsCa::NoCa {
+        IsCa::Ca(BasicConstraints::Unconstrained)
+    } else {
+        params.is_ca
+    };
+
     params.use_authority_key_identifier_extension = true;
     let mut distinguished_name = DistinguishedName::new();
     distinguished_name.push(DnType::CommonName, "CA cert");
     params.distinguished_name = distinguished_name;
+    if params.key_usages.is_empty() {
+        params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+    }
 
     let min_not_before = OffsetDateTime::now_utc()
         .checked_sub(Duration::weeks(100))
@@ -226,6 +236,9 @@ pub(crate) fn create_cert(
     let key = KeyPair::from_remote(key).unwrap();
     let issuer_key = KeyPair::from_remote(issuer_key).unwrap();
 
+    if params.key_usages.is_empty() {
+        params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+    }
     params.use_authority_key_identifier_extension = true;
     let mut distinguished_name = DistinguishedName::new();
     distinguished_name.push(DnType::CommonName, "test cert");
@@ -240,6 +253,31 @@ pub(crate) fn create_cert(
         params.not_after = parent_not_after;
     }
     params.signed_by(&key, issuer, &issuer_key).unwrap()
+}
+
+pub(crate) fn create_intermediate_ca_cert(
+    mut params: CertificateParams,
+    key: InputKey,
+    issuer: &Certificate,
+    issuer_key: InputKey,
+) -> Certificate {
+    params.is_ca = if params.is_ca == IsCa::NoCa {
+        IsCa::Ca(BasicConstraints::Unconstrained)
+    } else {
+        params.is_ca
+    };
+
+    if params.key_usages.is_empty() {
+        params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+    }
+
+    if params.distinguished_name.iter().next().is_none() {
+        let mut distinguished_name = DistinguishedName::new();
+        distinguished_name.push(DnType::CommonName, "Intermediate CA");
+        params.distinguished_name = distinguished_name;
+    }
+
+    create_cert(params, key, issuer, issuer_key)
 }
 
 pub(crate) fn create_crl(

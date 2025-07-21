@@ -28,7 +28,9 @@ use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -336,7 +338,10 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                         FormatterError::Failed(format!("failed to parse x5c header param: {err}"))
                     })?;
                     let ParsedCertificate { attributes, .. } = certificate_validator
-                        .parse_pem_chain(chain.as_bytes(), true)
+                        .parse_pem_chain(
+                            chain.as_bytes(),
+                            CertificateValidationOptions::signature_and_revocation(),
+                        )
                         .await
                         .map_err(|err| {
                             FormatterError::Failed(format!(

@@ -10,6 +10,8 @@ use crate::model::certificate::CertificateState;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::service::certificate::validator::CertificateValidationOptions;
+use crate::service::certificate::validator::x509_extension::validate_key_usage;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
 use crate::util::x509::{authority_key_identifier, subject_key_identifier};
 
@@ -18,7 +20,7 @@ impl CertificateValidator for CertificateValidatorImpl {
     async fn parse_pem_chain(
         &self,
         pem_chain: &[u8],
-        validate: bool,
+        validation_context: CertificateValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError> {
         let mut result: Option<ParsedCertificate> = None;
 
@@ -36,6 +38,7 @@ impl CertificateValidator for CertificateValidatorImpl {
             .iter()
             .zip(certs.iter().skip(1).map(Some).chain(std::iter::once(None)))
         {
+            validate_key_usage(current)?;
             if result.is_none() {
                 let subject_common_name = current
                     .subject
@@ -50,11 +53,19 @@ impl CertificateValidator for CertificateValidatorImpl {
                     subject_key_identifier: subject_key_identifier(current)?,
                     public_key: self.extract_public_key(current)?,
                 };
-                if validate {
+                if validation_context.validity_check {
                     result = Some(res);
                 } else {
                     return Ok(res);
                 }
+            }
+
+            if validation_context.require_root_termination {
+                self.validate_root_ca_termination(&certs)?;
+            }
+
+            if validation_context.validate_path_length {
+                self.validate_path_length(&certs)?;
             }
 
             if !current.validity().is_valid() {
@@ -177,6 +188,9 @@ impl CertificateValidator for CertificateValidatorImpl {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
+        self.validate_path_length(&ca_certs)?;
+        self.validate_root_ca_termination(&ca_certs)?;
+
         let Some(first_ca_cert) = ca_certs.first() else {
             return Err(ValidationError::InvalidCaCertificateChain(
                 "CA certificate chain is empty".to_string(),
@@ -195,15 +209,14 @@ impl CertificateValidator for CertificateValidatorImpl {
         let mut is_ca_chain = false;
         let mut chain = certs.iter().peekable();
         while let Some(current_cert) = chain.next() {
+            validate_key_usage(current_cert)?;
             if !current_cert.validity().is_valid() {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
+            // This is the root CA
+            // signature is already validated in validate_root_ca_termination
             if is_ca_chain && current_cert.is_ca() && chain.peek().is_none() {
-                // This is the root CA --> check self-signed signature
-                current_cert
-                    .verify_signature(Some(current_cert.public_key()))
-                    .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
                 self.check_revocation(current_cert, Some(current_cert))
                     .await?;
 
@@ -301,6 +314,74 @@ impl CertificateValidatorImpl {
 
         Ok(key_handle)
     }
+
+    /// Validates the path length constraints for each certificate in the chain.
+    /// For each certificate with a BasicConstraints extension and a pathLenConstraint,
+    /// ensures that the number of remaining intermediate CA certificates in the chain does not exceed the constraint.
+    fn validate_path_length(
+        &self,
+        certificate_chain: &[X509Certificate],
+    ) -> Result<(), ServiceError> {
+        use x509_parser::extensions::ParsedExtension;
+
+        // Filter only CA certificates from the chain (leaf -> root order)
+        let ca_certs: Vec<&X509Certificate> = certificate_chain
+            .iter()
+            .filter(|cert| cert.is_ca())
+            .collect();
+
+        for (chain_idx, certificate) in ca_certs.iter().enumerate() {
+            for ext in certificate.extensions() {
+                if let ParsedExtension::BasicConstraints(bc) = &ext.parsed_extension() {
+                    if let Some(path_len_constraint) = bc.path_len_constraint {
+                        // chain_idx is the number of intermediate CAs that "follow" this certificate
+                        let intermediate_cas_following = chain_idx;
+                        if (path_len_constraint as usize) < intermediate_cas_following {
+                            return Err(ValidationError::BasicConstraintsViolation(
+                                format!(
+                                    "Path length constraint={path_len_constraint}, intermediate CAs count={intermediate_cas_following}"
+                                ),
+                            ).into());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_root_ca_termination(
+        &self,
+        certificate_chain: &[X509Certificate],
+    ) -> Result<(), ServiceError> {
+        let Some(terminating_certificate) = certificate_chain.last() else {
+            return Err(ValidationError::InvalidCaCertificateChain(
+                "Certificate chain is empty".to_string(),
+            )
+            .into());
+        };
+
+        if !terminating_certificate.is_ca() {
+            return Err(ValidationError::InvalidCaCertificateChain(
+                "Certificate chain does not terminate to a CA".to_string(),
+            )
+            .into());
+        };
+
+        if terminating_certificate.issuer() != terminating_certificate.subject() {
+            return Err(ValidationError::InvalidCaCertificateChain(
+                "Certificate chain does not terminate to a root CA".to_string(),
+            )
+            .into());
+        }
+
+        // Verify the self-signed signature to ensure it's a legitimate root CA
+        terminating_certificate
+            .verify_signature(Some(terminating_certificate.public_key()))
+            .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
+
+        Ok(())
+    }
 }
 
 pub fn parse_chain_to_x509_attributes(
@@ -333,7 +414,7 @@ fn parse_x509_attributes(
         .extensions()
         .iter()
         .map(x509_extension::parse)
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(CertificateX509AttributesDTO {
         serial_number: certificate.raw_serial_as_string(),

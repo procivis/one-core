@@ -2,14 +2,22 @@ use x509_parser::der_parser::Oid;
 use x509_parser::prelude::{
     AccessDescription, AuthorityKeyIdentifier, CRLDistributionPoint, DistributionPointName,
     ExtendedKeyUsage, FromDer, GeneralName, KeyIdentifier, KeyUsage, ParsedExtension, ReasonFlags,
-    X509Extension, oid_registry,
+    X509Certificate, X509Extension, oid_registry,
 };
 use x509_parser::x509::X509Name;
 
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
+use crate::service::error::ValidationError;
 
-pub(super) fn parse(extension: &X509Extension) -> CertificateX509ExtensionDTO {
+pub(super) fn parse(
+    extension: &X509Extension,
+) -> Result<CertificateX509ExtensionDTO, ValidationError> {
     let values = match extension.parsed_extension() {
+        ParsedExtension::UnsupportedExtension { .. } if extension.critical => {
+            return Err(ValidationError::UnknownCriticalExtension(
+                extension.oid.to_id_string(),
+            ));
+        }
         ParsedExtension::AuthorityKeyIdentifier(key_identifier) => {
             parse_authority_key_identifier(key_identifier)
         }
@@ -39,11 +47,37 @@ pub(super) fn parse(extension: &X509Extension) -> CertificateX509ExtensionDTO {
         _ => vec![hex::encode(extension.value)],
     };
 
-    CertificateX509ExtensionDTO {
+    Ok(CertificateX509ExtensionDTO {
         oid: extension.oid.to_id_string(),
         value: values.join("\n"),
         critical: extension.critical,
+    })
+}
+
+/// Validates key usage constraints according to RFC 5280 section 4.2.1.3
+/// We expect the CA certificate to have keyCertSign usage
+/// End-entity certificates must have digitalSignature usage
+pub(super) fn validate_key_usage(certificate: &X509Certificate) -> Result<(), ValidationError> {
+    let key_usage = certificate
+        .key_usage()
+        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
+        .ok_or(ValidationError::KeyUsageViolation(
+            "Certificate missing Key Usage extension".to_string(),
+        ))?;
+
+    if certificate.is_ca() {
+        if !key_usage.value.key_cert_sign() {
+            return Err(ValidationError::KeyUsageViolation(
+                "CA certificate missing keyCertSign usage".to_string(),
+            ));
+        }
+    } else if !key_usage.value.digital_signature() {
+        return Err(ValidationError::KeyUsageViolation(
+            "End-entity certificate missing DigitalSignature usage".to_string(),
+        ));
     }
+
+    Ok(())
 }
 
 fn parse_authority_key_identifier(key_identifier: &AuthorityKeyIdentifier) -> Vec<String> {

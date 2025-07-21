@@ -23,14 +23,15 @@ pub struct ParsedCertificate {
 #[async_trait::async_trait]
 pub trait CertificateValidator: Send + Sync {
     /// Extract leaf certificate from the provided PEM chain
-    /// Optionally validate the chain, each certificate must be:
-    /// * not expired
-    /// * not revoked
-    /// * correctly signed by the parent cert in the chain
+    /// Optionally validate the chain depending on the options, each certificate must be:
+    /// * not expired if `validity_check` is true
+    /// * not revoked if `validity_check` is true
+    /// * the chain terminates to a root CA if `require_root_termination` is true
+    /// * path length is valid if `validate_path_length` is true
     async fn parse_pem_chain(
         &self,
         pem_chain: &[u8],
-        validate: bool,
+        validate: CertificateValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError>;
 
     async fn parse_pem_chain_with_status(
@@ -46,6 +47,46 @@ pub trait CertificateValidator: Send + Sync {
         pem_chain: &[u8],
         ca_pem_chain: &[u8],
     ) -> Result<ParsedCertificate, ServiceError>;
+}
+
+pub struct CertificateValidationOptions {
+    pub require_root_termination: bool,
+    pub validate_path_length: bool,
+    pub validity_check: bool,
+}
+
+impl CertificateValidationOptions {
+    /// No validation is performed
+    pub fn no_validation() -> Self {
+        Self {
+            require_root_termination: false,
+            validate_path_length: false,
+            validity_check: false,
+        }
+    }
+
+    /// Full validation is performed, each certificate must be:
+    /// * not expired
+    /// * not revoked
+    /// * correctly signed by the parent cert in the chain
+    /// * part of a chain that terminates to a root CA
+    /// * path length is valid
+    pub fn full_validation() -> Self {
+        Self {
+            require_root_termination: true,
+            validate_path_length: true,
+            validity_check: true,
+        }
+    }
+
+    /// Only signature and revocation checks are performed
+    pub fn signature_and_revocation() -> Self {
+        Self {
+            require_root_termination: false,
+            validate_path_length: false,
+            validity_check: true,
+        }
+    }
 }
 
 #[derive(Clone)]

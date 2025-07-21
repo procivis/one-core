@@ -10,7 +10,9 @@ use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifie
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::util::x509::x5c_into_pem_chain;
 
 #[derive(Clone)]
@@ -76,7 +78,10 @@ impl KeyVerification {
 
         let ParsedCertificate { public_key, .. } = self
             .certificate_validator
-            .parse_pem_chain(pem_chain.as_bytes(), true)
+            .parse_pem_chain(
+                pem_chain.as_bytes(),
+                CertificateValidationOptions::signature_and_revocation(),
+            )
             .await
             .map_err(|err| {
                 SignerError::CouldNotVerify(format!("failed to parse certificate chain: {err}"))

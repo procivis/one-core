@@ -44,7 +44,9 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
@@ -289,7 +291,10 @@ pub(crate) async fn get_or_create_certificate_identifier(
         subject_common_name,
         ..
     } = certificate_validator
-        .parse_pem_chain(chain.as_bytes(), false)
+        .parse_pem_chain(
+            chain.as_bytes(),
+            CertificateValidationOptions::no_validation(),
+        )
         .await?;
 
     if attributes.fingerprint != fingerprint {

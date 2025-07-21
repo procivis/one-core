@@ -95,7 +95,9 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::util::history::log_history_event_credential;
@@ -1496,7 +1498,10 @@ async fn handle_credential_invitation(
                     },
                 ..
             } = certificate_validator
-                .parse_pem_chain(issuer_certificate.as_bytes(), true)
+                .parse_pem_chain(
+                    issuer_certificate.as_bytes(),
+                    CertificateValidationOptions::signature_and_revocation(),
+                )
                 .await
                 .map_err(|err| {
                     IssuanceProtocolError::Failed(format!("Invalid issuer certificate: {err}"))

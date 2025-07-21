@@ -26,7 +26,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
 };
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::DecomposedToken;
 use crate::util::key_verification::KeyVerification;
@@ -67,7 +69,10 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         attributes,
         ..
     } = certificate_validator
-        .parse_pem_chain(pem_chain.as_bytes(), true)
+        .parse_pem_chain(
+            pem_chain.as_bytes(),
+            CertificateValidationOptions::signature_and_revocation(),
+        )
         .await
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 

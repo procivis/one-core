@@ -641,6 +641,15 @@ pub enum ValidationError {
 
     #[error("Key must not be remote: `{0}`")]
     KeyMustNotBeRemote(String),
+
+    #[error("Unknown critical X.509 extension: {0}")]
+    UnknownCriticalExtension(String),
+
+    #[error("Certificate key usage violation: {0}")]
+    KeyUsageViolation(String),
+
+    #[error("Basic constraints violation: {0}")]
+    BasicConstraintsViolation(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1240,6 +1249,15 @@ pub enum ErrorCode {
 
     #[strum(message = "Certificate already exists")]
     BR_0247,
+
+    #[strum(message = "Unknown critical X.509 extension")]
+    BR_0248,
+
+    #[strum(message = "Certificate key usage violation")]
+    BR_0249,
+
+    #[strum(message = "Basic constraints violation")]
+    BR_0250,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1464,6 +1482,8 @@ impl ErrorCodeMixin for ValidationError {
             Self::CertificateNotValid => ErrorCode::BR_0213,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
+            Self::UnknownCriticalExtension(_) => ErrorCode::BR_0248,
+            Self::KeyUsageViolation(_) => ErrorCode::BR_0249,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
             Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,
             Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
@@ -1477,6 +1497,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
             Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
+            Self::BasicConstraintsViolation(_) => ErrorCode::BR_0250,
         }
     }
 }

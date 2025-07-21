@@ -4,11 +4,15 @@ use core_server::endpoint::ssi::dto::{
 use core_server::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityTypeRest};
 use ct_codecs::{Base64, Encoder};
 use one_core::model::trust_anchor::TrustAnchor;
+use rcgen::{BasicConstraints, CertificateParams, IsCa};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
+use crate::fixtures::certificate::{
+    create_ca_cert, create_cert, create_intermediate_ca_cert, ecdsa, eddsa,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 
@@ -111,13 +115,16 @@ async fn test_create_ca_trust_entity() {
         .await;
 
     let pem_certificate = "-----BEGIN CERTIFICATE-----
-MIHkMIGXoAMCAQICFGplpJ84r+DSD8MnjFLdyhcQiGc8MAUGAytlcDAAMCAXDTI1
-MDYxNjE1MDQxMloYDzQ3NjMwNTEzMTUwNDEyWjAAMCowBQYDK2VwAyEADPgdSzff
-JD51EE4P8hvRxcwsuVAbfbn/6XozFbn4GT+jITAfMB0GA1UdDgQWBBRsnYgGqNo/
-0Yrapt79gdzc258hbTAFBgMrZXADQQAGooxtr6luOPyLyhJLDTZMz75hzhbokc4Q
-X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
------END CERTIFICATE-----
-";
+MIIBjTCCAT+gAwIBAgIUc1pDQsDd8ksh6HYWDs14o/5AdVwwBQYDK2VwMCExHzAd
+BgNVBAMMFiouZGV2LnByb2NpdmlzLW9uZS5jb20wHhcNMjMwODE2MTYwOTUxWhcN
+MzUwMjE0MTYwOTUxWjAhMR8wHQYDVQQDDBYqLmRldi5wcm9jaXZpcy1vbmUuY29t
+MCowBQYDK2VwAyEASgRJyZPui8lPLXDEmCMPJr6NOhNluCVU0mUT9SWr71+jgYgw
+gYUwHwYDVR0jBBgwFoAUYSDrfq7B9LW8JqFf8Goypix19fswIQYDVR0RBBowGIIW
+Ki5kZXYucHJvY2l2aXMtb25lLmNvbTAPBgNVHQ8BAf8EBQMDBwYAMB0GA1UdDgQW
+BBRhIOt+rsH0tbwmoV/wajKmLHX1+zAPBgNVHRMBAf8EBTADAQH/MAUGAytlcANB
+AOQMEUipnD5WaMEfgd7HwW3sNf9ksH7velfQTrXvTOz86JJgWHcgyOHT8Mq/c2j/
+4/iRErr7nVno0osnVOpwfA4=
+-----END CERTIFICATE-----";
 
     // WHEN
     let resp = context
@@ -425,4 +432,156 @@ async fn test_fail_create_trust_entity_organisation_is_deactivated() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0241", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_create_trust_entity_root_is_not_ca() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    // Create a self-signed non-CA certificate as the "root"
+    let root_ca = create_ca_cert(CertificateParams::default(), eddsa::key());
+
+    let non_ca_root = create_cert(
+        CertificateParams::default(),
+        ecdsa::key(),
+        &root_ca,
+        eddsa::key(),
+    );
+
+    let leaf_cert = create_cert(
+        CertificateParams::default(),
+        ecdsa::key(),
+        &non_ca_root,
+        eddsa::key(),
+    );
+
+    let pem_chain = format!("{}{}", leaf_cert.pem(), non_ca_root.pem());
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create(json!({
+            "name": "test entity",
+            "role": TrustEntityRoleRest::Both,
+            "trustAnchorId": anchor.id,
+            "type": TrustEntityTypeRest::CertificateAuthority,
+            "content": pem_chain,
+            "organisationId": organisation.id,
+        }))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0244", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_create_trust_entity_root_is_intermediate_ca() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    let root_ca = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let intermediate_ca = create_intermediate_ca_cert(
+        CertificateParams::default(),
+        ecdsa::key(),
+        &root_ca,
+        eddsa::key(),
+    );
+
+    let leaf_cert = create_cert(
+        CertificateParams::default(),
+        eddsa::key(),
+        &intermediate_ca,
+        ecdsa::key(),
+    );
+
+    let pem_chain = format!("{}{}", leaf_cert.pem(), intermediate_ca.pem());
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create(json!({
+            "name": "test entity",
+            "role": TrustEntityRoleRest::Both,
+            "trustAnchorId": anchor.id,
+            "type": TrustEntityTypeRest::CertificateAuthority,
+            "content": pem_chain,
+            "organisationId": organisation.id,
+        }))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0244", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_create_trust_entity_path_constraint_violation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    let mut params = CertificateParams::default();
+    params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
+    let root_ca = create_ca_cert(params, eddsa::key());
+
+    let intermediate_ca = create_intermediate_ca_cert(
+        CertificateParams::default(),
+        ecdsa::key(),
+        &root_ca,
+        eddsa::key(),
+    );
+
+    let leaf_cert = create_cert(
+        CertificateParams::default(),
+        eddsa::key(),
+        &intermediate_ca,
+        ecdsa::key(),
+    );
+
+    // Create a chain: leaf -> intermediate -> root (violates path constraint)
+    let pem_chain = format!(
+        "{}{}{}",
+        leaf_cert.pem(),
+        intermediate_ca.pem(),
+        root_ca.pem()
+    );
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create(json!({
+            "name": "test entity with path constraint violation",
+            "role": TrustEntityRoleRest::Both,
+            "trustAnchorId": anchor.id,
+            "type": TrustEntityTypeRest::CertificateAuthority,
+            "content": pem_chain,
+            "organisationId": organisation.id,
+        }))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0250", resp.error_code().await);
 }

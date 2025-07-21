@@ -84,6 +84,21 @@ impl CertificateValidatorImpl {
             .into());
         };
 
+        // check key usage
+        if let Ok(Some(key_usage)) = parent.key_usage() {
+            if !key_usage.value.crl_sign() {
+                return Err(ValidationError::CRLCheckFailed(
+                    "CRL signer certificate key usage does not include crlSign".to_string(),
+                )
+                .into());
+            }
+        } else {
+            return Err(ValidationError::CRLCheckFailed(
+                "Parent CA cert key usage not found".to_string(),
+            )
+            .into());
+        };
+
         let Some(crl_authority_key_identifier) = crl.extensions().iter().find_map(|extension| {
             if let ParsedExtension::AuthorityKeyIdentifier(key_identifier) =
                 extension.parsed_extension()

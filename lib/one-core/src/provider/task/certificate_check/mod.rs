@@ -13,7 +13,7 @@ use crate::model::identifier::{IdentifierRelations, IdentifierState, UpdateIdent
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::service::certificate::validator::CertificateValidator;
+use crate::service::certificate::validator::{CertificateValidationOptions, CertificateValidator};
 use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 
 pub mod dto;
@@ -179,7 +179,10 @@ impl CertificateCheck {
         for certificate in active_certificates.values {
             match self
                 .certificate_validator
-                .parse_pem_chain(certificate.chain.as_bytes(), true)
+                .parse_pem_chain(
+                    certificate.chain.as_bytes(),
+                    CertificateValidationOptions::signature_and_revocation(),
+                )
                 .await
             {
                 Ok(_) => {}
