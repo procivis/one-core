@@ -49,6 +49,7 @@ use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFo
 use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
 use one_core::provider::presentation_formatter::mso_mdoc::MsoMdocPresentationFormatter;
 use one_core::provider::presentation_formatter::provider::PresentationFormatterProviderImpl;
+use one_core::provider::presentation_formatter::sdjwt::SdjwtPresentationFormatter;
 use one_core::provider::presentation_formatter::sdjwt_vc::SdjwtVCPresentationFormatter;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -488,6 +489,14 @@ pub async fn initialize_core(
                     (
                         "JWT".to_owned(),
                         Arc::new(JwtVpPresentationFormatter::new()) as _,
+                    ),
+                    // TODO ONE-6774: Remove once productive holders have been updated to release v1.57+
+                    (
+                        "SD_JWT".to_owned(),
+                        Arc::new(SdjwtPresentationFormatter::new(
+                            client.clone(),
+                            crypto.clone(),
+                        )) as _,
                     ),
                     (
                         "SD_JWT_VC".to_owned(),
