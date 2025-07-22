@@ -236,6 +236,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             proof_exchange_protocols.extend_from_slice(&[
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,
+                VerificationProtocolType::OpenId4VpFinal1_0,
             ]);
             verification_identifier_types.push(IdentifierType::Certificate);
             signing_algorithms

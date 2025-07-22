@@ -69,6 +69,12 @@ verificationProtocol:
           allowedSchemes: ["http", "https"]
         verifier:
           useDcql: true
+  OPENID4VP_FINAL1:
+    params:
+      public:
+        allowInsecureHttpTransport: true
+        redirectUri:
+          allowedSchemes: ["http", "https"]
   OPENID4VP_DRAFT25_EUDI:
     display:
       en: "OpenID4VP draft 25 (EUDI)"
@@ -81,9 +87,11 @@ verificationProtocol:
         urlScheme: eudi-openid4vp
         verifier:
           useDcql: false
-          supportedClientIdSchemes: [x509_san_dns, redirect_uri, verifier_attestation, did]
+          supportedClientIdSchemes:
+            [x509_san_dns, redirect_uri, verifier_attestation, did]
         holder:
-          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]
+          supportedClientIdSchemes:
+            [redirect_uri, verifier_attestation, did, x509_san_dns]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

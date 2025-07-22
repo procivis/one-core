@@ -24,6 +24,7 @@ pub mod draft20;
 pub mod draft20_swiyu;
 pub mod draft25;
 pub mod error;
+pub mod final1_0;
 pub(crate) mod jwe_presentation;
 pub(crate) mod mapper;
 pub(crate) mod mdoc;

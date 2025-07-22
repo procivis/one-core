@@ -447,3 +447,17 @@ fn dcql_path_to_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String
         .collect::<Vec<_>>()
         .join("/")
 }
+
+impl From<FormatType> for dcql::CredentialFormat {
+    fn from(value: FormatType) -> Self {
+        match value {
+            FormatType::Jwt => CredentialFormat::JwtVc,
+            FormatType::PhysicalCard => CredentialFormat::LdpVc,
+            FormatType::SdJwt => CredentialFormat::W3cSdJwt,
+            FormatType::SdJwtVc => CredentialFormat::SdJwt,
+            FormatType::JsonLdClassic => CredentialFormat::LdpVc,
+            FormatType::JsonLdBbsPlus => CredentialFormat::LdpVc,
+            FormatType::Mdoc => CredentialFormat::MsoMdoc,
+        }
+    }
+}

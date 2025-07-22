@@ -57,7 +57,6 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
-use crate::provider::issuance_protocol::BuildCredentialSchemaResponse;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::mapper::{
@@ -80,10 +79,10 @@ use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::Ope
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
     create_credential_offer, get_protocol_base_url,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::utils::{
-    deserialize_interaction_data, serialize_interaction_data,
-};
 use crate::provider::issuance_protocol::openid4vci_draft13::validator::validate_issuer;
+use crate::provider::issuance_protocol::{
+    BuildCredentialSchemaResponse, deserialize_interaction_data, serialize_interaction_data,
+};
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::{KeyProvider, SignatureProviderImpl};
@@ -117,7 +116,6 @@ pub mod service;
 mod test;
 #[cfg(test)]
 mod test_issuance;
-mod utils;
 pub mod validator;
 
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
@@ -890,7 +888,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .to_owned();
 
         let mut interaction_data: HolderInteractionData =
-            deserialize_interaction_data(interaction.data)?;
+            deserialize_interaction_data(interaction.data.as_ref())?;
 
         let token_response = self.holder_fetch_token(&interaction_data, tx_code).await?;
 
@@ -1005,7 +1003,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .to_owned();
 
         let interaction_data: HolderInteractionData =
-            deserialize_interaction_data(interaction.data)?;
+            deserialize_interaction_data(interaction.data.as_ref())?;
 
         let Some(notification_endpoint) = &interaction_data.notification_endpoint else {
             // if there's no notification endpoint specified by the issuer, we cannot notify the deletion
@@ -1595,7 +1593,7 @@ async fn handle_credential_invitation(
             .clone(),
         nonce: None,
     };
-    let data = utils::serialize_interaction_data(&holder_data)?;
+    let data = serialize_interaction_data(&holder_data)?;
 
     let interaction = create_and_store_interaction(
         storage_access,

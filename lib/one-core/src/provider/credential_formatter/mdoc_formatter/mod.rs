@@ -331,6 +331,7 @@ impl CredentialFormatter for MdocFormatter {
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,
+                VerificationProtocolType::OpenId4VpFinal1_0,
                 VerificationProtocolType::IsoMdl,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],

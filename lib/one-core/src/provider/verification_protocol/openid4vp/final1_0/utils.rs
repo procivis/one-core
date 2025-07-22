@@ -6,9 +6,8 @@ use anyhow::Context;
 use shared_types::DidValue;
 use url::Url;
 
-use super::model::{
-    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
-};
+use super::mappers::decode_client_id_with_scheme;
+use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
@@ -33,13 +32,16 @@ use crate::util::key_verification::KeyVerification;
 use crate::util::x509::{is_dns_name_matching, x5c_into_pem_chain};
 
 async fn parse_referenced_data_from_x509_san_dns_token(
-    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
+    request_token: DecomposedToken<AuthorizationRequest>,
     certificate_validator: &Arc<dyn CertificateValidator>,
-) -> Result<(OpenID4VP20AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
+) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
     let x5c = request_token
         .header
         .x5c
         .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
+
+    let (client_id, _) =
+        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
 
     let pem_chain = x5c_into_pem_chain(&x5c)
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
@@ -69,7 +71,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     // x509 SAN must match client_id
-    validate_san_dns_matching_client_id(&attributes, &request_token.payload.custom.client_id)?;
+    validate_san_dns_matching_client_id(&attributes, &client_id)?;
 
     // The response_uri must match client_id
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-5.7-12.2.1
@@ -80,11 +82,8 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .as_ref()
         .is_none_or(|response_uri| {
             !response_uri.domain().is_some_and(|response_domain| {
-                request_token.payload.custom.client_id == response_domain
-                    || is_dns_name_matching(
-                        &format!("*.{}", request_token.payload.custom.client_id),
-                        response_domain,
-                    )
+                client_id == response_domain
+                    || is_dns_name_matching(&format!("*.{client_id}"), response_domain)
             })
         })
     {
@@ -104,10 +103,10 @@ async fn parse_referenced_data_from_x509_san_dns_token(
 }
 
 async fn parse_referenced_data_from_did_signed_token(
-    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
+    request_token: DecomposedToken<AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-) -> Result<(OpenID4VP20AuthorizationRequest, DidValue), VerificationProtocolError> {
+) -> Result<(AuthorizationRequest, DidValue), VerificationProtocolError> {
     let client_id = request_token.payload.custom.client_id.clone();
 
     let Some(kid) = request_token.header.key_id.clone() else {
@@ -157,11 +156,11 @@ async fn parse_referenced_data_from_did_signed_token(
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
-    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
+    request_token: DecomposedToken<AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
-) -> Result<(OpenID4VP20AuthorizationRequest, Option<String>), VerificationProtocolError> {
+) -> Result<(AuthorizationRequest, Option<String>), VerificationProtocolError> {
     let attestation_jwt = request_token
         .header
         .jwt
@@ -241,113 +240,66 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         ))?;
 
     Ok((
-        OpenID4VP20AuthorizationRequest {
+        AuthorizationRequest {
             client_id,
-            client_id_scheme: Some(ClientIdScheme::VerifierAttestation),
             ..request_token.payload.custom
         },
         attestation_jwt.payload.issuer,
     ))
 }
 
-pub(crate) async fn interaction_data_from_openid4vp_20_query(
-    query: &str,
+async fn retrieve_authorization_params_by_reference(
+    query_params: AuthorizationRequestQueryParams,
+    url: Url,
     client: &Arc<dyn HttpClient>,
-    allow_insecure_http_transport: bool,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
-    params: &OpenID4Vp20Params,
-) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
-    let query_params: OpenID4VP20AuthorizationRequestQueryParams = serde_qs::from_str(query)
-        .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+    params: &Params,
+) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
+    let token = client
+        .get(url.as_str())
+        .header("Accept", "application/oauth-authz-req+jwt")
+        .send()
+        .await
+        .context("Error calling request_uri")
+        .and_then(|r| r.error_for_status().context("Response status error"))
+        .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
+        .map_err(VerificationProtocolError::Transport)?;
 
-    let mut request = query_params.request.to_owned();
-    if let Some(request_uri) = &query_params.request_uri {
-        if request.is_some() {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "request and request_uri cannot be set together".to_string(),
-            ));
-        }
+    let request_token: DecomposedToken<AuthorizationRequest> = Jwt::decompose_token(&token)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-        let request_uri = Url::parse(request_uri)
-            .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
-
-        if !allow_insecure_http_transport && request_uri.scheme() != "https" {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "request_uri must use HTTPS scheme".to_string(),
-            ));
-        }
-
-        let token = client
-            .get(request_uri.as_str())
-            .header("Accept", "application/oauth-authz-req+jwt")
-            .send()
-            .await
-            .context("Error calling request_uri")
-            .and_then(|r| r.error_for_status().context("Response status error"))
-            .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
-            .map_err(VerificationProtocolError::Transport)?;
-
-        request = Some(token);
-    }
-
-    let query_client_id_scheme = query_params.client_id_scheme;
-    if let Some(client_id_scheme) = &query_client_id_scheme {
-        if request.is_none() && client_id_scheme != &ClientIdScheme::RedirectUri {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "request or request_uri missing for client_id_scheme {client_id_scheme}",
-            )));
-        }
-    }
-
-    let interaction_data: OpenID4VP20AuthorizationRequest = query_params.try_into()?;
-    let mut interaction_data: OpenID4VPHolderInteractionData = interaction_data.into();
-
-    if let Some(token) = request {
-        let request_token: DecomposedToken<OpenID4VP20AuthorizationRequest> =
-            Jwt::decompose_token(&token)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        // If the `client_id_scheme` was not present in the params but is contained in the request token,
-        // override the fallback `client_id_scheme`.
-        // Yes this is hacky, but in draft 24+ of OID4VP, the `client_id_scheme` will be contained within
-        // `client_id`, so this special case can be removed again.
-        // TODO OPENID4VP draft 24+: remove this if-block
-        if query_client_id_scheme.is_none() {
-            if let Some(client_id_scheme) = request_token.payload.custom.client_id_scheme {
-                interaction_data.client_id_scheme = client_id_scheme;
-            }
-        }
-
-        // accept non-conformant audience with a warning
-        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
-        if let Some(audience) = &request_token.payload.audience {
-            if audience.len() != 1 {
-                tracing::warn!("Invalid `aud` claim, {} items", audience.len());
-            } else {
-                let aud = audience.first();
-                if aud != Some(&"https://self-issued.me/v2".to_string()) {
-                    tracing::warn!("Invalid `aud` claim: {aud:?}");
-                }
-            }
+    if let Some(audience) = &request_token.payload.audience {
+        if audience.len() != 1 {
+            tracing::warn!("Invalid `aud` claim, {} items", audience.len());
         } else {
-            tracing::warn!("`aud` claim missing in request JWT payload");
+            let aud = audience.first();
+            if aud != Some(&"https://self-issued.me/v2".to_string()) {
+                tracing::warn!("Invalid `aud` claim: {aud:?}");
+            }
         }
+    } else {
+        tracing::warn!("`aud` claim missing in request JWT payload");
+    }
 
-        if !params
-            .holder
-            .supported_client_id_schemes
-            .contains(&interaction_data.client_id_scheme)
-        {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "Unsupported client_id_scheme".into(),
-            ));
-        }
+    let (_, client_id_scheme) =
+        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
 
-        let (referenced_params, verifier_details) = match &interaction_data.client_id_scheme {
+    if !params
+        .holder
+        .supported_client_id_schemes
+        .contains(&client_id_scheme)
+    {
+        return Err(VerificationProtocolError::InvalidRequest(
+            "Unsupported client_id_scheme".into(),
+        ));
+    }
+
+    let (referenced_params, verifier_details): (AuthorizationRequest, Option<IdentifierDetails>) =
+        match client_id_scheme {
             ClientIdScheme::VerifierAttestation => {
-                let (params, did) = parse_referenced_data_from_verifier_attestation_token(
+                let (request, did) = parse_referenced_data_from_verifier_attestation_token(
                     request_token,
                     key_algorithm_provider,
                     did_method_provider,
@@ -355,7 +307,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
                 )
                 .await?;
                 (
-                    params,
+                    request,
                     did.as_deref()
                         .map(DidValue::from_str)
                         .transpose()
@@ -364,15 +316,6 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
                 )
             }
             ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
-            ClientIdScheme::Did => {
-                let (params, did) = parse_referenced_data_from_did_signed_token(
-                    request_token,
-                    key_algorithm_provider,
-                    did_method_provider,
-                )
-                .await?;
-                (params, Some(IdentifierDetails::Did(did)))
-            }
             ClientIdScheme::X509SanDns => {
                 let (params, certificate) = parse_referenced_data_from_x509_san_dns_token(
                     request_token,
@@ -381,29 +324,84 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
                 .await?;
                 (params, Some(IdentifierDetails::Certificate(certificate)))
             }
+            ClientIdScheme::Did => {
+                let (request, did) = parse_referenced_data_from_did_signed_token(
+                    request_token,
+                    key_algorithm_provider,
+                    did_method_provider,
+                )
+                .await?;
+                (request, Some(IdentifierDetails::Did(did)))
+            }
         };
 
-        // client_id from the query params must match client_id inside the token
-        if referenced_params.client_id != interaction_data.client_id {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "client_id mismatch with the request token".to_string(),
-            ));
-        }
-
-        // use referenced params
-        interaction_data = referenced_params.into();
-        interaction_data.verifier_details = verifier_details;
-    }
-
-    if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()
-    {
+    // client_id from the query params must match client_id inisde the token
+    if referenced_params.client_id != query_params.client_id {
         return Err(VerificationProtocolError::InvalidRequest(
-            "client_metadata and client_metadata_uri cannot be set together".to_string(),
+            "client_id mismatch with the request token".to_string(),
         ));
     }
 
-    if interaction_data.presentation_definition.is_some()
-        && interaction_data.presentation_definition_uri.is_some()
+    Ok((referenced_params, verifier_details))
+}
+
+pub(crate) async fn interaction_data_from_openid4vp_query(
+    query: &str,
+    client: &Arc<dyn HttpClient>,
+    allow_insecure_http_transport: bool,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
+    params: &Params,
+) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
+    let query_params: AuthorizationRequestQueryParams = serde_qs::from_str(query)
+        .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+
+    let (mut authorization_request, verifier_details) =
+        match (&query_params.request_uri, &query_params.request) {
+            (Some(_), Some(_)) => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "request and request_uri cannot be set together".to_string(),
+                ));
+            }
+            (Some(request_uri), None) => {
+                let request_uri = Url::parse(request_uri)
+                    .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+
+                if !allow_insecure_http_transport && request_uri.scheme() != "https" {
+                    return Err(VerificationProtocolError::InvalidRequest(
+                        "request_uri must use HTTPS scheme".to_string(),
+                    ));
+                }
+
+                Ok(retrieve_authorization_params_by_reference(
+                    query_params,
+                    request_uri,
+                    client,
+                    did_method_provider,
+                    key_algorithm_provider,
+                    certificate_validator,
+                    params,
+                )
+                .await?)
+            }
+            (None, Some(request)) => {
+                let authorization_request = serde_json::from_str(request).map_err(|e| {
+                    VerificationProtocolError::InvalidRequest(format!(
+                        "Failed to parse request: {e}"
+                    ))
+                })?;
+                Ok((authorization_request, None))
+            }
+            (None, None) => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "request or request_uri is required".to_string(),
+                ));
+            }
+        }?;
+
+    if authorization_request.presentation_definition.is_some()
+        && authorization_request.presentation_definition_uri.is_some()
     {
         return Err(VerificationProtocolError::InvalidRequest(
             "presentation_definition and presentation_definition_uri cannot be set together"
@@ -411,32 +409,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
         ));
     }
 
-    if let Some(ref metadata) = params.predefined_client_metadata {
-        interaction_data.client_metadata = Some(metadata.clone());
-    } else if let Some(client_metadata_uri) = &interaction_data.client_metadata_uri {
-        if !allow_insecure_http_transport && client_metadata_uri.scheme() != "https" {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "client_metadata_uri must use HTTPS scheme".to_string(),
-            ));
-        }
-
-        let client_metadata = client
-            .get(client_metadata_uri.as_str())
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(VerificationProtocolError::Transport)?;
-
-        interaction_data.client_metadata = Some(client_metadata);
-    }
-
-    if let Some(presentation_definition_uri) = &interaction_data.presentation_definition_uri {
+    if let Some(presentation_definition_uri) = &authorization_request.presentation_definition_uri {
         if !allow_insecure_http_transport && presentation_definition_uri.scheme() != "https" {
             return Err(VerificationProtocolError::InvalidRequest(
                 "presentation_definition_uri must use HTTPS scheme".to_string(),
@@ -456,10 +429,10 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
             .context("parsing error")
             .map_err(VerificationProtocolError::Transport)?;
 
-        interaction_data.presentation_definition = Some(presentation_definition);
+        authorization_request.presentation_definition = Some(presentation_definition);
     }
 
-    Ok(interaction_data)
+    Ok((authorization_request, verifier_details))
 }
 
 pub(crate) fn validate_interaction_data(
@@ -625,6 +598,14 @@ pub(crate) fn validate_interaction_data(
         return Err(VerificationProtocolError::InvalidRequest(
             "nonce must be set".to_string(),
         ));
+    }
+
+    if interaction_data.presentation_definition.is_some() && interaction_data.dcql_query.is_some() {
+        return Err(
+            VerificationProtocolError::InvalidDcqlQueryOrPresentationDefinition(
+                "'presentation_definition' and 'dcql_query' must not both be set".to_string(),
+            ),
+        );
     }
 
     Ok(())

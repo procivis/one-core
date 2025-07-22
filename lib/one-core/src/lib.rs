@@ -57,6 +57,7 @@ use crate::service::history::HistoryService;
 use crate::service::identifier::IdentifierService;
 use crate::service::key::KeyService;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
+use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::revocation_list::RevocationListService;
 pub mod config;
 pub mod provider;
@@ -146,6 +147,7 @@ pub struct OneCore {
     pub oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService,
     pub oid4vp_draft20_service: OID4VPDraft20Service,
     pub oid4vp_draft25_service: OID4VPDraft25Service,
+    pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub task_service: TaskService,
@@ -641,6 +643,23 @@ impl OneCore {
                 data_provider.get_certificate_repository(),
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
+                data_provider.get_credential_repository(),
+                data_provider.get_proof_repository(),
+                data_provider.get_key_repository(),
+                key_provider.clone(),
+                config.clone(),
+                data_provider.get_did_repository(),
+                data_provider.get_identifier_repository(),
+                credential_formatter_provider.clone(),
+                presentation_formatter_provider.clone(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                revocation_method_provider.clone(),
+                data_provider.get_validity_credential_repository(),
+                certificate_validator.clone(),
+                data_provider.get_certificate_repository(),
+            ),
+            oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_key_repository(),

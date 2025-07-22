@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use url::Url;
 
@@ -33,21 +32,6 @@ use crate::util::jwt::Jwt;
 use crate::util::jwt::model::DecomposedToken;
 use crate::util::key_verification::KeyVerification;
 use crate::util::x509::{is_dns_name_matching, x5c_into_pem_chain};
-
-pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
-    data: Option<Vec<u8>>,
-) -> Result<DataDTO, VerificationProtocolError> {
-    let data = data.as_ref().ok_or(VerificationProtocolError::Failed(
-        "interaction data is missing".to_string(),
-    ))?;
-    serde_json::from_slice(data).map_err(VerificationProtocolError::JsonError)
-}
-
-pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
-    dto: &DataDTO,
-) -> Result<Vec<u8>, VerificationProtocolError> {
-    serde_json::to_vec(&dto).map_err(VerificationProtocolError::JsonError)
-}
 
 async fn parse_referenced_data_from_x509_san_dns_token(
     request_token: DecomposedToken<OpenID4VP25AuthorizationRequest>,

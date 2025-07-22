@@ -8,10 +8,7 @@ use model::OpenID4Vp20Params;
 use one_crypto::utilities;
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use utils::{
-    deserialize_interaction_data, interaction_data_from_openid4vp_20_query,
-    serialize_interaction_data, validate_interaction_data,
-};
+use utils::{interaction_data_from_openid4vp_20_query, validate_interaction_data};
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
@@ -38,7 +35,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::CredentialToPresent;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
     UpdateResponse, VerificationProtocolCapabilities,
@@ -59,6 +55,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
     get_client_id_scheme,
+};
+use crate::provider::verification_protocol::{
+    VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
@@ -323,7 +322,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
 
         let credential_presentations = explode_validity_credentials(credential_presentations);
         let interaction_data: OpenID4VPHolderInteractionData =
-            deserialize_interaction_data(interaction.data)?;
+            deserialize_interaction_data(interaction.data.as_ref())?;
 
         let format = map_presented_credentials_to_presentation_format_type(
             &credential_presentations,

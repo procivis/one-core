@@ -2,14 +2,15 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
+use dcql::create_dcql_query;
 use futures::future::BoxFuture;
-use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_scheme};
-use model::OpenID4Vp25Params;
+use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
+use model::Params;
 use one_crypto::utilities;
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use utils::{interaction_data_from_openid4vp_25_query, validate_interaction_data};
+use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
@@ -45,7 +46,6 @@ use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
-use crate::provider::verification_protocol::openid4vp::draft25::dcql::create_dcql_query;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
 };
@@ -79,7 +79,7 @@ const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
 const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
 
-pub(crate) struct OpenID4VP25HTTP {
+pub(crate) struct OpenID4VPFinal1_0 {
     client: Arc<dyn HttpClient>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -88,7 +88,7 @@ pub(crate) struct OpenID4VP25HTTP {
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
-    params: OpenID4Vp25Params,
+    params: Params,
     config: Arc<CoreConfig>,
 }
 
@@ -97,7 +97,7 @@ struct EncryptionInfo {
     alg: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
 }
 
-impl OpenID4VP25HTTP {
+impl OpenID4VPFinal1_0 {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         base_url: Option<String>,
@@ -108,7 +108,7 @@ impl OpenID4VP25HTTP {
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
-        params: OpenID4Vp25Params,
+        params: Params,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
@@ -341,7 +341,7 @@ impl OpenID4VP25HTTP {
 
 #[allow(clippy::too_many_arguments)]
 #[async_trait::async_trait]
-impl VerificationProtocol for OpenID4VP25HTTP {
+impl VerificationProtocol for OpenID4VPFinal1_0 {
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
         Ok(())
     }
@@ -589,7 +589,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         let Some(base_url) = &self.base_url else {
             return Err(VerificationProtocolError::Failed("Missing base_url".into()));
         };
-        let response_uri = format!("{base_url}/ssi/openid4vp/draft-25/response");
+        let response_uri = format!("{base_url}/ssi/openid4vp/final-1.0/response");
         let nonce = utilities::generate_alphanumeric(32);
 
         let verifier_identifier =
@@ -683,7 +683,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             response_uri: Some(response_uri),
         };
 
-        let offer = create_openid4vp25_authorization_request(
+        let offer = create_openid4vp_final1_0_authorization_request(
             base_url,
             &self.params,
             client_id,
@@ -835,7 +835,7 @@ async fn handle_proof_invitation(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
-    params: &OpenID4Vp25Params,
+    params: &Params,
 ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
     let query = url
         .query()
@@ -844,7 +844,7 @@ async fn handle_proof_invitation(
         ))?;
 
     let holder_interaction_data = {
-        let (interaction_data, verifier_details) = interaction_data_from_openid4vp_25_query(
+        let (interaction_data, verifier_details) = interaction_data_from_openid4vp_query(
             query,
             client,
             allow_insecure_http_transport,
@@ -881,7 +881,7 @@ async fn handle_proof_invitation(
     let proof_id = Uuid::new_v4().into();
     let proof = proof_from_handle_invitation(
         &proof_id,
-        VerificationProtocolType::OpenId4VpDraft25.as_ref(),
+        VerificationProtocolType::OpenId4VpFinal1_0.as_ref(),
         holder_interaction_data.redirect_uri,
         None,
         interaction,

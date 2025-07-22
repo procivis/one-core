@@ -37,6 +37,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp20SwiyuParams;
+use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::certificate::validator::CertificateValidator;
@@ -65,7 +66,6 @@ pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     serde_json::from_slice(data).map_err(VerificationProtocolError::JsonError)
 }
 
-#[cfg(test)]
 pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
     dto: &DataDTO,
 ) -> Result<Vec<u8>, VerificationProtocolError> {
@@ -101,6 +101,32 @@ pub(crate) fn verification_protocol_providers_from_config(
                     did_method_provider.clone(),
                     certificate_validator.clone(),
                 ));
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
+                providers.insert(name.to_string(), protocol);
+            }
+            VerificationProtocolType::OpenId4VpFinal1_0 => {
+                use openid4vp::final1_0::model::Params;
+                let params = fields.deserialize::<Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+
+                let final1_0 = OpenID4VPFinal1_0::new(
+                    core_base_url.clone(),
+                    credential_formatter_provider.clone(),
+                    presentation_formatter_provider.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    key_provider.clone(),
+                    certificate_validator.clone(),
+                    client.clone(),
+                    params.clone(),
+                    config.clone(),
+                );
+
+                let protocol = Arc::new(final1_0);
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }

@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 use openid4vci_draft13::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO,
 };
+use serde::Serialize;
 use serde::de::Deserialize;
 use serde_json::json;
 use shared_types::CredentialId;
@@ -57,6 +58,12 @@ pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
         "interaction data is missing".to_string(),
     ))?;
     serde_json::from_slice(data).map_err(IssuanceProtocolError::JsonError)
+}
+
+pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
+    dto: &DataDTO,
+) -> Result<Vec<u8>, IssuanceProtocolError> {
+    serde_json::to_vec(&dto).map_err(IssuanceProtocolError::JsonError)
 }
 
 #[allow(clippy::too_many_arguments)]

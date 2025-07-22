@@ -137,10 +137,23 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         redirectUri:
                             enabled: true
                             allowedSchemes: [ https ]
+            OPENID4VP_FINAL1:
+                display: 'display'
+                order: 3
+                type: 'OPENID4VP_FINAL1'
+                params:
+                    public:
+                        verifier:
+                            supportedClientIdSchemes: [ verifier_attestation, redirect_uri, did ]
+                        holder:
+                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+                        redirectUri:
+                            enabled: true
+                            allowedSchemes: [ https ]
             ISO_MDL:
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'
-                order: 3
+                order: 4
         revocation:
             NONE:
                 display: 'revocation.none'
@@ -469,6 +482,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         proof_exchange_protocols: vec![
             VerificationProtocolType::OpenId4VpDraft20,
             VerificationProtocolType::OpenId4VpDraft25,
+            VerificationProtocolType::OpenId4VpFinal1_0,
         ],
         revocation_methods: vec![
             RevocationType::None,

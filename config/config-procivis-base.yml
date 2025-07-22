@@ -121,9 +121,11 @@ verificationProtocol:
       public:
         useRequestUri: true
         verifier:
-          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
+          supportedClientIdSchemes:
+            [verifier_attestation, redirect_uri, did, x509_san_dns]
         holder:
-          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
+          supportedClientIdSchemes:
+            [verifier_attestation, redirect_uri, did, x509_san_dns]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -151,9 +153,29 @@ verificationProtocol:
         useRequestUri: true
         verifier:
           useDcql: false
-          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
+          supportedClientIdSchemes:
+            [verifier_attestation, redirect_uri, did, x509_san_dns]
         holder:
-          supportedClientIdSchemes: [verifier_attestation, redirect_uri, did, x509_san_dns]
+          supportedClientIdSchemes:
+            [verifier_attestation, redirect_uri, did, x509_san_dns]
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+  OPENID4VP_FINAL1:
+    display: "exchange.openid4vpFinal1"
+    order: 4
+    type: "OPENID4VP_FINAL1"
+    params:
+      public:
+        useRequestUri: true
+        urlScheme: openid4vp-final
+        verifier:
+          useDcql: true
+          supportedClientIdSchemes:
+            [verifier_attestation, redirect_uri, did, x509_san_dns]
+        holder:
+          supportedClientIdSchemes:
+            [verifier_attestation, redirect_uri, did, x509_san_dns]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -161,7 +183,7 @@ verificationProtocol:
     display:
       en: "OpenID4VP draft 20 (SWIYU)"
       de: "OpenID4VP draft 20 (SWIYU)"
-    order: 7
+    order: 9
     type: "OPENID4VP_DRAFT20_SWIYU"
     params:
       public:

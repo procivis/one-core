@@ -177,6 +177,10 @@ pub(super) fn validate_redirect_uri(
             let exchange_params: OpenID4Vp25Params = config.get(exchange)?;
             Some(exchange_params.redirect_uri)
         }
+        VerificationProtocolType::OpenId4VpFinal1_0 => {
+            let exchange_params: crate::provider::verification_protocol::openid4vp::final1_0::model::Params = config.get(exchange)?;
+            Some(exchange_params.redirect_uri)
+        }
         _ => None,
     };
 

@@ -376,6 +376,23 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 get(ssi::verification::draft25::controller::oid4vp_draft25_client_request),
             )
             .route(
+                "/ssi/openid4vp/final-1.0/response",
+                post(ssi::verification::final1_0::controller::oid4vp_final1_0_direct_post)
+                    .layer(DefaultBodyLimit::disable()),
+            )
+            .route(
+                "/ssi/openid4vp/final-1.0/{id}/presentation-definition",
+                get(ssi::verification::final1_0::controller::oid4vp_final1_0_presentation_definition),
+            )
+            .route(
+                "/ssi/openid4vp/final-1.0/{id}/client-metadata",
+                get(ssi::verification::final1_0::controller::oid4vp_final1_0_client_metadata),
+            )
+            .route(
+                "/ssi/openid4vp/final-1.0/{id}/client-request",
+                get(ssi::verification::final1_0::controller::oid4vp_final1_0_client_request),
+            )
+            .route(
                 "/ssi/revocation/v1/list/{id}",
                 get(ssi::controller::get_revocation_list_by_id),
             )

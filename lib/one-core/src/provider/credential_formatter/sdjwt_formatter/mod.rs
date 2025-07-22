@@ -199,6 +199,7 @@ impl CredentialFormatter for SDJWTFormatter {
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,
+                VerificationProtocolType::OpenId4VpFinal1_0,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
             revocation_methods: vec![
