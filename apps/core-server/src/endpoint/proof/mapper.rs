@@ -31,6 +31,10 @@ impl From<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue>
         let proof_ids = value.ids.map(ProofFilterValue::ProofIds);
         let proof_schema_ids = value.proof_schema_ids.map(ProofFilterValue::ProofSchemaIds);
 
-        organisation_id & name & proof_states & proof_roles & proof_schema_ids & proof_ids
+        let profile = value
+            .profile
+            .map(|profile| ProofFilterValue::Profile(StringMatch::equals(profile)));
+
+        organisation_id & name & proof_states & proof_roles & proof_schema_ids & proof_ids & profile
     }
 }

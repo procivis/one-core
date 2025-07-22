@@ -61,6 +61,7 @@ async fn test_share_proof_success() {
         "OPENID4VP_DRAFT20",
         None,
         Some(&key),
+        None,
     )
     .await;
 
@@ -480,6 +481,7 @@ async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
         "OPENID4VP_DRAFT20",
         None,
         Some(&key),
+        None,
     )
     .await;
 

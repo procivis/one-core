@@ -414,6 +414,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     }
 }
 
@@ -491,6 +492,7 @@ async fn test_share_proof_with_use_request_uri() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     };
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));

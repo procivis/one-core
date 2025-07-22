@@ -855,6 +855,7 @@ fn dummy_credential() -> Credential {
         }),
         key: None,
         revocation_list: None,
+        profile: None,
     }
 }
 

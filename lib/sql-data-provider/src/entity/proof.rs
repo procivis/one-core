@@ -20,6 +20,7 @@ pub struct Model {
     pub role: ProofRole,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
+    pub profile: Option<String>,
 
     pub verifier_identifier_id: Option<IdentifierId>,
     pub holder_identifier_id: Option<IdentifierId>,

@@ -761,11 +761,64 @@ async fn test_get_list_credential_filter_by_everything() {
 }
 
 #[tokio::test]
-async fn test_fail_list_credential_both_name_and_search_text_is_present() {
+async fn test_get_list_credential_filter_by_profile() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
 
-    // WHEN
+    let profile_1 = "profile-test-1";
+    let profile_2 = "profile-test-2";
+
+    // Create credential with profile 1
+    let credential_with_profile_1 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                profile: Some(profile_1.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // Create credential with profile 2
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                profile: Some(profile_2.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // Create credential without profile
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN - Filter by profile 1
     let resp = context
         .api
         .credentials
@@ -775,9 +828,8 @@ async fn test_fail_list_credential_both_name_and_search_text_is_present() {
             &organisation.id,
             None,
             Some(Filters {
-                name: Some("foo".into()),
-                search_text: Some("foo".into()),
-                search_type: Some(vec![CREDENTIAL_SCHEMA_NAME.into()]),
+                profile: Some(profile_1.to_string()),
+                ..Default::default()
             }),
             None,
             None,
@@ -785,6 +837,53 @@ async fn test_fail_list_credential_both_name_and_search_text_is_present() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0084", resp.error_code().await);
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+
+    assert_eq!(credentials["totalItems"], 1);
+    assert_eq!(credentials["totalPages"], 1);
+    assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
+    credentials["values"][0]["id"].assert_eq(&credential_with_profile_1.id);
+    credentials["values"][0]["profile"].assert_eq(&profile_1.to_string());
+
+    // WHEN - Filter without profile
+    let resp = context
+        .api
+        .credentials
+        .list(0, 10, &organisation.id, None, None, None, None)
+        .await;
+
+    // THEN - All credentials are returned
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+
+    assert_eq!(credentials["totalItems"], 3);
+    assert_eq!(credentials["totalPages"], 1);
+    assert_eq!(credentials["values"].as_array().unwrap().len(), 3);
+
+    // WHEN - Filter by non-existent profile
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(Filters {
+                profile: Some("non-existent-profile".to_string()),
+                ..Default::default()
+            }),
+            None,
+            None,
+        )
+        .await;
+
+    // THEN - No credentials are returned
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+
+    assert_eq!(credentials["totalItems"], 0);
+    assert_eq!(credentials["totalPages"], 0);
+    assert_eq!(credentials["values"].as_array().unwrap().len(), 0);
 }

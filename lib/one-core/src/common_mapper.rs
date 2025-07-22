@@ -536,6 +536,7 @@ pub(crate) fn extracted_credential_to_model(
         protocol: exchange,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
+        profile: None,
         claims: Some(model_claims),
         issuer_identifier: Some(issuer_identifier),
         // TODO ONE-5920: Fill in value if issued using certificate

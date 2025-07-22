@@ -9,7 +9,9 @@ use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::model::certificate::Certificate;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
-use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use one_core::model::credential::{
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutProperties, LayoutType, WalletStorageTypeEnum,
@@ -629,6 +631,7 @@ pub struct TestingCredentialParams<'a> {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub random_claims: bool,
     pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, ClaimValue<'a>)>>,
+    pub profile: Option<String>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -679,6 +682,7 @@ pub async fn create_credential(
         interaction: params.interaction,
         revocation_list: None,
         key: params.key,
+        profile: None,
     };
 
     data_layer
@@ -701,6 +705,7 @@ pub async fn create_proof(
     exchange: &str,
     interaction: Option<&Interaction>,
     verifier_key: Option<&Key>,
+    profile: Option<String>,
 ) -> Proof {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -737,6 +742,7 @@ pub async fn create_proof(
         verifier_key: verifier_key.cloned(),
         verifier_certificate: None,
         interaction: interaction.cloned(),
+        profile,
     };
 
     data_layer
@@ -759,7 +765,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     claim: ClaimRelations {
                         schema: Some(ClaimSchemaRelations {}),
                     },
-                    ..Default::default()
+                    credential: Some(CredentialRelations::default()),
                 }),
                 schema: Some(ProofSchemaRelations {
                     organisation: Some(OrganisationRelations {}),

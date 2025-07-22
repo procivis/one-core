@@ -71,6 +71,7 @@ pub fn credential_detail_response_from_model(
         holder: convert_inner(value.holder_identifier),
         protocol: value.protocol,
         issuer_certificate,
+        profile: value.profile,
     })
 }
 
@@ -295,6 +296,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             role: value.role.into(),
             suspend_end_date: value.suspend_end_date,
             protocol: value.protocol,
+            profile: value.profile,
         })
     }
 }
@@ -341,6 +343,7 @@ pub(super) fn from_create_request(
         key: Some(key),
         redirect_uri: request.redirect_uri,
         role: CredentialRole::Issuer,
+        profile: request.profile,
     }
 }
 

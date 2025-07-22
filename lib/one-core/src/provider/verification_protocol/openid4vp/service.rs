@@ -795,6 +795,7 @@ async fn accept_proof(
             holder_details.to_owned(),
             first_claim.mdoc_mso.to_owned(),
             &proof.protocol,
+            &proof.profile,
         )?;
 
         proof_claims.append(

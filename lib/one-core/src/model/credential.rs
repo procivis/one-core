@@ -27,6 +27,7 @@ pub struct Credential {
     pub role: CredentialRole,
     pub state: CredentialStateEnum,
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub profile: Option<String>,
 
     // Relations:
     pub claims: Option<Vec<Claim>>,

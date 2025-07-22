@@ -795,6 +795,7 @@ pub(crate) fn create_credential(
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Pending,
         suspend_end_date: None,
+        profile: None,
         claims: Some(claims),
         issuer_identifier,
         issuer_certificate,

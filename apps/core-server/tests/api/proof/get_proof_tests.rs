@@ -837,10 +837,12 @@ async fn test_get_proof_with_credentials() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&proof.id);
+    assert!(resp["profile"].is_null());
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
     resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
     assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
+    assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
 }
 
 #[tokio::test]
@@ -1268,4 +1270,121 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
         resp["proofInputs"][0]["credential"]["issuerCertificate"]["name"],
         certificate.name
     );
+}
+
+#[tokio::test]
+async fn test_get_proof_with_credentials_returns_profiles() {
+    // GIVEN
+    let test_profile = "test-credential-profile";
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create_with_profile(
+            None,
+            &identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key,
+            Some(test_profile.to_string()),
+        )
+        .await;
+
+    context
+        .db
+        .proofs
+        .set_proof_claims(&proof.id, credential.claims.unwrap())
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.get(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&proof.id);
+    assert_eq!(resp["profile"], test_profile);
+
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
+    assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
+    assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
 }

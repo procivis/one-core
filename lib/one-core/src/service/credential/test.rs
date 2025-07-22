@@ -211,6 +211,7 @@ fn generic_credential() -> Credential {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     }
 }
 
@@ -280,6 +281,7 @@ fn generic_credential_list_entity() -> Credential {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     }
 }
 
@@ -808,6 +810,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -907,6 +910,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -985,6 +989,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
                 path: claims[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -1092,6 +1097,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -1199,6 +1205,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -1288,6 +1295,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -1429,6 +1437,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         claim_values: vec![],
         redirect_uri: None,
+        profile: None,
     };
 
     // create a credential with required claims only succeeds
@@ -1560,6 +1569,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         claim_values: vec![],
         redirect_uri: None,
+        profile: None,
     };
 
     // create a credential with only an optional claim fails
@@ -1685,6 +1695,7 @@ async fn test_create_credential_schema_deleted() {
                     .to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2126,6 +2137,7 @@ async fn test_create_credential_key_with_issuer_key() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2278,6 +2290,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2398,6 +2411,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2511,6 +2525,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2634,6 +2649,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2757,6 +2773,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2854,6 +2871,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
+            profile: None,
         })
         .await;
 
@@ -2956,6 +2974,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: Some("invalid://domain.com".to_string()),
+            profile: None,
         })
         .await;
 
@@ -3927,6 +3946,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     {
@@ -4493,6 +4513,7 @@ async fn test_get_credential_success_array_index_sorting() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     {
@@ -4808,6 +4829,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     {
@@ -5026,6 +5048,7 @@ async fn test_get_credential_success_array_single_element() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     {
@@ -5243,6 +5266,7 @@ async fn test_create_credential_array(
                 })
                 .collect(),
             redirect_uri: None,
+            profile: None,
         })
         .await
 }

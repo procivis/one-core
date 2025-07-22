@@ -16,6 +16,7 @@ pub struct Filters {
     pub name: Option<String>,
     pub search_text: Option<String>,
     pub search_type: Option<Vec<String>>,
+    pub profile: Option<String>,
 }
 
 impl CredentialsApi {
@@ -33,8 +34,9 @@ impl CredentialsApi {
         issuer_did: impl Into<Option<DidId>>,
         issuer_key: impl Into<Option<KeyId>>,
         issuer_certificate: impl Into<Option<CertificateId>>,
+        profile: Option<&str>,
     ) -> Response {
-        let body = json!({
+        let mut body = json!({
           "credentialSchemaId": credential_schema_id.into(),
           "protocol": protocol.into(),
           "issuer": issuer.into(),
@@ -43,6 +45,10 @@ impl CredentialsApi {
           "issuerCertificate": issuer_certificate.into(),
           "claimValues": claims
         });
+
+        if let Some(profile) = profile {
+            body["profile"] = profile.into();
+        }
 
         self.client.post("/api/credential/v1", body).await
     }
@@ -64,12 +70,16 @@ impl CredentialsApi {
         if let Some(role) = role {
             url += &format!("&role={role}")
         }
+
         if let Some(filters) = filters {
             if let Some(name) = filters.name {
                 url += &format!("&name={name}")
             }
             if let Some(search_text) = filters.search_text {
                 url += &format!("&searchText={search_text}")
+            }
+            if let Some(profile) = filters.profile {
+                url += &format!("&profile={profile}")
             }
             url += &filters
                 .search_type

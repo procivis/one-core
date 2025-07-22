@@ -37,6 +37,7 @@ pub struct CredentialListItemResponseDTO {
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub protocol: String,
+    pub profile: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -67,6 +68,7 @@ pub struct CredentialDetailResponseDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -182,6 +184,7 @@ pub enum CredentialFilterValue {
     CredentialIds(Vec<CredentialId>),
     State(Vec<crate::model::credential::CredentialStateEnum>),
     SuspendEndDate(ValueComparison<OffsetDateTime>),
+    Profile(StringMatch),
 }
 
 impl ListFilterValue for CredentialFilterValue {}
@@ -200,6 +203,7 @@ pub struct CreateCredentialRequestDTO {
     pub protocol: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug)]

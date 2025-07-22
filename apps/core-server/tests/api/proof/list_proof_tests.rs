@@ -1049,3 +1049,179 @@ async fn test_list_proofs_by_role() {
         holder_proof.role.to_string().to_ascii_uppercase()
     );
 }
+
+#[tokio::test]
+async fn test_list_proof_with_profile() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let verifier_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let test_profile_1 = "test-proof-profile";
+    context
+        .db
+        .proofs
+        .create_with_profile(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            Some(test_profile_1.to_string()),
+        )
+        .await;
+
+    let test_profile_2 = "test-proof-profile-2";
+    context
+        .db
+        .proofs
+        .create_with_profile(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            Some(test_profile_2.to_string()),
+        )
+        .await;
+
+    context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+        )
+        .await;
+
+    // WHEN - Filter by profile 1
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                profile: Some(test_profile_1),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"].as_array().unwrap().len(), 1);
+    assert_eq!(resp["values"][0]["profile"], test_profile_1);
+
+    // WHEN - No profile filter
+    let resp = context
+        .api
+        .proofs
+        .list(0, 10, &organisation.id, Default::default())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 3);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"].as_array().unwrap().len(), 3);
+
+    // WHEN - Filter by non-existent profile
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                profile: Some("non-existent-profile"),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["totalItems"], 0);
+}

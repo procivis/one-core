@@ -27,6 +27,7 @@ pub struct Proof {
     pub role: ProofRole,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
+    pub profile: Option<String>,
 
     // Relations
     pub schema: Option<ProofSchema>,

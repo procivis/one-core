@@ -67,6 +67,7 @@ async fn test_create_proof_success_without_related_key() {
             &did.id.to_string(),
             None,
             None,
+            None,
         )
         .await;
 
@@ -187,6 +188,7 @@ async fn test_create_proof_success_with_related_key() {
             &did.id.to_string(),
             None,
             Some(&key.id.to_string()),
+            None,
         )
         .await;
 
@@ -464,6 +466,7 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
             &did.id.to_string(),
             None,
             None,
+            None,
         )
         .await;
 
@@ -559,6 +562,7 @@ async fn test_create_proof_success_without_key_agreement_key() {
             &did.id.to_string(),
             None,
             None,
+            None,
         )
         .await;
 
@@ -648,4 +652,74 @@ async fn test_create_proof_success_with_certificate() {
 
     // THEN
     assert_eq!(resp.status(), 201);
+}
+
+#[tokio::test]
+async fn test_create_proof_success_with_profile() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let test_profile = "test-profile-123";
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(
+            &proof_schema.id.to_string(),
+            "OPENID4VP_DRAFT20",
+            &did.id.to_string(),
+            None,
+            None,
+            Some(test_profile),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp: Value = resp.json().await;
+
+    assert!(resp.get("id").is_some());
+
+    let proof = context.db.proofs.get(&resp["id"].parse()).await;
+    assert_eq!(proof.protocol, "OPENID4VP_DRAFT20");
+    assert_eq!(proof.transport, "HTTP");
+
+    // Verify the profile is correctly stored
+    assert_eq!(proof.profile.as_ref().unwrap(), test_profile);
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }

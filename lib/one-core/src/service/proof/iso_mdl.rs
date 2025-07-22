@@ -20,6 +20,7 @@ impl ProofService {
         schema: ProofSchema,
         exchange: String,
         iso_mdl_engagement: String,
+        profile: Option<String>,
     ) -> Result<ProofId, ServiceError> {
         let device_engagement = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
             .map_err(|err| ServiceError::Other(err.to_string()))?;
@@ -56,6 +57,7 @@ impl ProofService {
             role: ProofRole::Verifier,
             requested_date: Some(now),
             completed_date: None,
+            profile,
             schema: Some(schema),
             transport: transport.to_owned(),
             claims: None,

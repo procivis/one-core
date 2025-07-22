@@ -343,6 +343,7 @@ impl ProofService {
                 .handle_scan_to_verify(
                     proof_schema,
                     request.protocol,
+                    request.profile,
                     request
                         .scan_to_verify
                         .ok_or(ValidationError::InvalidScanToVerifyParameters)?,
@@ -356,6 +357,7 @@ impl ProofService {
                     request
                         .iso_mdl_engagement
                         .ok_or(ValidationError::InvalidMdlParameters)?,
+                    request.profile,
                 )
                 .await;
         }
@@ -735,6 +737,7 @@ impl ProofService {
                 role: ProofRole::Holder,
                 requested_date: Some(now),
                 completed_date: None,
+                profile: None,
                 schema: None,
                 transport: transport.to_owned(),
                 claims: None,

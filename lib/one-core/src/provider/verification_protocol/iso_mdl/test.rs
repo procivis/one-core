@@ -177,6 +177,7 @@ async fn test_presentation_reject_ok() {
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,
         }),
+        profile: None,
     };
 
     let result = provider.holder_reject_proof(&proof).await;
@@ -250,6 +251,7 @@ async fn test_get_presentation_definition_ok() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     };
 
     let credential_id = Uuid::new_v4().into();
@@ -439,6 +441,7 @@ async fn test_get_presentation_definition_ok() {
                 key: None,
                 interaction: None,
                 revocation_list: None,
+                profile: None,
             }])
         });
 

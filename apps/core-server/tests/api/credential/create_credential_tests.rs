@@ -49,6 +49,7 @@ async fn test_create_credential_success() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -60,6 +61,7 @@ async fn test_create_credential_success() {
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(2, credential.claims.unwrap().len());
     assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
+    assert_eq!(credential.profile, None);
 }
 
 #[tokio::test]
@@ -134,6 +136,7 @@ async fn test_create_credential_with_array_success() {
                 }
             ]),
             did.id,
+            None,
             None,
             None,
         )
@@ -220,6 +223,7 @@ async fn test_create_credential_success_with_nested_claims() {
                 },
             ]),
             did.id,
+            None,
             None,
             None,
         )
@@ -322,6 +326,7 @@ async fn test_create_credential_with_issuer_key() {
             did.id,
             Some(key3.id),
             None,
+            None,
         )
         .await;
 
@@ -398,6 +403,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
             did.id,
             Some(key.id),
             None,
+            None,
         )
         .await;
 
@@ -434,6 +440,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             ]),
             did.id,
             KeyId::from(Uuid::new_v4()),
+            None,
             None,
         )
         .await;
@@ -500,6 +507,7 @@ async fn test_create_credential_with_certificate_identifier() {
                     "path": "firstName"
                 }
             ]),
+            None,
             None,
             None,
             None,
@@ -592,6 +600,7 @@ async fn test_create_credential_with_certificate_selection() {
             None,
             None,
             Some(certificate.id),
+            None,
         )
         .await;
 
@@ -664,6 +673,7 @@ async fn test_create_credential_with_invalid_certificate_id() {
             None,
             None,
             Some(Uuid::new_v4().into()),
+            None,
         )
         .await;
 
@@ -732,6 +742,7 @@ async fn test_create_credential_fail_with_only_certificate_id() {
             None,
             None,
             Some(certificate.id),
+            None,
         )
         .await;
 
@@ -770,6 +781,7 @@ async fn test_create_credential_with_big_picture_success() {
                 }
             ]),
             did.id,
+            None,
             None,
             None,
         )
@@ -817,6 +829,7 @@ async fn test_create_credential_failed_specified_object_claim() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -860,6 +873,7 @@ async fn test_create_credential_boolean_value_wrong() {
                 }
             ]),
             did.id,
+            None,
             None,
             None,
         )
@@ -909,6 +923,7 @@ async fn test_fail_create_credential_with_empty_value() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -924,6 +939,7 @@ async fn test_fail_create_credential_with_empty_value() {
                 "path": "root"
             }]),
             did.id,
+            None,
             None,
             None,
         )
@@ -985,6 +1001,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -1007,6 +1024,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
                 }
             ]),
             did.id,
+            None,
             None,
             None,
         )
@@ -1079,6 +1097,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -1096,6 +1115,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
                 }
             ]),
             did.id,
+            None,
             None,
             None,
         )
@@ -1118,6 +1138,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -1137,6 +1158,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
             did.id,
             None,
             None,
+            None,
         )
         .await;
 
@@ -1152,4 +1174,60 @@ async fn test_fail_create_credential_with_empty_object_value() {
 
     assert_eq!(resp_nested_absent_value.status(), 400);
     assert_eq!("BR_0194", resp_nested_absent_value.error_code().await);
+}
+
+#[tokio::test]
+async fn test_create_credential_success_with_profile() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
+        .schema
+        .id;
+    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
+
+    let test_profile = "test-credential-profile-789";
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_DRAFT13",
+            None,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
+                    "path": "isOver18"
+                }
+            ]),
+            Some(did.id),
+            None,
+            None,
+            Some(test_profile),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(CredentialStateEnum::Created, credential.state);
+    assert_eq!(2, credential.claims.unwrap().len());
+    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
+
+    // Verify the profile is correctly stored
+    assert_eq!(credential.profile.as_ref().unwrap(), test_profile);
 }

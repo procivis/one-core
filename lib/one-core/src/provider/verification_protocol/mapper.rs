@@ -58,6 +58,7 @@ pub(crate) fn proof_from_handle_invitation(
         role: ProofRole::Holder,
         requested_date: Some(now),
         completed_date: None,
+        profile: None,
         schema: None,
         claims: None,
         verifier_identifier,

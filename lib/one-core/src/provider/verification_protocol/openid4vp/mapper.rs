@@ -462,6 +462,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
@@ -470,6 +471,7 @@ pub(crate) fn extracted_credential_to_model(
     holder_details: IdentifierDetails,
     mdoc_mso: Option<MobileSecurityObject>,
     verification_protocol: &str,
+    profile: &Option<String>,
 ) -> Result<ProvedCredential, OpenID4VCError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -506,6 +508,7 @@ pub(crate) fn extracted_credential_to_model(
             protocol: verification_protocol.to_string(),
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
+            profile: profile.clone(),
             claims: Some(model_claims.to_owned()),
             issuer_identifier: None,
             // TODO ONE-5920: Fill in value if issued using certificate
@@ -704,6 +707,7 @@ pub(crate) async fn credential_from_proved(
         revocation_list: None,
         key: proved_credential.credential.key,
         suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
+        profile: proved_credential.credential.profile,
     })
 }
 

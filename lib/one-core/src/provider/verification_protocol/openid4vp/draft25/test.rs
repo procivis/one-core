@@ -284,5 +284,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     }
 }

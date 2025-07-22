@@ -130,6 +130,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             state: value.state,
             role: value.role,
             schema: value.schema.map(|schema| schema.into()),
+            profile: value.profile,
         })
     }
 }
@@ -425,6 +426,7 @@ pub(super) async fn get_verifier_proof_detail(
         redirect_uri,
         proof_inputs,
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
+        profile: list_item_response.profile,
     })
 }
 
@@ -652,6 +654,7 @@ pub(super) async fn get_holder_proof_detail(
         redirect_uri,
         proof_inputs,
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
+        profile: list_item_response.profile,
     })
 }
 
@@ -677,6 +680,7 @@ pub(super) fn proof_from_create_request(
         role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
+        profile: request.profile,
         schema: Some(schema),
         transport,
         claims: None,
@@ -693,6 +697,7 @@ pub fn proof_for_scan_to_verify(
     schema: ProofSchema,
     transport: &str,
     interaction_data: Vec<u8>,
+    profile: Option<String>,
 ) -> Proof {
     let now = OffsetDateTime::now_utc();
     Proof {
@@ -706,6 +711,7 @@ pub fn proof_for_scan_to_verify(
         role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
+        profile,
         schema: Some(schema.clone()),
         transport: transport.to_owned(),
         claims: None,

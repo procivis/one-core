@@ -139,6 +139,7 @@ async fn test_direct_post_one_credential_correct() {
         "OPENID4VP_DRAFT20",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 
@@ -321,6 +322,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         "OPENID4VP_DRAFT20",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 
@@ -579,6 +581,7 @@ async fn test_direct_post_multiple_presentations() {
         "OPENID4VP_DRAFT20",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 
@@ -777,6 +780,7 @@ async fn test_direct_post_wrong_claim_format() {
         "OPENID4VP_DRAFT20",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 
@@ -917,6 +921,7 @@ async fn test_direct_post_draft25() {
         "OPENID4VP_DRAFT25",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 
@@ -986,5 +991,180 @@ async fn test_direct_post_draft25() {
                 .iter()
                 // Values are just keys uppercase
                 .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+    );
+}
+
+#[tokio::test]
+async fn test_direct_post_with_profile_verification() {
+    // GIVEN
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
+    let nonce = "nonce123";
+    let test_profile = "test-verification-profile";
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Required claim
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
+    ];
+
+    let credential_schema = create_credential_schema_with_claims(
+        &context.db.db_conn,
+        "NewCredentialSchema",
+        &organisation,
+        "NONE",
+        &new_claim_schemas,
+    )
+    .await;
+
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
+
+    let interaction_data = json!({
+        "nonce": nonce,
+        "presentation_definition": {
+            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
+            "input_descriptors": [{
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
+                "id": "input_0",
+                "constraints": {
+                    "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema.schema_id
+                            }
+                        },
+                        {
+                            "id": new_claim_schemas[0].0,
+                            "path": ["$.vc.credentialSubject.cat1"],
+                            "optional": false
+                        },
+                        {
+                            "id": new_claim_schemas[1].0,
+                            "path": ["$.vc.credentialSubject.cat2"],
+                            "optional": true
+                        }
+                    ]
+                }
+            }]
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
+    });
+
+    let base_url = context.config.app.core_base_url.clone();
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        &base_url,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+    )
+    .await;
+
+    // Create proof with profile - manually since fixture doesn't support profiles
+    let proof = create_proof(
+        &context.db.db_conn,
+        &verifier_identifier,
+        None,
+        Some(&proof_schema),
+        ProofStateEnum::Pending,
+        ProofRole::Verifier,
+        "OPENID4VP_DRAFT25",
+        Some(&interaction),
+        Some(&verifier_key),
+        Some(test_profile.to_string()),
+    )
+    .await;
+
+    let presentation_submission = json!({
+        "definition_id": proof.interaction.as_ref().unwrap().id,
+        "descriptor_map": [
+            {
+                "format": "jwt_vp_json",
+                "id": "input_0",
+                "path": "$",
+                "path_nested": {
+                        "format": "jwt_vc_json",
+                        "path": "$.verifiableCredential[0]"
+                    }
+            },
+        ],
+        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
+    });
+
+    let params = [
+        (
+            "presentation_submission",
+            presentation_submission.to_string(),
+        ),
+        ("vp_token", TOKEN2.to_owned()),
+        ("state", proof.interaction.as_ref().unwrap().id.to_string()),
+    ];
+
+    // WHEN
+    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+    let resp = utils::client()
+        .post(url)
+        .form(&params)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let proof = get_proof(&context.db.db_conn, &proof.id).await;
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
+
+    let proof_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await;
+
+    assert_eq!(
+        proof_history
+            .values
+            .first()
+            .as_ref()
+            .unwrap()
+            .target
+            .as_ref()
+            .unwrap(),
+        &proof.holder_identifier.unwrap().id.to_string()
+    );
+
+    let claims = proof.claims.unwrap();
+    assert!(
+        new_claim_schemas
+            .iter()
+            .filter(|required_claim| required_claim.2) //required
+            .all(|required_claim| claims
+                .iter()
+                // Values are just keys uppercase
+                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+    );
+
+    assert_eq!(proof.profile, Some(test_profile.to_string()));
+    assert_eq!(
+        claims
+            .iter()
+            .all(|claim| claim.credential.as_ref().unwrap().profile
+                == Some(test_profile.to_string())),
+        true
     );
 }

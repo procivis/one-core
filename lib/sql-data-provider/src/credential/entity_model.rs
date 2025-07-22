@@ -19,6 +19,7 @@ pub(super) struct CredentialListEntityModel {
     pub role: credential::CredentialRole,
     pub state: credential::CredentialState,
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub profile: Option<String>,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_format: String,

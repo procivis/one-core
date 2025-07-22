@@ -225,6 +225,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         verifier_key: Some(key),
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     }
 }
 
@@ -354,6 +355,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
+        profile: None,
     };
 
     {
@@ -472,6 +474,7 @@ async fn test_get_proof_exists() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -632,6 +635,7 @@ async fn test_get_proof_with_array_holder() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     let proof = Proof {
@@ -682,6 +686,7 @@ async fn test_get_proof_with_array_holder() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Holder,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -869,6 +874,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     let proof = Proof {
@@ -919,6 +925,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Holder,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -1111,6 +1118,7 @@ async fn test_get_proof_with_object_array_holder() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     let proof = Proof {
@@ -1161,6 +1169,7 @@ async fn test_get_proof_with_object_array_holder() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Holder,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -1336,6 +1345,7 @@ async fn test_get_proof_with_array() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     let proof = Proof {
@@ -1400,6 +1410,7 @@ async fn test_get_proof_with_array() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -1587,6 +1598,7 @@ async fn test_get_proof_with_array_in_object() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     let proof = Proof {
@@ -1651,6 +1663,7 @@ async fn test_get_proof_with_array_in_object() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -1844,6 +1857,7 @@ async fn test_get_proof_with_object_array() {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     };
 
     let proof = Proof {
@@ -1908,6 +1922,7 @@ async fn test_get_proof_with_object_array() {
         verifier_certificate: None,
         interaction: None,
         role: ProofRole::Verifier,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -2088,6 +2103,7 @@ async fn test_get_proof_list_success() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     };
     {
         let res_clone = proof.clone();
@@ -2155,6 +2171,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2246,6 +2263,7 @@ async fn test_create_proof_using_invalid_did_method() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2370,6 +2388,7 @@ async fn test_create_proof_using_identifier() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2495,6 +2514,7 @@ async fn test_create_proof_without_related_key() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2627,6 +2647,7 @@ async fn test_create_proof_with_related_key() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2755,6 +2776,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_input_schema = generic_proof_input_schema();
@@ -2892,6 +2914,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2997,6 +3020,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3057,6 +3081,7 @@ async fn test_create_proof_did_deactivated_error() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3189,6 +3214,7 @@ async fn test_create_proof_schema_deleted() {
             scan_to_verify: None,
             iso_mdl_engagement: None,
             transport: None,
+            profile: None,
         })
         .await;
     assert2::assert!(
@@ -3254,6 +3280,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
             }),
             iso_mdl_engagement: None,
             transport: None,
+            profile: None,
         })
         .await;
     assert2::assert!(
@@ -3275,6 +3302,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
+        profile: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3404,6 +3432,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             scan_to_verify: None,
             iso_mdl_engagement: None,
             transport: None,
+            profile: None,
         })
         .await;
     assert!(matches!(

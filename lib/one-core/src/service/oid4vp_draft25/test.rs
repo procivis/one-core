@@ -159,6 +159,7 @@ async fn test_presentation_definition_success() {
                     role: ProofRole::Verifier,
                     requested_date: Some(get_dummy_date()),
                     completed_date: None,
+                    profile: None,
                     schema: Some(ProofSchema {
                         id: Uuid::default().into(),
                         created_date: now,
@@ -953,6 +954,7 @@ async fn test_get_client_metadata_success() {
         verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     };
     {
         proof_repository

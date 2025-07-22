@@ -41,6 +41,8 @@ pub struct Model {
     pub suspend_end_date: Option<OffsetDateTime>,
 
     pub state: CredentialState,
+
+    pub profile: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

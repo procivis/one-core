@@ -80,6 +80,7 @@ async fn insert_credential_to_database(
         interaction_id: Set(None),
         revocation_list_id: Set(None),
         key_id: Set(Some(key_id)),
+        profile: Set(None),
     }
     .insert(database)
     .await

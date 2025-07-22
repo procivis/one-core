@@ -64,6 +64,7 @@ pub async fn insert_credential(
         key_id: Set(None),
         state: Set(state.into()),
         suspend_end_date: Set(suspend_end_date),
+        profile: Set(None),
     }
     .insert(db)
     .await?;
@@ -207,6 +208,7 @@ pub async fn insert_proof_request_to_database(
         verifier_key_id: Set(Some(verifier_key_id)),
         verifier_certificate_id: Set(None),
         interaction_id: Set(interaction_id),
+        profile: Set(None),
     }
     .insert(database)
     .await?;

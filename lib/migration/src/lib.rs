@@ -130,6 +130,7 @@ mod m20250630_144901_add_expiry_to_remote_entity_cache;
 mod m20250708_110608_credential_list_indexes;
 mod m20250709_133731_key_reference_nullable;
 mod m20250710_065056_cache_clear_by_last_used;
+mod m20250721_075026_add_profile_field_credentials_proofs;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -262,6 +263,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250708_110608_credential_list_indexes::Migration),
             Box::new(m20250709_133731_key_reference_nullable::Migration),
             Box::new(m20250710_065056_cache_clear_by_last_used::Migration),
+            Box::new(m20250721_075026_add_profile_field_credentials_proofs::Migration),
         ]
     }
 }

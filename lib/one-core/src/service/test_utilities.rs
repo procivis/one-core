@@ -245,6 +245,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Pending,
         suspend_end_date: None,
+        profile: None,
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
             credential_id,
@@ -376,6 +377,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     }
 }
 

@@ -210,6 +210,7 @@ fn dummy_credential(
         )),
         revocation_list: None,
         key: None,
+        profile: None,
     }
 }
 

@@ -172,6 +172,8 @@ pub struct CreateProofRequestBindingDTO {
     pub iso_mdl_engagement: Option<String>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub transport: Option<Vec<String>>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
@@ -213,6 +215,7 @@ pub struct ProofListQueryBindingDTO {
     pub sort: Option<SortableProofListColumnBinding>,
     pub sort_direction: Option<SortDirection>,
     pub name: Option<String>,
+    pub profile: Option<String>,
     pub ids: Option<Vec<String>>,
     pub proof_states: Option<Vec<ProofStateBindingEnum>>,
     pub proof_roles: Option<Vec<ProofRoleBindingEnum>>,
@@ -245,6 +248,7 @@ pub struct ProofListItemBindingDTO {
     pub schema: Option<GetProofSchemaListItemBindingDTO>,
     #[from(with_fn = optional_time)]
     pub retain_until_date: Option<String>,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -265,6 +269,7 @@ pub struct ProofResponseBindingDTO {
     pub requested_date: Option<String>,
     pub completed_date: Option<String>,
     pub claims_removed_at: Option<String>,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

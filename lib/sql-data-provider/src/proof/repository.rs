@@ -235,6 +235,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::Role,
             proof::Column::RequestedDate,
             proof::Column::CompletedDate,
+            proof::Column::Profile,
         ])
         .column_as(proof::Column::Protocol, "protocol")
         .column_as(proof::Column::Transport, "transport")

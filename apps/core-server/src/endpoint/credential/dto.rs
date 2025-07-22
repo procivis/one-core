@@ -54,6 +54,9 @@ pub struct CredentialListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub protocol: String,
+    /// Profile associated with this credential
+    #[from(with_fn = convert_inner)]
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -144,6 +147,10 @@ pub struct GetCredentialResponseRestDTO {
 
     #[try_from(infallible)]
     pub protocol: String,
+
+    /// Profile associated with this credential
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub profile: Option<String>,
 }
 
 /// The role the system has in relation to the credential.
@@ -243,6 +250,9 @@ pub struct CredentialsFilterQueryParamsRest {
     /// Return only credentials with a name starting with this string.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return only credentials with the specified profile.
+    #[param(nullable = false)]
+    pub profile: Option<String>,
     /// Filter credentials by whether they were issued by the system,
     /// verified by the system or are held by the system as with a wallet.
     #[param(nullable = false)]
@@ -327,6 +337,8 @@ pub struct CreateCredentialRequestRestDTO {
     /// configuration. The URI must use a scheme (for example `https`, `myapp`)
     /// that is allowed by the system configuration.
     pub redirect_uri: Option<String>,
+    /// Optional profile to associate with this credential
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]

@@ -60,6 +60,9 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::SuspendEndDate(comparison) => {
                 get_comparison_condition(credential::Column::SuspendEndDate, comparison)
             }
+            Self::Profile(string_match) => {
+                get_string_match_condition(credential::Column::Profile, string_match)
+            }
         }
     }
 }
@@ -94,6 +97,7 @@ impl From<entity::credential::Model> for Credential {
             role: credential.role.into(),
             state: credential.state.into(),
             suspend_end_date: credential.suspend_end_date,
+            profile: credential.profile,
             claims: None,
             issuer_identifier: None,
             issuer_certificate: None,
@@ -136,6 +140,7 @@ pub(super) fn request_to_active_model(
         role: Set(request.role.to_owned().into()),
         state: Set(request.state.into()),
         suspend_end_date: Set(request.suspend_end_date),
+        profile: Set(request.profile.clone()),
     }
 }
 
@@ -211,6 +216,7 @@ pub(super) fn credential_list_model_to_repository_model(
         role: credential.role.into(),
         state: credential.state.into(),
         suspend_end_date: credential.suspend_end_date,
+        profile: credential.profile,
         claims: None,
         issuer_identifier,
         issuer_certificate: None,

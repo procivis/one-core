@@ -39,6 +39,33 @@ impl ProofsDB {
         interaction: Option<&Interaction>,
         verifier_key: Key,
     ) -> Proof {
+        self.create_with_profile(
+            id,
+            verifier_identifier,
+            holder_identifier,
+            proof_schema,
+            state,
+            exchange,
+            interaction,
+            verifier_key,
+            None,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_with_profile(
+        &self,
+        id: Option<ProofId>,
+        verifier_identifier: &Identifier,
+        holder_identifier: Option<&Identifier>,
+        proof_schema: Option<&ProofSchema>,
+        state: ProofStateEnum,
+        exchange: &str,
+        interaction: Option<&Interaction>,
+        verifier_key: Key,
+        profile: Option<String>,
+    ) -> Proof {
         let requested_date = match state {
             ProofStateEnum::Pending
             | ProofStateEnum::Requested
@@ -94,6 +121,7 @@ impl ProofsDB {
                 .next()
                 .cloned(),
             interaction: interaction.cloned(),
+            profile,
         };
 
         let proof_id = self.repository.create_proof(proof.clone()).await.unwrap();

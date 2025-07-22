@@ -150,6 +150,7 @@ impl VCAPIService {
                     role: CredentialRole::Issuer,
                     state: CredentialStateEnum::Offered,
                     suspend_end_date: None,
+                    profile: None,
                     claims: None,
                     issuer_identifier: Some(issuer_identifier.clone()),
                     issuer_certificate: None,

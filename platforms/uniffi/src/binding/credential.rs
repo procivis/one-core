@@ -67,6 +67,13 @@ impl OneCoreBinding {
                 })
             });
 
+            let profile = query.profile.map(|profile| {
+                CredentialFilterValue::Profile(StringMatch {
+                    r#match: StringMatchType::Equals,
+                    value: profile,
+                })
+            });
+
             let search_filters = match (query.search_text, query.search_type) {
                 (Some(search_test), Some(search_type)) => {
                     organisation
@@ -122,7 +129,7 @@ impl OneCoreBinding {
                 )
             });
 
-            search_filters & name & role & ids & states
+            search_filters & name & role & ids & states & profile
         };
 
         Ok(core
@@ -171,6 +178,7 @@ pub struct CredentialDetailBindingDTO {
     pub suspend_end_date: Option<String>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
     pub protocol: String,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
@@ -205,6 +213,7 @@ pub struct CredentialListQueryBindingDTO {
 
     pub organisation_id: String,
     pub name: Option<String>,
+    pub profile: Option<String>,
     pub search_text: Option<String>,
     pub search_type: Option<Vec<SearchTypeBindingEnum>>,
     pub exact: Option<Vec<CredentialListQueryExactColumnBindingEnum>>,
@@ -291,4 +300,5 @@ pub struct CredentialListItemBindingDTO {
     pub role: CredentialRoleBindingDTO,
     pub suspend_end_date: Option<String>,
     pub protocol: String,
+    pub profile: Option<String>,
 }

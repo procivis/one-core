@@ -25,6 +25,7 @@ impl ProofService {
         &self,
         proof_schema: ProofSchema,
         exchange: String,
+        profile: Option<String>,
         submission: ScanToVerifyRequestDTO,
     ) -> Result<ProofId, ServiceError> {
         let exchange_protocol = self
@@ -40,8 +41,13 @@ impl ProofService {
             &exchange_protocol.get_capabilities().supported_transports,
         )?;
 
-        let proof =
-            proof_for_scan_to_verify(&exchange, proof_schema, transport, submission_data.clone());
+        let proof = proof_for_scan_to_verify(
+            &exchange,
+            proof_schema,
+            transport,
+            submission_data.clone(),
+            profile,
+        );
 
         self.interaction_repository
             .create_interaction(proof.interaction.clone().ok_or(ServiceError::MappingError(

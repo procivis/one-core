@@ -97,6 +97,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
             protocol: value.protocol,
+            profile: value.profile,
         }
     }
 }
@@ -127,6 +128,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             protocol: value.protocol,
+            profile: value.profile,
         }
     }
 }
@@ -150,6 +152,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             completed_date: value.completed_date.map(|date| date.format_timestamp()),
             claims_removed_at: value.claims_removed_at.map(|date| date.format_timestamp()),
             role: value.role.into(),
+            profile: value.profile,
         }
     }
 }
@@ -568,8 +571,20 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
             .transpose()?
             .map(ProofFilterValue::ProofSchemaIds);
 
-        let filtering =
-            organisation_id & name & proof_states & proof_roles & proof_schema_ids & proof_ids;
+        let profile = value.profile.map(|profile| {
+            ProofFilterValue::Profile(StringMatch {
+                r#match: StringMatchType::Equals,
+                value: profile,
+            })
+        });
+
+        let filtering = organisation_id
+            & name
+            & proof_states
+            & proof_roles
+            & proof_schema_ids
+            & proof_ids
+            & profile;
 
         Ok({
             Self {

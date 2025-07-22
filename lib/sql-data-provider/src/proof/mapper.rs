@@ -78,6 +78,9 @@ impl IntoFilterCondition for ProofFilterValue {
             Self::ProofIds(ids) => proof::Column::Id.is_in(ids).into_condition(),
             Self::ProofIdsNot(ids) => proof::Column::Id.is_not_in(ids).into_condition(),
             Self::ValidForDeletion => proof_schema::Column::ExpireDuration.gt(0).into_condition(),
+            Self::Profile(string_match) => {
+                get_string_match_condition(proof::Column::Profile, string_match)
+            }
         }
     }
 }
@@ -151,6 +154,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             role: value.role.into(),
             requested_date: value.requested_date,
             completed_date: value.completed_date,
+            profile: value.profile,
             schema,
             claims: None,
             verifier_identifier,
@@ -176,6 +180,7 @@ impl From<proof::Model> for Proof {
             role: value.role.into(),
             requested_date: value.requested_date,
             completed_date: value.completed_date,
+            profile: value.profile,
             schema: None,
             claims: None,
             verifier_identifier: None,
@@ -212,6 +217,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             interaction_id: Set(value
                 .interaction
                 .map(|interaction| interaction.id.to_string())),
+            profile: Set(value.profile),
         })
     }
 }

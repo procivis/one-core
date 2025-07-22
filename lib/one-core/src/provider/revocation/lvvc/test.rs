@@ -115,6 +115,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         key: None,
         interaction: None,
         revocation_list: None,
+        profile: None,
     };
 
     (did, identifier, credential)

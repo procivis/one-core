@@ -110,6 +110,8 @@ pub struct CreateProofRequestRestDTO {
     #[into(with_fn = convert_inner)]
     #[schema(example = json!(["HTTP"]), nullable = false)]
     pub transport: Option<Vec<String>>,
+    /// Optional profile to associate with this proof request
+    pub profile: Option<String>,
 }
 
 /// Only for use when verifying VC Barcodes.
@@ -150,6 +152,9 @@ pub struct ProofsFilterQueryParamsRest {
     /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return only proof requests with the specified profile.
+    #[param(nullable = false)]
+    pub profile: Option<String>,
     /// Return proof requests according to their current state in the system.
     #[param(rename = "proofStates[]", inline, nullable = false)]
     pub proof_states: Option<Vec<ProofStateRestEnum>>,
@@ -219,6 +224,9 @@ pub struct ProofListItemResponseRestDTO {
     pub role: ProofRoleRestEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
+    /// Profile associated with this proof request
+    #[from(with_fn = convert_inner)]
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -374,6 +382,9 @@ pub struct ProofDetailResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub claims_removed_at: Option<OffsetDateTime>,
+
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub profile: Option<String>,
 }
 
 #[options_not_nullable]

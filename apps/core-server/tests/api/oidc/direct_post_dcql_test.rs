@@ -117,6 +117,7 @@ async fn test_direct_post_draft25_with_dcql_query() {
         "OPENID4VP_DRAFT25",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 
@@ -261,6 +262,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         "OPENID4VP_DRAFT25",
         Some(&interaction),
         Some(&verifier_key),
+        None,
     )
     .await;
 

@@ -60,6 +60,7 @@ fn generate_credential_detail_response(
         mdoc_mso_validity: None,
         holder: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
+        profile: None,
     }
 }
 
@@ -153,6 +154,7 @@ fn generate_credential_matching_detail(detail: &CredentialDetailResponseDTO) -> 
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     }
 }
 

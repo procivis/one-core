@@ -217,6 +217,7 @@ async fn test_presentation_definition_success() {
                         data: Some(interaction_data),
                         organisation: None,
                     }),
+                    profile: None,
                 }))
             });
     }
@@ -602,6 +603,7 @@ async fn test_get_client_metadata_success() {
         verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     };
     {
         proof_repository
@@ -780,6 +782,7 @@ async fn test_get_client_metadata_success_no_encryption() {
         verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,
+        profile: None,
     };
     {
         proof_repository

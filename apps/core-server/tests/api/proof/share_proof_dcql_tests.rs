@@ -85,6 +85,7 @@ async fn create_proof_with_claims(
         "OPENID4VP_DRAFT25",
         None,
         Some(key),
+        None,
     )
     .await
 }

@@ -20,6 +20,7 @@ pub(super) struct ProofListItemModel {
     pub role: ProofRole,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
+    pub profile: Option<String>,
 
     // verifier_identifier
     pub verifier_identifier_id: Option<IdentifierId>,

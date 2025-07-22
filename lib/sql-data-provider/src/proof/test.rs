@@ -360,6 +360,7 @@ async fn test_create_proof_success() {
             certificates: None,
         }),
         interaction: None,
+        profile: None,
     };
 
     let result = repository.create_proof(proof).await.unwrap();
@@ -574,6 +575,7 @@ async fn test_get_proof_with_relations() {
                 interaction: None,
                 revocation_list: None,
                 key: None,
+                profile: None,
             }))
         });
 

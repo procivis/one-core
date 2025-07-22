@@ -307,5 +307,6 @@ fn generic_credential() -> Credential {
         interaction: None,
         revocation_list: None,
         key: None,
+        profile: None,
     }
 }

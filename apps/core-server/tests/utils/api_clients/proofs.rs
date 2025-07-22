@@ -18,6 +18,7 @@ pub struct ProofFilters<'a> {
     pub proof_roles: Option<&'a [ProofRole]>,
     pub proof_schema_ids: Option<&'a [ProofSchemaId]>,
     pub ids: Option<&'a [ProofId]>,
+    pub profile: Option<&'a str>,
 }
 
 impl ProofsApi {
@@ -32,6 +33,7 @@ impl ProofsApi {
         verifier_did: &str,
         redirect_uri: Option<&str>,
         verifier_key: Option<&str>,
+        profile: Option<&str>,
     ) -> Response {
         let mut body = json!({
           "proofSchemaId": proof_schema_id,
@@ -45,6 +47,10 @@ impl ProofsApi {
 
         if let Some(verifier_key) = verifier_key {
             body["verifierKey"] = verifier_key.to_string().into();
+        }
+
+        if let Some(profile) = profile {
+            body["profile"] = profile.to_string().into();
         }
 
         self.client.post("/api/proof-request/v1", body).await
@@ -112,6 +118,10 @@ impl ProofsApi {
 
         if let Some(name) = filters.name {
             url += &format!("&name={name}");
+        }
+
+        if let Some(profile) = filters.profile {
+            url += &format!("&profile={profile}");
         }
 
         self.client.get(&url).await

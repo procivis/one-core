@@ -55,6 +55,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             role: CredentialRole::Holder,
             state: CredentialStateEnum::Created,
             suspend_end_date: None,
+            profile: None,
             claims: Some(vec![Claim {
                 id: Uuid::new_v4(),
                 credential_id: Uuid::new_v4().into(),

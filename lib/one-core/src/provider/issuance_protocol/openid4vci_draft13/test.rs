@@ -308,6 +308,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         }),
         key: None,
         revocation_list: None,
+        profile: None,
     }
 }
 

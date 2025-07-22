@@ -128,6 +128,7 @@ impl CredentialsDB {
             interaction: params.interaction,
             revocation_list: None,
             key: params.key,
+            profile: params.profile,
         };
 
         let id = self

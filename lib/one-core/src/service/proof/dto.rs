@@ -28,6 +28,7 @@ pub struct CreateProofRequestDTO {
     pub scan_to_verify: Option<ScanToVerifyRequestDTO>,
     pub iso_mdl_engagement: Option<String>,
     pub transport: Option<Vec<String>>,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,6 +71,7 @@ pub struct ProofDetailResponseDTO {
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputDTO>,
     pub claims_removed_at: Option<OffsetDateTime>,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -87,6 +89,7 @@ pub struct ProofListItemResponseDTO {
     pub state: ProofStateEnum,
     pub role: ProofRole,
     pub schema: Option<GetProofSchemaListItemDTO>,
+    pub profile: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -121,6 +124,7 @@ pub enum ProofFilterValue {
     ProofIds(Vec<ProofId>),
     ProofIdsNot(Vec<ProofId>),
     ProofSchemaIds(Vec<ProofSchemaId>),
+    Profile(StringMatch),
     ValidForDeletion,
 }
 

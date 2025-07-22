@@ -23,6 +23,7 @@ pub struct UnexportableCredentialModel {
     pub role: CredentialRole,
     pub state: CredentialState,
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub profile: Option<String>,
 
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,

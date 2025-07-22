@@ -34,6 +34,13 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             })
         });
 
+        let profile = value.profile.map(|profile| {
+            CredentialFilterValue::Profile(StringMatch {
+                r#match: StringMatchType::Equals,
+                value: profile,
+            })
+        });
+
         let search_filters = match (value.search_text, value.search_type) {
             (Some(search_test), Some(search_type)) => {
                 organisation_id
@@ -79,6 +86,6 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             CredentialFilterValue::State(values.into_iter().map(|status| status.into()).collect())
         });
 
-        Ok(search_filters & name & role & credential_ids & states)
+        Ok(search_filters & name & role & credential_ids & states & profile)
     }
 }

@@ -351,6 +351,7 @@ async fn test_create_credential_success() {
             interaction: None,
             revocation_list: None,
             key: None,
+            profile: None,
         })
         .await;
 
@@ -429,6 +430,7 @@ async fn test_create_credential_empty_claims() {
             interaction: None,
             revocation_list: None,
             key: None,
+            profile: None,
         })
         .await;
 
@@ -491,6 +493,7 @@ async fn test_create_credential_already_exists() {
             interaction: None,
             revocation_list: None,
             key: None,
+            profile: None,
         })
         .await;
 
@@ -562,6 +565,7 @@ async fn test_delete_credential_failed_not_found() {
             interaction: None,
             revocation_list: None,
             key: None,
+            profile: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
