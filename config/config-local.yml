@@ -109,11 +109,11 @@ did:
   WEB:
     params:
       public:
-        resolveToInsecureHttp: true
+        resolveToInsecureHttp: false
   WEBVH:
     params:
       public:
-        resolveToInsecureHttp: true
+        resolveToInsecureHttp: false
 trustManagement:
   SIMPLE_TRUST_LIST:
     display: "trustManagement.simpleTrustList"
