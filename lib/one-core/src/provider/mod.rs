@@ -14,3 +14,5 @@ pub mod revocation;
 pub mod task;
 pub mod trust_management;
 pub mod verification_protocol;
+
+pub mod blob_storage_provider;

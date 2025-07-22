@@ -18,6 +18,9 @@ mod trust_anchor_id;
 mod trust_entity_id;
 mod trust_entity_key;
 
+mod blob_id;
+
+pub use blob_id::BlobId;
 pub use certificate_id::CertificateId;
 pub use claim_id::ClaimId;
 pub use claim_schema_id::ClaimSchemaId;

@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 
+pub mod blob;
 pub mod certificate;
 pub mod claim;
 pub mod claim_schema;

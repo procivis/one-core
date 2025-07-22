@@ -55,6 +55,7 @@ pub struct CoreConfig {
     pub(crate) key_storage: KeyStorageConfig,
     pub(crate) task: TaskConfig,
     pub(crate) trust_management: TrustManagementConfig,
+    pub(crate) blob_storage: BlobStorageConfig,
     pub cache_entities: CacheEntitiesConfig,
 }
 
@@ -596,6 +597,17 @@ pub enum TrustManagementType {
     #[serde(rename = "SIMPLE_TRUST_LIST")]
     #[strum(serialize = "SIMPLE_TRUST_LIST")]
     SimpleTrustList,
+}
+
+pub type BlobStorageConfig = ConfigBlock<BlobStorageType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum BlobStorageType {
+    #[serde(rename = "DB")]
+    #[strum(serialize = "DB")]
+    Db,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

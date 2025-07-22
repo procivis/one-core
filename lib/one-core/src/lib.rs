@@ -40,6 +40,9 @@ use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
+use crate::provider::blob_storage_provider::{
+    BlobStorageProviderImpl, blob_storage_providers_from_config,
+};
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -541,6 +544,14 @@ impl OneCore {
         )
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
+
+        let blob_storage_providers = blob_storage_providers_from_config(
+            &config.blob_storage,
+            data_provider.get_blob_repository(),
+        )
+        .map_err(OneCoreBuildError::Config)?;
+
+        let _blob_storage_provider = Arc::new(BlobStorageProviderImpl::new(blob_storage_providers));
 
         Ok(OneCore {
             trust_anchor_service: TrustAnchorService::new(

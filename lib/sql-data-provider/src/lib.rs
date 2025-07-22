@@ -16,6 +16,7 @@ use key::history::KeyHistoryDecorator;
 use migration::runner::run_migrations;
 use one_core::repository::DataRepository;
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::blob_repository::BlobRepository;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
@@ -46,6 +47,7 @@ use trust_entity::TrustEntityProvider;
 use trust_entity::history::TrustEntityHistoryDecorator;
 use validity_credential::ValidityCredentialProvider;
 
+use crate::blob_storage::BlobProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
@@ -107,6 +109,7 @@ pub struct DataLayer {
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
+    blob_repository: Arc<dyn BlobRepository>,
 }
 
 impl DataLayer {
@@ -254,6 +257,8 @@ impl DataLayer {
         let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));
         let backup_repository = Arc::new(BackupProvider::new(db.clone(), exportable_storages));
 
+        let blob_repository = Arc::new(BlobProvider::new(db.clone()));
+
         Self {
             organisation_repository,
             credential_repository,
@@ -275,6 +280,7 @@ impl DataLayer {
             trust_entity_repository,
             identifier_repository,
             certificate_repository,
+            blob_repository,
         }
     }
 }
@@ -338,6 +344,10 @@ impl DataRepository for DataLayer {
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
         self.trust_entity_repository.clone()
     }
+
+    fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {
+        self.blob_repository.clone()
+    }
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
@@ -354,5 +364,6 @@ pub async fn db_conn(
     Ok(db)
 }
 
+mod blob_storage;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;

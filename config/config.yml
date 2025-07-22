@@ -12,3 +12,4 @@ trustManagement: {}
 transport: {}
 cacheEntities: {}
 holderKeyStorage: {}
+blobStorage: {}
