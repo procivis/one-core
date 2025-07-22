@@ -40,7 +40,7 @@ issuanceProtocol:
   OPENID4VCI_DRAFT13_SWIYU:
     params:
       public:
-          allowedSchemes: ["http", "https"]
+        allowedSchemes: ["http", "https"]
       private:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
@@ -80,7 +80,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: eudi-openid4vp
         verifier:
-          useDcql: true
+          useDcql: false
           supportedClientIdSchemes: [x509_san_dns, redirect_uri, verifier_attestation, did]
         holder:
           supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]

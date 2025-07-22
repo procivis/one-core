@@ -30,7 +30,7 @@ issuanceProtocol:
   OPENID4VCI_DRAFT13_SWIYU:
     params:
       public:
-          allowedSchemes: ["http", "https"]
+        allowedSchemes: ["http", "https"]
 verificationProtocol:
   OPENID4VP_DRAFT20:
     params:
@@ -72,7 +72,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: eudi-openid4vp
         verifier:
-          useDcql: true
+          useDcql: false
           supportedClientIdSchemes: [x509_san_dns, redirect_uri, verifier_attestation, did]
         holder:
           supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]
