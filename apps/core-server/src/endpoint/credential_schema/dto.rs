@@ -160,7 +160,6 @@ pub struct CredentialClaimSchemaResponseRestDTO {
 pub enum CredentialSchemasExactColumn {
     Name,
     SchemaId,
-    Format,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
@@ -180,9 +179,9 @@ pub struct CredentialSchemasFilterQueryParamsRest {
     /// type for ISO mdocs.
     #[param(nullable = false)]
     pub schema_id: Option<String>,
-    /// Return only credential schemas which use the specified credential format.
-    #[param(nullable = false)]
-    pub format: Option<String>,
+    /// Return only credential schemas which use one of the specified credential formats.
+    #[param(rename = "formats[]", inline, nullable = false)]
+    pub formats: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

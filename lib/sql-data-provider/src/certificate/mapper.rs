@@ -7,8 +7,8 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 
 use crate::entity::certificate::{self, ActiveModel};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
-    get_comparison_condition, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl From<Certificate> for ActiveModel {
@@ -82,11 +82,5 @@ impl IntoFilterCondition for CertificateFilterValue {
                 get_equals_condition(certificate::Column::OrganisationId, organisation_id)
             }
         }
-    }
-}
-
-impl IntoJoinRelations for CertificateFilterValue {
-    fn get_join(&self) -> Vec<JoinRelation> {
-        vec![]
     }
 }

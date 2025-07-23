@@ -21,22 +21,14 @@ impl From<CredentialSchemasFilterQueryParamsRest>
         let organisation_id =
             CredentialSchemaFilterValue::OrganisationId(value.organisation_id).condition();
 
-        let name: Self = value
-            .name
-            .map(|name| {
-                CredentialSchemaFilterValue::Name(StringMatch {
-                    r#match: get_string_match_type(CredentialSchemasExactColumn::Name),
-                    value: name,
-                })
-            })
-            .into();
-
-        let format = value.format.map(|format| {
-            CredentialSchemaFilterValue::Format(StringMatch {
-                r#match: get_string_match_type(CredentialSchemasExactColumn::Format),
-                value: format,
+        let name = value.name.map(|name| {
+            CredentialSchemaFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(CredentialSchemasExactColumn::Name),
+                value: name,
             })
         });
+
+        let formats = value.formats.map(CredentialSchemaFilterValue::Formats);
 
         let schema_id = value.schema_id.map(|schema_id| {
             CredentialSchemaFilterValue::SchemaId(StringMatch {
@@ -49,6 +41,6 @@ impl From<CredentialSchemasFilterQueryParamsRest>
             .ids
             .map(CredentialSchemaFilterValue::CredentialSchemaIds);
 
-        organisation_id & (name | format) & schema_id & credential_schema_ids
+        organisation_id & name & formats & schema_id & credential_schema_ids
     }
 }

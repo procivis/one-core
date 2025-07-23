@@ -185,7 +185,7 @@ pub struct TrustEntityFilterQueryParamsRestDto {
     #[param(nullable = false)]
     pub name: Option<String>,
     /// Return only entities of the specified type.
-    #[param(nullable = false)]
+    #[param(rename = "type[]", inline, nullable = false)]
     pub r#type: Option<Vec<TrustEntityTypeRest>>,
     /// Specify entities to return by their DID value or their certificate `subject`.
     #[param(nullable = false)]

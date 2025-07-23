@@ -196,6 +196,9 @@ pub struct ProofSchemasFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
+    /// Return only proof schemas which use only the specified credential formats.
+    #[param(rename = "formats[]", inline, nullable = false)]
+    pub formats: Option<Vec<String>>,
 }
 
 #[options_not_nullable]

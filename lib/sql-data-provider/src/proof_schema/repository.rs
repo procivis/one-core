@@ -60,7 +60,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                     created_date: Set(now),
                     last_modified: Set(now),
                     validity_constraint: Set(schema.validity_constraint),
-                    credential_schema: Set(credential_schema.id.to_string()),
+                    credential_schema: Set(credential_schema.id),
                     proof_schema: Set(proof_schema_id),
                     ..Default::default()
                 };
@@ -122,7 +122,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 .as_ref()
                 .ok_or(DataLayerError::IncorrectParameters)?;
 
-            if model.credential_schema != credential_schema.id.to_string()
+            if model.credential_schema != credential_schema.id
                 || order != model.order
                 || model.validity_constraint != request.validity_constraint
             {
@@ -232,11 +232,9 @@ impl ProofSchemaRepository for ProofSchemaProvider {
 impl ProofSchemaProvider {
     async fn get_related_credential_schema(
         &self,
-        credential_schema_id: String,
+        credential_schema_id: CredentialSchemaId,
         credential_schema_relations: &CredentialSchemaRelations,
     ) -> Result<CredentialSchema, DataLayerError> {
-        let credential_schema_id = CredentialSchemaId::from_str(&credential_schema_id)?;
-
         self.credential_schema_repository
             .get_credential_schema(&credential_schema_id, credential_schema_relations)
             .await?

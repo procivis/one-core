@@ -22,6 +22,7 @@ pub enum ProofSchemaFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
     ProofSchemaIds(Vec<ProofSchemaId>),
+    Formats(Vec<String>),
 }
 
 impl ListFilterValue for ProofSchemaFilterValue {}

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
@@ -1061,4 +1062,205 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     assert_eq!(result.total_pages, 2);
     assert_eq!(result.values.len(), 1);
     assert_eq!(result.values[0].id, schema1_id);
+}
+
+#[tokio::test]
+async fn test_get_proof_schema_list_filter_formats() {
+    let TestSetup {
+        repository,
+        organisation_id,
+        db,
+        ..
+    } = setup_empty(
+        get_claim_schema_repository_mock(),
+        get_organisation_repository_mock(),
+        get_credential_schema_repository_mock(),
+    )
+    .await;
+
+    let date_now = OffsetDateTime::now_utc();
+    let cred_schema_jwt_id = crate::entity::credential_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        name: Set("jwt".to_string()),
+        format: Set("JWT".to_string()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+        revocation_method: Set("NONE".to_string()),
+        wallet_storage_type: Set(None),
+        external_schema: Set(false),
+        layout_type: Set(LayoutType::Card.into()),
+        layout_properties: Set(None),
+        schema_type: Set(CredentialSchemaType::ProcivisOneSchema2024.into()),
+        schema_id: Set("JWT".to_string()),
+        imported_source_url: Set("URL".to_string()),
+        allow_suspension: Set(false),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
+
+    let cred_schema_mdoc_id = crate::entity::credential_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        name: Set("mdoc".to_string()),
+        format: Set("MDOC".to_string()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+        revocation_method: Set("NONE".to_string()),
+        wallet_storage_type: Set(None),
+        external_schema: Set(false),
+        layout_type: Set(LayoutType::Card.into()),
+        layout_properties: Set(None),
+        schema_type: Set(CredentialSchemaType::Mdoc.into()),
+        schema_id: Set("MDOC".to_string()),
+        imported_source_url: Set("URL".to_string()),
+        allow_suspension: Set(false),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
+
+    let schema_jwt_only_id = crate::entity::proof_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
+        name: Set("proof-jwt-only".to_string()),
+        expire_duration: Set(Default::default()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
+
+    crate::entity::proof_input_schema::ActiveModel {
+        id: Set(1),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        order: Set(1),
+        validity_constraint: Set(None),
+        credential_schema: Set(cred_schema_jwt_id),
+        proof_schema: Set(schema_jwt_only_id),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let schema_mdoc_only_id = crate::entity::proof_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
+        name: Set("proof-mdoc-only".to_string()),
+        expire_duration: Set(Default::default()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
+
+    crate::entity::proof_input_schema::ActiveModel {
+        id: Set(2),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        order: Set(1),
+        validity_constraint: Set(None),
+        credential_schema: Set(cred_schema_mdoc_id),
+        proof_schema: Set(schema_mdoc_only_id),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let schema_mdoc_and_jwt_id = crate::entity::proof_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
+        name: Set("proof-mdoc-and-jwt".to_string()),
+        expire_duration: Set(Default::default()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
+
+    crate::entity::proof_input_schema::ActiveModel {
+        id: Set(3),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        order: Set(1),
+        validity_constraint: Set(None),
+        credential_schema: Set(cred_schema_mdoc_id),
+        proof_schema: Set(schema_mdoc_and_jwt_id),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    crate::entity::proof_input_schema::ActiveModel {
+        id: Set(4),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        order: Set(2),
+        validity_constraint: Set(None),
+        credential_schema: Set(cred_schema_jwt_id),
+        proof_schema: Set(schema_mdoc_and_jwt_id),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    // JWT only
+    let result = repository
+        .get_proof_schema_list(GetProofSchemaQuery {
+            filtering: Some(ProofSchemaFilterValue::Formats(vec!["JWT".to_string()]).condition()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result.values.len(), 1);
+    assert_eq!(result.values[0].id, schema_jwt_only_id);
+
+    // MDOC only
+    let result = repository
+        .get_proof_schema_list(GetProofSchemaQuery {
+            filtering: Some(ProofSchemaFilterValue::Formats(vec!["MDOC".to_string()]).condition()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result.values.len(), 1);
+    assert_eq!(result.values[0].id, schema_mdoc_only_id);
+
+    // MDOC or JWT
+    let result = repository
+        .get_proof_schema_list(GetProofSchemaQuery {
+            filtering: Some(
+                ProofSchemaFilterValue::Formats(vec!["MDOC".to_string(), "JWT".to_string()])
+                    .condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result.values.len(), 3);
+    let ids: HashSet<_> = result.values.iter().map(|val| val.id).collect();
+    assert!(ids.contains(&schema_mdoc_only_id));
+    assert!(ids.contains(&schema_jwt_only_id));
+    assert!(ids.contains(&schema_mdoc_and_jwt_id));
 }

@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use shared_types::ProofSchemaId;
+use shared_types::{CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -11,7 +11,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub order: i32,
     pub validity_constraint: Option<i64>,
-    pub credential_schema: String,
+    pub credential_schema: CredentialSchemaId,
     pub proof_schema: ProofSchemaId,
 }
 

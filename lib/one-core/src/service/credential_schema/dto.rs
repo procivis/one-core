@@ -97,7 +97,7 @@ pub enum CredentialSchemaFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
     SchemaId(StringMatch),
-    Format(StringMatch),
+    Formats(Vec<String>),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
 }
 

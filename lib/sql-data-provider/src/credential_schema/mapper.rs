@@ -36,9 +36,9 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             Self::SchemaId(string_match) => {
                 get_string_match_condition(credential_schema::Column::SchemaId, string_match)
             }
-            Self::Format(string_match) => {
-                get_string_match_condition(credential_schema::Column::Format, string_match)
-            }
+            Self::Formats(formats) => credential_schema::Column::Format
+                .is_in(formats)
+                .into_condition(),
             Self::OrganisationId(organisation_id) => get_equals_condition(
                 credential_schema::Column::OrganisationId,
                 organisation_id.to_string(),

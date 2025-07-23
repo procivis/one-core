@@ -23,6 +23,8 @@ impl From<ProofSchemasFilterQueryParamsRest> for ListFilterCondition<ProofSchema
 
         let proof_schema_ids = value.ids.map(ProofSchemaFilterValue::ProofSchemaIds);
 
-        organisation_id & name & proof_schema_ids
+        let formats = value.formats.map(ProofSchemaFilterValue::Formats);
+
+        organisation_id & name & proof_schema_ids & formats
     }
 }

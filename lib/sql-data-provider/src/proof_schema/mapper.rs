@@ -3,10 +3,11 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
 use one_core::repository::error::DataLayerError;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
+use sea_orm::prelude::Expr;
+use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
+use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, Set};
 
-use crate::entity::proof_schema;
+use crate::entity::{credential_schema, proof_input_schema, proof_schema};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
 };
@@ -46,6 +47,24 @@ impl IntoFilterCondition for ProofSchemaFilterValue {
                 get_equals_condition(proof_schema::Column::OrganisationId, organisation_id)
             }
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
+            Self::Formats(formats) => proof_schema::Column::Id
+                .not_in_subquery(
+                    Query::select()
+                        .column(proof_input_schema::Column::ProofSchema)
+                        .from(proof_input_schema::Entity)
+                        .join(
+                            JoinType::InnerJoin,
+                            credential_schema::Entity,
+                            Expr::col((credential_schema::Entity, credential_schema::Column::Id))
+                                .equals((
+                                    proof_input_schema::Entity,
+                                    proof_input_schema::Column::CredentialSchema,
+                                )),
+                        )
+                        .and_where(credential_schema::Column::Format.is_not_in(formats))
+                        .to_owned(),
+                )
+                .into_condition(),
         }
     }
 }
