@@ -177,6 +177,7 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub dcql_query: Option<DcqlQuery>,
+    /// with client_id_scheme prefix (for Draft 25 and later)
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
@@ -302,6 +303,8 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub state: Option<String>,
     pub nonce: Option<String>,
     pub client_id_scheme: ClientIdScheme,
+
+    /// without client_id_scheme prefix (in case of Draft 25 and later)
     pub client_id: String,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]

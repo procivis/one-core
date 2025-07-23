@@ -617,7 +617,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             ));
         }
 
-        let client_id = match client_id_scheme {
+        let client_id_without_prefix = match client_id_scheme {
             ClientIdScheme::RedirectUri | ClientIdScheme::VerifierAttestation => {
                 response_uri.to_owned()
             }
@@ -676,7 +676,10 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
             presentation_definition,
-            client_id: encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
+            client_id: encode_client_id_with_scheme(
+                client_id_without_prefix.clone(),
+                client_id_scheme,
+            ),
             dcql_query,
             encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
             client_id_scheme: Some(client_id_scheme),
@@ -686,7 +689,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let offer = create_openid4vp_final1_0_authorization_request(
             base_url,
             &self.params,
-            client_id,
+            client_id_without_prefix,
             interaction_id,
             &interaction_content,
             nonce,
@@ -863,18 +866,15 @@ async fn handle_proof_invitation(
     validate_interaction_data(&holder_interaction_data)?;
     let data = serialize_interaction_data(&holder_interaction_data)?;
 
+    let Some(response_uri) = holder_interaction_data.response_uri else {
+        return Err(VerificationProtocolError::Failed(
+            "response_uri is missing".to_string(),
+        ));
+    };
+
     let now = OffsetDateTime::now_utc();
-    let interaction = create_and_store_interaction(
-        storage_access,
-        holder_interaction_data
-            .response_uri
-            .ok_or(VerificationProtocolError::Failed(
-                "response_uri is None".to_string(),
-            ))?,
-        data,
-        organisation,
-    )
-    .await?;
+    let interaction =
+        create_and_store_interaction(storage_access, response_uri, data, organisation).await?;
 
     let interaction_id = interaction.id.to_owned();
 

@@ -17,7 +17,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
-use crate::service::oid4vp_draft25::proof_request::{
+use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
@@ -28,7 +28,7 @@ use crate::util::oidc::determine_response_mode;
 pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     base_url: &str,
     openidvc_params: &Params,
-    client_id: String,
+    client_id_without_prefix: String,
     interaction_id: InteractionId,
     interaction_data: &OpenID4VPVerifierInteractionContent,
     nonce: String,
@@ -42,7 +42,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
     let params = if openidvc_params.use_request_uri {
         AuthorizationRequestQueryParams {
-            client_id: encode_client_id_with_scheme(client_id, client_id_scheme),
+            client_id: encode_client_id_with_scheme(client_id_without_prefix, client_id_scheme),
             request_uri: Some(format!(
                 "{base_url}/ssi/openid4vp/final-1.0/{}/client-request",
                 proof.id
@@ -52,7 +52,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     } else {
         match client_id_scheme {
             ClientIdScheme::RedirectUri => get_params_for_redirect_uri(
-                client_id,
+                client_id_without_prefix,
                 interaction_id,
                 nonce,
                 proof,
@@ -70,7 +70,10 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
-                    client_id: encode_client_id_with_scheme(client_id, ClientIdScheme::X509SanDns),
+                    client_id: encode_client_id_with_scheme(
+                        client_id_without_prefix,
+                        ClientIdScheme::X509SanDns,
+                    ),
                     request: Some(token),
                     ..Default::default()
                 });
@@ -87,7 +90,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
                     client_id: encode_client_id_with_scheme(
-                        client_id,
+                        client_id_without_prefix,
                         ClientIdScheme::VerifierAttestation,
                     ),
                     request: Some(token),
@@ -105,7 +108,10 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
-                    client_id: encode_client_id_with_scheme(client_id, ClientIdScheme::Did),
+                    client_id: encode_client_id_with_scheme(
+                        client_id_without_prefix,
+                        ClientIdScheme::Did,
+                    ),
                     request: Some(token),
                     ..Default::default()
                 });
@@ -118,7 +124,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
 
 #[allow(clippy::too_many_arguments)]
 fn get_params_for_redirect_uri(
-    client_id: String,
+    response_uri: String,
     interaction_id: InteractionId,
     nonce: String,
     proof: &Proof,
@@ -155,12 +161,12 @@ fn get_params_for_redirect_uri(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(AuthorizationRequestQueryParams {
-        client_id: encode_client_id_with_scheme(client_id.clone(), ClientIdScheme::RedirectUri),
+        client_id: encode_client_id_with_scheme(response_uri.clone(), ClientIdScheme::RedirectUri),
         response_type: Some("vp_token".to_string()),
         state: Some(interaction_id.to_string()),
         response_mode: Some(determine_response_mode(proof)?),
         client_metadata: Some(metadata),
-        response_uri: Some(client_id),
+        response_uri: Some(response_uri),
         nonce: Some(nonce),
         presentation_definition,
         presentation_definition_uri: None,
@@ -171,17 +177,20 @@ fn get_params_for_redirect_uri(
     })
 }
 
-pub fn encode_client_id_with_scheme(client_id: String, client_id_scheme: ClientIdScheme) -> String {
+pub(super) fn encode_client_id_with_scheme(
+    client_id_without_prefix: String,
+    client_id_scheme: ClientIdScheme,
+) -> String {
     match client_id_scheme {
-        ClientIdScheme::Did => client_id,
-        _ => format!("{client_id_scheme}:{client_id}"),
+        ClientIdScheme::Did => client_id_without_prefix,
+        _ => format!("{client_id_scheme}:{client_id_without_prefix}"),
     }
 }
 
-pub fn decode_client_id_with_scheme(
-    client_id: String,
+pub(crate) fn decode_client_id_with_scheme(
+    client_id: &str,
 ) -> Result<(String, ClientIdScheme), VerificationProtocolError> {
-    let (client_id_scheme, client_id) =
+    let (client_id_scheme, client_id_without_prefix) =
         client_id
             .split_once(':')
             .ok_or(VerificationProtocolError::InvalidRequest(
@@ -192,12 +201,12 @@ pub fn decode_client_id_with_scheme(
         VerificationProtocolError::InvalidRequest(format!("invalid client_id_scheme: {e}"))
     })?;
 
-    let client_id = match client_id_scheme {
+    let client_id_without_prefix = match client_id_scheme {
         ClientIdScheme::Did => client_id,
-        _ => client_id,
+        _ => client_id_without_prefix,
     };
 
-    Ok((client_id.to_string(), client_id_scheme))
+    Ok((client_id_without_prefix.to_string(), client_id_scheme))
 }
 
 impl TryFrom<AuthorizationRequestQueryParams> for AuthorizationRequest {
@@ -211,10 +220,8 @@ impl TryFrom<AuthorizationRequestQueryParams> for AuthorizationRequest {
                 .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
         }
 
-        let (client_id, _) = decode_client_id_with_scheme(query_params.client_id)?;
-
         Ok(AuthorizationRequest {
-            client_id,
+            client_id: query_params.client_id,
             state: query_params.state,
             nonce: query_params.nonce,
             response_type: query_params.response_type,
@@ -251,10 +258,23 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
     type Error = VerificationProtocolError;
 
     fn try_from(value: AuthorizationRequest) -> Result<Self, Self::Error> {
-        let (client_id, client_id_scheme) = decode_client_id_with_scheme(value.client_id)?;
+        let (client_id_without_prefix, client_id_scheme) =
+            decode_client_id_with_scheme(&value.client_id)?;
+
+        let mut response_uri = value.response_uri;
+
+        // The Verifier MAY omit the redirect_uri Authorization Request parameter (or response_uri when Response Mode direct_post is used).
+        // <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.9.3-3.1.1>
+        if response_uri.is_none() && client_id_scheme == ClientIdScheme::RedirectUri {
+            response_uri = Some(
+                client_id_without_prefix
+                    .parse::<Url>()
+                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
+            );
+        }
 
         Ok(Self {
-            client_id,
+            client_id: client_id_without_prefix,
             response_type: value.response_type,
             state: value.state,
             nonce: value.nonce,
@@ -262,7 +282,7 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             client_metadata: value.client_metadata,
             client_metadata_uri: None,
             response_mode: value.response_mode,
-            response_uri: value.response_uri,
+            response_uri,
             presentation_definition: value.presentation_definition,
             presentation_definition_uri: value.presentation_definition_uri,
             dcql_query: value.dcql_query,

@@ -173,14 +173,17 @@ fn get_params_for_redirect_uri(
     })
 }
 
-pub fn encode_client_id_with_scheme(client_id: String, client_id_scheme: ClientIdScheme) -> String {
+pub(crate) fn encode_client_id_with_scheme(
+    client_id: String,
+    client_id_scheme: ClientIdScheme,
+) -> String {
     match client_id_scheme {
         ClientIdScheme::Did => client_id,
         _ => format!("{client_id_scheme}:{client_id}"),
     }
 }
 
-pub fn decode_client_id_with_scheme(
+pub(crate) fn decode_client_id_with_scheme(
     client_id: String,
 ) -> Result<(String, ClientIdScheme), VerificationProtocolError> {
     let (client_id_scheme, client_id) =

@@ -15,6 +15,7 @@ use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::decode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -136,6 +137,8 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         redirect_uris: vec![response_uri],
     };
 
+    let (client_id_without_prefix, _) = decode_client_id_with_scheme(&client_response.client_id)?;
+
     let attestation_jwt = Jwt {
         header: JWTHeader {
             algorithm: jose_algorithm.to_owned(),
@@ -148,7 +151,10 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         payload: JWTPayload {
             expires_at,
             issuer: Some(verifier_did.did.to_string()),
-            subject: Some(client_response.client_id.to_owned()),
+
+            // ... the original Client Identifier (the part without the verifier_attestation: prefix) MUST equal the sub claim value in the Verifier attestation JWT
+            // <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.9.3-3.4.1>
+            subject: Some(client_id_without_prefix.to_owned()),
             custom,
             proof_of_possession_key,
             ..Default::default()
@@ -176,7 +182,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
             expires_at,
             invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
-            subject: Some(client_response.client_id.to_owned()),
+            subject: Some(client_id_without_prefix),
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),
             jwt_id: None,
             proof_of_possession_key: None,

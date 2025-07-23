@@ -39,6 +39,7 @@ fn default_use_dcql() -> bool {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub(crate) struct AuthorizationRequestQueryParams {
+    /// with client_id_scheme prefix
     pub client_id: String,
     pub state: Option<String>,
     pub nonce: Option<String>,
@@ -60,6 +61,7 @@ pub(crate) struct AuthorizationRequestQueryParams {
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug, Default)]
 pub(crate) struct AuthorizationRequest {
+    /// with client_id_scheme prefix
     pub client_id: String,
 
     #[serde(default)]

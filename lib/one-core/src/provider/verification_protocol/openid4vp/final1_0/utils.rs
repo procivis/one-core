@@ -16,6 +16,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::final1_0::encode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
     OpenID4VpPresentationFormat,
@@ -40,8 +41,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .x5c
         .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
 
-    let (client_id, _) =
-        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
+    let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     let pem_chain = x5c_into_pem_chain(&x5c)
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
@@ -107,7 +107,7 @@ async fn parse_referenced_data_from_did_signed_token(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<(AuthorizationRequest, DidValue), VerificationProtocolError> {
-    let client_id = request_token.payload.custom.client_id.clone();
+    let client_id = &request_token.payload.custom.client_id;
 
     let Some(kid) = request_token.header.key_id.clone() else {
         return Err(VerificationProtocolError::Failed(
@@ -115,7 +115,7 @@ async fn parse_referenced_data_from_did_signed_token(
         ));
     };
 
-    let verifier_did = client_id.clone().parse().map_err(|_| {
+    let verifier_did = client_id.parse().map_err(|_| {
         VerificationProtocolError::Failed("client_id is not a valid DID".to_string())
     })?;
 
@@ -232,16 +232,20 @@ async fn parse_referenced_data_from_verifier_attestation_token(
             .map(|url| url.as_str()),
     )?;
 
-    let client_id = attestation_jwt
-        .payload
-        .subject
-        .ok_or(VerificationProtocolError::Failed(
-            "missing `sub` in attestation JWT token".to_string(),
-        ))?;
+    let client_id_without_prefix =
+        attestation_jwt
+            .payload
+            .subject
+            .ok_or(VerificationProtocolError::Failed(
+                "missing `sub` in attestation JWT token".to_string(),
+            ))?;
 
     Ok((
         AuthorizationRequest {
-            client_id,
+            client_id: encode_client_id_with_scheme(
+                client_id_without_prefix,
+                ClientIdScheme::VerifierAttestation,
+            ),
             ..request_token.payload.custom
         },
         attestation_jwt.payload.issuer,
@@ -284,7 +288,7 @@ async fn retrieve_authorization_params_by_reference(
     }
 
     let (_, client_id_scheme) =
-        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
+        decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     if !params
         .holder
@@ -574,23 +578,16 @@ pub(crate) fn validate_interaction_data(
         None => {}
     };
 
-    if interaction_data.response_uri.is_none() {
+    let Some(response_uri) = interaction_data.response_uri.as_ref() else {
         return Err(VerificationProtocolError::InvalidRequest(
             "response_uri must be set".to_string(),
         ));
-    }
-
-    // If the Client Identifier scheme redirect_uri is used in conjunction with the Response Mode direct_post, and the response_uri parameter is present, the client_id value MUST be equal to the response_uri value.
-    // <https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-6.2-9>
+    };
     if interaction_data.client_id_scheme == ClientIdScheme::RedirectUri
-        && Some(interaction_data.client_id.as_str())
-            != interaction_data
-                .response_uri
-                .as_ref()
-                .map(|uri| uri.as_str())
+        && interaction_data.client_id.as_str() != response_uri.as_str()
     {
         return Err(VerificationProtocolError::InvalidRequest(
-            "client_id must match response_uri".to_string(),
+            "client_id must match response_uri for client_id_scheme=redirect_uri".to_string(),
         ));
     }
 
