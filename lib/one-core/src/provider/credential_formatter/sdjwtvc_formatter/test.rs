@@ -18,7 +18,8 @@ use uuid::Uuid;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType, LayoutType};
-use crate::model::did::KeyRole;
+use crate::model::did::{Did, KeyRole};
+use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::provider::caching_loader::vct::{
     MockVctTypeMetadataFetcher, SdJwtVcTypeMetadataCacheItem,
@@ -52,7 +53,9 @@ use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
-use crate::service::test_utilities::{dummy_did_document, dummy_jwk, generic_config};
+use crate::service::test_utilities::{
+    dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, generic_config,
+};
 use crate::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::util::key_verification::KeyVerification;
 
@@ -83,10 +86,20 @@ async fn test_format_credential() {
         "http://base_url",
     );
     let mut did_method_provider = MockDidMethodProvider::new();
-    let holder_did = dummy_did_document(&credential_data.holder_did.as_ref().unwrap().clone());
+
+    let holder_did = credential_data
+        .holder_identifier
+        .as_ref()
+        .unwrap()
+        .did
+        .as_ref()
+        .map(|did| did.did.clone())
+        .unwrap();
+
+    let did_document = dummy_did_document(&holder_did);
     did_method_provider
         .expect_resolve()
-        .return_once(move |_| Ok(holder_did));
+        .return_once(move |_| Ok(did_document));
 
     let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
     vct_metadata_cache
@@ -115,6 +128,7 @@ async fn test_format_credential() {
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(vct_metadata_cache),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
@@ -249,10 +263,21 @@ async fn test_format_credential_swiyu() {
         array_item: false,
     });
     let mut did_method_provider = MockDidMethodProvider::new();
-    let holder_did = dummy_did_document(&credential_data.holder_did.as_ref().unwrap().clone());
+
+    let holder_did = credential_data
+        .holder_identifier
+        .as_ref()
+        .unwrap()
+        .did
+        .as_ref()
+        .map(|did| did.did.clone())
+        .unwrap();
+
+    let holder_did_document = dummy_did_document(&holder_did);
+
     did_method_provider
         .expect_resolve()
-        .return_once(move |_| Ok(holder_did));
+        .return_once(move |_| Ok(holder_did_document));
 
     let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
     vct_metadata_cache
@@ -281,6 +306,7 @@ async fn test_format_credential_swiyu() {
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(vct_metadata_cache),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
@@ -411,6 +437,7 @@ async fn test_extract_credentials() {
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
@@ -542,6 +569,7 @@ async fn test_extract_credentials_swiyu() {
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
@@ -731,6 +759,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
@@ -799,6 +828,7 @@ fn test_schema_id() {
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
@@ -940,10 +970,18 @@ async fn test_format_extract_round_trip() {
         .with_valid_from(now)
         .with_valid_until(now + Duration::seconds(10));
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did.clone()),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: Some(format!("{holder_did}#0")),
         issuer_certificate: None,
     };
@@ -984,6 +1022,7 @@ async fn test_format_extract_round_trip() {
         params,
         crypto,
         did_method_provider.clone(),
+        key_algorithm_provider.clone(),
         Arc::new(vct_metadata_cache),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,

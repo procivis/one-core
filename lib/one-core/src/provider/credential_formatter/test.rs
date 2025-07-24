@@ -19,6 +19,7 @@ use crate::service::credential::dto::{
     DetailCredentialSchemaResponseDTO,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::test_utilities::{dummy_did, dummy_identifier};
 
 fn generate_credential_detail_response(
     claims: Vec<DetailCredentialClaimResponseDTO>,
@@ -224,11 +225,19 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     ]);
     let credential = generate_credential_matching_detail(&credential_detail);
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     let actual = credential_data_from_credential_detail_response(
         credential_detail,
         &credential,
         None,
-        Some(holder_did.clone()),
+        Some(holder_identifier),
         format!("{holder_did}#0"),
         "http://127.0.0.1",
         vec![],
@@ -339,11 +348,19 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
     ]);
     let credential = generate_credential_matching_detail(&credential_detail);
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     let actual = credential_data_from_credential_detail_response(
         credential_detail,
         &credential,
         None,
-        Some(holder_did.clone()),
+        Some(holder_identifier),
         format!("{holder_did}#0"),
         "http://127.0.0.1",
         vec![],

@@ -47,6 +47,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::service::certificate::validator::CertificateValidator;
@@ -59,6 +60,7 @@ const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 pub struct SDJWTVCFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     certificate_validator: Arc<dyn CertificateValidator>,
     datatype_config: DatatypeConfig,
@@ -95,7 +97,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
 
         let inputs = SdJwtFormattingInputs {
-            holder_did: credential_data.holder_did,
+            holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "vc+sd-jwt".to_string(),
@@ -122,6 +124,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             auth_fn,
             &*self.crypto.get_hasher(HASH_ALG)?,
             &*self.did_method_provider,
+            &*self.key_algorithm_provider,
             payload_from_digests,
         )
         .await
@@ -303,10 +306,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
 }
 
 impl SDJWTVCFormatter {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         certificate_validator: Arc<dyn CertificateValidator>,
         datatype_config: DatatypeConfig,
@@ -316,6 +321,7 @@ impl SDJWTVCFormatter {
             params,
             crypto,
             did_method_provider,
+            key_algorithm_provider,
             vct_type_metadata_cache,
             certificate_validator,
             datatype_config,

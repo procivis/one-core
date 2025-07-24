@@ -9,6 +9,8 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, HolderBindingCtx,
@@ -23,6 +25,7 @@ use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
+use crate::service::test_utilities::{dummy_did, dummy_identifier};
 use crate::util::jwt::Jwt;
 
 #[tokio::test]
@@ -698,10 +701,18 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
         .with_valid_from(issuance_date)
         .with_valid_until(issuance_date + valid_for);
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did,
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: Some("did-vm-id".to_string()),
         issuer_certificate: None,
     }

@@ -74,12 +74,18 @@ impl CredentialFormatter for JWTFormatter {
 
         let vc = VcClaim { vc: vcdm.into() };
 
+        let holder_did = credential_data
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.as_ref())
+            .map(|did| did.did.to_string());
+
         let payload = JWTPayload {
             issued_at,
             expires_at,
             invalid_before: issued_at,
             issuer: Some(issuer),
-            subject: credential_data.holder_did.map(|did| did.to_string()),
+            subject: holder_did,
             jwt_id: credential_id,
             custom: vc,
             ..Default::default()

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -184,10 +183,7 @@ impl VCAPIService {
         }
 
         let credential_data = CredentialData {
-            holder_did: vcdm
-                .credential_subject
-                .iter()
-                .find_map(|s| DidValue::from_did_url(s.id.as_ref()?).ok()),
+            holder_identifier: None, // For VC API verification, we don't have a full Identifier object
             vcdm,
             claims: vec![],
             holder_key_id: None,

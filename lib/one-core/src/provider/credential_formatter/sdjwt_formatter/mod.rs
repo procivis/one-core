@@ -25,6 +25,7 @@ use crate::provider::credential_formatter::model::{
     VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::jwt::Jwt;
 
@@ -46,6 +47,7 @@ use crate::util::jwt::model::JWTPayload;
 pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     params: Params,
 }
@@ -72,7 +74,7 @@ impl CredentialFormatter for SDJWTFormatter {
         }
 
         let inputs = SdJwtFormattingInputs {
-            holder_did: credential_data.holder_did,
+            holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "SD_JWT".to_string(),
@@ -91,6 +93,7 @@ impl CredentialFormatter for SDJWTFormatter {
             auth_fn,
             &*self.crypto.get_hasher(HASH_ALG)?,
             &*self.did_method_provider,
+            &*self.key_algorithm_provider,
             payload_from_digests,
         )
         .await
@@ -236,12 +239,14 @@ impl SDJWTFormatter {
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             params,
             crypto,
             did_method_provider,
+            key_algorithm_provider,
             client,
         }
     }

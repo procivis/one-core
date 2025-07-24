@@ -465,7 +465,7 @@ pub async fn create_lvvc_with_status(
     let credential_data = CredentialData {
         vcdm,
         claims: vec![],
-        holder_did: None,
+        holder_identifier: None,
         holder_key_id: None,
         issuer_certificate: None,
     };

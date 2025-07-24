@@ -25,7 +25,8 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{
-    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
+    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierState,
+    IdentifierType,
 };
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
 use crate::model::list_filter::ListFilterValue;
@@ -226,7 +227,15 @@ pub(crate) async fn get_or_create_did_and_identifier(
     };
 
     let identifier = match identifier_repository
-        .get_from_did_id(did.id, &Default::default())
+        .get_from_did_id(
+            did.id,
+            &IdentifierRelations {
+                did: Some(Default::default()),
+                key: Some(Default::default()),
+                certificates: Some(Default::default()),
+                ..Default::default()
+            },
+        )
         .await?
     {
         Some(identifier) => identifier,

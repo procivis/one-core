@@ -10,6 +10,8 @@ use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
+use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
 use crate::provider::credential_formatter::model::{
@@ -24,6 +26,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::service::test_utilities::{dummy_did, dummy_identifier};
 use crate::util::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
@@ -92,7 +95,13 @@ async fn create_token(include_layout: bool) -> Value {
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did.clone()),
+        holder_identifier: Some(Identifier {
+            did: Some(Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            }),
+            ..dummy_identifier()
+        }),
         holder_key_id: None,
         issuer_certificate: None,
     };

@@ -100,12 +100,19 @@ impl CredentialFormatter for JsonLdBbsplus {
             .ok_or_else(|| FormatterError::CouldNotFormat("Missing jwk key id".to_string()))?;
 
         let mut vcdm = credential_data.vcdm;
+
+        let holder_did = credential_data
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.as_ref())
+            .map(|did| did.did.clone().into_url());
+
         if let Some(cs) = vcdm
             .credential_subject
             .first_mut()
             .filter(|cs| cs.id.is_none())
         {
-            cs.id = credential_data.holder_did.map(|did| did.into_url());
+            cs.id = holder_did;
         }
 
         let mandatory_pointers = generate_mandatory_pointers(&vcdm);

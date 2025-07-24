@@ -15,6 +15,7 @@ use super::model::{
     TokenVerifier, VerificationFn,
 };
 use crate::model::did::KeyRole;
+use crate::model::identifier::IdentifierType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
@@ -28,6 +29,7 @@ use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::certificate::validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
@@ -51,6 +53,7 @@ pub(crate) enum SdJwtType {
     SdJwtVc,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn format_credential<T: Serialize>(
     credential: VcdmCredential,
     claims: Value,
@@ -58,6 +61,7 @@ pub(crate) async fn format_credential<T: Serialize>(
     auth_fn: AuthenticationFn,
     hasher: &dyn Hasher,
     did_method_provider: &dyn DidMethodProvider,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
 ) -> Result<String, FormatterError> {
     let issuer = credential.issuer.as_url().to_string();
@@ -66,35 +70,82 @@ pub(crate) async fn format_credential<T: Serialize>(
     let expires_at = credential.valid_until.or(credential.expiration_date);
     let (payload, disclosures) = format_hashed_credential(&claims, hasher, digests_to_payload)?;
 
-    let proof_of_possession_key = if let Some(ref holder_did) = additional_inputs.holder_did {
-        let did_document = did_method_provider
-            .resolve(holder_did)
-            .await
-            .map_err(|err| FormatterError::CouldNotFormat(format!("{err}")))?;
-        did_document
-            .find_verification_method(
-                additional_inputs.holder_key_id.as_deref(),
-                Some(KeyRole::AssertionMethod),
-            )
-            .map(|verification_method| verification_method.public_key_jwk.clone())
-            .map(PublicKeyJwkDTO::from)
-            .map(|jwk| {
-                let jwk = match additional_inputs.swiyu_proof_of_possession {
-                    false => ProofOfPossessionJwk::Jwk { jwk },
-                    true => ProofOfPossessionJwk::Swiyu(jwk),
-                };
-                ProofOfPossessionKey { key_id: None, jwk }
-            })
-    } else {
-        None
+    let proof_of_possession_key = match &additional_inputs.holder_identifier {
+        Some(identifier) => match &identifier.r#type {
+            IdentifierType::Did => {
+                if let Some(did) = &identifier.did {
+                    let did_document = did_method_provider
+                        .resolve(&did.did)
+                        .await
+                        .map_err(|err| FormatterError::CouldNotFormat(format!("{err}")))?;
+                    did_document
+                        .find_verification_method(
+                            additional_inputs.holder_key_id.as_deref(),
+                            Some(KeyRole::AssertionMethod),
+                        )
+                        .map(|verification_method| verification_method.public_key_jwk.clone())
+                        .map(PublicKeyJwkDTO::from)
+                        .map(|jwk| {
+                            let jwk = match additional_inputs.swiyu_proof_of_possession {
+                                false => ProofOfPossessionJwk::Jwk { jwk },
+                                true => ProofOfPossessionJwk::Swiyu(jwk),
+                            };
+                            ProofOfPossessionKey { key_id: None, jwk }
+                        })
+                } else {
+                    None
+                }
+            }
+            IdentifierType::Key => {
+                if let Some(key) = &identifier.key {
+                    let key_type =
+                        key.key_algorithm_type()
+                            .ok_or(FormatterError::CouldNotFormat(
+                                "Invalid key algorithm".to_string(),
+                            ))?;
+
+                    let key_algorithm = key_algorithm_provider
+                        .key_algorithm_from_type(key_type)
+                        .ok_or(FormatterError::CouldNotFormat(
+                            "Invalid key algorithm".to_string(),
+                        ))?;
+
+                    let jwk = key_algorithm
+                        .reconstruct_key(key.public_key.as_slice(), None, None)
+                        .map_err(|e| {
+                            FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
+                        })?;
+
+                    let jwk = jwk.public_key_as_jwk().map_err(|e| {
+                        FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
+                    })?;
+
+                    Some(ProofOfPossessionKey {
+                        key_id: None,
+                        jwk: ProofOfPossessionJwk::Jwk { jwk: jwk.into() },
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        },
+        _ => None,
     };
+
+    let subject = additional_inputs
+        .holder_identifier
+        .as_ref()
+        .and_then(|identifier| identifier.did.as_ref())
+        .map(|did| did.did.clone())
+        .map(|did| did.to_string());
 
     let payload = JWTPayload {
         issued_at,
         expires_at,
         invalid_before: issued_at
             .and_then(|iat| iat.checked_sub(Duration::seconds(additional_inputs.leeway as i64))),
-        subject: additional_inputs.holder_did.map(|did| did.to_string()),
+        subject,
         audience: None,
         issuer: Some(issuer),
         jwt_id: id.map(|id| id.to_string()),

@@ -333,7 +333,7 @@ impl OID4VCIDraft13Service {
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
 
-        let (holder_did, holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
+        let (holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
             let verified_proof = OpenID4VCIProofJWTFormatter::verify_proof(
                 &request.proof.jwt,
                 Box::new(KeyVerification {
@@ -349,7 +349,7 @@ impl OID4VCIDraft13Service {
 
             match verified_proof {
                 Either::Left((holder_did_value, holder_key_id)) => {
-                    let (did, identifier) = get_or_create_did_and_identifier(
+                    let (_, identifier) = get_or_create_did_and_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
                         &*self.identifier_repository,
@@ -358,7 +358,7 @@ impl OID4VCIDraft13Service {
                         IdentifierRole::Holder,
                     )
                     .await?;
-                    Ok((Some(did), identifier, holder_key_id))
+                    Ok((identifier, holder_key_id))
                 }
                 Either::Right(jwk) => {
                     let (key, identifier) = get_or_create_key_identifier(
@@ -371,7 +371,7 @@ impl OID4VCIDraft13Service {
                     )
                     .await?;
 
-                    Ok((None, identifier, key.id.to_string()))
+                    Ok((identifier, key.id.to_string()))
                 }
             }
         } else {
@@ -396,7 +396,7 @@ impl OID4VCIDraft13Service {
             .ok_or(ServiceError::MappingError(
                 "issuance protocol not found".to_string(),
             ))?
-            .issuer_issue_credential(&credential.id, holder_did, holder_identifier, holder_key_id)
+            .issuer_issue_credential(&credential.id, holder_identifier, holder_key_id)
             .await;
 
         match issued_credential {

@@ -1,6 +1,5 @@
 use convert_case::{Case, Casing};
 use indexmap::IndexSet;
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::fmt::Urn;
@@ -12,6 +11,7 @@ use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::RevocationType;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::model::{
     CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
@@ -23,7 +23,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     credential_detail: CredentialDetailResponseDTO,
     credential: &Credential,
     issuer_certificate: Option<Certificate>,
-    holder_did: Option<DidValue>,
+    holder_identifier: Option<Identifier>,
     holder_key_id: String,
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
@@ -91,7 +91,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     Ok(CredentialData {
         vcdm,
         claims: flat_claims,
-        holder_did,
+        holder_identifier,
         holder_key_id: Some(holder_key_id),
         issuer_certificate,
     })

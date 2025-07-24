@@ -138,11 +138,15 @@ impl CredentialFormatter for MdocFormatter {
         let namespaces =
             try_build_namespaces(claims, credential_data.claims, &self.datatype_config)?;
 
-        let holder_did = credential_data.holder_did.ok_or_else(|| {
-            FormatterError::CouldNotFormat("Missing holder did for mdoc".to_string())
-        })?;
+        let holder_did = credential_data
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.as_ref())
+            .ok_or(FormatterError::CouldNotFormat(
+                "Missing holder did for mdoc".to_string(),
+            ))?;
 
-        let cose_key = try_build_cose_key(&*self.did_method_provider, &holder_did).await?;
+        let cose_key = try_build_cose_key(&*self.did_method_provider, &holder_did.did).await?;
 
         let device_key_info = DeviceKeyInfo {
             device_key: DeviceKey(cose_key),

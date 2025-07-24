@@ -12,6 +12,7 @@ use uuid::Uuid;
 use super::*;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
+use crate::model::did::Did;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
@@ -24,7 +25,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, OID4VPHandover};
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::certificate::validator::{MockCertificateValidator, ParsedCertificate};
-use crate::service::test_utilities::{generic_config, get_dummy_date};
+use crate::service::test_utilities::{dummy_did, dummy_identifier, generic_config, get_dummy_date};
 
 #[test]
 fn test_issuer_auth_serialize_deserialize() {
@@ -234,10 +235,17 @@ async fn test_credential_formatting_ok_for_ecdsa() {
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did.clone()),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
             id: Uuid::new_v4().into(),
@@ -440,10 +448,18 @@ async fn test_unverified_credential_extraction() {
         metadata: None,
     });
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did.clone()),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
             id: Uuid::new_v4().into(),
@@ -697,10 +713,18 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
         }),
     });
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did.clone()),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
             id: Uuid::new_v4().into(),

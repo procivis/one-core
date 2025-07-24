@@ -11,6 +11,8 @@ use uuid::Uuid;
 use super::JWTFormatter;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
+use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::jwt_formatter::Params;
 use crate::provider::credential_formatter::jwt_formatter::model::VcClaim;
@@ -26,6 +28,7 @@ use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::service::test_utilities::{dummy_did, dummy_identifier};
 use crate::util::jwt::model::JWTPayload;
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
@@ -81,10 +84,18 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
     .add_credential_schema(schema)
     .add_credential_status(status);
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did,
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: None,
     }
@@ -140,10 +151,18 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     .add_credential_schema(schema)
     .add_credential_status(status);
 
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did,
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
     CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did),
+        holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: None,
     }

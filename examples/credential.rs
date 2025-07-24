@@ -106,7 +106,7 @@ async fn main() -> Result<(), CredentialServiceError> {
     let credential_data = CredentialData {
         vcdm,
         claims,
-        holder_did: Some(holder_did),
+        holder_identifier: None,
         holder_key_id: None,
         issuer_certificate: None,
     };

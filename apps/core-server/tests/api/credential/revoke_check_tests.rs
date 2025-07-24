@@ -1,7 +1,7 @@
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
-use one_core::model::identifier::IdentifierType;
+use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::mdoc_formatter::Params;
 use one_core::provider::credential_formatter::model::{CredentialData, CredentialSchema, Issuer};
@@ -15,6 +15,7 @@ use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -2182,11 +2183,34 @@ async fn minimal_mdoc_credential(params: Params) -> String {
             related_resource: None,
         },
         claims: vec![],
-        holder_did: Some(
-            "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                .parse()
-                .unwrap(),
-        ),
+        holder_identifier: Some(Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "holder".to_string(),
+            r#type: IdentifierType::Did,
+            is_remote: true,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "holder".to_string(),
+                did: "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                    .parse()
+                    .unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                deactivated: false,
+                log: None,
+                keys: None,
+                organisation: None,
+            }),
+            key: None,
+            certificates: None,
+        }),
         holder_key_id: None,
         issuer_certificate: None,
     };

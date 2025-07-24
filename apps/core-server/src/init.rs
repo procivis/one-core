@@ -381,6 +381,7 @@ pub async fn initialize_core(
                             params,
                             crypto.clone(),
                             did_method_provider.clone(),
+                            key_algorithm_provider.clone(),
                             client.clone(),
                         )) as _
                     }
@@ -392,6 +393,7 @@ pub async fn initialize_core(
                             params,
                             crypto.clone(),
                             did_method_provider.clone(),
+                            key_algorithm_provider.clone(),
                             vct_type_metadata_cache.clone(),
                             certificate_validator.clone(),
                             datatype_config.clone(),

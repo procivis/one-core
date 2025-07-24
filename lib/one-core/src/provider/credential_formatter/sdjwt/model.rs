@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::model::certificate::Certificate;
+use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus, Issuer};
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
 
@@ -73,7 +73,7 @@ pub struct DecomposedToken<'a> {
 }
 
 pub struct SdJwtFormattingInputs {
-    pub holder_did: Option<DidValue>,
+    pub holder_identifier: Option<Identifier>,
     pub holder_key_id: Option<String>,
     pub leeway: u64,
     pub token_type: String,

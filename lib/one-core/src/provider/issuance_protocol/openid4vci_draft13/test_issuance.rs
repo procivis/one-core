@@ -254,7 +254,6 @@ async fn test_issuer_submit_succeeds() {
     let result = provider
         .issuer_issue_credential(
             &credential_id,
-            Some(dummy_did()),
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
@@ -453,7 +452,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     service
         .issuer_issue_credential(
             &credential_id,
-            Some(dummy_did()),
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
@@ -643,7 +641,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     service
         .issuer_issue_credential(
             &credential_id,
-            Some(dummy_did()),
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
@@ -743,7 +740,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         service
             .issuer_issue_credential(
                 &credential_id,
-                Some(dummy_did()),
                 dummy_identifier(),
                 format!("{}#0", dummy_did().did)
             )

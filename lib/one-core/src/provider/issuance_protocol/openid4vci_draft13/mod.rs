@@ -1207,7 +1207,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
-        holder_did: Option<Did>,
         holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
@@ -1356,11 +1355,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 })
         };
 
+        let holder_identifier_id = holder_identifier.id;
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
             &credential,
             issuer_certificate,
-            holder_did.map(|d| d.did),
+            Some(holder_identifier),
             holder_key_id,
             core_base_url,
             credential_status,
@@ -1403,7 +1403,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_identifier.id),
+                        get_issued_credential_update(&token, holder_identifier_id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -1431,7 +1431,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_identifier.id),
+                        get_issued_credential_update(&token, holder_identifier_id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;

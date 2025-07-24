@@ -66,12 +66,19 @@ impl CredentialFormatter for JsonLdClassic {
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         let mut vcdm = credential_data.vcdm;
+
+        let holder_did = credential_data
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| identifier.did.as_ref())
+            .map(|did| did.did.clone().into_url());
+
         if let Some(cs) = vcdm
             .credential_subject
             .first_mut()
             .filter(|cs| cs.id.is_none())
         {
-            cs.id = credential_data.holder_did.map(|did| did.into_url());
+            cs.id = holder_did;
         }
 
         let key_algorithm = auth_fn.get_key_algorithm().map_err(|key_type| {

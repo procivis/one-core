@@ -178,12 +178,11 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
-        holder_did: Option<Did>,
         holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
         self.inner
-            .issuer_issue_credential(credential_id, holder_did, holder_identifier, holder_key_id)
+            .issuer_issue_credential(credential_id, holder_identifier, holder_key_id)
             .await
     }
 
