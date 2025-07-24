@@ -455,6 +455,9 @@ pub struct ShareProofRequestParamsRestDTO {
 pub enum ClientIdSchemeRestEnum {
     RedirectUri,
     VerifierAttestation,
+    /// Accepts both "did" and "decentralized_identifier" as valid values.
+    /// Swagger UI will show decentralized_identifier as the value.
+    #[serde(rename = "decentralized_identifier", alias = "did")]
     Did,
     X509SanDns,
 }

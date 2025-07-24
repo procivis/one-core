@@ -376,6 +376,7 @@ pub(crate) struct OpenID4VCPresentationHolderParams {
 pub enum ClientIdScheme {
     RedirectUri,
     VerifierAttestation,
+    #[serde(alias = "decentralized_identifier")]
     Did,
     X509SanDns,
 }

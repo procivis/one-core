@@ -440,7 +440,7 @@ async fn test_share_proof_success_jsonld() {
     assert_eq!(expected, input_descriptor);
 }
 
-async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
+async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext, Proof) {
     let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
     let credential_schema =
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
@@ -478,7 +478,7 @@ async fn prepare_created_openid4vp_proof() -> (TestContext, Proof) {
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        exchange.unwrap_or("OPENID4VP_DRAFT20"),
         None,
         Some(&key),
         None,
@@ -502,9 +502,9 @@ async fn extract_client_id(response: Response) -> String {
 }
 
 #[tokio::test]
-async fn test_share_proof_client_id_scheme_redirect_uri() {
+async fn test_share_proof_client_id_scheme_redirect_uri_openid4vp_draft20() {
     // GIVEN
-    let (context, proof) = prepare_created_openid4vp_proof().await;
+    let (context, proof) = prepare_created_openid4vp_proof(None).await;
 
     // WHEN
     let resp = context
@@ -527,9 +527,9 @@ async fn test_share_proof_client_id_scheme_redirect_uri() {
 }
 
 #[tokio::test]
-async fn test_share_proof_client_id_scheme_did() {
+async fn test_share_proof_client_id_scheme_did_openid4vp_draft20() {
     // GIVEN
-    let (context, proof) = prepare_created_openid4vp_proof().await;
+    let (context, proof) = prepare_created_openid4vp_proof(None).await;
 
     // WHEN
     let resp = context
@@ -555,9 +555,9 @@ async fn test_share_proof_client_id_scheme_did() {
 }
 
 #[tokio::test]
-async fn test_share_proof_client_id_scheme_verifier_attestation() {
+async fn test_share_proof_client_id_scheme_verifier_attestation_openid4vp_draft20() {
     // GIVEN
-    let (context, proof) = prepare_created_openid4vp_proof().await;
+    let (context, proof) = prepare_created_openid4vp_proof(None).await;
 
     // WHEN
     let resp = context
@@ -574,6 +574,37 @@ async fn test_share_proof_client_id_scheme_verifier_attestation() {
             "{}/ssi/openid4vp/draft-20/response",
             context.config.app.core_base_url
         )
+    );
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
+    // GIVEN
+    let (context, proof) = prepare_created_openid4vp_proof(Some("OPENID4VP_FINAL1")).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(proof.id, Some(ClientIdSchemeRestEnum::Did))
+        .await;
+
+    // THEN
+    let client_id = extract_client_id(resp).await;
+
+    let verifier_did = proof
+        .verifier_identifier
+        .unwrap()
+        .did
+        .unwrap()
+        .did
+        .to_string();
+
+    assert_eq!(
+        client_id,
+        format!("decentralized_identifier:{verifier_did}")
     );
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;

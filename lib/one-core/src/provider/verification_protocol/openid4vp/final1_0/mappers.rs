@@ -210,7 +210,7 @@ pub(super) fn encode_client_id_with_scheme(
     client_id_scheme: ClientIdScheme,
 ) -> String {
     match client_id_scheme {
-        ClientIdScheme::Did => client_id_without_prefix,
+        ClientIdScheme::Did => format!("decentralized_identifier:{client_id_without_prefix}"),
         _ => format!("{client_id_scheme}:{client_id_without_prefix}"),
     }
 }
@@ -225,13 +225,18 @@ pub(crate) fn decode_client_id_with_scheme(
                 "invalid client_id".to_string(),
             ))?;
 
-    let client_id_scheme: ClientIdScheme = client_id_scheme.parse().map_err(|e| {
-        VerificationProtocolError::InvalidRequest(format!("invalid client_id_scheme: {e}"))
-    })?;
+    // In version 1.0, the "did" client_id_scheme was renamed to "decentralized_identifier".
+    if client_id_scheme == "did" {
+        return Err(VerificationProtocolError::InvalidRequest(
+            "did is not a valid client_id_scheme".to_string(),
+        ));
+    }
 
-    let client_id_without_prefix = match client_id_scheme {
-        ClientIdScheme::Did => client_id,
-        _ => client_id_without_prefix,
+    let client_id_scheme = match client_id_scheme {
+        "decentralized_identifier" => ClientIdScheme::Did,
+        _ => client_id_scheme.parse().map_err(|e| {
+            VerificationProtocolError::InvalidRequest(format!("invalid client_id_scheme: {e}"))
+        })?,
     };
 
     Ok((client_id_without_prefix.to_string(), client_id_scheme))
@@ -317,5 +322,38 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             redirect_uri: value.redirect_uri,
             verifier_details: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_decode_client_id_with_decentralized_identifier_scheme() {
+        let client_id = "decentralized_identifier:did:example:123";
+        let (client_id_without_prefix, client_id_scheme) =
+            decode_client_id_with_scheme(client_id).unwrap();
+        assert_eq!(client_id_without_prefix, "did:example:123");
+        assert_eq!(client_id_scheme, ClientIdScheme::Did);
+    }
+
+    #[test]
+    fn test_decode_client_id_with_did_scheme_fails() {
+        let client_id = "did:example:123";
+        let result = decode_client_id_with_scheme(client_id);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_encode_client_id_with_decentralized_identifier_scheme() {
+        let expected_client_id = "decentralized_identifier:did:example:123";
+        let client_id = "did:example:123";
+        let client_id_scheme = ClientIdScheme::Did;
+        let encoded_client_id =
+            encode_client_id_with_scheme(client_id.to_string(), client_id_scheme);
+        assert_eq!(expected_client_id, encoded_client_id);
     }
 }

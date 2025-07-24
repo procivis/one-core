@@ -192,10 +192,20 @@ verificationProtocol:
         verifier:
           useDcql: true
           supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+            ]
         holder:
           supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+            ]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
