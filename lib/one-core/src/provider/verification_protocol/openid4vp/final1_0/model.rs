@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -5,8 +7,11 @@ use url::Url;
 
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
-    OpenID4VPClientMetadata, OpenID4VPPresentationDefinition, default_presentation_url_scheme,
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
+    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwks, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
+    default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,4 +95,25 @@ pub(crate) struct AuthorizationRequest {
 
     #[serde(default)]
     pub redirect_uri: Option<String>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
+pub struct OpenID4VPFinal1_0ClientMetadata {
+    #[serde(default)]
+    pub jwks: Option<OpenID4VPClientMetadataJwks>,
+    #[serde(default)]
+    pub jwks_uri: Option<String>,
+    pub vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
+    #[serde(default)]
+    pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
+    #[serde(default)]
+    pub authorization_encrypted_response_enc:
+        Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    #[serde(default)]
+    pub id_token_ecrypted_response_enc: Option<String>,
+    #[serde(default)]
+    pub id_token_encrypted_response_alg: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub subject_syntax_types_supported: Vec<String>,
 }

@@ -29,7 +29,7 @@ use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VC
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
+    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPDraftClientMetadata,
     OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{
@@ -184,7 +184,7 @@ async fn test_share_proof() {
     )
     .unwrap();
 
-    let returned_client_metadata = serde_json::from_str::<OpenID4VPClientMetadata>(
+    let returned_client_metadata = serde_json::from_str::<OpenID4VPDraftClientMetadata>(
         query_pairs.get("client_metadata").unwrap(),
     )
     .unwrap();

@@ -79,10 +79,13 @@ fn extract_common_formats(
     client_metadata: &Option<OpenID4VPClientMetadata>,
 ) -> Result<HashSet<String>, VerificationProtocolError> {
     if let Some(client_metadata) = client_metadata {
-        let oidc_formats = client_metadata.vp_formats.keys().collect::<HashSet<_>>();
+        let vp_formats_supported = match client_metadata {
+            OpenID4VPClientMetadata::Draft(metadata) => &metadata.vp_formats,
+            OpenID4VPClientMetadata::Final1_0(metadata) => &metadata.vp_formats_supported,
+        };
 
-        let schema_formats: HashSet<String> = oidc_formats
-            .iter()
+        let schema_formats: HashSet<String> = vp_formats_supported
+            .keys()
             .map(|oidc_format| {
                 map_from_openid4vp_format(oidc_format)
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))

@@ -8,8 +8,8 @@ use time::{Duration, OffsetDateTime};
 use super::error::OpenID4VCError;
 use super::model::{
     AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO,
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
     PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
@@ -34,8 +34,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     vec_last_position_from_token_path,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    AcceptProofResult, DcqlSubmission, OpenID4VPPresentationDefinition, PexSubmission,
-    SubmissionRequestData, VpSubmissionData,
+    AcceptProofResult, DcqlSubmission, OpenID4VPDraftClientMetadata,
+    OpenID4VPPresentationDefinition, PexSubmission, SubmissionRequestData, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
@@ -45,11 +45,11 @@ use crate::util::key_verification::KeyVerification;
 use crate::util::mdoc::MobileSecurityObject;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
-pub(crate) fn create_open_id_for_vp_client_metadata(
+pub(crate) fn create_open_id_for_vp_client_metadata_draft(
     jwk: Option<PublicKeyWithJwk>,
     vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
-) -> OpenID4VPClientMetadata {
-    let mut metadata = OpenID4VPClientMetadata {
+) -> OpenID4VPDraftClientMetadata {
+    let mut metadata = OpenID4VPDraftClientMetadata {
         vp_formats,
         ..Default::default()
     };

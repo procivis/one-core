@@ -41,6 +41,7 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -1005,7 +1006,7 @@ async fn test_get_client_metadata_success() {
     });
     let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
-        OpenID4VPClientMetadata {
+        OpenID4VPFinal1_0ClientMetadata {
             jwks: Some(OpenID4VPClientMetadataJwks {
                 keys: vec![OpenID4VPClientMetadataJwkDTO {
                     key_id: "c322aa7f-9803-410d-b891-939b279fb965"
@@ -1021,7 +1022,7 @@ async fn test_get_client_metadata_success() {
                     }),
                 }]
             }),
-            vp_formats: HashMap::from([
+            vp_formats_supported: HashMap::from([
                 (
                     "jwt_vp_json".to_string(),
                     OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {

@@ -38,16 +38,15 @@ use crate::model::validity_credential::Mdoc;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, JwePayload, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
-    OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
-    VpSubmissionData,
+    ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPPresentationDefinition, OpenID4VPVerifierInteractionContent, ResponseSubmission,
+    SubmissionRequestData, VpSubmissionData,
 };
-use crate::provider::verification_protocol::openid4vp::service::{
-    create_open_id_for_vp_client_metadata, oid4vp_verifier_process_submission,
-};
+use crate::provider::verification_protocol::openid4vp::service::oid4vp_verifier_process_submission;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -165,7 +164,7 @@ impl OID4VPFinal1_0Service {
     pub async fn get_client_metadata(
         &self,
         id: ProofId,
-    ) -> Result<OpenID4VPClientMetadata, ServiceError> {
+    ) -> Result<OpenID4VPFinal1_0ClientMetadata, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
@@ -201,7 +200,7 @@ impl OID4VPFinal1_0Service {
             &*self.key_provider,
         )?;
 
-        Ok(create_open_id_for_vp_client_metadata(jwk, formats))
+        Ok(create_open_id_for_vp_client_metadata_final1_0(jwk, formats))
     }
 
     pub async fn direct_post(

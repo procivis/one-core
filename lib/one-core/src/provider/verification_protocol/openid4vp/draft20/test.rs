@@ -43,7 +43,7 @@ use crate::provider::verification_protocol::openid4vp::VerificationProtocolError
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VC20PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPAlgs,
-    OpenID4VPClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
+    OpenID4VPDraftClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::{
@@ -618,7 +618,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
 async fn test_handle_invitation_proof_success() {
     let protocol = setup_protocol(Default::default());
 
-    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
@@ -823,7 +823,7 @@ async fn test_handle_invitation_proof_failed() {
     let protocol = setup_protocol(Default::default());
 
     let client_metadata_uri = "https://127.0.0.1/client_metadata_uri";
-    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
@@ -922,7 +922,7 @@ async fn test_handle_invitation_proof_failed() {
     ));
 
     let metadata_missing_jwt_vp_json =
-        serde_json::to_string(&OpenID4VPClientMetadata::default()).unwrap();
+        serde_json::to_string(&OpenID4VPDraftClientMetadata::default()).unwrap();
     let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata={metadata_missing_jwt_vp_json}&response_mode=direct_post&response_uri={callback_url}&presentation_definition={presentation_definition}")).unwrap();
     let result = protocol
         .holder_handle_invitation(
@@ -1011,7 +1011,7 @@ async fn test_handle_invitation_proof_failed() {
 
 #[test]
 fn test_serialize_and_deserialize_interaction_data() {
-    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),

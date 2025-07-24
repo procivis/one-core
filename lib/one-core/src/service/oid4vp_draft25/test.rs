@@ -1005,7 +1005,7 @@ async fn test_get_client_metadata_success() {
     });
     let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
-        OpenID4VPClientMetadata {
+        OpenID4VPDraftClientMetadata {
             jwks: Some(OpenID4VPClientMetadataJwks {
                 keys: vec![OpenID4VPClientMetadataJwkDTO {
                     key_id: "c322aa7f-9803-410d-b891-939b279fb965"

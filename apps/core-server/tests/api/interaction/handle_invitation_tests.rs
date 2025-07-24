@@ -4,7 +4,7 @@ use std::str::FromStr;
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::did::DidType;
 use one_core::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPAlgs, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
+    OpenID4VPAlgs, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
     OpenID4VpPresentationFormat,
 };
 use serde_json::json;
@@ -1412,7 +1412,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let mock_server = MockServer::start().await;
     let (context, organistion) = TestContext::new_with_organisation(None).await;
 
-    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
@@ -1466,7 +1466,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
     let (context, organistion) = TestContext::new_with_organisation(None).await;
 
-    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
@@ -1504,7 +1504,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let client_metadata = &OpenID4VPClientMetadata {
+    let client_metadata = &OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),

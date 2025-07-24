@@ -42,13 +42,13 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_formats, credential_from_proved,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, JwePayload, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
+    ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
     OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
     VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::service::{
-    create_open_id_for_vp_client_metadata, oid4vp_verifier_process_submission,
+    create_open_id_for_vp_client_metadata_draft, oid4vp_verifier_process_submission,
 };
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
@@ -163,7 +163,7 @@ impl OID4VPDraft20Service {
     pub async fn get_client_metadata(
         &self,
         id: ProofId,
-    ) -> Result<OpenID4VPClientMetadata, ServiceError> {
+    ) -> Result<OpenID4VPDraftClientMetadata, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
@@ -195,7 +195,7 @@ impl OID4VPDraft20Service {
             &*self.key_provider,
         )?;
 
-        Ok(create_open_id_for_vp_client_metadata(jwk, formats))
+        Ok(create_open_id_for_vp_client_metadata_draft(jwk, formats))
     }
 
     pub async fn direct_post(

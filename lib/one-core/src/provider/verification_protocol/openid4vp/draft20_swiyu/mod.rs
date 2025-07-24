@@ -26,7 +26,7 @@ use crate::provider::verification_protocol::openid4vp::draft20::model::{
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
-    OpenID4VPClientMetadata, OpenID4VPVcSdJwtAlgs, OpenID4VPVerifierInteractionContent,
+    OpenID4VPDraftClientMetadata, OpenID4VPVcSdJwtAlgs, OpenID4VPVerifierInteractionContent,
     OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::{
@@ -64,7 +64,7 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],
             },
             redirect_uri: value.redirect_uri,
-            predefined_client_metadata: Some(OpenID4VPClientMetadata {
+            predefined_client_metadata: Some(OpenID4VPDraftClientMetadata {
                 vp_formats: hashmap! {
                     "dc+sd-jwt".to_string() =>  OpenID4VpPresentationFormat::SdJwtVcAlgs(
                         OpenID4VPVcSdJwtAlgs {

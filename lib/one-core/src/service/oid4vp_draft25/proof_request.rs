@@ -18,11 +18,11 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VP25AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
+    OpenID4VCVerifierAttestationPayload, OpenID4VPDraftClientMetadata,
     OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::verification_protocol::openid4vp::service::{
-    create_open_id_for_vp_client_metadata, oidc_verifier_presentation_definition,
+    create_open_id_for_vp_client_metadata_draft, oidc_verifier_presentation_definition,
 };
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
@@ -386,7 +386,7 @@ fn generate_authorization_request_params(
         response_type: Some("vp_token".to_string()),
         response_mode: Some(determine_response_mode(proof)?),
         client_id,
-        client_metadata: Some(client_metadata),
+        client_metadata: Some(client_metadata.into()),
         presentation_definition,
         response_uri: Some(
             Url::parse(&response_uri)
@@ -404,12 +404,12 @@ fn generate_client_metadata(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
-) -> Result<OpenID4VPClientMetadata, VerificationProtocolError> {
+) -> Result<OpenID4VPDraftClientMetadata, VerificationProtocolError> {
     let vp_formats = create_open_id_for_vp_formats();
     let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, key_provider)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    Ok(create_open_id_for_vp_client_metadata(jwk, vp_formats))
+    Ok(create_open_id_for_vp_client_metadata_draft(jwk, vp_formats))
 }
 
 struct JWTSigner<'a> {

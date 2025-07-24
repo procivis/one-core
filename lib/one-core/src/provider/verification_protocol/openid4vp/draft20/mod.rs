@@ -48,9 +48,9 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, JwePayload,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PexSubmission,
-    PresentationSubmissionMappingDTO, VpSubmissionData,
+    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
+    OpenID4VpPresentationFormat, PexSubmission, PresentationSubmissionMappingDTO, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -126,7 +126,9 @@ impl OpenID4VP20HTTP {
         )>,
         VerificationProtocolError,
     > {
-        let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
+        let Some(OpenID4VPClientMetadata::Draft(mut client_metadata)) =
+            interaction_data.client_metadata.clone()
+        else {
             // metadata_uri (if any) has been resolved before, no need to check
             return Ok(None);
         };
@@ -168,7 +170,7 @@ impl OpenID4VP20HTTP {
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
             }
         }
-        let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
+        let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
             return Ok(None);
         };
         Ok(Some((verifier_key, encryption_alg)))

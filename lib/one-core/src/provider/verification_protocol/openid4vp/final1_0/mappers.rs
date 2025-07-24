@@ -12,17 +12,43 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
-    OpenID4VpPresentationFormat,
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
 };
-use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
 use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
 use crate::util::oidc::determine_response_mode;
+
+pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
+    jwk: Option<PublicKeyWithJwk>,
+    vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
+) -> OpenID4VPFinal1_0ClientMetadata {
+    let mut metadata = OpenID4VPFinal1_0ClientMetadata {
+        vp_formats_supported,
+        ..Default::default()
+    };
+    if let Some(jwk) = jwk {
+        metadata.jwks = Some(OpenID4VPClientMetadataJwks {
+            keys: vec![OpenID4VPClientMetadataJwkDTO {
+                key_id: jwk.key_id.to_string(),
+                jwk: jwk.jwk.into(),
+            }],
+        });
+        metadata.authorization_encrypted_response_alg =
+            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs);
+        metadata.authorization_encrypted_response_enc =
+            Some(AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM);
+    }
+
+    metadata
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn create_openid4vp_final1_0_authorization_request(
@@ -129,7 +155,7 @@ fn get_params_for_redirect_uri(
     nonce: String,
     proof: &Proof,
     jwk: Option<PublicKeyWithJwk>,
-    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
+    vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
     interaction_data: &OpenID4VPVerifierInteractionContent,
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
     if interaction_data.presentation_definition.is_some() && interaction_data.dcql_query.is_some() {
@@ -157,8 +183,11 @@ fn get_params_for_redirect_uri(
         })
         .transpose()?;
 
-    let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(jwk, vp_formats))
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata_final1_0(
+        jwk,
+        vp_formats_supported,
+    ))
+    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(AuthorizationRequestQueryParams {
         client_id: encode_client_id_with_scheme(response_uri.clone(), ClientIdScheme::RedirectUri),

@@ -58,8 +58,12 @@ pub(crate) async fn build_jwe(
 pub(crate) fn ec_key_from_metadata(
     metadata: OpenID4VPClientMetadata,
 ) -> Option<OpenID4VPClientMetadataJwkDTO> {
-    metadata
-        .jwks
+    let jwks = match metadata {
+        OpenID4VPClientMetadata::Draft(metadata) => metadata.jwks,
+        OpenID4VPClientMetadata::Final1_0(metadata) => metadata.jwks,
+    };
+
+    jwks
         .into_iter()
         .flat_map(|jwk| jwk.keys)
         .find(|key| {

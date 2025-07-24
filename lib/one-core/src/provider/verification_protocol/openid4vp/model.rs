@@ -18,6 +18,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
+use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::mdoc::MobileSecurityObject;
 
@@ -128,12 +129,11 @@ pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
 
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
-pub struct OpenID4VPClientMetadata {
+pub struct OpenID4VPDraftClientMetadata {
     #[serde(default)]
     pub jwks: Option<OpenID4VPClientMetadataJwks>,
     #[serde(default)]
     pub jwks_uri: Option<String>,
-    #[serde(default)]
     pub vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     #[serde(default)]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
@@ -146,6 +146,13 @@ pub struct OpenID4VPClientMetadata {
     pub id_token_encrypted_response_alg: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub subject_syntax_types_supported: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub(crate) enum OpenID4VPClientMetadata {
+    Draft(OpenID4VPDraftClientMetadata),
+    Final1_0(OpenID4VPFinal1_0ClientMetadata),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]

@@ -45,9 +45,11 @@ use crate::provider::verification_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VpPresentationFormat,
-    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VPClientMetadata,
+    OpenID4VPDraftClientMetadata, OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
+    PresentationSubmissionMappingDTO,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
@@ -755,5 +757,17 @@ pub(super) mod unix_timestamp_option {
     {
         let value = Option::<i64>::deserialize(deserializer)?;
         Ok(value.and_then(|timestamp| OffsetDateTime::from_unix_timestamp(timestamp).ok()))
+    }
+}
+
+impl From<OpenID4VPDraftClientMetadata> for OpenID4VPClientMetadata {
+    fn from(value: OpenID4VPDraftClientMetadata) -> Self {
+        Self::Draft(value)
+    }
+}
+
+impl From<OpenID4VPFinal1_0ClientMetadata> for OpenID4VPClientMetadata {
+    fn from(value: OpenID4VPFinal1_0ClientMetadata) -> Self {
+        Self::Final1_0(value)
     }
 }

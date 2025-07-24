@@ -18,7 +18,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
     OpenID4VpPresentationFormat,
 };
-use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata;
+use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata_draft;
 use crate::service::oid4vp_draft20::proof_request::{
     generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_verifier_attestation,
@@ -150,9 +150,10 @@ fn get_params_for_redirect_uri(
     let mut client_metadata = None;
     let mut client_metadata_uri = None;
     if openidvc_params.client_metadata_by_value {
-        let metadata =
-            serde_json::to_string(&create_open_id_for_vp_client_metadata(jwk, vp_formats))
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata_draft(
+            jwk, vp_formats,
+        ))
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         client_metadata = Some(metadata);
     } else {

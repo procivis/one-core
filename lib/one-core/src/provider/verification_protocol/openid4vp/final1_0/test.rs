@@ -25,11 +25,11 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPPresentationDefinition,
+    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
@@ -183,7 +183,7 @@ async fn test_share_proof() {
     )
     .unwrap();
 
-    let returned_client_metadata = serde_json::from_str::<OpenID4VPClientMetadata>(
+    let returned_client_metadata = serde_json::from_str::<OpenID4VPFinal1_0ClientMetadata>(
         query_pairs.get("client_metadata").unwrap(),
     )
     .unwrap();

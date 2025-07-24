@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use one_core::provider::verification_protocol::openid4vp::model::{
     DcqlSubmission, LdpVcAlgs, NestedPresentationSubmissionDescriptorDTO, OpenID4VPAlgs,
-    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks,
-    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVcSdJwtAlgs,
@@ -110,7 +110,7 @@ pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VPClientMetadata)]
+#[from(OpenID4VPDraftClientMetadata)]
 pub(crate) struct OpenID4VPClientMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub jwks: Option<OpenID4VPClientMetadataJwksRestDTO>,

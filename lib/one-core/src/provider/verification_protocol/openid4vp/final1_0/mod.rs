@@ -52,9 +52,10 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
-    JwePayload, OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
-    OpenID4VpPresentationFormat, PexSubmission, VpSubmissionData,
+    JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat, PexSubmission,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -68,7 +69,7 @@ use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 mod dcql;
 pub mod mappers;
-pub(crate) mod model;
+pub mod model;
 #[cfg(test)]
 mod test;
 mod utils;
@@ -129,7 +130,9 @@ impl OpenID4VPFinal1_0 {
         &self,
         interaction_data: &OpenID4VPHolderInteractionData,
     ) -> Result<Option<EncryptionInfo>, VerificationProtocolError> {
-        let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
+        let Some(OpenID4VPClientMetadata::Final1_0(mut client_metadata)) =
+            interaction_data.client_metadata.clone()
+        else {
             // metadata_uri (if any) has been resolved before, no need to check
             return Ok(None);
         };
@@ -171,7 +174,7 @@ impl OpenID4VPFinal1_0 {
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
             }
         }
-        let Some(verifier_key) = ec_key_from_metadata(client_metadata) else {
+        let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
             return Ok(None);
         };
         Ok(Some(EncryptionInfo {
