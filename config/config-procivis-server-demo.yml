@@ -4,22 +4,4 @@ keyStorage:
       private:
         vaultUrl: "https://procivis-one-demo.vault.azure.net"
         clientId: "9b645db1-39eb-485c-af62-47b3a498bec2"
-verificationProtocol:
-  OPENID4VP_DRAFT25_EUDI:
-    display:
-      en: "OpenID4VP draft 25 (EUDI)"
-      de: "OpenID4VP draft 25 (EUDI)"
-    order: 8
-    type: "OPENID4VP_DRAFT25"
-    params:
-      public:
-        useRequestUri: true
-        urlScheme: eudi-openid4vp
-        verifier:
-          useDcql: false
-          supportedClientIdSchemes: [x509_san_dns, redirect_uri, verifier_attestation, did]
-        holder:
-          supportedClientIdSchemes: [redirect_uri, verifier_attestation, did, x509_san_dns]
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
+

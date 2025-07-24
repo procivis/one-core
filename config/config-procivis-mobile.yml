@@ -43,26 +43,6 @@ verificationProtocol:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
     order: 7
-  OPENID4VP_DRAFT25_EUDI:
-    display:
-      en: "OpenID4VP draft 25 (EUDI)"
-      de: "OpenID4VP draft 25 (EUDI)"
-    order: 8
-    type: "OPENID4VP_DRAFT25"
-    params:
-      public:
-        useRequestUri: true
-        urlScheme: eudi-openid4vp
-        verifier:
-          useDcql: false
-          supportedClientIdSchemes:
-            [x509_san_dns, redirect_uri, verifier_attestation, did]
-        holder:
-          supportedClientIdSchemes:
-            [redirect_uri, verifier_attestation, did, x509_san_dns]
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"
@@ -76,22 +56,6 @@ keyStorage:
     type: "REMOTE_SECURE_ELEMENT"
     enabled: false
     order: 10
-datatype:
-  FULL-DATE:
-    display: "datatype.string"
-    type: "STRING"
-    order: 101
-    params: null
-  UINT:
-    display: "datatype.string"
-    type: "STRING"
-    order: 102
-    params: null
-  BOOL:
-    display: "datatype.string"
-    type: "STRING"
-    order: 103
-    params: null
 trustManagement:
   SIMPLE_TRUST_LIST:
     params:

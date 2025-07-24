@@ -6,8 +6,3 @@ keyStorage:
       private:
         vaultUrl: "https://procivis-one-demo.vault.azure.net"
         clientId: "9b645db1-39eb-485c-af62-47b3a498bec2"
-identifier:
-  CERTIFICATE:
-    enabled: false
-  KEY:
-    enabled: false
