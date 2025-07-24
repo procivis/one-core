@@ -67,7 +67,7 @@ pub struct ProofClaim {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableProofColumn {
     SchemaName,
-    VerifierDid,
+    Verifier,
     State,
     CreatedDate,
 }

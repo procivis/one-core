@@ -202,7 +202,7 @@ pub enum ProofListQueryExactColumnBindingEnum {
 #[into(SortableProofColumn)]
 pub enum SortableProofListColumnBinding {
     SchemaName,
-    VerifierDid,
+    Verifier,
     State,
     CreatedDate,
 }

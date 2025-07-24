@@ -295,7 +295,7 @@ pub enum SortableCredentialColumnRestEnum {
     CreatedDate,
     #[serde(rename = "schema.name")]
     SchemaName,
-    IssuerDid,
+    Issuer,
     State,
 }
 

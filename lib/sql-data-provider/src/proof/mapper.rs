@@ -12,7 +12,7 @@ use shared_types::{OrganisationId, ProofId};
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
 use crate::entity::proof::{ProofRequestState, ProofRole};
-use crate::entity::{did, interaction, proof, proof_claim, proof_schema};
+use crate::entity::{identifier, interaction, proof, proof_claim, proof_schema};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_string_match_condition,
 };
@@ -22,7 +22,7 @@ impl IntoSortingColumn for SortableProofColumn {
         match self {
             Self::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
             Self::SchemaName => proof_schema::Column::Name.into_simple_expr(),
-            Self::VerifierDid => did::Column::Id.into_simple_expr(),
+            Self::Verifier => identifier::Column::Name.into_simple_expr(),
             Self::State => proof::Column::State.into_simple_expr(),
         }
     }

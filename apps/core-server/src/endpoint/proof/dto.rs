@@ -138,7 +138,7 @@ pub enum ScanToVerifyBarcodeTypeRestEnum {
 pub enum SortableProofColumnRestEnum {
     #[serde(rename = "schema.name")]
     SchemaName,
-    VerifierDid,
+    Verifier,
     CreatedDate,
     State,
 }

@@ -192,7 +192,7 @@ pub enum CredentialListQueryExactColumnBindingEnum {
 pub enum SortableCredentialColumnBindingEnum {
     CreatedDate,
     SchemaName,
-    IssuerDid,
+    Issuer,
     State,
 }
 

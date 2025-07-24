@@ -13,7 +13,7 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use shared_types::{CertificateId, IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::entity::{self, claim, credential, credential_schema, did};
+use crate::entity::{self, claim, credential, credential_schema, identifier};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
@@ -25,7 +25,7 @@ impl IntoSortingColumn for SortableCredentialColumn {
         match self {
             Self::CreatedDate => credential::Column::CreatedDate.into_simple_expr(),
             Self::SchemaName => credential_schema::Column::Name.into_simple_expr(),
-            Self::IssuerDid => did::Column::Did.into_simple_expr(),
+            Self::Issuer => identifier::Column::Name.into_simple_expr(),
             Self::State => credential::Column::State.into_simple_expr(),
         }
     }

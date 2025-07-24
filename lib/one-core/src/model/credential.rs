@@ -67,7 +67,7 @@ pub enum CredentialStateEnum {
 pub enum SortableCredentialColumn {
     CreatedDate,
     SchemaName,
-    IssuerDid,
+    Issuer,
     State,
 }
 
