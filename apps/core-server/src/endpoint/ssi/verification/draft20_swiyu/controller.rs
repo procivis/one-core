@@ -9,10 +9,8 @@ use one_core::service::error::{BusinessLogicError, ServiceError};
 use uuid::Uuid;
 
 use super::super::super::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
+use super::super::dto::{OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::endpoint::ssi::verification::draft20::dto::{
-    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-};
 use crate::router::AppState;
 
 #[utoipa::path(

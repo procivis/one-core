@@ -15,7 +15,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::model::{
-    default_presentation_url_scheme, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
+    default_presentation_url_scheme, OpenID4VPPresentationDefinition,
     PresentationSubmissionMappingDTO,
 };
 use crate::common_mapper::PublicKeyWithJwk;
@@ -396,7 +396,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
         _encryption_key_jwk: Option<PublicKeyWithJwk>,
-        _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,

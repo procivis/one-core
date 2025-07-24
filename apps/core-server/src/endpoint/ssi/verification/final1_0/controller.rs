@@ -8,10 +8,11 @@ use one_core::service::error::{BusinessLogicError, ServiceError};
 use shared_types::ProofId;
 
 use super::super::super::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
-use super::dto::{
+use super::super::dto::{
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    OpenID4VPFinal1_0ClientMetadataResponseRestDTO, OpenID4VPPresentationDefinitionResponseRestDTO,
+    OpenID4VPPresentationDefinitionResponseRestDTO,
 };
+use super::dto::OpenID4VPFinal1_0ClientMetadataResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
 

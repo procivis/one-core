@@ -221,7 +221,6 @@ async fn test_share_proof() {
             y: None,
         }),
     };
-    let vp_formats = HashMap::new();
 
     let ShareResponse {
         url,
@@ -232,7 +231,6 @@ async fn test_share_proof() {
             &proof,
             format_type_mapper,
             Some(encryption_key_jwk),
-            vp_formats,
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -328,14 +326,12 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
             y: None,
         }),
     };
-    let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
             Some(encryption_key_jwk),
-            vp_formats,
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -509,14 +505,12 @@ async fn test_share_proof_with_use_request_uri() {
             y: None,
         }),
     };
-    let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
             Some(encryption_key_jwk),
-            vp_formats,
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -579,14 +573,12 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
             y: None,
         }),
     };
-    let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
             Some(encryption_key_jwk),
-            vp_formats,
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -1110,14 +1102,12 @@ async fn test_share_proof_custom_scheme() {
             y: None,
         }),
     };
-    let vp_formats = HashMap::new();
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
             Some(encryption_key_jwk),
-            vp_formats,
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {

@@ -14,6 +14,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
     OpenID4VpPresentationFormat,
@@ -36,7 +37,6 @@ pub(crate) async fn create_openid4vp25_authorization_request(
     nonce: String,
     proof: &Proof,
     jwk: Option<PublicKeyWithJwk>,
-    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
@@ -59,7 +59,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
                 nonce,
                 proof,
                 jwk,
-                vp_formats,
+                create_open_id_for_vp_formats(),
                 interaction_data,
             )?,
             ClientIdScheme::X509SanDns => {

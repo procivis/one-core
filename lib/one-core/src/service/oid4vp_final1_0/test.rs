@@ -1024,41 +1024,34 @@ async fn test_get_client_metadata_success() {
             }),
             vp_formats_supported: HashMap::from([
                 (
-                    "jwt_vp_json".to_string(),
-                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
-                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    "jwt_vc_json".to_string(),
+                    OpenID4VpPresentationFormat::W3CJwtAlgs(OpenID4VPW3CJwtAlgs {
+                        alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),
                 (
-                    "ldp_vp".to_string(),
-                    OpenID4VpPresentationFormat::LdpVcAlgs(LdpVcAlgs {
-                        proof_type: vec!["DataIntegrityProof".to_string()],
+                    "ldp_vc".to_string(),
+                    OpenID4VpPresentationFormat::W3CLdpAlgs(OpenID4VPW3CLdpAlgs {
+                        proof_type_values: vec!["DataIntegrityProof".to_string()],
+                        cryptosuite_values: vec![
+                            "bbs-2023".to_string(),
+                            "ecdsa-rdfc-2019".to_string(),
+                            "eddsa-rdfc-2022".to_string(),
+                        ],
                     })
                 ),
                 (
-                    "vc+sd-jwt".to_string(),
-                    OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    "mso_mdoc".to_string(),
+                    OpenID4VpPresentationFormat::MdocAlgs(OpenID4VPMdocAlgs {
+                        issuerauth_alg_values: vec![-7, -8, -9, -19],
+                        deviceauth_alg_values: vec![-7, -8, -9, -19],
                     })
                 ),
                 (
                     "dc+sd-jwt".to_string(),
                     OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                    })
-                ),
-                (
-                    "jwt_vc_json".to_string(),
-                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
-                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    })
-                ),
-                (
-                    "mso_mdoc".to_string(),
-                    OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
-                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                        sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
             ]),

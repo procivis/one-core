@@ -122,7 +122,6 @@ async fn test_share_proof() {
             y: None,
         }),
     };
-    let vp_formats = HashMap::new();
 
     let ShareResponse {
         url,
@@ -133,7 +132,6 @@ async fn test_share_proof() {
             &proof,
             format_type_mapper,
             Some(encryption_key_jwk),
-            vp_formats,
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {

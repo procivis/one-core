@@ -59,9 +59,7 @@ use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgr
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
-use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_format_map, create_open_id_for_vp_formats,
-};
+use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
@@ -545,7 +543,6 @@ impl ProofService {
             MissingProviderError::ExchangeProtocol(proof.protocol.to_owned()),
         )?;
 
-        let formats = create_open_id_for_vp_formats();
         let encryption_key = get_encryption_key_jwk_from_proof(
             &proof,
             &*self.key_algorithm_provider,
@@ -575,7 +572,6 @@ impl ProofService {
                 &proof,
                 format_type_mapper,
                 encryption_key,
-                formats,
                 type_to_descriptor_mapper,
                 on_submission_callback,
                 request.params,

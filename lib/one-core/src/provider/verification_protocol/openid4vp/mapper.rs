@@ -165,6 +165,7 @@ pub(crate) fn get_claim_name_by_json_path(
 }
 
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method
+// only for use with Draft implementations
 pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresentationFormat> {
     let mut formats = HashMap::new();
     let algorithms = OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
@@ -172,8 +173,8 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresen
     });
 
     let sd_jwt_algorithms = OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-        sd_jwt_algorithms: vec!["EdDSA".to_owned(), "ES256".to_owned()],
-        kb_jwt_algorithms: vec!["EdDSA".to_owned(), "ES256".to_owned()],
+        sd_jwt_alg_values: vec!["EdDSA".to_owned(), "ES256".to_owned()],
+        kb_jwt_alg_values: vec!["EdDSA".to_owned(), "ES256".to_owned()],
     });
 
     formats.insert("jwt_vp_json".to_owned(), algorithms.clone());
@@ -212,8 +213,8 @@ pub fn create_format_map(
             Ok(HashMap::from([(
                 key,
                 OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                    sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                    kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                 }),
             )]))
         }

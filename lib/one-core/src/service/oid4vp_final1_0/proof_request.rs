@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
 
@@ -21,9 +22,10 @@ use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
 use crate::provider::verification_protocol::openid4vp::final1_0::model::{
     AuthorizationRequest, OpenID4VPFinal1_0ClientMetadata,
 };
-use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VCVerifierAttestationPayload, OpenID4VPVerifierInteractionContent,
+    OpenID4VCVerifierAttestationPayload, OpenID4VPMdocAlgs, OpenID4VPVcSdJwtAlgs,
+    OpenID4VPVerifierInteractionContent, OpenID4VPW3CJwtAlgs, OpenID4VPW3CLdpAlgs,
+    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition;
 use crate::util::jwt::Jwt;
@@ -412,7 +414,7 @@ fn generate_client_metadata(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
 ) -> Result<OpenID4VPFinal1_0ClientMetadata, VerificationProtocolError> {
-    let vp_formats_supported = create_open_id_for_vp_formats();
+    let vp_formats_supported = generate_vp_formats_supported();
     let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, key_provider)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
@@ -420,6 +422,48 @@ fn generate_client_metadata(
         jwk,
         vp_formats_supported,
     ))
+}
+
+pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresentationFormat> {
+    let mut formats = HashMap::new();
+
+    let jose_algs = vec!["EdDSA".to_owned(), "ES256".to_owned()];
+    let cose_algs = vec![-7, -8, -9, -19];
+
+    // only including the entries specified in the final standard for now
+    formats.insert(
+        "jwt_vc_json".to_owned(),
+        OpenID4VpPresentationFormat::W3CJwtAlgs(OpenID4VPW3CJwtAlgs {
+            alg_values: jose_algs.to_owned(),
+        }),
+    );
+    formats.insert(
+        "ldp_vc".to_owned(),
+        OpenID4VpPresentationFormat::W3CLdpAlgs(OpenID4VPW3CLdpAlgs {
+            proof_type_values: vec!["DataIntegrityProof".to_string()],
+            cryptosuite_values: vec![
+                "bbs-2023".to_string(),
+                "ecdsa-rdfc-2019".to_string(),
+                "eddsa-rdfc-2022".to_string(),
+            ],
+        }),
+    );
+    formats.insert(
+        "mso_mdoc".to_owned(),
+        OpenID4VpPresentationFormat::MdocAlgs(OpenID4VPMdocAlgs {
+            issuerauth_alg_values: cose_algs.to_owned(),
+            deviceauth_alg_values: cose_algs,
+        }),
+    );
+    formats.insert(
+        "dc+sd-jwt".to_owned(),
+        OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+            sd_jwt_alg_values: jose_algs.to_owned(),
+            kb_jwt_alg_values: jose_algs,
+        }),
+    );
+
+    formats
 }
 
 struct JWTSigner<'a> {

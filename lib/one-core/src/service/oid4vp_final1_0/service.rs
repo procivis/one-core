@@ -40,7 +40,6 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
-use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
     OpenID4VPPresentationDefinition, OpenID4VPVerifierInteractionContent, ResponseSubmission,
@@ -52,6 +51,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::oid4vp_final1_0::mapper::parse_interaction_content;
+use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 use crate::service::oid4vp_final1_0::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 
@@ -193,14 +193,17 @@ impl OID4VPFinal1_0Service {
             &proof.protocol,
         )?;
 
-        let formats = create_open_id_for_vp_formats();
+        let vp_formats_supported = generate_vp_formats_supported();
         let jwk = get_encryption_key_jwk_from_proof(
             &proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
         )?;
 
-        Ok(create_open_id_for_vp_client_metadata_final1_0(jwk, formats))
+        Ok(create_open_id_for_vp_client_metadata_final1_0(
+            jwk,
+            vp_formats_supported,
+        ))
     }
 
     pub async fn direct_post(

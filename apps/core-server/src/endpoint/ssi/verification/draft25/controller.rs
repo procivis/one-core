@@ -8,9 +8,9 @@ use one_core::service::error::{BusinessLogicError, ServiceError};
 use shared_types::ProofId;
 
 use super::super::super::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
-use super::dto::{
-    OpenID4VPClientMetadataResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
-    OpenID4VPDirectPostResponseRestDTO, OpenID4VPPresentationDefinitionResponseRestDTO,
+use super::super::dto::{
+    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
+    OpenID4VPDraftClientMetadataResponseRestDTO, OpenID4VPPresentationDefinitionResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
@@ -162,7 +162,7 @@ pub(crate) async fn oid4vp_draft25_presentation_definition(
         ("id" = ProofId, Path, description = "Proof id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VPClientMetadataResponseRestDTO),
+        (status = 200, description = "OK", body = OpenID4VPDraftClientMetadataResponseRestDTO),
         (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
         (status = 404, description = "Proof does not exist"),
         (status = 500, description = "Server error"),
@@ -187,7 +187,7 @@ pub(crate) async fn oid4vp_draft25_client_metadata(
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(OpenID4VPClientMetadataResponseRestDTO::from(value)),
+            Json(OpenID4VPDraftClientMetadataResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {

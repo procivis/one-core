@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
@@ -68,8 +67,8 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
                 vp_formats: hashmap! {
                     "dc+sd-jwt".to_string() =>  OpenID4VpPresentationFormat::SdJwtVcAlgs(
                         OpenID4VPVcSdJwtAlgs {
-                            sd_jwt_algorithms: vec!["ES256".to_string()],
-                            kb_jwt_algorithms: vec!["ES256".to_string()]
+                            sd_jwt_alg_values: vec!["ES256".to_string()],
+                            kb_jwt_alg_values: vec!["ES256".to_string()]
                         }
                     )
                 },
@@ -200,7 +199,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
         encryption_key_jwk: Option<PublicKeyWithJwk>,
-        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
@@ -211,7 +209,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
                 proof,
                 format_to_type_mapper,
                 encryption_key_jwk,
-                vp_formats,
                 type_to_descriptor,
                 callback,
                 params,

@@ -361,7 +361,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
         encryption_key_jwk: Option<PublicKeyWithJwk>,
-        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,

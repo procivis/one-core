@@ -533,7 +533,7 @@ pub(crate) fn validate_interaction_data(
     if let Some(sd_jwt_vp) = sd_jwt_vp {
         let algorithms = match sd_jwt_vp {
             OpenID4VpPresentationFormat::GenericAlgList(algs) => &algs.alg,
-            OpenID4VpPresentationFormat::SdJwtVcAlgs(algs) => &algs.sd_jwt_algorithms,
+            OpenID4VpPresentationFormat::SdJwtVcAlgs(algs) => &algs.sd_jwt_alg_values,
             _ => {
                 return Err(VerificationProtocolError::InvalidRequest(
                     "invalid client_metadata.vp_formats[\"vc+sd-jwt\"] structure".to_string(),

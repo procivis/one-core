@@ -22,7 +22,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_client_id_scheme_did,
     generate_authorization_request_client_id_scheme_verifier_attestation,
-    generate_authorization_request_client_id_scheme_x509_san_dns,
+    generate_authorization_request_client_id_scheme_x509_san_dns, generate_vp_formats_supported,
 };
 use crate::util::oidc::determine_response_mode;
 
@@ -60,7 +60,6 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     nonce: String,
     proof: &Proof,
     jwk: Option<PublicKeyWithJwk>,
-    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
     client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
@@ -83,7 +82,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 nonce,
                 proof,
                 jwk,
-                vp_formats,
+                generate_vp_formats_supported(),
                 interaction_data,
             )?,
             ClientIdScheme::X509SanDns => {

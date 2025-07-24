@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
 use one_core::provider::verification_protocol::openid4vp::model::{
-    LdpVcAlgs, NestedPresentationSubmissionDescriptorDTO, OpenID4VPAlgs,
+    DcqlSubmission, LdpVcAlgs, NestedPresentationSubmissionDescriptorDTO, OpenID4VPAlgs,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPDraftClientMetadata, OpenID4VPMdocAlgs,
+    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVcSdJwtAlgs,
-    OpenID4VpPresentationFormat, PexSubmission, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO, ResponseSubmission, VpSubmissionData,
+    OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVcSdJwtAlgs, OpenID4VPW3CJwtAlgs,
+    OpenID4VPW3CLdpAlgs, OpenID4VpPresentationFormat, PexSubmission,
+    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, ResponseSubmission,
+    VpSubmissionData,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
@@ -36,7 +38,7 @@ pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
     pub state: Option<Uuid>,
 }
 
-/// Represents the different types of VP token submissions supported by OpenID4VP Draft20.
+/// Represents the different types of VP token submissions supported by OpenID4VP.
 /// Untagged serialization automatically detects the submission type.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(VpSubmissionData)]
@@ -44,6 +46,8 @@ pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
 pub(crate) enum VpSubmissionDataRestDTO {
     /// Presentation Exchange submission with presentation_submission field
     Pex(PexSubmissionRestDTO),
+    /// DCQL submission with vp_token map structure
+    Dcql(DcqlSubmissionRestDTO),
     /// Response submission with response field (JWE encrypted payload)
     EncryptedResponse(ResponseSubmissionRestDTO),
 }
@@ -55,6 +59,14 @@ pub(crate) struct PexSubmissionRestDTO {
     pub vp_token: String,
     #[serde_as(as = "JsonString")]
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
+}
+
+#[serde_with::serde_as]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, Into)]
+#[into(DcqlSubmission)]
+pub(crate) struct DcqlSubmissionRestDTO {
+    #[serde_as(as = "JsonString")]
+    pub vp_token: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema, Into)]
@@ -92,7 +104,7 @@ pub(crate) struct NestedPresentationSubmissionDescriptorRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VPDirectPostResponseDTO)]
 pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
     pub redirect_uri: Option<String>,
@@ -101,7 +113,7 @@ pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPDraftClientMetadata)]
-pub(crate) struct OpenID4VPClientMetadataResponseRestDTO {
+pub(crate) struct OpenID4VPDraftClientMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub jwks: Option<OpenID4VPClientMetadataJwksRestDTO>,
     pub jwks_uri: Option<String>,
@@ -140,6 +152,9 @@ pub(crate) struct OpenID4VPClientMetadataJwkRestDTO {
 pub(crate) enum OpenID4VPFormatRestDTO {
     SdJwtVcAlgs(OpenID4VPVcSdJwtAlgsRestDTO),
     LdpVcAlgs(LdpVcAlgsRestDTO),
+    W3CJwtAlgs(OpenID4VPW3CJwtAlgsRestDTO),
+    W3CLdpAlgs(OpenID4VPW3CLdpAlgsRestDTO),
+    MdocAlgs(OpenID4VPMdocAlgsRestDTO),
     GenericAlgList(OpenID4VPAlgsRestDTO),
     Other(serde_json::Value),
 }
@@ -148,9 +163,9 @@ pub(crate) enum OpenID4VPFormatRestDTO {
 #[from(OpenID4VPVcSdJwtAlgs)]
 pub(crate) struct OpenID4VPVcSdJwtAlgsRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty", rename = "sd-jwt_alg_values")]
-    pub sd_jwt_algorithms: Vec<String>,
+    pub sd_jwt_alg_values: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", rename = "kb-jwt_alg_values")]
-    pub kb_jwt_algorithms: Vec<String>,
+    pub kb_jwt_alg_values: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -165,6 +180,31 @@ pub(crate) struct LdpVcAlgsRestDTO {
 pub(crate) struct OpenID4VPAlgsRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub alg: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPW3CJwtAlgs)]
+pub(crate) struct OpenID4VPW3CJwtAlgsRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alg_values: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPW3CLdpAlgs)]
+pub(crate) struct OpenID4VPW3CLdpAlgsRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub proof_type_values: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub cryptosuite_values: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPMdocAlgs)]
+pub(crate) struct OpenID4VPMdocAlgsRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub issuerauth_alg_values: Vec<i32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub deviceauth_alg_values: Vec<i32>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

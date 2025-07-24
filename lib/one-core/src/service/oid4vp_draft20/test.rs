@@ -687,15 +687,15 @@ async fn test_get_client_metadata_success() {
                 (
                     "vc+sd-jwt".to_string(),
                     OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
                 (
                     "dc+sd-jwt".to_string(),
                     OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
                 (
@@ -814,15 +814,15 @@ async fn test_get_client_metadata_success_no_encryption() {
                 (
                     "vc+sd-jwt".to_string(),
                     OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
                 (
                     "dc+sd-jwt".to_string(),
                     OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
-                        sd_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_algorithms: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                        kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
                 (

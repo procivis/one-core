@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -24,7 +23,6 @@ use crate::provider::credential_formatter::model::{DetailCredential, HolderBindi
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::{ScanToVerifyRequestDTO, ShareProofRequestParamsDTO};
 use crate::util::key_verification::KeyVerification;
@@ -110,7 +108,6 @@ impl VerificationProtocol for ScanToVerify {
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
         _encryption_key_jwk: Option<PublicKeyWithJwk>,
-        _vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,

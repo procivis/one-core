@@ -49,8 +49,8 @@ use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, JwePayload,
     OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent,
-    OpenID4VpPresentationFormat, PexSubmission, PresentationSubmissionMappingDTO, VpSubmissionData,
+    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent, PexSubmission,
+    PresentationSubmissionMappingDTO, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -471,7 +471,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
         encryption_key_jwk: Option<PublicKeyWithJwk>,
-        vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
@@ -575,7 +574,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             nonce,
             proof,
             encryption_key_jwk,
-            vp_formats,
             client_id_scheme,
             &self.key_algorithm_provider,
             &*self.key_provider,
