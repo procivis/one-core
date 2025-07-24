@@ -86,7 +86,7 @@ pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::op
     docs.info.title = "Procivis One Core API".into();
     docs.info.description = Some(indoc::formatdoc! {"
             The Procivis One Core API enables the full lifecycle of credentials.
-            Download the [specification](../APIspec/core.yaml).
+            Download the [specification](../APIspec/one-core.yaml).
         "});
     docs.info.version = APP_VERSION
         .unwrap_or(&format!(
