@@ -166,14 +166,6 @@ fn get_params_for_redirect_uri(
         );
     }
 
-    let presentation_definition = interaction_data
-        .presentation_definition
-        .as_ref()
-        .map(|pd| {
-            serde_json::to_string(&pd).map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-        })
-        .transpose()?;
-
     let dcql_query = interaction_data
         .dcql_query
         .as_ref()
@@ -197,8 +189,6 @@ fn get_params_for_redirect_uri(
         client_metadata: Some(metadata),
         response_uri: Some(response_uri),
         nonce: Some(nonce),
-        presentation_definition,
-        presentation_definition_uri: None,
         request: None,
         request_uri: None,
         redirect_uri: None,
@@ -260,16 +250,6 @@ impl TryFrom<AuthorizationRequestQueryParams> for AuthorizationRequest {
             nonce: query_params.nonce,
             response_type: query_params.response_type,
             response_mode: query_params.response_mode,
-            presentation_definition_uri: query_params
-                .presentation_definition_uri
-                .map(|uri| {
-                    uri.parse().map_err(|_| {
-                        VerificationProtocolError::InvalidRequest(
-                            "invalid presentation_definition_uri".to_string(),
-                        )
-                    })
-                })
-                .transpose()?,
             response_uri: query_params
                 .response_uri
                 .map(|uri| Url::parse(&uri))
@@ -278,10 +258,6 @@ impl TryFrom<AuthorizationRequestQueryParams> for AuthorizationRequest {
                     VerificationProtocolError::InvalidRequest("invalid response_uri".to_string())
                 })?,
             client_metadata: query_params.client_metadata.map(json_parse).transpose()?,
-            presentation_definition: query_params
-                .presentation_definition
-                .map(json_parse)
-                .transpose()?,
             redirect_uri: query_params.redirect_uri,
             dcql_query: query_params.dcql_query.map(json_parse).transpose()?,
         })
@@ -317,8 +293,8 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             client_metadata_uri: None,
             response_mode: value.response_mode,
             response_uri,
-            presentation_definition: value.presentation_definition,
-            presentation_definition_uri: value.presentation_definition_uri,
+            presentation_definition: None,
+            presentation_definition_uri: None,
             dcql_query: value.dcql_query,
             redirect_uri: value.redirect_uri,
             verifier_details: None,

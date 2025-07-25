@@ -251,9 +251,16 @@ pub struct OpenID4VPClientMetadataJwkDTO {
     pub jwk: PublicKeyJwkDTO,
 }
 
+// All vp_formats_supported fields are optional,
+// this variant is matched first
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct OpenID4VpEmptyEntry {}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum OpenID4VpPresentationFormat {
+    Empty(OpenID4VpEmptyEntry),
     SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs),
     LdpVcAlgs(LdpVcAlgs),
     W3CJwtAlgs(OpenID4VPW3CJwtAlgs),
@@ -264,44 +271,58 @@ pub enum OpenID4VpPresentationFormat {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct OpenID4VPVcSdJwtAlgs {
-    #[serde(rename = "sd-jwt_alg_values", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "sd-jwt_alg_values",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub sd_jwt_alg_values: Vec<String>,
-    #[serde(rename = "kb-jwt_alg_values", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "kb-jwt_alg_values",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub kb_jwt_alg_values: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct OpenID4VPAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub alg: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct OpenID4VPW3CJwtAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub alg_values: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct OpenID4VPW3CLdpAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub proof_type_values: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub cryptosuite_values: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct OpenID4VPMdocAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub issuerauth_alg_values: Vec<i32>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub deviceauth_alg_values: Vec<i32>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct LdpVcAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub proof_type: Vec<String>,
 }
 

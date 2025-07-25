@@ -10,8 +10,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwks, OpenID4VPPresentationDefinition, OpenID4VpPresentationFormat,
-    default_presentation_url_scheme,
+    OpenID4VPClientMetadataJwks, OpenID4VpPresentationFormat, default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -34,13 +33,8 @@ pub(crate) struct Params {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
-    #[serde(default = "default_use_dcql")]
-    pub use_dcql: bool,
 }
 
-fn default_use_dcql() -> bool {
-    true
-}
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub(crate) struct AuthorizationRequestQueryParams {
@@ -53,8 +47,6 @@ pub(crate) struct AuthorizationRequestQueryParams {
     pub response_uri: Option<String>,
     pub client_metadata: Option<String>,
     pub dcql_query: Option<String>,
-    pub presentation_definition: Option<String>,
-    pub presentation_definition_uri: Option<String>,
 
     // https://www.rfc-editor.org/rfc/rfc9101.html#name-authorization-request
     pub request: Option<String>,
@@ -83,12 +75,6 @@ pub(crate) struct AuthorizationRequest {
 
     #[serde(default, deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<OpenID4VPClientMetadata>,
-
-    #[serde(default, deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-
-    #[serde(default)]
-    pub presentation_definition_uri: Option<Url>,
 
     #[serde(default)]
     pub dcql_query: Option<DcqlQuery>,

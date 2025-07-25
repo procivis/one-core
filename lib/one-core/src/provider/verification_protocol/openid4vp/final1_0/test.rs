@@ -1,7 +1,8 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use dcql::DcqlQuery;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
@@ -11,11 +12,12 @@ use super::OpenID4VPFinal1_0;
 use super::model::{Params, PresentationVerifierParams};
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, FormatType};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
-use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -29,13 +31,14 @@ use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4V
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPPresentationDefinition,
+    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
+use crate::service::test_utilities::dummy_claim_schema;
 
 #[derive(Default)]
 struct TestInputs {
@@ -75,7 +78,6 @@ fn generic_params() -> Params {
             ],
         },
         verifier: PresentationVerifierParams {
-            use_dcql: false,
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
@@ -143,19 +145,20 @@ async fn test_share_proof() {
     let url: Url = url.parse().unwrap();
     let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
 
-    assert_eq!(
-        HashSet::<&str>::from_iter([
-            "response_mode",
-            "nonce",
-            "response_type",
-            "client_metadata",
-            "state",
-            "response_uri",
-            "presentation_definition",
-            "client_id"
-        ]),
-        HashSet::from_iter(query_pairs.keys().map(|k| k.as_ref()))
-    );
+    let expected_keys = vec![
+        "client_id",
+        "client_metadata",
+        "dcql_query",
+        "nonce",
+        "response_mode",
+        "response_type",
+        "response_uri",
+        "state",
+    ];
+
+    let mut actual_keys: Vec<&str> = query_pairs.keys().map(|k| k.as_ref()).collect();
+    actual_keys.sort();
+    assert_eq!(expected_keys, actual_keys);
 
     assert_eq!("vp_token", query_pairs.get("response_type").unwrap());
 
@@ -176,10 +179,8 @@ async fn test_share_proof() {
         query_pairs.get("client_id").unwrap()
     );
 
-    let returned_presentation_definition = serde_json::from_str::<OpenID4VPPresentationDefinition>(
-        query_pairs.get("presentation_definition").unwrap(),
-    )
-    .unwrap();
+    let returned_dcql_query =
+        serde_json::from_str::<DcqlQuery>(query_pairs.get("dcql_query").unwrap()).unwrap();
 
     let returned_client_metadata = serde_json::from_str::<OpenID4VPFinal1_0ClientMetadata>(
         query_pairs.get("client_metadata").unwrap(),
@@ -197,25 +198,7 @@ async fn test_share_proof() {
             AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
         ])
     );
-    assert_eq!(returned_presentation_definition.input_descriptors.len(), 1);
-    assert_eq!(
-        returned_presentation_definition.input_descriptors[0].id,
-        "input_0"
-    );
-    assert_eq!(
-        returned_presentation_definition.input_descriptors[0]
-            .constraints
-            .fields
-            .len(),
-        1
-    );
-    assert_eq!(
-        returned_presentation_definition.input_descriptors[0]
-            .constraints
-            .fields[0]
-            .path,
-        vec!["$.credentialSchema.id"]
-    );
+    assert_eq!(returned_dcql_query.credentials.len(), 1);
 }
 
 fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
@@ -242,7 +225,16 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
             organisation: None,
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
-                claim_schemas: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(Uuid::new_v4())),
+                        key: "required_key".to_string(),
+                        ..dummy_claim_schema()
+                    },
+                    required: true,
+                    order: 0,
+                }]),
+
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     external_schema: false,

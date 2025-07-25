@@ -8,10 +8,7 @@ use one_core::service::error::{BusinessLogicError, ServiceError};
 use shared_types::ProofId;
 
 use super::super::super::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
-use super::super::dto::{
-    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    OpenID4VPPresentationDefinitionResponseRestDTO,
-};
+use super::super::dto::{OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO};
 use super::dto::OpenID4VPFinal1_0ClientMetadataResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
@@ -89,66 +86,6 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
         }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
-
-#[utoipa::path(
-    get,
-    path = "/ssi/openid4vp/final-1.0/{id}/presentation-definition",
-    params(
-        ("id" = ProofId, Path, description = "Proof id")
-    ),
-    responses(
-        (status = 200, description = "OK", body = OpenID4VPPresentationDefinitionResponseRestDTO),
-        (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
-        (status = 404, description = "Proof does not exist"),
-        (status = 500, description = "Server error"),
-    ),
-    tag = "openid4vp-final-1.0",
-    summary = "OID4VC - Verifier presentation definition",
-    description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
-    "},
-)]
-pub(crate) async fn oid4vp_final1_0_presentation_definition(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
-) -> Response {
-    let result = state
-        .core
-        .oid4vp_final1_0_service
-        .presentation_definition(id)
-        .await;
-
-    match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(OpenID4VPPresentationDefinitionResponseRestDTO::from(value)),
-        )
-            .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
-            (
-                StatusCode::BAD_REQUEST,
-                Json(OpenID4VCIErrorResponseRestDTO {
-                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
-                }),
-            )
-                .into_response()
-        }
-        Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) => (
-            StatusCode::BAD_REQUEST,
-            Json(OpenID4VCIErrorResponseRestDTO {
-                error: OpenID4VCIErrorRestEnum::InvalidRequest,
-            }),
-        )
-            .into_response(),
-        Err(ServiceError::EntityNotFound(_)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()

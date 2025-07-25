@@ -190,7 +190,6 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: openid4vp-final
         verifier:
-          useDcql: true
           supportedClientIdSchemes:
             [
               verifier_attestation,

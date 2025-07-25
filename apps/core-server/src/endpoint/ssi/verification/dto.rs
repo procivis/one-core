@@ -8,7 +8,7 @@ use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVcSdJwtAlgs, OpenID4VPW3CJwtAlgs,
-    OpenID4VPW3CLdpAlgs, OpenID4VpPresentationFormat, PexSubmission,
+    OpenID4VPW3CLdpAlgs, OpenID4VpEmptyEntry, OpenID4VpPresentationFormat, PexSubmission,
     PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, ResponseSubmission,
     VpSubmissionData,
 };
@@ -147,9 +147,15 @@ pub(crate) struct OpenID4VPClientMetadataJwkRestDTO {
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(deny_unknown_fields)]
+#[from(OpenID4VpEmptyEntry)]
+pub(crate) struct OpenID4VpEmptyEntryRestDTO {}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VpPresentationFormat)]
 #[serde(untagged)]
 pub(crate) enum OpenID4VPFormatRestDTO {
+    Empty(OpenID4VpEmptyEntryRestDTO),
     SdJwtVcAlgs(OpenID4VPVcSdJwtAlgsRestDTO),
     LdpVcAlgs(LdpVcAlgsRestDTO),
     W3CJwtAlgs(OpenID4VPW3CJwtAlgsRestDTO),
@@ -161,49 +167,63 @@ pub(crate) enum OpenID4VPFormatRestDTO {
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPVcSdJwtAlgs)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct OpenID4VPVcSdJwtAlgsRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty", rename = "sd-jwt_alg_values")]
+    #[serde(
+        skip_serializing_if = "Vec::is_empty",
+        rename = "sd-jwt_alg_values",
+        default
+    )]
     pub sd_jwt_alg_values: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty", rename = "kb-jwt_alg_values")]
+    #[serde(
+        skip_serializing_if = "Vec::is_empty",
+        rename = "kb-jwt_alg_values",
+        default
+    )]
     pub kb_jwt_alg_values: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(LdpVcAlgs)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct LdpVcAlgsRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub proof_type: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPAlgs)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct OpenID4VPAlgsRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub alg: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPW3CJwtAlgs)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct OpenID4VPW3CJwtAlgsRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub alg_values: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPW3CLdpAlgs)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct OpenID4VPW3CLdpAlgsRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub proof_type_values: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub cryptosuite_values: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPMdocAlgs)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct OpenID4VPMdocAlgsRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub issuerauth_alg_values: Vec<i32>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub deviceauth_alg_values: Vec<i32>,
 }
 

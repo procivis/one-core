@@ -18,7 +18,8 @@ members = [
   "platforms/uniffi-bindgen",
 
   "apps/core-server",
-  "examples", "lib/proc-macros",
+  "examples",
+  "lib/proc-macros",
 ]
 resolver = "2"
 
@@ -37,7 +38,7 @@ indexmap           = { version = "2.6", features = ["serde"] }
 maplit             = { version = "1.0" }
 mockall            = { version = "0.13" }
 multihash          = { version = "0.19" }
-one-dto-mapper     = { version = "0.1" }
+one-dto-mapper     = { version = "0.1.10" }
 rand               = { version = "0.8" }
 rcgen              = { version = "0.13" }
 regex              = { version = "1.10" }

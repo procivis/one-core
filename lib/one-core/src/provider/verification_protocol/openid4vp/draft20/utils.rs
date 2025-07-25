@@ -584,14 +584,8 @@ pub(crate) fn validate_interaction_data(
             }
         }
         // As per the spec ONE-4912 - the mso_mdoc may contain no algorithms / be an empty object
-        Some(OpenID4VpPresentationFormat::Other(serde_json::Value::Object(mso_mdoc))) => {
-            if mso_mdoc.is_empty() {
-                return Ok(());
-            } else {
-                return Err(VerificationProtocolError::InvalidRequest(
-                    "client_metadata.vp_formats[\"mso_mdoc\"] must contain an 'alg' key or be an empty object".to_string(),
-                ));
-            }
+        Some(OpenID4VpPresentationFormat::Empty(_)) => {
+            return Ok(());
         }
         Some(_) => {
             return Err(VerificationProtocolError::InvalidRequest(

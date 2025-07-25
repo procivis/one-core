@@ -42,8 +42,8 @@ use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPPresentationDefinition, OpenID4VPVerifierInteractionContent, ResponseSubmission,
-    SubmissionRequestData, VpSubmissionData,
+    OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::service::oid4vp_verifier_process_submission;
 use crate::service::error::ErrorCode::BR_0000;
@@ -399,55 +399,6 @@ impl OID4VPFinal1_0Service {
                 Err(err.into())
             }
         }
-    }
-
-    pub async fn presentation_definition(
-        &self,
-        id: ProofId,
-    ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
-        let proof = self
-            .proof_repository
-            .get_proof(
-                &id,
-                &ProofRelations {
-                    interaction: Some(InteractionRelations::default()),
-                    schema: Some(ProofSchemaRelations {
-                        proof_inputs: Some(ProofInputSchemaRelations {
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
-
-        validate_verification_protocol_type(
-            &[VerificationProtocolType::OpenId4VpFinal1_0],
-            &self.config,
-            &proof.protocol,
-        )?;
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing interaction".to_string(),
-            ))?;
-
-        let Some(presentation_definition) =
-            parse_interaction_content(interaction.data.as_ref())?.presentation_definition
-        else {
-            return Err(ServiceError::MappingError(
-                "missing presentation definition".to_string(),
-            ));
-        };
-
-        crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition(&proof, presentation_definition).map_err(Into::into)
     }
 
     async fn mark_proof_as_failed(&self, id: &ProofId, error_metadata: HistoryErrorMetadata) {

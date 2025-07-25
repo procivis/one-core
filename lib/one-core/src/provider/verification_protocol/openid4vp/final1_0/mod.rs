@@ -14,10 +14,7 @@ use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::{
-    explode_validity_credentials, format_to_type,
-    map_presented_credentials_to_presentation_format_type,
-};
+use super::mapper::format_to_type;
 use super::mdoc::mdoc_presentation_context;
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
@@ -29,7 +26,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::{
-    DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
+    DetailCredential, FormatPresentationCtx, HolderBindingCtx,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -46,15 +43,12 @@ use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
-use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_presentation_definition, create_presentation_submission,
-};
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
     JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, PexSubmission, VpSubmissionData,
+    OpenID4VPVerifierInteractionContent, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -73,7 +67,6 @@ pub mod model;
 mod test;
 mod utils;
 
-const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
 const DCQL_QUERY_VALUE_QUERY_PARAM_KEY: &str = "dcql_query";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
@@ -183,79 +176,6 @@ impl OpenID4VPFinal1_0 {
             verifier_key,
             supported_algorithms: supported_encryption_algs,
         }))
-    }
-
-    async fn pex_submission_data(
-        &self,
-        credential_presentations: Vec<PresentedCredential>,
-        interaction_data: &OpenID4VPHolderInteractionData,
-        key: &Key,
-        jwk_key_id: Option<String>,
-        holder_did: &Did,
-        holder_nonce: String,
-    ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
-        let credential_presentations = explode_validity_credentials(credential_presentations);
-        let format = map_presented_credentials_to_presentation_format_type(
-            &credential_presentations,
-            &self.config,
-        )?;
-
-        let presentation_formatter = self
-            .presentation_formatter_provider
-            .get_presentation_formatter(&format.to_string())
-            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
-
-        let presentation_definition_id = interaction_data
-            .presentation_definition
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "presentation_definition is None".to_string(),
-            ))?
-            .id
-            .to_owned();
-
-        let credentials = credential_presentations
-            .iter()
-            .map(|presented_credential| {
-                let credential_format = format_to_type(presented_credential, &self.config)?;
-                Ok(CredentialToPresent {
-                    raw_credential: presented_credential.presentation.to_owned(),
-                    credential_format,
-                })
-            })
-            .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(key, jwk_key_id, self.key_algorithm_provider.clone())
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-        let ctx = format_presentation_context(interaction_data, &holder_nonce, format)?;
-        let FormattedPresentation {
-            vp_token,
-            oidc_format,
-        } = presentation_formatter
-            .format_presentation(credentials, auth_fn, &holder_did.did, ctx)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
-            credential_presentations,
-            &oidc_format,
-        )?;
-
-        let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;
-        if encryption_info.is_none() && format == FormatType::Mdoc {
-            return Err(VerificationProtocolError::Failed(
-                "MDOC presentation requires encryption but no verifier EC keys are available"
-                    .to_string(),
-            ));
-        }
-        let submission_data = VpSubmissionData::Pex(PexSubmission {
-            presentation_submission,
-            vp_token,
-        });
-        Ok((submission_data, encryption_info))
     }
 
     async fn dcql_submission_data(
@@ -376,8 +296,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         self.params.url_scheme == url.scheme()
-            && !query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
-            && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
+            && (!query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
                 || query_has_key(DCQL_QUERY_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_QUERY_PARAM_KEY))
@@ -392,30 +311,18 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let interaction_data: OpenID4VPHolderInteractionData =
             serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
 
-        if let Some(dcql_query) = interaction_data.dcql_query {
-            return get_presentation_definition_for_dcql_query(
-                dcql_query,
-                proof,
-                storage_access,
-                &self.config,
-                &*self.credential_formatter_provider,
-            )
-            .await;
-        }
+        let dcql_query = interaction_data
+            .dcql_query
+            .ok_or(VerificationProtocolError::Failed(
+                "missing dcql_query".to_string(),
+            ))?;
 
-        let presentation_definition =
-            interaction_data
-                .presentation_definition
-                .ok_or(VerificationProtocolError::Failed(
-                    "Presentation definition not found".to_string(),
-                ))?;
-
-        super::get_presentation_definition_with_local_credentials(
-            presentation_definition,
+        get_presentation_definition_for_dcql_query(
+            dcql_query,
             proof,
-            interaction_data.client_metadata,
             storage_access,
             &self.config,
+            &*self.credential_formatter_provider,
         )
         .await
     }
@@ -507,8 +414,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             deserialize_interaction_data(interaction.data.as_ref())?;
         let holder_nonce = utilities::generate_alphanumeric(32);
 
-        let (submission_data, encryption_info) = if interaction_data.dcql_query.is_some() {
-            self.dcql_submission_data(
+        let (submission_data, encryption_info) = self
+            .dcql_submission_data(
                 credential_presentations,
                 &interaction_data,
                 key,
@@ -516,18 +423,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 holder_did,
                 holder_nonce.to_owned(),
             )
-            .await?
-        } else {
-            self.pex_submission_data(
-                credential_presentations,
-                &interaction_data,
-                key,
-                jwk_key_id,
-                holder_did,
-                holder_nonce.to_owned(),
-            )
-            .await?
-        };
+            .await?;
 
         let response_uri =
             interaction_data
@@ -588,7 +484,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
         encryption_key_jwk: Option<PublicKeyWithJwk>,
-        type_to_descriptor: TypeToDescriptorMapper,
+        _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
@@ -663,32 +559,14 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 "Proof schema not found".to_string(),
             ))?;
 
-        let (presentation_definition, dcql_query) = if self.params.verifier.use_dcql {
-            (
-                None,
-                Some(create_dcql_query(proof_schema, &format_to_type_mapper)?),
-            )
-        } else {
-            (
-                Some(create_open_id_for_vp_presentation_definition(
-                    interaction_id,
-                    proof_schema,
-                    type_to_descriptor,
-                    format_to_type_mapper,
-                    &*self.credential_formatter_provider,
-                )?),
-                None,
-            )
-        };
-
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
-            presentation_definition,
+            presentation_definition: None,
             client_id: encode_client_id_with_scheme(
                 client_id_without_prefix.clone(),
                 client_id_scheme,
             ),
-            dcql_query,
+            dcql_query: Some(create_dcql_query(proof_schema, &format_to_type_mapper)?),
             encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),

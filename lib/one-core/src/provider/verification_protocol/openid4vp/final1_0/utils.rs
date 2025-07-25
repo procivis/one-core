@@ -362,7 +362,7 @@ pub(crate) async fn interaction_data_from_openid4vp_query(
     let query_params: AuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
-    let (mut authorization_request, verifier_details) =
+    let (authorization_request, verifier_details) =
         match (&query_params.request_uri, &query_params.request) {
             (Some(_), Some(_)) => {
                 return Err(VerificationProtocolError::InvalidRequest(
@@ -404,39 +404,6 @@ pub(crate) async fn interaction_data_from_openid4vp_query(
                 ));
             }
         }?;
-
-    if authorization_request.presentation_definition.is_some()
-        && authorization_request.presentation_definition_uri.is_some()
-    {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "presentation_definition and presentation_definition_uri cannot be set together"
-                .to_string(),
-        ));
-    }
-
-    if let Some(presentation_definition_uri) = &authorization_request.presentation_definition_uri {
-        if !allow_insecure_http_transport && presentation_definition_uri.scheme() != "https" {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "presentation_definition_uri must use HTTPS scheme".to_string(),
-            ));
-        }
-
-        let presentation_definition = client
-            .get(presentation_definition_uri.as_str())
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(VerificationProtocolError::Transport)?;
-
-        authorization_request.presentation_definition = Some(presentation_definition);
-    }
-
     Ok((authorization_request, verifier_details))
 }
 
@@ -448,6 +415,25 @@ pub(crate) fn validate_interaction_data(
             "redirect_uri must be None".to_string(),
         ));
     }
+
+    if interaction_data.presentation_definition.is_some() {
+        return Err(VerificationProtocolError::InvalidRequest(
+            "presentation_definition must be None".to_string(),
+        ));
+    }
+
+    if interaction_data.presentation_definition_uri.is_some() {
+        return Err(VerificationProtocolError::InvalidRequest(
+            "presentation_definition_uri must be None".to_string(),
+        ));
+    }
+
+    if interaction_data.dcql_query.is_none() {
+        return Err(VerificationProtocolError::InvalidRequest(
+            "dcql_query must be set".to_string(),
+        ));
+    }
+
     let response_type = interaction_data.response_type.as_ref().ok_or(
         VerificationProtocolError::InvalidRequest("response_type is None".to_string()),
     )?;
@@ -470,9 +456,6 @@ pub(crate) fn validate_interaction_data(
         ));
     };
 
-    // checking match of supported VP formats
-    // TODO: This might be too restrictive, since the proof in question might not use all of the entries.
-    //       So it might be OK if some do not contain locally supported algorithms
     let mso_mdoc = client_metadata.vp_formats_supported.get("mso_mdoc");
     let jwt_vc_json = client_metadata.vp_formats_supported.get("jwt_vc_json");
     let ldp_vc = client_metadata.vp_formats_supported.get("ldp_vc");
@@ -497,112 +480,104 @@ pub(crate) fn validate_interaction_data(
         !locally_supported.is_disjoint(&BTreeSet::from_iter(remotely_supported))
     }
 
-    if let Some(jwt_vc_json) = jwt_vc_json {
-        let OpenID4VpPresentationFormat::W3CJwtAlgs(jwt_vc_json) = jwt_vc_json else {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats_supported[\"jwt_vc_json\"] structure"
-                    .to_string(),
+    match jwt_vc_json {
+        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
+        Some(OpenID4VpPresentationFormat::W3CJwtAlgs(jwt_vc_json)) => {
+            if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported entry for 'jwt_vc_json' ({:?}) does not contain a supported algorithm",
+                    jwt_vc_json.alg_values
+                )));
+            }
+        }
+        Some(_) => {
+            Err(VerificationProtocolError::InvalidRequest(
+                "invalid client_metadata.vp_formats_supported entry for 'jwt_vc_json'".to_string(),
             ))?;
-        };
-
-        if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "client_metadata.vp_formats_supported[\"jwt_vc_json\"] ({:?}) does not contain a supported algorithm",
-                jwt_vc_json.alg_values
-            )));
         }
     };
 
-    if let Some(ldp_vc) = ldp_vc {
-        match ldp_vc {
-            OpenID4VpPresentationFormat::W3CLdpAlgs(ldp_vc) => {
-                if !is_supported(
-                    &ldp_vc.proof_type_values,
-                    &["DataIntegrityProof".to_string()],
-                ) {
-                    return Err(VerificationProtocolError::InvalidRequest(format!(
-                        "client_metadata.vp_formats_supported[\"ldp_vc\"].proof_type_values ({:?}) must contain 'DataIntegrityProof' proof type",
-                        ldp_vc.proof_type_values
-                    )));
-                }
+    match ldp_vc {
+        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
+        Some(OpenID4VpPresentationFormat::W3CLdpAlgs(ldp_vc)) => {
+            if !is_supported(
+                &ldp_vc.proof_type_values,
+                &["DataIntegrityProof".to_string()],
+            ) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported entry for 'ldp_vc' ({:?}) must contain 'DataIntegrityProof' proof type",
+                    ldp_vc.proof_type_values
+                )));
+            }
 
-                if !is_supported(
-                    &ldp_vc.cryptosuite_values,
-                    &[
-                        "bbs-2023".to_string(),
-                        "ecdsa-rdfc-2019".to_string(),
-                        "eddsa-rdfc-2022".to_string(),
-                    ],
-                ) {
-                    return Err(VerificationProtocolError::InvalidRequest(format!(
-                        "client_metadata.vp_formats_supported[\"ldp_vc\"].cryptosuite_values ({:?}) does not contain a supported cryptosuite",
-                        ldp_vc.cryptosuite_values
-                    )));
-                }
+            if !is_supported(
+                &ldp_vc.cryptosuite_values,
+                &[
+                    "bbs-2023".to_string(),
+                    "ecdsa-rdfc-2019".to_string(),
+                    "eddsa-rdfc-2022".to_string(),
+                ],
+            ) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported entry for 'ldp_vc' ({:?}) does not contain a supported cryptosuite",
+                    ldp_vc.cryptosuite_values
+                )));
             }
-            _ => {
-                return Err(VerificationProtocolError::InvalidRequest(
-                    "invalid client_metadata.vp_formats_supported[\"ldp_vc\"] structure"
-                        .to_string(),
-                ));
-            }
+        }
+        Some(_) => {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "invalid client_metadata.vp_formats_supported entry for 'ldp_vc'".to_string(),
+            ));
         }
     }
 
-    if let Some(sd_jwt_vc) = sd_jwt_vc {
-        let OpenID4VpPresentationFormat::SdJwtVcAlgs(sd_jwt_vc) = sd_jwt_vc else {
+    match sd_jwt_vc {
+        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
+        Some(OpenID4VpPresentationFormat::SdJwtVcAlgs(sd_jwt_vc)) => {
+            if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported entry for 'dc+sd-jwt' ({:?}) does not contain a supported algorithm",
+                    sd_jwt_vc.sd_jwt_alg_values
+                )));
+            }
+
+            if !is_supported(&sd_jwt_vc.kb_jwt_alg_values, &jose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported entry for 'dc+sd-jwt' ({:?}) does not contain a supported algorithm",
+                    sd_jwt_vc.kb_jwt_alg_values
+                )));
+            }
+        }
+        Some(_) => {
             return Err(VerificationProtocolError::InvalidRequest(
                 "invalid client_metadata.vp_formats_supported[\"dc+sd-jwt\"] structure".to_string(),
-            ))?;
-        };
-
-        if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "client_metadata.vp_formats_supported[\"dc+sd-jwt\"].sd_jwt_alg_values ({:?}) does not contain a supported algorithm",
-                sd_jwt_vc.sd_jwt_alg_values
-            )));
-        }
-
-        if !is_supported(&sd_jwt_vc.kb_jwt_alg_values, &jose_supported) {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "client_metadata.vp_formats_supported[\"dc+sd-jwt\"].kb_jwt_alg_values ({:?}) does not contain a supported algorithm",
-                sd_jwt_vc.kb_jwt_alg_values
-            )));
+            ));
         }
     };
 
+    // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed
     match mso_mdoc {
+        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
         Some(OpenID4VpPresentationFormat::MdocAlgs(mso_mdoc)) => {
             if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported[\"mso_mdoc\"].issuerauth_alg_values ({:?}) do not contain supported algorithms",
+                    "client_metadata.vp_formats_supported entry for 'mso_mdoc' ({:?}) do not contain supported algorithms",
                     mso_mdoc.issuerauth_alg_values
                 )));
             }
 
             if !is_supported(&mso_mdoc.deviceauth_alg_values, &cose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported[\"mso_mdoc\"].deviceauth_alg_values ({:?}) do not contain supported algorithms",
+                    "client_metadata.vp_formats_supported entry for 'mso_mdoc' ({:?}) do not contain supported algorithms",
                     mso_mdoc.deviceauth_alg_values
                 )));
             }
         }
-        // As per the spec ONE-4912 - the mso_mdoc may contain no algorithms / be an empty object
-        Some(OpenID4VpPresentationFormat::Other(serde_json::Value::Object(mso_mdoc))) => {
-            if mso_mdoc.is_empty() {
-                return Ok(());
-            } else {
-                return Err(VerificationProtocolError::InvalidRequest(
-                    "client_metadata.vp_formats_supported[\"mso_mdoc\"] must contain an 'issuerauth_alg_values'/'deviceauth_alg_values' or be an empty object".to_string(),
-                ));
-            }
-        }
         Some(_) => {
             return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats_supported[\"mso_mdoc\"] structure".to_string(),
+                "invalid client_metadata.vp_formats_supported entry for 'mso_mdoc'".to_string(),
             ));
         }
-        None => {}
     };
 
     let Some(response_uri) = interaction_data.response_uri.as_ref() else {
@@ -622,14 +597,6 @@ pub(crate) fn validate_interaction_data(
         return Err(VerificationProtocolError::InvalidRequest(
             "nonce must be set".to_string(),
         ));
-    }
-
-    if interaction_data.presentation_definition.is_some() && interaction_data.dcql_query.is_some() {
-        return Err(
-            VerificationProtocolError::InvalidDcqlQueryOrPresentationDefinition(
-                "'presentation_definition' and 'dcql_query' must not both be set".to_string(),
-            ),
-        );
     }
 
     Ok(())

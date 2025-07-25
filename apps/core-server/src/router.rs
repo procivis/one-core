@@ -381,10 +381,6 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                     .layer(DefaultBodyLimit::disable()),
             )
             .route(
-                "/ssi/openid4vp/final-1.0/{id}/presentation-definition",
-                get(ssi::verification::final1_0::controller::oid4vp_final1_0_presentation_definition),
-            )
-            .route(
                 "/ssi/openid4vp/final-1.0/{id}/client-metadata",
                 get(ssi::verification::final1_0::controller::oid4vp_final1_0_client_metadata),
             )
