@@ -1,4 +1,5 @@
 use core::str;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -469,95 +470,121 @@ pub(crate) fn validate_interaction_data(
         ));
     };
 
-    let mso_vp = client_metadata.vp_formats_supported.get("mso_mdoc");
-    let jwt_vp = client_metadata.vp_formats_supported.get("jwt_vp_json");
-    let ldp_vp = client_metadata.vp_formats_supported.get("ldp_vp");
-    let sd_jwt_vp = client_metadata
-        .vp_formats_supported
-        .get("dc+sd-jwt")
-        .or(client_metadata.vp_formats_supported.get("vc+sd-jwt"));
+    // checking match of supported VP formats
+    // TODO: This might be too restrictive, since the proof in question might not use all of the entries.
+    //       So it might be OK if some do not contain locally supported algorithms
+    let mso_mdoc = client_metadata.vp_formats_supported.get("mso_mdoc");
+    let jwt_vc_json = client_metadata.vp_formats_supported.get("jwt_vc_json");
+    let ldp_vc = client_metadata.vp_formats_supported.get("ldp_vc");
+    let sd_jwt_vc = client_metadata.vp_formats_supported.get("dc+sd-jwt");
 
-    if jwt_vp.is_none() && sd_jwt_vp.is_none() && mso_vp.is_none() && ldp_vp.is_none() {
+    if jwt_vc_json.is_none() && sd_jwt_vc.is_none() && mso_mdoc.is_none() && ldp_vc.is_none() {
         Err(VerificationProtocolError::InvalidRequest(
-            "unsupported client_metadata.vp_format must contain 'jwt_vp_json', 'vc+sd-jwt', 'dc+sd-jwt', 'mso_mdoc', or 'ldp_vp'".to_string(),
+            "unsupported client_metadata.vp_formats_supported must contain 'jwt_vc_json', 'vc+sd-jwt', 'dc+sd-jwt', 'mso_mdoc', or 'ldp_vc'".to_string(),
         ))?;
     }
 
-    if let Some(jwt_vp) = jwt_vp {
-        let OpenID4VpPresentationFormat::GenericAlgList(jwt_vp_json) = jwt_vp else {
+    let cose_supported = [-7, -8, -9, -19];
+    let jose_supported = ["ES256".to_string(), "EdDSA".to_string()];
+
+    /// find at least one common entry
+    fn is_supported<T: Clone + Ord>(remotely_supported: &[T], locally_supported: &[T]) -> bool {
+        if remotely_supported.is_empty() {
+            return true; // no remotely specified means no known restrictions
+        }
+
+        let locally_supported = BTreeSet::from_iter(locally_supported);
+        !locally_supported.is_disjoint(&BTreeSet::from_iter(remotely_supported))
+    }
+
+    if let Some(jwt_vc_json) = jwt_vc_json {
+        let OpenID4VpPresentationFormat::W3CJwtAlgs(jwt_vc_json) = jwt_vc_json else {
             return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats[\"jwt_vp_json\"] structure".to_string(),
+                "invalid client_metadata.vp_formats_supported[\"jwt_vc_json\"] structure"
+                    .to_string(),
             ))?;
         };
 
-        if !jwt_vp_json.alg.contains(&"EdDSA".to_string()) {
-            Err(VerificationProtocolError::InvalidRequest(
-                "client_metadata.vp_formats[\"jwt_vp_json\"] must contain 'EdDSA' algorithm"
-                    .to_string(),
-            ))?;
+        if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
+            return Err(VerificationProtocolError::InvalidRequest(format!(
+                "client_metadata.vp_formats_supported[\"jwt_vc_json\"] ({:?}) does not contain a supported algorithm",
+                jwt_vc_json.alg_values
+            )));
         }
     };
 
-    if let Some(ldp_vp) = ldp_vp {
-        match ldp_vp {
-            OpenID4VpPresentationFormat::LdpVcAlgs(ldp_vp_json) => {
-                if !ldp_vp_json
-                    .proof_type
-                    .contains(&"DataIntegrityProof".to_string())
-                {
-                    Err(VerificationProtocolError::InvalidRequest(
-                        "client_metadata.vp_formats[\"ldp_vp\"] must contain 'DataIntegrityProof' proof type"
-                            .to_string(),
-                    ))?;
+    if let Some(ldp_vc) = ldp_vc {
+        match ldp_vc {
+            OpenID4VpPresentationFormat::W3CLdpAlgs(ldp_vc) => {
+                if !is_supported(
+                    &ldp_vc.proof_type_values,
+                    &["DataIntegrityProof".to_string()],
+                ) {
+                    return Err(VerificationProtocolError::InvalidRequest(format!(
+                        "client_metadata.vp_formats_supported[\"ldp_vc\"].proof_type_values ({:?}) must contain 'DataIntegrityProof' proof type",
+                        ldp_vc.proof_type_values
+                    )));
                 }
-            }
-            // TODO: Backwards compatibility,previous core versions incorrectly encoded the ldp_vp as a GenericAlgList
-            OpenID4VpPresentationFormat::GenericAlgList(algs) => {
-                if !algs.alg.contains(&"EdDSA".to_string()) {
-                    Err(VerificationProtocolError::InvalidRequest(
-                        "client_metadata.vp_formats[\"ldp_vp\"] must contain 'EdDSA' algorithm"
-                            .to_string(),
-                    ))?;
+
+                if !is_supported(
+                    &ldp_vc.cryptosuite_values,
+                    &[
+                        "bbs-2023".to_string(),
+                        "ecdsa-rdfc-2019".to_string(),
+                        "eddsa-rdfc-2022".to_string(),
+                    ],
+                ) {
+                    return Err(VerificationProtocolError::InvalidRequest(format!(
+                        "client_metadata.vp_formats_supported[\"ldp_vc\"].cryptosuite_values ({:?}) does not contain a supported cryptosuite",
+                        ldp_vc.cryptosuite_values
+                    )));
                 }
             }
             _ => {
                 return Err(VerificationProtocolError::InvalidRequest(
-                    "invalid client_metadata.vp_formats[\"ldp_vp\"] structure".to_string(),
+                    "invalid client_metadata.vp_formats_supported[\"ldp_vc\"] structure"
+                        .to_string(),
                 ));
             }
         }
     }
 
-    // TODO: Backwards compatibility, see ONE-5021
-    if let Some(sd_jwt_vp) = sd_jwt_vp {
-        let algorithms = match sd_jwt_vp {
-            OpenID4VpPresentationFormat::GenericAlgList(algs) => &algs.alg,
-            OpenID4VpPresentationFormat::SdJwtVcAlgs(algs) => &algs.sd_jwt_alg_values,
-            _ => {
-                return Err(VerificationProtocolError::InvalidRequest(
-                    "invalid client_metadata.vp_formats[\"vc+sd-jwt\"] structure".to_string(),
-                ));
-            }
+    if let Some(sd_jwt_vc) = sd_jwt_vc {
+        let OpenID4VpPresentationFormat::SdJwtVcAlgs(sd_jwt_vc) = sd_jwt_vc else {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "invalid client_metadata.vp_formats_supported[\"dc+sd-jwt\"] structure".to_string(),
+            ))?;
         };
 
-        if !algorithms.contains(&"EdDSA".to_string()) && !algorithms.contains(&"ES256".to_string())
-        {
-            Err(VerificationProtocolError::InvalidRequest(
-                "client_metadata.vp_formats[\"vc+sd-jwt\"] must contain 'EdDSA' or 'ES256' algorithms"
-                    .to_string(),
-            ))?;
+        if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
+            return Err(VerificationProtocolError::InvalidRequest(format!(
+                "client_metadata.vp_formats_supported[\"dc+sd-jwt\"].sd_jwt_alg_values ({:?}) does not contain a supported algorithm",
+                sd_jwt_vc.sd_jwt_alg_values
+            )));
+        }
+
+        if !is_supported(&sd_jwt_vc.kb_jwt_alg_values, &jose_supported) {
+            return Err(VerificationProtocolError::InvalidRequest(format!(
+                "client_metadata.vp_formats_supported[\"dc+sd-jwt\"].kb_jwt_alg_values ({:?}) does not contain a supported algorithm",
+                sd_jwt_vc.kb_jwt_alg_values
+            )));
         }
     };
 
-    match mso_vp {
-        Some(OpenID4VpPresentationFormat::GenericAlgList(mso_mdoc)) => {
-            if !mso_mdoc.alg.contains(&"ES256".to_string())
-                && !mso_mdoc.alg.contains(&"EdDSA".to_string())
-            {
-                Err(VerificationProtocolError::InvalidRequest(
-                    "client_metadata.vp_formats[\"mso_mdoc\"] must contain 'ES256' or 'EdDSA' algorithms"
-                        .to_string(),
-                ))?;
+    match mso_mdoc {
+        Some(OpenID4VpPresentationFormat::MdocAlgs(mso_mdoc)) => {
+            if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported[\"mso_mdoc\"].issuerauth_alg_values ({:?}) do not contain supported algorithms",
+                    mso_mdoc.issuerauth_alg_values
+                )));
+            }
+
+            if !is_supported(&mso_mdoc.deviceauth_alg_values, &cose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "client_metadata.vp_formats_supported[\"mso_mdoc\"].deviceauth_alg_values ({:?}) do not contain supported algorithms",
+                    mso_mdoc.deviceauth_alg_values
+                )));
             }
         }
         // As per the spec ONE-4912 - the mso_mdoc may contain no algorithms / be an empty object
@@ -566,13 +593,13 @@ pub(crate) fn validate_interaction_data(
                 return Ok(());
             } else {
                 return Err(VerificationProtocolError::InvalidRequest(
-                    "client_metadata.vp_formats[\"mso_mdoc\"] must contain an 'alg' key or be an empty object".to_string(),
+                    "client_metadata.vp_formats_supported[\"mso_mdoc\"] must contain an 'issuerauth_alg_values'/'deviceauth_alg_values' or be an empty object".to_string(),
                 ));
             }
         }
         Some(_) => {
             return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats[\"mso_mdoc\"] structure".to_string(),
+                "invalid client_metadata.vp_formats_supported[\"mso_mdoc\"] structure".to_string(),
             ));
         }
         None => {}
