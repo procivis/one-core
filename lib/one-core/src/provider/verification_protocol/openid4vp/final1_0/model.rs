@@ -108,8 +108,8 @@ pub struct OpenID4VPFinal1_0ClientMetadata {
     #[serde(default)]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default)]
-    pub authorization_encrypted_response_enc:
-        Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    pub encrypted_response_enc_values_supported:
+        Option<Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>>,
     #[serde(default)]
     pub id_token_ecrypted_response_enc: Option<String>,
     #[serde(default)]

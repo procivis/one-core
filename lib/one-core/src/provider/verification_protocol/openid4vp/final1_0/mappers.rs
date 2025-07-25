@@ -43,8 +43,9 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
         });
         metadata.authorization_encrypted_response_alg =
             Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs);
-        metadata.authorization_encrypted_response_enc =
-            Some(AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM);
+        metadata.encrypted_response_enc_values_supported = Some(vec![
+            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
+        ]);
     }
 
     metadata

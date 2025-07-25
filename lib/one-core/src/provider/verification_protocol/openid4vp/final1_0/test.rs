@@ -192,8 +192,10 @@ async fn test_share_proof() {
         Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
     );
     assert_eq!(
-        returned_client_metadata.authorization_encrypted_response_enc,
-        Some(AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM)
+        returned_client_metadata.encrypted_response_enc_values_supported,
+        Some(vec![
+            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
+        ])
     );
     assert_eq!(returned_presentation_definition.input_descriptors.len(), 1);
     assert_eq!(

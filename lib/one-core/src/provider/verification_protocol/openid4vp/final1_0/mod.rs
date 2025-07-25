@@ -94,7 +94,7 @@ pub(crate) struct OpenID4VPFinal1_0 {
 
 struct EncryptionInfo {
     verifier_key: OpenID4VPClientMetadataJwkDTO,
-    alg: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+    supported_algorithms: Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
 }
 
 impl OpenID4VPFinal1_0 {
@@ -144,7 +144,10 @@ impl OpenID4VPFinal1_0 {
             return Ok(None);
         }
 
-        let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
+        let supported_encryption_algs = match client_metadata
+            .encrypted_response_enc_values_supported
+            .clone()
+        {
             // Encrypted presentations not supported
             None => return Ok(None),
             Some(alg) => alg,
@@ -178,7 +181,7 @@ impl OpenID4VPFinal1_0 {
         };
         Ok(Some(EncryptionInfo {
             verifier_key,
-            alg: encryption_alg,
+            supported_algorithms: supported_encryption_algs,
         }))
     }
 
@@ -534,13 +537,17 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                     "response_uri is None".to_string(),
                 ))?;
 
-        let params = if let Some(EncryptionInfo { verifier_key, alg }) = encryption_info {
+        let params = if let Some(EncryptionInfo {
+            verifier_key,
+            supported_algorithms,
+        }) = encryption_info
+        {
             encrypted_params(
                 interaction_data,
                 submission_data,
                 &holder_nonce,
                 verifier_key,
-                alg,
+                supported_algorithms,
                 &*self.key_algorithm_provider,
             )
             .await?
@@ -793,7 +800,7 @@ async fn encrypted_params(
     submission_data: VpSubmissionData,
     holder_nonce: &str,
     verifier_key: OpenID4VPClientMetadataJwkDTO,
-    encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+    encryption_algorithms: Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<HashMap<String, String>, VerificationProtocolError> {
     let aud = interaction_data
@@ -813,12 +820,22 @@ async fn encrypted_params(
         state: interaction_data.state,
     };
 
+    // All algorithms defined in the AuthorizationEncryptedResponseContentEncryptionAlgorithm enum are supported
+    // we pick the first one
+    let selected_encryption_alg =
+        encryption_algorithms
+            .first()
+            .cloned()
+            .ok_or(VerificationProtocolError::Failed(
+                "metadata contains no encrypted_response_enc_values_supported entries".to_string(),
+            ))?;
+
     let response = jwe_presentation::build_jwe(
         payload,
         verifier_key,
         holder_nonce,
         &verifier_nonce,
-        encryption_algorithm,
+        selected_encryption_alg,
         key_algorithm_provider,
     )
     .await

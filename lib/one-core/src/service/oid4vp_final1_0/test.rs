@@ -1058,9 +1058,9 @@ async fn test_get_client_metadata_success() {
             authorization_encrypted_response_alg: Some(
                 AuthorizationEncryptedResponseAlgorithm::EcdhEs
             ),
-            authorization_encrypted_response_enc: Some(
+            encrypted_response_enc_values_supported: Some(vec![
                 AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
-            ),
+            ]),
             ..Default::default()
         },
         result

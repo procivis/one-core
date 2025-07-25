@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_core::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
-use one_dto_mapper::{From, convert_inner};
+use one_dto_mapper::{From, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -27,7 +27,7 @@ pub(crate) struct OpenID4VPFinal1_0ClientMetadataResponseRestDTO {
     pub vp_formats_supported: HashMap<String, OpenID4VPFormatRestDTO>,
     #[from(with_fn = convert_inner)]
     pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
-    #[from(with_fn = convert_inner)]
-    pub authorization_encrypted_response_enc:
-        Option<OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub encrypted_response_enc_values_supported:
+        Option<Vec<OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm>>,
 }
