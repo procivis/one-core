@@ -50,8 +50,9 @@ stages:
   - docs
   - tests
   - scan
-  - publish
+  - build
   - deploy
+  - generate_docs
   - sdk_build
   - sdk_artifact
   - extra_tests
@@ -112,7 +113,7 @@ before_script:
 .run_tests:
   stage: extra_tests
   needs:
-    - job: publish
+    - job: build_image
       artifacts: true
   variables:
     CORE_IMAGE_TAG: ${APP_VERSION}
@@ -197,8 +198,8 @@ sonarqube-check:
   extends:
     - .rule:only_main_or_tag
 
-publish:
-  stage: publish
+build_image:
+  stage: build
   dependencies: []
   extends:
     - .docker_publish
@@ -206,8 +207,8 @@ publish:
   variables:
     EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
 
-publish_image_acr:
-  stage: publish
+build_image_acr:
+  stage: build
   dependencies: []
   extends:
     - .docker_acr_publish
@@ -363,7 +364,7 @@ tests:api:
 .deploy_trigger:
   stage: deploy
   needs:
-    - job: publish
+    - job: build_image
   trigger:
     project: procivis/one/one-operations
     branch: main
@@ -415,7 +416,20 @@ deploy:canivc:
     K8S_NAMESPACE: canivc
     DEPLOY_ENVIRONMENT: Canivc
 
-tests:publish:
+generate_docs:test:
+  stage: generate_docs
+  extends:
+    - .rule:deploy:test
+  trigger:
+    include:
+      - project: procivis/one/one-operations
+        ref: main
+        file: gitlab/generate-docs.gitlab-ci.yml
+  variables:
+    DEPLOY_IMAGE_TAG: $APP_VERSION
+    OPENAPI_DOCS_URL: https://core.test.procivis-one.com/api-docs/openapi.yaml
+
+tests:build_image:
   stage: tests
   dependencies: []
   variables:
@@ -430,7 +444,7 @@ trigger_tests:e2e:
   variables:
     FE_E2E_TEST: true
   needs:
-    - job: tests:publish
+    - job: tests:build_image
       artifacts: true
   extends:
     - .run_tests
@@ -441,7 +455,7 @@ trigger_tests:api:
   variables:
     API_TEST: "CORE"
   needs:
-    - job: tests:publish
+    - job: tests:build_image
       artifacts: true
   extends:
     - .run_tests
