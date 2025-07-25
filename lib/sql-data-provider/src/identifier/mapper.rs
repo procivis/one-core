@@ -95,12 +95,11 @@ impl IntoFilterCondition for IdentifierFilterValue {
             }
             IdentifierFilterValue::DidMethods(did_methods) => entity::did::Column::Method
                 .is_in(did_methods)
-                .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
+                .or(identifier::Column::Type.ne(identifier::IdentifierType::Did))
                 .into_condition(),
-            IdentifierFilterValue::IsRemote(is_remote) => identifier::Column::IsRemote
-                .eq(is_remote)
-                .or(identifier::Column::Type.eq(identifier::IdentifierType::Certificate))
-                .into_condition(),
+            IdentifierFilterValue::IsRemote(is_remote) => {
+                get_equals_condition(identifier::Column::IsRemote, is_remote)
+            }
             IdentifierFilterValue::KeyAlgorithms(key_algorithms) => key::Column::KeyType
                 .is_in(&key_algorithms)
                 .or(ColumnRef::TableColumn(
