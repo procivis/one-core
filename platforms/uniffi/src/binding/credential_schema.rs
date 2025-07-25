@@ -1,8 +1,9 @@
-use one_core::model::common::ExactColumn;
 use one_core::model::credential_schema::{
     LayoutType, SortableCredentialSchemaColumn, WalletStorageTypeEnum,
 };
-use one_core::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
+use one_core::model::list_filter::{
+    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
@@ -55,17 +56,39 @@ impl OneCoreBinding {
                 .condition(),
         ];
 
-        if let Some(name) = query.name {
-            let name_filter = if query
-                .exact
-                .is_some_and(|e| e.contains(&CredentialSchemaListQueryExactColumnBindingEnum::Name))
-            {
-                StringMatch::equals(name)
+        let exact = query.exact.unwrap_or_default();
+        let get_string_match_type = |column| {
+            if exact.contains(&column) {
+                StringMatchType::Equals
             } else {
-                StringMatch::starts_with(name)
-            };
+                StringMatchType::StartsWith
+            }
+        };
 
-            conditions.push(CredentialSchemaFilterValue::Name(name_filter).condition())
+        if let Some(name) = query.name.map(|name| {
+            CredentialSchemaFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(
+                    CredentialSchemaListQueryExactColumnBindingEnum::Name,
+                ),
+                value: name,
+            })
+        }) {
+            conditions.push(name.condition())
+        }
+
+        if let Some(schema_id) = query.schema_id.map(|schema_id| {
+            CredentialSchemaFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(
+                    CredentialSchemaListQueryExactColumnBindingEnum::SchemaId,
+                ),
+                value: schema_id,
+            })
+        }) {
+            conditions.push(schema_id.condition())
+        }
+
+        if let Some(formats) = query.formats.map(CredentialSchemaFilterValue::Formats) {
+            conditions.push(formats.condition())
         }
 
         if let Some(ids) = query.ids {
@@ -196,12 +219,14 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub ids: Option<Vec<String>>,
     pub exact: Option<Vec<CredentialSchemaListQueryExactColumnBindingEnum>>,
     pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
+    pub schema_id: Option<String>,
+    pub formats: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
-#[into(ExactColumn)]
+#[derive(Clone, Debug, PartialEq, uniffi::Enum)]
 pub enum CredentialSchemaListQueryExactColumnBindingEnum {
     Name,
+    SchemaId,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

@@ -515,7 +515,9 @@ impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQuery {
             .transpose()?
             .map(ProofSchemaFilterValue::ProofSchemaIds);
 
-        let filtering = organisation_id & name & proof_schema_ids;
+        let formats = value.formats.map(ProofSchemaFilterValue::Formats);
+
+        let filtering = organisation_id & name & proof_schema_ids & formats;
 
         Ok(Self {
             pagination: Some(ListPagination {

@@ -318,6 +318,7 @@ pub struct ListProofSchemasFiltersBindingDTO {
     pub name: Option<String>,
     pub exact: Option<Vec<ProofSchemaListQueryExactColumnBinding>>,
     pub ids: Option<Vec<String>>,
+    pub formats: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
