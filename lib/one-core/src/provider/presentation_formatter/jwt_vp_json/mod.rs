@@ -7,16 +7,14 @@ use uuid::Uuid;
 
 use crate::config::core_config::FormatType;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
-    Presentation, VerificationFn,
-};
+use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::jwt_vp_json::model::{
     EnvelopedContent, VP, VPContent, VerifiableCredential,
 };
 use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, PresentationFormatterCapabilities,
+    CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
+    FormattedPresentation, PresentationFormatterCapabilities,
 };
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::JWTPayload;
@@ -114,7 +112,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         presentation: &str,
         verification_fn: VerificationFn,
         _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let jwt: Jwt<VP> =
             Jwt::build_from_token(presentation, Some(&verification_fn), None).await?;
 
@@ -125,7 +123,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         &self,
         presentation: &str,
         _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let jwt: Jwt<VP> = Jwt::build_from_token(presentation, None, None).await?;
 
         jwt.try_into()

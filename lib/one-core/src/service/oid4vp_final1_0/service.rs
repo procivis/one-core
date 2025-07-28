@@ -299,6 +299,7 @@ impl OID4VPFinal1_0Service {
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
             &self.certificate_validator,
+            VerificationProtocolType::OpenId4VpFinal1_0,
         )
         .await
         {

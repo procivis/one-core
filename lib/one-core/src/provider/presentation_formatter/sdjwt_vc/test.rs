@@ -10,9 +10,9 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 
 use super::SdjwtVCPresentationFormatter;
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{KeyAlgorithmType, VerificationProtocolType};
 use crate::provider::credential_formatter::model::{
-    ExtractPresentationCtx, IdentifierDetails, MockTokenVerifier, PublicKeySource,
+    IdentifierDetails, MockTokenVerifier, PublicKeySource,
 };
 use crate::provider::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
@@ -20,6 +20,7 @@ use crate::provider::http_client::{
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
+use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::service::certificate::validator::MockCertificateValidator;
 
 const ISSUER_URL: &str = "https://example.com/.well-known/jwt-vc-issuer/issuer";
@@ -127,7 +128,16 @@ async fn test_extract_presentation() {
         .extract_presentation(
             &presentation_token,
             Box::new(verify_mock),
-            ExtractPresentationCtx::default(),
+            ExtractPresentationCtx {
+                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
+                mdoc_session_transcript: None,
+            },
         )
         .await;
 

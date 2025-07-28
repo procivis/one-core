@@ -1,4 +1,5 @@
 pub(crate) mod model;
+pub(crate) mod session_transcript;
 
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -12,24 +13,27 @@ use shared_types::DidValue;
 use url::Url;
 use uuid::Uuid;
 
+use self::model::{
+    DeviceAuth, DeviceAuthentication, DeviceNamespaces, DeviceResponse, DeviceResponseVersion,
+    DeviceSigned, Document,
+};
+use self::session_transcript::iso_18013_7::OID4VPDraftHandover;
+use self::session_transcript::{Handover, SessionTranscript};
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64};
-use crate::config::core_config::{FormatType, KeyAlgorithmType};
+use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
-    IdentifierDetails, Presentation, PublicKeySource, SignatureProvider, TokenVerifier,
+    AuthenticationFn, IdentifierDetails, PublicKeySource, SignatureProvider, TokenVerifier,
     VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, PresentationFormatterCapabilities,
+    CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
+    FormattedPresentation, PresentationFormatterCapabilities,
 };
-use crate::provider::presentation_formatter::mso_mdoc::model::{
-    DeviceAuth, DeviceAuthentication, DeviceNamespaces, DeviceResponse, DeviceResponseVersion,
-    DeviceSigned, Document, OID4VPHandover, SessionTranscript,
-};
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::util::cose::{CoseSign1, CoseSign1Builder};
 use crate::util::mdoc::{
@@ -148,7 +152,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         presentation: &str,
         verification_fn: VerificationFn,
         context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let device_response_signed: DeviceResponse = decode_cbor_base64(presentation)?;
 
         let documents =
@@ -207,7 +211,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         }
 
         // todo transfer issued and expires from the token
-        Ok(Presentation {
+        Ok(ExtractedPresentation {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
@@ -221,7 +225,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         &self,
         presentation: &str,
         context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let device_response_signed: DeviceResponse = decode_cbor_base64(presentation)?;
 
         let documents =
@@ -237,7 +241,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             .collect::<Result<Vec<String>, FormatterError>>()?;
 
         // todo transfer issued and expires from the token
-        Ok(Presentation {
+        Ok(ExtractedPresentation {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
@@ -264,7 +268,12 @@ impl MsoMdocPresentationFormatter {
         context: &ExtractPresentationCtx,
     ) -> Result<(SessionTranscript, Option<String>), FormatterError> {
         // ISO mDL:
-        if let Some(session_transcript) = context.mdoc_session_transcript.as_ref() {
+        if context.verification_protocol_type == VerificationProtocolType::IsoMdl {
+            let Some(session_transcript) = context.mdoc_session_transcript.as_ref() else {
+                return Err(FormatterError::CouldNotExtractPresentation(
+                    "missing ISO mDL session transcript".to_string(),
+                ));
+            };
             let session_transcript = ciborium::from_reader(session_transcript.as_slice())
                 .context("session_transcript deserialization error")
                 .map_err(|e| FormatterError::Failed(e.to_string()))?;
@@ -280,14 +289,6 @@ impl MsoMdocPresentationFormatter {
                 "Missing nonce".to_owned(),
             ))?
             .to_string();
-
-        let mdoc_generated_nonce =
-            context
-                .format_nonce
-                .as_ref()
-                .ok_or(FormatterError::CouldNotExtractPresentation(
-                    "Missing mdoc_generated_nonce".to_owned(),
-                ))?;
 
         let client_id = context
             .client_id
@@ -310,13 +311,34 @@ impl MsoMdocPresentationFormatter {
             .as_deref()
             .unwrap_or(client_id.as_str());
 
+        let handover = match &context.verification_protocol_type {
+            VerificationProtocolType::OpenId4VpFinal1_0 => Handover::OID4VPFinal1_0(
+                OID4VPFinal1_0Handover::compute(&client_id, response_uri, &nonce, None)
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+            ),
+            _ => {
+                let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
+                    FormatterError::CouldNotExtractPresentation(
+                        "Missing mdoc_generated_nonce".to_owned(),
+                    ),
+                )?;
+
+                Handover::Iso18013_7AnnexB(
+                    OID4VPDraftHandover::compute(
+                        &client_id,
+                        response_uri,
+                        &nonce,
+                        mdoc_generated_nonce,
+                    )
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                )
+            }
+        };
+
         let session_transcript = SessionTranscript {
             device_engagement_bytes: None,
             e_reader_key_bytes: None,
-            handover: Some(
-                OID4VPHandover::compute(&client_id, response_uri, &nonce, mdoc_generated_nonce)
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
-            ),
+            handover: Some(handover),
         };
 
         Ok((session_transcript, Some(nonce)))

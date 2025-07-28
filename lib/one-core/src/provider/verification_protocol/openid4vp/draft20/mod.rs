@@ -15,7 +15,7 @@ use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::{
     explode_validity_credentials, map_presented_credentials_to_presentation_format_type,
 };
-use super::mdoc::mdoc_presentation_context;
+use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
@@ -25,15 +25,15 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
-use crate::provider::credential_formatter::model::{
-    DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
-};
+use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::presentation_formatter::model::{
+    CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
+};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
@@ -371,12 +371,12 @@ impl VerificationProtocol for OpenID4VP20HTTP {
 
         let holder_nonce = utilities::generate_alphanumeric(32);
         let ctx = if format == FormatType::Mdoc {
-            mdoc_presentation_context(
+            mdoc_presentation_context(mdoc_draft_handover(
                 &interaction_data.client_id,
                 &response_uri,
                 &verifier_nonce,
                 &holder_nonce,
-            )?
+            )?)?
         } else {
             FormatPresentationCtx {
                 nonce: Some(verifier_nonce.clone()),

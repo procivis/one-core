@@ -52,7 +52,7 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
-    use crate::provider::presentation_formatter::mso_mdoc::model::SessionTranscript;
+    use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
     use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
     use crate::provider::verification_protocol::iso_mdl::device_engagement::{
         BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,

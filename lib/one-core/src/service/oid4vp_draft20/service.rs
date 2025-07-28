@@ -291,6 +291,7 @@ impl OID4VPDraft20Service {
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
             &self.certificate_validator,
+            OpenId4VpDraft20,
         )
         .await
         {

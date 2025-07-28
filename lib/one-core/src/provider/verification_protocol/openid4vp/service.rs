@@ -15,17 +15,17 @@ use super::model::{
 };
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, HolderBindingCtx,
-};
+use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -119,6 +119,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
+    protocol_type: VerificationProtocolType,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
     throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
         .or(throw_if_latest_proof_state_not_eq(
@@ -145,6 +146,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
                 key_algorithm_provider,
                 revocation_method_provider,
                 certificate_validator,
+                protocol_type,
             )
             .await
         }
@@ -159,6 +161,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
                 key_algorithm_provider,
                 revocation_method_provider,
                 certificate_validator,
+                protocol_type,
             )
             .await
         }
@@ -189,6 +192,7 @@ async fn process_proof_submission_dcql_query(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
+    protocol_type: VerificationProtocolType,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let VpSubmissionData::Dcql(DcqlSubmission { vp_token }) = submission.submission_data else {
         return Err(OpenID4VCError::ValidationError(
@@ -258,10 +262,22 @@ async fn process_proof_submission_dcql_query(
         let context = if credential_query.format == CredentialFormat::MsoMdoc {
             ExtractPresentationCtx {
                 format_nonce: submission.mdoc_generated_nonce.clone(),
-                ..extract_presentation_ctx_from_interaction_content(interaction_data.clone())
+                ..extract_presentation_ctx_from_interaction_content(
+                    interaction_data.clone(),
+                    protocol_type,
+                )
             }
         } else {
-            ExtractPresentationCtx::default()
+            ExtractPresentationCtx {
+                verification_protocol_type: protocol_type,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
+                mdoc_session_transcript: None,
+            }
         };
 
         let key_verification = build_key_verification(
@@ -289,7 +305,7 @@ async fn process_proof_submission_dcql_query(
             &presentation_format,
             presentation_formatter_provider,
             key_verification.clone(),
-            context.clone(),
+            context,
         )
         .await?;
 
@@ -389,6 +405,7 @@ async fn process_proof_submission_presentation_exchange(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
+    protocol_type: VerificationProtocolType,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let VpSubmissionData::Pex(PexSubmission {
         presentation_submission,
@@ -435,6 +452,7 @@ async fn process_proof_submission_presentation_exchange(
         &presentation_submission,
         credential_formatter_provider,
         presentation_formatter_provider,
+        protocol_type,
     )
     .await?;
 
@@ -477,10 +495,22 @@ async fn process_proof_submission_presentation_exchange(
         let context = if &presentation_submitted.format == "mso_mdoc" {
             ExtractPresentationCtx {
                 format_nonce: submission.mdoc_generated_nonce.clone(),
-                ..extract_presentation_ctx_from_interaction_content(interaction_data.clone())
+                ..extract_presentation_ctx_from_interaction_content(
+                    interaction_data.clone(),
+                    protocol_type,
+                )
             }
         } else {
-            ExtractPresentationCtx::default()
+            ExtractPresentationCtx {
+                verification_protocol_type: protocol_type,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
+                mdoc_session_transcript: None,
+            }
         };
 
         let presentation_format = map_from_oidc_format_to_core_detailed(
@@ -627,6 +657,7 @@ async fn extract_lvvcs(
     presentation_submission: &PresentationSubmissionMappingDTO,
     credential_formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: &Arc<dyn PresentationFormatterProvider>,
+    protocol_type: VerificationProtocolType,
 ) -> Result<Vec<DetailCredential>, OpenID4VCError> {
     let mut result = vec![];
 
@@ -643,6 +674,7 @@ async fn extract_lvvcs(
             presentation_string,
             &presentation_submitted.format,
             presentation_formatter_provider,
+            protocol_type,
         )
         .await?;
 

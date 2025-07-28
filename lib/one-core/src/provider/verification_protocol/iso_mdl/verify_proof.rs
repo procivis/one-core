@@ -8,19 +8,19 @@ use crate::common_mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, extracted_credential_to_model, get_or_create_identifier,
 };
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
+use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::presentation_formatter::mso_mdoc::model::SessionTranscript;
+use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -77,7 +77,13 @@ pub(crate) async fn validate_proof(
             key_verification_presentation,
             ExtractPresentationCtx {
                 mdoc_session_transcript: Some(to_cbor(&session_transcript)?),
-                ..Default::default()
+                verification_protocol_type: VerificationProtocolType::IsoMdl,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
             },
         )
         .await?;

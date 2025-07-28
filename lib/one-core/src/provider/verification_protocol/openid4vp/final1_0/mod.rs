@@ -25,15 +25,15 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
-use crate::provider::credential_formatter::model::{
-    DetailCredential, FormatPresentationCtx, HolderBindingCtx,
-};
+use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::presentation_formatter::model::{CredentialToPresent, FormatPresentationCtx};
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
@@ -185,7 +185,6 @@ impl OpenID4VPFinal1_0 {
         key: &Key,
         jwk_key_id: Option<String>,
         holder_did: &Did,
-        holder_nonce: String,
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
         let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;
@@ -242,11 +241,7 @@ impl OpenID4VPFinal1_0 {
                     credentials,
                     auth_fn,
                     &holder_did.did,
-                    format_presentation_context(
-                        interaction_data,
-                        &holder_nonce,
-                        presentation_format,
-                    )?,
+                    format_presentation_context(interaction_data, presentation_format)?,
                 )
                 .await
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -421,7 +416,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 key,
                 jwk_key_id,
                 holder_did,
-                holder_nonce.to_owned(),
             )
             .await?;
 
@@ -602,7 +596,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
 fn format_presentation_context(
     interaction_data: &OpenID4VPHolderInteractionData,
-    holder_nonce: &str,
     presentation_format: FormatType,
 ) -> Result<FormatPresentationCtx, VerificationProtocolError> {
     let verifier_nonce =
@@ -620,15 +613,18 @@ fn format_presentation_context(
                 "response_uri is None".to_string(),
             ))?;
     let ctx = if presentation_format == FormatType::Mdoc {
-        mdoc_presentation_context(
-            &encode_client_id_with_scheme(
-                interaction_data.client_id.clone(),
-                interaction_data.client_id_scheme,
-            ),
-            &response_uri,
-            &verifier_nonce,
-            holder_nonce,
-        )?
+        mdoc_presentation_context(Handover::OID4VPFinal1_0(
+            OID4VPFinal1_0Handover::compute(
+                &encode_client_id_with_scheme(
+                    interaction_data.client_id.clone(),
+                    interaction_data.client_id_scheme,
+                ),
+                response_uri.as_str(),
+                &verifier_nonce,
+                None,
+            )
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+        ))?
     } else {
         FormatPresentationCtx {
             nonce: Some(verifier_nonce),

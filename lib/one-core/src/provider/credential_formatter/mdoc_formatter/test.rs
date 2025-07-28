@@ -22,7 +22,8 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
-use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, OID4VPHandover};
+use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::certificate::validator::{MockCertificateValidator, ParsedCertificate};
 use crate::service::test_utilities::{dummy_did, dummy_identifier, generic_config, get_dummy_date};
@@ -179,13 +180,13 @@ fn test_device_response_serialize_deserialize() {
 }
 
 #[tokio::test]
-async fn test_oid4vp_handover_compute() {
+async fn test_oid4vp_draft_handover_compute() {
     // ISO 18013-7_2025: B.6.9
     let expected_handover_bytes = hex!(
         "835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
     );
 
-    let handover = OID4VPHandover::compute(
+    let handover = OID4VPDraftHandover::compute(
         "example.com",
         "https://example.com/12345/response",
         "abcdefgh1234567890",

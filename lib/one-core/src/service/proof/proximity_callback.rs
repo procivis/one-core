@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::common_mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
-use crate::config::core_config::TransportType;
+use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::HistoryErrorMetadata;
@@ -203,6 +203,7 @@ impl ProofService {
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
             &self.certificate_validator,
+            VerificationProtocolType::OpenId4VpProximityDraft00,
         )
         .await
         {

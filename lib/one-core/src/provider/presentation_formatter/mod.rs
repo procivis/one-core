@@ -2,12 +2,10 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
-    Presentation, VerificationFn,
-};
+use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
 use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, PresentationFormatterCapabilities,
+    CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
+    FormattedPresentation, PresentationFormatterCapabilities,
 };
 
 pub mod jwt_vp_json;
@@ -37,14 +35,14 @@ pub trait PresentationFormatter: Send + Sync {
         presentation: &str,
         verification_fn: VerificationFn,
         context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError>;
+    ) -> Result<ExtractedPresentation, FormatterError>;
 
     /// Extracts a presentation from a signed presentation, without verifying the signature.
     async fn extract_presentation_unverified(
         &self,
         presentation: &str,
         context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError>;
+    ) -> Result<ExtractedPresentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;
 

@@ -15,25 +15,30 @@ use url::Url;
 use uuid::Uuid;
 
 use super::model::{
-    default_presentation_url_scheme, OpenID4VPPresentationDefinition,
-    PresentationSubmissionMappingDTO,
+    OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
+    default_presentation_url_scheme,
 };
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType};
+use crate::config::core_config::{
+    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
+};
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::model::{AuthenticationFn, DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx};
-use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, DetailCredential, HolderBindingCtx
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::MqttClient;
-use crate::provider::presentation_formatter::mso_mdoc::model::{OID4VPHandover, SessionTranscript};
+use crate::provider::presentation_formatter::model::{FormatPresentationCtx, FormattedPresentation,CredentialToPresent};
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{Handover, SessionTranscript};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
@@ -768,15 +773,15 @@ pub(super) async fn create_presentation(
 
         ctx.mdoc_session_transcript = Some(
             to_cbor(&SessionTranscript {
-                handover: Some(
-                    OID4VPHandover::compute(
+                handover: Some(Handover::Iso18013_7AnnexB(
+                    OID4VPDraftHandover::compute(
                         params.client_id,
                         params.client_id,
                         params.nonce,
                         mdoc_generated_nonce,
                     )
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
-                ),
+                )),
                 device_engagement_bytes: None,
                 e_reader_key_bytes: None,
             })

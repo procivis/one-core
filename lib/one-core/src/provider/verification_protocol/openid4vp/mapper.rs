@@ -20,7 +20,7 @@ use crate::common_mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation, get_or_create_identifier,
     value_to_model_claims,
 };
-use crate::config::core_config::{CoreConfig, FormatType};
+use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -29,13 +29,12 @@ use crate::model::credential_schema::{
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, ExtractPresentationCtx, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::{AuthenticationFn, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::verification_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -456,12 +455,17 @@ pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, Ope
 
 pub fn extract_presentation_ctx_from_interaction_content(
     content: OpenID4VPVerifierInteractionContent,
+    verification_protocol_type: VerificationProtocolType,
 ) -> ExtractPresentationCtx {
     ExtractPresentationCtx {
         nonce: Some(content.nonce),
         client_id: Some(content.client_id),
         response_uri: content.response_uri,
-        ..Default::default()
+        verification_protocol_type,
+        format_nonce: None,
+        issuance_date: None,
+        expiration_date: None,
+        mdoc_session_transcript: None,
     }
 }
 

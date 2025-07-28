@@ -10,8 +10,7 @@ use time::Duration;
 use crate::config::core_config::FormatType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
-    IdentifierDetails, Presentation, VerificationFn,
+    AuthenticationFn, IdentifierDetails, VerificationFn,
 };
 use crate::provider::credential_formatter::sdjwt::SdJwtHolderBindingParams;
 use crate::provider::credential_formatter::sdjwt::model::KeyBindingPayload;
@@ -19,7 +18,8 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::http_client::HttpClient;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, PresentationFormatterCapabilities,
+    CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
+    FormattedPresentation, PresentationFormatterCapabilities,
 };
 use crate::service::certificate::validator::CertificateValidator;
 use crate::util::jwt::Jwt;
@@ -97,7 +97,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         token: &str,
         verification_fn: VerificationFn,
         _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let (subject, proof_of_key_possession) = self
             .extract_presentation_internal(
                 token,
@@ -111,23 +111,21 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             "Missing proof of key possession".to_string(),
         ))?;
 
-        let presentation = Presentation {
+        Ok(ExtractedPresentation {
             id: proof_of_key_possession.jwt_id,
             issued_at: proof_of_key_possession.issued_at,
             expires_at: proof_of_key_possession.expires_at,
             issuer: subject.map(IdentifierDetails::Did),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.to_string()],
-        };
-
-        Ok(presentation)
+        })
     }
 
     async fn extract_presentation_unverified(
         &self,
         token: &str,
         _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let (subject, proof_of_key_possession) = self
             .extract_presentation_internal(
                 token,
@@ -141,16 +139,14 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             "Missing proof of key possesion".to_string(),
         ))?;
 
-        let presentation = Presentation {
+        Ok(ExtractedPresentation {
             id: proof_of_key_possession.jwt_id,
             issued_at: proof_of_key_possession.issued_at,
             expires_at: proof_of_key_possession.expires_at,
             issuer: subject.map(IdentifierDetails::Did),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.to_string()],
-        };
-
-        Ok(presentation)
+        })
     }
 
     fn get_leeway(&self) -> u64 {

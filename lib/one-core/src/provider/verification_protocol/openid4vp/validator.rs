@@ -8,17 +8,19 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::DidType;
+use crate::config::core_config::{DidType, VerificationProtocolType};
 use crate::model::key::PublicKeyJwk;
 use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
-    DetailCredential, ExtractPresentationCtx, HolderBindingCtx, IdentifierDetails, Presentation,
-    TokenVerifier,
+    DetailCredential, HolderBindingCtx, IdentifierDetails, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::presentation_formatter::model::{
+    ExtractPresentationCtx, ExtractedPresentation,
+};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
@@ -38,7 +40,8 @@ pub(super) async fn peek_presentation(
     presentation_string: &str,
     oidc_format: &str,
     formatter_provider: &Arc<dyn PresentationFormatterProvider>,
-) -> Result<Presentation, OpenID4VCError> {
+    protocol_type: VerificationProtocolType,
+) -> Result<ExtractedPresentation, OpenID4VCError> {
     let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
         .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
     let presentation_formatter = formatter_provider
@@ -46,7 +49,19 @@ pub(super) async fn peek_presentation(
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
     let presentation = presentation_formatter
-        .extract_presentation_unverified(presentation_string, ExtractPresentationCtx::default())
+        .extract_presentation_unverified(
+            presentation_string,
+            ExtractPresentationCtx {
+                verification_protocol_type: protocol_type,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
+                mdoc_session_transcript: None,
+            },
+        )
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
@@ -66,7 +81,7 @@ pub(super) async fn validate_presentation(
     formatter_provider: &Arc<dyn PresentationFormatterProvider>,
     key_verification: Box<dyn TokenVerifier>,
     context: ExtractPresentationCtx,
-) -> Result<Presentation, OpenID4VCError> {
+) -> Result<ExtractedPresentation, OpenID4VCError> {
     let presentation_formatter = formatter_provider
         .get_presentation_formatter(presentation_format)
         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;

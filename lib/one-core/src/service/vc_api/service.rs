@@ -10,16 +10,18 @@ use super::dto::{
     PresentationVerifyResponse,
 };
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
+use crate::config::core_config::VerificationProtocolType;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
 use crate::provider::caching_loader::json_ld_context::ContextCache;
-use crate::provider::credential_formatter::model::{CredentialData, ExtractPresentationCtx};
+use crate::provider::credential_formatter::model::CredentialData;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
@@ -297,7 +299,16 @@ impl VCAPIService {
             .extract_presentation(
                 &string_token,
                 verification_fn,
-                ExtractPresentationCtx::default(),
+                ExtractPresentationCtx {
+                    verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                    nonce: None,
+                    format_nonce: None,
+                    issuance_date: None,
+                    expiration_date: None,
+                    client_id: None,
+                    response_uri: None,
+                    mdoc_session_transcript: None,
+                },
             )
             .await?;
 

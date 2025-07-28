@@ -250,36 +250,6 @@ pub struct HolderBindingCtx {
     pub audience: String,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Default)]
-pub struct FormatPresentationCtx {
-    pub nonce: Option<String>,
-    pub mdoc_session_transcript: Option<Vec<u8>>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Default, Clone)]
-pub struct ExtractPresentationCtx {
-    pub nonce: Option<String>,
-    pub format_nonce: Option<String>,
-    pub issuance_date: Option<OffsetDateTime>,
-    pub expiration_date: Option<OffsetDateTime>,
-    pub mdoc_session_transcript: Option<Vec<u8>>,
-    pub client_id: Option<String>,
-    pub response_uri: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Presentation {
-    pub id: Option<String>,
-    pub issued_at: Option<OffsetDateTime>,
-    pub expires_at: Option<OffsetDateTime>,
-    pub issuer: Option<IdentifierDetails>,
-    pub nonce: Option<String>,
-    pub credentials: Vec<String>,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CredentialPresentation {
     pub token: String,
@@ -427,10 +397,4 @@ pub struct LanguageValue {
     language: Option<String>,
     #[serde(default, rename = "@direction")]
     direction: Option<String>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct FormattedPresentation {
-    pub vp_token: String,
-    pub oidc_format: String,
 }

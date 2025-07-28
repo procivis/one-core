@@ -20,8 +20,7 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, FormatterCapabilities,
-    IdentifierDetails, Presentation,
+    CredentialStatus, CredentialSubject, DetailCredential, FormatterCapabilities, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -35,6 +34,7 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::MockPresentationFormatter;
+use crate::provider::presentation_formatter::model::ExtractedPresentation;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::CredentialRevocationState;
@@ -278,7 +278,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         .expect_extract_presentation_unverified()
         .once()
         .returning(move |_, _| {
-            Ok(Presentation {
+            Ok(ExtractedPresentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
@@ -294,7 +294,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         .expect_extract_presentation()
         .once()
         .returning(move |_, _, _| {
-            Ok(Presentation {
+            Ok(ExtractedPresentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
@@ -584,7 +584,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         .expect_extract_presentation_unverified()
         .once()
         .returning(move |_, _| {
-            Ok(Presentation {
+            Ok(ExtractedPresentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
@@ -600,7 +600,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         .expect_extract_presentation()
         .once()
         .returning(move |_, _, _| {
-            Ok(Presentation {
+            Ok(ExtractedPresentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),

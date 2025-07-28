@@ -31,15 +31,16 @@ use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::{
-    DetailCredential, FormatPresentationCtx, FormattedPresentation, HolderBindingCtx,
-};
+use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::presentation_formatter::model::CredentialToPresent;
-use crate::provider::presentation_formatter::mso_mdoc::model::{
-    DeviceResponse, DeviceResponseVersion, DocumentError, SessionTranscript,
+use crate::provider::presentation_formatter::model::{
+    CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
 };
+use crate::provider::presentation_formatter::mso_mdoc::model::{
+    DeviceResponse, DeviceResponseVersion, DocumentError,
+};
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::service::credential::mapper::credential_detail_response_from_model;

@@ -5,18 +5,19 @@ use mockall::predicate::eq;
 use similar_asserts::assert_eq;
 use time::Duration;
 
-use crate::config::core_config::{FormatType, KeyAlgorithmType};
+use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    ExtractPresentationCtx, FormattedPresentation, IdentifierDetails, MockTokenVerifier,
-    PublicKeySource,
+    IdentifierDetails, MockTokenVerifier, PublicKeySource,
 };
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::jwt_vp_json::model::{VP, VerifiableCredential};
 use crate::provider::presentation_formatter::jwt_vp_json::{JwtVpPresentationFormatter, Params};
-use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::presentation_formatter::model::{
+    CredentialToPresent, ExtractPresentationCtx, FormattedPresentation,
+};
 use crate::util::jwt::model::JWTPayload;
 
 #[tokio::test]
@@ -64,7 +65,16 @@ async fn test_extract_presentation() {
         .extract_presentation(
             &presentation_token,
             Box::new(verify_mock),
-            ExtractPresentationCtx::default(),
+            ExtractPresentationCtx {
+                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
+                mdoc_session_transcript: None,
+            },
         )
         .await;
 

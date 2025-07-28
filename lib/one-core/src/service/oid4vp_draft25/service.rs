@@ -297,6 +297,7 @@ impl OID4VPDraft25Service {
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
             &self.certificate_validator,
+            VerificationProtocolType::OpenId4VpDraft25,
         )
         .await
         {

@@ -8,12 +8,9 @@ use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 
-use crate::config::core_config::{FormatType, KeyAlgorithmType};
+use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::provider::credential_formatter::model::{
-    ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation, MockSignatureProvider,
-    MockTokenVerifier,
-};
+use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -22,7 +19,9 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
-use crate::provider::presentation_formatter::model::CredentialToPresent;
+use crate::provider::presentation_formatter::model::{
+    CredentialToPresent, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
+};
 use crate::util::test_utilities::prepare_caching_loader;
 
 static JWT_TOKEN: &str = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
@@ -364,7 +363,16 @@ async fn test_parse_presentation_multi_tokens() {
         .extract_presentation(
             PRESENTATION_TOKEN,
             Box::new(token_verifier),
-            ExtractPresentationCtx::default(),
+            ExtractPresentationCtx {
+                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                nonce: None,
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: None,
+                response_uri: None,
+                mdoc_session_transcript: None,
+            },
         )
         .await
         .unwrap();

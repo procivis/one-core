@@ -19,8 +19,7 @@ use crate::provider::credential_formatter::json_ld_classic::{
     prepare_proof_hash, sign_proof_hash, verify_proof_signature,
 };
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, Context, ExtractPresentationCtx, FormatPresentationCtx,
-    FormattedPresentation, IdentifierDetails, Issuer, Presentation, VerificationFn,
+    AuthenticationFn, Context, IdentifierDetails, Issuer, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
 use crate::provider::http_client::HttpClient;
@@ -29,7 +28,8 @@ use crate::provider::presentation_formatter::ldp_vp::model::{
     CredentialEnvelope, LdPresentation, VerifiableCredential,
 };
 use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, PresentationFormatterCapabilities,
+    CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
+    FormattedPresentation, PresentationFormatterCapabilities,
 };
 use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::rdf_canonization::json_ld_processor_options;
@@ -176,7 +176,7 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         presentation: &str,
         verification_fn: VerificationFn,
         _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         self.extract_presentation_internal(presentation, Some(verification_fn))
             .await
     }
@@ -185,7 +185,7 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         &self,
         presentation: &str,
         _context: ExtractPresentationCtx,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         self.extract_presentation_internal(presentation, None).await
     }
 
@@ -212,7 +212,7 @@ impl LdpVpPresentationFormatter {
         &self,
         presentation: &str,
         verification_fn: Option<VerificationFn>,
-    ) -> Result<Presentation, FormatterError> {
+    ) -> Result<ExtractedPresentation, FormatterError> {
         let presentation: LdPresentation = serde_json::from_str(presentation)
             .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
 
@@ -255,7 +255,7 @@ impl LdpVpPresentationFormatter {
             .map_err(|err| FormatterError::CouldNotExtractCredentials(err.to_string()))?;
 
         let proof = presentation.proof.as_ref();
-        Ok(Presentation {
+        Ok(ExtractedPresentation {
             id: None,
             issued_at: proof.and_then(|p| p.created),
             expires_at: None,
