@@ -243,6 +243,7 @@ async fn test_get_keys_filter_by_is_remote() {
     assert_eq!(1, values.len());
     let key_id: KeyId = values[0]["id"].parse();
     assert_eq!(key1.id, key_id);
+    assert_eq!(true, values[0]["isRemote"]);
 
     // WHEN
     let resp = context
@@ -269,4 +270,5 @@ async fn test_get_keys_filter_by_is_remote() {
     assert_eq!(1, values.len());
     let key_id: KeyId = values[0]["id"].parse();
     assert_eq!(key2.id, key_id);
+    assert_eq!(false, values[0]["isRemote"]);
 }

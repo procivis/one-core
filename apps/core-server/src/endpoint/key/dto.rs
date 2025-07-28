@@ -92,6 +92,8 @@ pub struct KeyListItemResponseRestDTO {
     pub key_type: String,
     #[try_from(infallible)]
     pub storage_type: String,
+    #[try_from(infallible)]
+    pub is_remote: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

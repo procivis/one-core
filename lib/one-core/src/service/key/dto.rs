@@ -48,6 +48,8 @@ pub struct KeyListItemResponseDTO {
     pub public_key: Vec<u8>,
     pub key_type: String,
     pub storage_type: String,
+    #[from(rename = "key_reference", with_fn_ref = "Option::is_none")]
+    pub is_remote: bool,
 }
 
 pub type GetKeyListResponseDTO = GetListResponse<KeyListItemResponseDTO>;
