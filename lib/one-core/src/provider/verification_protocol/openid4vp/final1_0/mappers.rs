@@ -14,7 +14,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
@@ -41,8 +40,6 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
                 jwk: jwk.jwk.into(),
             }],
         });
-        metadata.authorization_encrypted_response_alg =
-            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs);
         metadata.encrypted_response_enc_values_supported = Some(vec![
             AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
         ]);

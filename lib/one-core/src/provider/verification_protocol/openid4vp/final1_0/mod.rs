@@ -44,7 +44,6 @@ use crate::provider::verification_protocol::mapper::{
 };
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
     JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
@@ -128,14 +127,6 @@ impl OpenID4VPFinal1_0 {
             // metadata_uri (if any) has been resolved before, no need to check
             return Ok(None);
         };
-
-        if !matches!(
-            client_metadata.authorization_encrypted_response_alg,
-            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
-        ) {
-            // Encrypted presentations not supported
-            return Ok(None);
-        }
 
         let supported_encryption_algs = match client_metadata
             .encrypted_response_enc_values_supported

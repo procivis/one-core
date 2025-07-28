@@ -7,10 +7,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use super::super::dto::{OpenID4VPClientMetadataJwksRestDTO, OpenID4VPFormatRestDTO};
-use crate::endpoint::ssi::dto::{
-    OID4VPAuthorizationEncryptedResponseAlgorithm,
-    OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm,
-};
+use crate::endpoint::ssi::dto::OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -25,8 +22,6 @@ pub(crate) struct OpenID4VPFinal1_0ClientMetadataResponseRestDTO {
     pub subject_syntax_types_supported: Vec<String>,
     #[from(with_fn = convert_inner)]
     pub vp_formats_supported: HashMap<String, OpenID4VPFormatRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
     #[from(with_fn = convert_inner_of_inner)]
     pub encrypted_response_enc_values_supported:
         Option<Vec<OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm>>,

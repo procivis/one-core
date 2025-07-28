@@ -29,7 +29,6 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
 };
@@ -188,10 +187,6 @@ async fn test_share_proof() {
     .unwrap();
 
     assert_eq!(returned_client_metadata.jwks.unwrap().keys.len(), 1);
-    assert_eq!(
-        returned_client_metadata.authorization_encrypted_response_alg,
-        Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
-    );
     assert_eq!(
         returned_client_metadata.encrypted_response_enc_values_supported,
         Some(vec![

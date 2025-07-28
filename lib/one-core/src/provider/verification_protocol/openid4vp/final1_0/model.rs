@@ -7,7 +7,6 @@ use url::Url;
 
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwks, OpenID4VpPresentationFormat, default_presentation_url_scheme,
@@ -91,8 +90,6 @@ pub struct OpenID4VPFinal1_0ClientMetadata {
     #[serde(default)]
     pub jwks_uri: Option<String>,
     pub vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
-    #[serde(default)]
-    pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default)]
     pub encrypted_response_enc_values_supported:
         Option<Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>>,
