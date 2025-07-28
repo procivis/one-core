@@ -116,14 +116,19 @@ pub(crate) async fn format_credential<T: Serialize>(
                             FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
                         })?;
 
-                    let jwk = jwk.public_key_as_jwk().map_err(|e| {
-                        FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
-                    })?;
+                    let jwk = jwk
+                        .public_key_as_jwk()
+                        .map_err(|e| {
+                            FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
+                        })?
+                        .into();
 
-                    Some(ProofOfPossessionKey {
-                        key_id: None,
-                        jwk: ProofOfPossessionJwk::Jwk { jwk: jwk.into() },
-                    })
+                    let jwk = match additional_inputs.swiyu_proof_of_possession {
+                        false => ProofOfPossessionJwk::Jwk { jwk },
+                        true => ProofOfPossessionJwk::Swiyu(jwk),
+                    };
+
+                    Some(ProofOfPossessionKey { key_id: None, jwk })
                 } else {
                     None
                 }
