@@ -262,6 +262,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[0].public_key_jwk,
         PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "Ed25519".to_string(),
@@ -272,6 +273,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[1].public_key_jwk,
         PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "X25519".to_string(),
@@ -282,6 +284,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[2].public_key_jwk,
         PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),
@@ -292,6 +295,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[3].public_key_jwk,
         PublicKeyJwkDTO::Rsa(PublicKeyJwkRsaDataDTO {
+            alg: None,
             r#use: None,
             kid: None,
             e: "AQAB".to_string(),

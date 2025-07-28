@@ -154,6 +154,7 @@ mod test {
                     controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
                     public_key_jwk: PublicKeyJwk::Ec(
                         PublicKeyJwkEllipticData {
+                            alg: None,
                             r#use: None,
                             kid: None,
                             crv: "P-256".to_owned(),

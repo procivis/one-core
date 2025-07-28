@@ -111,7 +111,7 @@ pub enum PublicKeyJwkRestDTO {
 #[from(PublicKeyJwkMlweDataDTO)]
 pub struct PublicKeyJwkMlweDataRestDTO {
     pub r#use: Option<String>,
-    pub alg: String,
+    pub alg: Option<String>,
     pub x: String,
 }
 
@@ -119,6 +119,7 @@ pub struct PublicKeyJwkMlweDataRestDTO {
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[from(PublicKeyJwkOctDataDTO)]
 pub struct PublicKeyJwkOctDataRestDTO {
+    pub alg: Option<String>,
     pub r#use: Option<String>,
     pub k: String,
 }
@@ -128,6 +129,7 @@ pub struct PublicKeyJwkOctDataRestDTO {
 #[from(PublicKeyJwkRsaDataDTO)]
 pub struct PublicKeyJwkRsaDataRestDTO {
     pub r#use: Option<String>,
+    pub alg: Option<String>,
     pub e: String,
     pub n: String,
 }
@@ -137,6 +139,7 @@ pub struct PublicKeyJwkRsaDataRestDTO {
 #[from(PublicKeyJwkEllipticDataDTO)]
 pub struct PublicKeyJwkEllipticDataRestDTO {
     pub r#use: Option<String>,
+    pub alg: Option<String>,
     pub crv: String,
     pub x: String,
     pub y: Option<String>,

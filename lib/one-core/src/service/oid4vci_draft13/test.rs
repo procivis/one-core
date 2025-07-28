@@ -945,6 +945,7 @@ async fn test_create_credential_success() {
                     controller: did_value.to_string(),
                     // proof.jwt did key
                     public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "Ed25519".to_string(),
@@ -1142,6 +1143,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
                     controller: did_value.to_string(),
                     // proof.jwt did key
                     public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "Ed25519".to_string(),
@@ -1340,6 +1342,7 @@ async fn test_create_credential_success_mdoc() {
                     controller: did_value.to_string(),
                     // proof.jwt did key
                     public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "Ed25519".to_string(),
@@ -1952,6 +1955,7 @@ async fn test_create_credential_issuer_failed() {
                     controller: did_value.to_string(),
                     // proof.jwt did key
                     public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "Ed25519".to_string(),

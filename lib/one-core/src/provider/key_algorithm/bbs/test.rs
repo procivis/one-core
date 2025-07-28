@@ -10,6 +10,7 @@ struct TestData {
 fn get_test_key() -> TestData {
     TestData {
         jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "Bls12381G2".to_owned(),

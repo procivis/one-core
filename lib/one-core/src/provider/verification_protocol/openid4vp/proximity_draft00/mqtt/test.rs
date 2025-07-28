@@ -207,6 +207,7 @@ async fn test_handle_invitation_success() {
                     r#type: "did-vm-type".to_string(),
                     controller: did.to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "P-256".to_string(),

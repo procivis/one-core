@@ -128,6 +128,7 @@ mod tests {
         );
 
         let jwk = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: Some("ES256".to_string()),
             r#use: Some("enc".to_string()),
             kid: Some("1".to_string()),
             crv: "P-256".to_string(),

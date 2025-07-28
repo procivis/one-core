@@ -303,6 +303,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "P-256".to_string(),
@@ -517,6 +518,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "P-256".to_string(),
@@ -782,6 +784,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "P-256".to_string(),

@@ -89,6 +89,7 @@ pub enum PublicKeyJwk {
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkRsaData {
+    pub alg: Option<String>,
     pub r#use: Option<String>,
     pub kid: Option<String>,
     pub e: String,
@@ -98,6 +99,7 @@ pub struct PublicKeyJwkRsaData {
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkOctData {
+    pub alg: Option<String>,
     pub r#use: Option<String>,
     pub kid: Option<String>,
     pub k: String,
@@ -108,13 +110,14 @@ pub struct PublicKeyJwkOctData {
 pub struct PublicKeyJwkMlweData {
     pub r#use: Option<String>,
     pub kid: Option<String>,
-    pub alg: String,
+    pub alg: Option<String>,
     pub x: String,
 }
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkEllipticData {
+    pub alg: Option<String>,
     pub r#use: Option<String>,
     pub kid: Option<String>,
     pub crv: String,

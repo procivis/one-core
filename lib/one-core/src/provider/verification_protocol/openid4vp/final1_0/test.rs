@@ -115,6 +115,7 @@ async fn test_share_proof() {
     let encryption_key_jwk = PublicKeyWithJwk {
         key_id: Uuid::new_v4().into(),
         jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),

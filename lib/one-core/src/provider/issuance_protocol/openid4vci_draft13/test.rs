@@ -820,6 +820,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                         invalid_before: None,
                         issuer: IdentifierDetails::Key(PublicKeyJwk::Ec(
                             PublicKeyJwkEllipticData {
+                                alg: None,
                                 r#use: None,
                                 kid: None,
                                 crv: "P-256".to_string(),

@@ -127,6 +127,8 @@ impl PublicKeyJwkDTO {
 #[from(PublicKeyJwkRsaData)]
 pub struct PublicKeyJwkRsaDataDTO {
     #[serde(default)]
+    pub alg: Option<String>,
+    #[serde(default)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -140,6 +142,8 @@ pub struct PublicKeyJwkRsaDataDTO {
 #[from(PublicKeyJwkOctData)]
 pub struct PublicKeyJwkOctDataDTO {
     #[serde(default)]
+    pub alg: Option<String>,
+    #[serde(default)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -151,11 +155,12 @@ pub struct PublicKeyJwkOctDataDTO {
 #[into(PublicKeyJwkMlweData)]
 #[from(PublicKeyJwkMlweData)]
 pub struct PublicKeyJwkMlweDataDTO {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub alg: Option<String>,
+    #[serde(default)]
     pub r#use: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub kid: Option<String>,
-    pub alg: String,
     pub x: String,
 }
 
@@ -164,6 +169,8 @@ pub struct PublicKeyJwkMlweDataDTO {
 #[into(PublicKeyJwkEllipticData)]
 #[from(PublicKeyJwkEllipticData)]
 pub struct PublicKeyJwkEllipticDataDTO {
+    #[serde(default)]
+    pub alg: Option<String>,
     #[serde(default)]
     pub r#use: Option<String>,
     #[serde(default)]

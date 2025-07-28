@@ -533,6 +533,7 @@ pub fn dummy_did_document(did: &DidValue) -> DidDocument {
 
 pub fn dummy_jwk() -> PublicKeyJwk {
     PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        alg: None,
         r#use: None,
         kid: None,
         crv: "P-256".to_string(),

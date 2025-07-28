@@ -6,6 +6,7 @@ use crate::model::key::{PrivateKeyJwkEllipticData, PublicKeyJwkEllipticData};
 #[test]
 fn test_jwk_to_bytes() {
     let jwk = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        alg: None,
         r#use: None,
         kid: None,
         crv: "P-256".to_owned(),

@@ -312,6 +312,7 @@ mod test {
             r#type: "JsonWebKey2020".to_string(),
             controller: did.to_string(),
             public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: None,
                 kid: Some("auth-key-01".to_string()),
                 crv: "P-256".to_string(),

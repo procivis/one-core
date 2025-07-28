@@ -41,6 +41,7 @@ async fn test_resolve_jwk_did_without_use_field() {
             r#type: "JsonWebKey2020".to_string(),
             controller: "did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9".to_string(),
             public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: None,
                 kid: None,
                 crv: "P-256".to_string(),
@@ -81,6 +82,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
             r#type: "JsonWebKey2020".to_string(),
             controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string(),
             public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: Some("enc".to_string()),
                 kid: None,
                 crv: "X25519".to_string(),
@@ -121,6 +123,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
             r#type: "JsonWebKey2020".to_string(),
             controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".to_string(),
             public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: Some("sig".to_string()),
                 kid: None,
                 crv: "Ed25519".to_string(),
@@ -182,6 +185,7 @@ async fn test_create_did_jwk_success() {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
                 Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
                     r#use: None,
                     kid: None,
                     crv: "crv".to_string(),

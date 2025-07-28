@@ -49,6 +49,7 @@ async fn test_did_key_resolve_details_eddsa() {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
                 Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    alg: None,
                     r#use: None,
                     kid: None,
                     crv: "Ed25519".to_owned(),
@@ -87,6 +88,7 @@ async fn test_did_key_resolve_details_eddsa() {
                 controller: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
                 public_key_jwk: PublicKeyJwk::Okp(
                     PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "Ed25519".to_owned(),
@@ -144,6 +146,7 @@ async fn test_did_key_resolve_details_ecdsa() {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
                 Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
                     r#use: None,
                     kid: None,
                     crv: "P-256".to_string(),
@@ -182,6 +185,7 @@ async fn test_did_key_resolve_details_ecdsa() {
                 controller: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
                 public_key_jwk: PublicKeyJwk::Ec(
                     PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "P-256".to_owned(),
@@ -243,6 +247,7 @@ async fn test_did_key_resolve_details_bbs() {
             key_handle
                 .expect_as_jwk()
                 .return_once(||  Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: None,
                 kid: None,
                 crv: "Bls12381G2".to_string(),
@@ -277,6 +282,7 @@ async fn test_did_key_resolve_details_bbs() {
                 controller: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
                 public_key_jwk: PublicKeyJwk::Okp(
                     PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: None,
                         kid: None,
                         crv: "Bls12381G2".to_string(),

@@ -833,6 +833,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 r#type: "did-vm-type".to_string(),
                 controller: "did-vm-controller".to_string(),
                 public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
                     r#use: None,
                     kid: None,
                     crv: "P-256".to_string(),
@@ -968,6 +969,7 @@ async fn test_get_client_metadata_success() {
                 let mut key_handle = MockSignaturePublicKeyHandle::default();
                 key_handle.expect_as_jwk().return_once(|| {
                     Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: None,
                         r#use: Some("enc".to_string()),
                         kid: None,
                         crv: "123".to_string(),
@@ -1013,6 +1015,7 @@ async fn test_get_client_metadata_success() {
                         .unwrap()
                         .into(),
                     jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                        alg: None,
                         r#use: Some("enc".to_string()),
                         kid: None,
                         crv: "123".to_string(),

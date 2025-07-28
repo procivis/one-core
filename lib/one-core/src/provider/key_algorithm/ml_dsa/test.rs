@@ -8,7 +8,7 @@ fn test_jwk_to_bytes() {
     let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
         r#use: None,
         kid: None,
-        alg: "CRYDI3".to_owned(),
+        alg: Some("CRYDI3".to_owned()),
         // Fake key just to prove the flow.
         x: "m7AE5UQdjLuCOnZHB1gCFfo2uvhM6W_4xFmpJK02r7s".to_owned(),
     });
@@ -27,8 +27,20 @@ fn test_jwk_to_bytes_fail_wrong_variant() {
     let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
         r#use: None,
         kid: None,
-        alg: "CRYDI5".to_owned(), // Incorrect variant
+        alg: Some("CRYDI5".to_owned()), // Incorrect variant
         // Fake key just to prove the flow.
+        x: "m7AE5UQdjLuCOnZHB1gCFfo2uvhM6W_4xFmpJK02r7s".to_owned(),
+    });
+
+    assert!(MlDsa.parse_jwk(&jwk).is_err());
+}
+
+#[test]
+fn test_jwk_to_bytes_fail_missing_alg() {
+    let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+        r#use: None,
+        kid: None,
+        alg: None,
         x: "m7AE5UQdjLuCOnZHB1gCFfo2uvhM6W_4xFmpJK02r7s".to_owned(),
     });
 

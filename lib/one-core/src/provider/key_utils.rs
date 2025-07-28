@@ -11,6 +11,7 @@ pub fn eddsa_public_key_as_jwk(
     r#use: Option<String>,
 ) -> Result<PublicKeyJwk, KeyHandleError> {
     Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        alg: None,
         r#use,
         kid: None,
         crv: curve.to_string(),
@@ -35,6 +36,7 @@ pub fn ecdsa_public_key_as_jwk(
     let (x, y) =
         ECDSASigner::get_public_key_coordinates(public_key).map_err(KeyHandleError::Signer)?;
     Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        alg: None,
         r#use,
         kid: None,
         crv: "P-256".to_string(),

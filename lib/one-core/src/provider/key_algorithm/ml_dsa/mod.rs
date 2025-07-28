@@ -86,10 +86,13 @@ impl KeyAlgorithm for MlDsa {
 
     fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError> {
         if let PublicKeyJwk::Mlwe(data) = key {
-            if !self.verification_jose_alg_ids().contains(&data.alg) {
+            let Some(alg) = &data.alg else {
+                return Err(KeyAlgorithmError::Failed("alg is required".to_string()));
+            };
+
+            if !self.verification_jose_alg_ids().contains(alg) {
                 return Err(KeyAlgorithmError::Failed(format!(
-                    "unsupported key algorithm variant: {}",
-                    data.alg
+                    "unsupported key algorithm variant: {alg}"
                 )));
             }
             let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
@@ -169,7 +172,7 @@ impl SignaturePublicKeyHandle for MlDsaPublicKeyHandle {
         Ok(PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
             r#use: self.r#use.clone(),
             kid: None,
-            alg: "CRYDI3".to_string(),
+            alg: Some("CRYDI3".to_string()),
             x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key)
                 .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
         }))

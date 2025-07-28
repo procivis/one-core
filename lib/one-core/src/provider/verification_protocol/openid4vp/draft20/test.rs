@@ -214,6 +214,7 @@ async fn test_share_proof() {
     let encryption_key_jwk = PublicKeyWithJwk {
         key_id: Uuid::new_v4().into(),
         jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),
@@ -319,6 +320,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
     let encryption_key_jwk = PublicKeyWithJwk {
         key_id: Uuid::new_v4().into(),
         jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),
@@ -498,6 +500,7 @@ async fn test_share_proof_with_use_request_uri() {
     let encryption_key_jwk = PublicKeyWithJwk {
         key_id: Uuid::new_v4().into(),
         jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),
@@ -566,6 +569,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
     let encryption_key_jwk = PublicKeyWithJwk {
         key_id: Uuid::new_v4().into(),
         jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),
@@ -1095,6 +1099,7 @@ async fn test_share_proof_custom_scheme() {
     let encryption_key_jwk = PublicKeyWithJwk {
         key_id: Uuid::new_v4().into(),
         jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: None,
             kid: None,
             crv: "P-256".to_string(),

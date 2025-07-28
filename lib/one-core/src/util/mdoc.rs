@@ -428,6 +428,7 @@ pub(crate) fn try_extract_holder_public_key(
                 .context("Missing P-256  Y value in params")?;
 
             let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: None,
                 kid: None,
                 crv: "P-256".to_owned(),
@@ -453,6 +454,7 @@ pub(crate) fn try_extract_holder_public_key(
                 .context("Missing Ed25519 X value in params")?;
 
             let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                alg: None,
                 r#use: None,
                 kid: None,
                 crv: "Ed25519".to_owned(),

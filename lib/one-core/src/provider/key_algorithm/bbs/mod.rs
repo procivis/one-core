@@ -156,6 +156,7 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
         let (x, y) = BBSSigner::get_public_key_coordinates(&self.public_key)
             .map_err(KeyHandleError::Signer)?;
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            alg: None,
             r#use: self.r#use.clone(),
             kid: None,
             crv: "Bls12381G2".to_string(),
