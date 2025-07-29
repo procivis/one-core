@@ -5,7 +5,7 @@ use shared_types::BlobId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::blob_storage::BlobProvider;
+use crate::blob::BlobProvider;
 use crate::entity;
 use crate::test_utilities::{get_dummy_date, setup_test_data_layer_and_connection};
 

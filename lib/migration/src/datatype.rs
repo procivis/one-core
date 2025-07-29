@@ -1,28 +1,32 @@
+use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use sea_orm_migration::prelude::*;
 
 pub trait ColumnDefExt {
-    fn large_blob(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
-    fn datetime_millisecond_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
-    fn datetime_second_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
+    fn large_blob<T: HasDatabaseBackend>(&mut self, manager: &T) -> &mut ColumnDef;
+    fn datetime_millisecond_precision<T: HasDatabaseBackend>(
+        &mut self,
+        manager: &T,
+    ) -> &mut ColumnDef;
+    fn datetime_second_precision<T: HasDatabaseBackend>(&mut self, manager: &T) -> &mut ColumnDef;
 }
 
 impl ColumnDefExt for ColumnDef {
-    fn large_blob(&mut self, _manager: &SchemaManager) -> &mut ColumnDef {
+    fn large_blob<T: HasDatabaseBackend>(&mut self, _manager: &T) -> &mut ColumnDef {
         self.blob();
 
         #[cfg(feature = "mysql")]
-        if matches!(
-            _manager.get_database_backend(),
-            sea_orm::DatabaseBackend::MySql
-        ) {
+        if matches!(_manager.backend(), sea_orm::DatabaseBackend::MySql) {
             self.custom(extension::mysql::MySqlType::LongBlob);
         }
 
         self
     }
 
-    fn datetime_millisecond_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef {
-        let dt = match manager.get_database_backend() {
+    fn datetime_millisecond_precision<T: HasDatabaseBackend>(
+        &mut self,
+        manager: &T,
+    ) -> &mut ColumnDef {
+        let dt = match manager.backend() {
             sea_orm::DatabaseBackend::MySql => "datetime(3)",
             sea_orm::DatabaseBackend::Postgres => "timestamp(3)",
             sea_orm::DatabaseBackend::Sqlite => "datetime",
@@ -33,8 +37,8 @@ impl ColumnDefExt for ColumnDef {
         self
     }
 
-    fn datetime_second_precision(&mut self, manager: &SchemaManager) -> &mut ColumnDef {
-        let dt = match manager.get_database_backend() {
+    fn datetime_second_precision<T: HasDatabaseBackend>(&mut self, manager: &T) -> &mut ColumnDef {
+        let dt = match manager.backend() {
             sea_orm::DatabaseBackend::MySql => "datetime(0)",
             sea_orm::DatabaseBackend::Postgres => "timestamp(0)",
             sea_orm::DatabaseBackend::Sqlite => "datetime",
@@ -43,5 +47,33 @@ impl ColumnDefExt for ColumnDef {
         self.custom(Alias::new(dt));
 
         self
+    }
+}
+
+pub(super) trait HasDatabaseBackend {
+    fn backend(&self) -> sea_orm::DatabaseBackend;
+}
+
+impl HasDatabaseBackend for SchemaManager<'_> {
+    fn backend(&self) -> sea_orm::DatabaseBackend {
+        self.get_database_backend()
+    }
+}
+
+impl HasDatabaseBackend for SchemaManagerConnection<'_> {
+    fn backend(&self) -> sea_orm::DatabaseBackend {
+        self.get_database_backend()
+    }
+}
+
+impl HasDatabaseBackend for DatabaseConnection {
+    fn backend(&self) -> sea_orm::DatabaseBackend {
+        self.get_database_backend()
+    }
+}
+
+impl HasDatabaseBackend for DatabaseTransaction {
+    fn backend(&self) -> sea_orm::DatabaseBackend {
+        self.get_database_backend()
     }
 }

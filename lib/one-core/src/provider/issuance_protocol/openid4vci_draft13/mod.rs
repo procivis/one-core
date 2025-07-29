@@ -13,7 +13,7 @@ use secrecy::ExposeSecret;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use shared_types::{CertificateId, CredentialId, DidValue, IdentifierId};
+use shared_types::{BlobId, CertificateId, CredentialId, DidValue, IdentifierId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -27,6 +27,7 @@ use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
 };
+use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -47,6 +48,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::model::{
@@ -98,6 +100,7 @@ use crate::service::certificate::validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
@@ -137,6 +140,7 @@ pub(crate) struct OpenID4VCI13 {
     protocol_base_url: Option<String>,
     config: Arc<CoreConfig>,
     params: OpenID4VCIParams,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
 impl OpenID4VCI13 {
@@ -153,6 +157,7 @@ impl OpenID4VCI13 {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
@@ -174,6 +179,7 @@ impl OpenID4VCI13 {
             config,
             params,
             certificate_validator,
+            blob_storage_provider,
         }
     }
 
@@ -190,6 +196,7 @@ impl OpenID4VCI13 {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCIParams,
@@ -214,6 +221,7 @@ impl OpenID4VCI13 {
             config,
             params,
             certificate_validator,
+            blob_storage_provider,
         }
     }
 
@@ -781,6 +789,43 @@ impl OpenID4VCI13 {
             .json()
             .context("parsing error")
             .map_err(IssuanceProtocolError::Transport)
+    }
+
+    async fn upsert_credential_blob(
+        &self,
+        credential: &Credential,
+        token: &str,
+    ) -> Result<BlobId, IssuanceProtocolError> {
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let credential_blob_id = match credential.credential_blob_id {
+            None => {
+                let blob = Blob::new(token.as_bytes().to_vec(), BlobType::Credential);
+                db_blob_storage
+                    .create(blob.clone())
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                blob.id
+            }
+            Some(blob_id) => {
+                db_blob_storage
+                    .update(
+                        &blob_id,
+                        UpdateBlobRequest {
+                            value: Some(token.as_bytes().to_vec()),
+                        },
+                    )
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                blob_id
+            }
+        };
+        Ok(credential_blob_id)
     }
 }
 
@@ -1376,10 +1421,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     HistoryAction::Issued,
                 )
                 .await;
+
+                let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
+
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_identifier_id),
+                        get_issued_credential_update(credential_blob_id, holder_identifier_id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -1404,10 +1452,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     HistoryAction::Issued,
                 )
                 .await;
+
+                let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
+
                 self.credential_repository
                     .update_credential(
                         *credential_id,
-                        get_issued_credential_update(&token, holder_identifier_id),
+                        get_issued_credential_update(credential_blob_id, holder_identifier_id),
                     )
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;

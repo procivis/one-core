@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -43,6 +44,7 @@ pub struct CredentialService {
     base_url: Option<String>,
     client: Arc<dyn HttpClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
 impl CredentialService {
@@ -65,6 +67,7 @@ impl CredentialService {
         base_url: Option<String>,
         client: Arc<dyn HttpClient>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -84,6 +87,7 @@ impl CredentialService {
             base_url,
             client,
             certificate_validator,
+            blob_storage_provider,
         }
     }
 }

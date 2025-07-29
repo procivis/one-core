@@ -73,7 +73,6 @@ fn generate_credential_matching_detail(detail: &CredentialDetailResponseDTO) -> 
         issuance_date: detail.issuance_date,
         last_modified: detail.last_modified,
         deleted_at: None,
-        credential: vec![],
         protocol: detail.protocol,
         redirect_uri: detail.redirect_uri,
         role: crate::model::credential::CredentialRole::Holder,
@@ -156,6 +155,7 @@ fn generate_credential_matching_detail(detail: &CredentialDetailResponseDTO) -> 
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     }
 }
 

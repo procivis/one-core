@@ -3,7 +3,7 @@ use one_core::model::credential_schema::{
 };
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
-use shared_types::{CredentialId, CredentialSchemaId, OrganisationId};
+use shared_types::{BlobId, CredentialId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState};
@@ -17,7 +17,6 @@ pub struct UnexportableCredentialModel {
     pub issuance_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
-    pub credential: Vec<u8>,
     pub protocol: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
@@ -42,6 +41,8 @@ pub struct UnexportableCredentialModel {
     pub organisation_created_date: OffsetDateTime,
     pub organisation_last_modified: OffsetDateTime,
     pub organisation_deactivated_at: Option<OffsetDateTime>,
+
+    pub credential_blob_id: Option<BlobId>,
 
     pub claims: String,
     pub credential_schema_claim_schemas: String,

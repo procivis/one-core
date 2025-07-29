@@ -541,7 +541,6 @@ pub(crate) fn extracted_credential_to_model(
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: exchange,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
@@ -557,6 +556,7 @@ pub(crate) fn extracted_credential_to_model(
         revocation_list: None,
         key: None,
         role: CredentialRole::Verifier,
+        credential_blob_id: None,
     })
 }
 

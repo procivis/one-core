@@ -182,11 +182,12 @@ impl BackupRepository for BackupProvider {
                 credential::Column::IssuanceDate,
                 credential::Column::LastModified,
                 credential::Column::DeletedAt,
-                credential::Column::Credential,
                 credential::Column::RedirectUri,
                 credential::Column::Role,
                 credential::Column::State,
                 credential::Column::SuspendEndDate,
+                credential::Column::CreatedDate,
+                credential::Column::CredentialBlobId,
             ])
             .column_as(credential::Column::Protocol, "protocol")
             .column_as(credential_schema::Column::Id, "credential_schema_id")

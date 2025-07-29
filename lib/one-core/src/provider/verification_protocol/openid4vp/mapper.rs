@@ -511,7 +511,6 @@ pub(crate) fn extracted_credential_to_model(
             issuance_date: now,
             last_modified: now,
             deleted_at: None,
-            credential: vec![],
             protocol: verification_protocol.to_string(),
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
@@ -527,6 +526,7 @@ pub(crate) fn extracted_credential_to_model(
             role: CredentialRole::Verifier,
             interaction: None,
             revocation_list: None,
+            credential_blob_id: None,
         },
         issuer_details,
         holder_details,
@@ -697,7 +697,6 @@ pub(crate) async fn credential_from_proved(
         issuance_date: proved_credential.credential.issuance_date,
         last_modified: proved_credential.credential.last_modified,
         deleted_at: proved_credential.credential.deleted_at,
-        credential: proved_credential.credential.credential,
         protocol: proved_credential.credential.protocol,
         redirect_uri: proved_credential.credential.redirect_uri,
         role: proved_credential.credential.role,
@@ -715,6 +714,7 @@ pub(crate) async fn credential_from_proved(
         key: proved_credential.credential.key,
         suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
         profile: proved_credential.credential.profile,
+        credential_blob_id: proved_credential.credential.credential_blob_id,
     })
 }
 

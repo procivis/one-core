@@ -292,7 +292,6 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             last_modified: value.last_modified,
             schema: schema.into(),
             issuer: convert_inner(value.issuer_identifier),
-            credential: value.credential,
             role: value.role.into(),
             suspend_end_date: value.suspend_end_date,
             protocol: value.protocol,
@@ -331,7 +330,6 @@ pub(super) fn from_create_request(
         suspend_end_date: None,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: request.protocol,
         claims: Some(claims),
         issuer_identifier: Some(issuer_identifier),
@@ -344,6 +342,7 @@ pub(super) fn from_create_request(
         redirect_uri: request.redirect_uri,
         role: CredentialRole::Issuer,
         profile: request.profile,
+        credential_blob_id: None,
     }
 }
 

@@ -83,7 +83,6 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role,
@@ -116,6 +115,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         interaction: None,
         revocation_list: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     (did, identifier, credential)

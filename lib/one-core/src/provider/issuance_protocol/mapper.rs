@@ -1,4 +1,4 @@
-use shared_types::IdentifierId;
+use shared_types::{BlobId, IdentifierId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -8,14 +8,14 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 
 pub(super) fn get_issued_credential_update(
-    token: &str,
+    credential_blob_id: BlobId,
     holder_identifier_id: IdentifierId,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
-        credential: Some(token.bytes().collect()),
         state: Some(CredentialStateEnum::Accepted),
         suspend_end_date: Clearable::DontTouch,
         holder_identifier_id: Some(holder_identifier_id),
+        credential_blob_id: Some(credential_blob_id),
         ..Default::default()
     }
 }

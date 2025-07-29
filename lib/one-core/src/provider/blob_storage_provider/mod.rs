@@ -4,24 +4,29 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_dto_mapper::From;
 use shared_types::BlobId;
+use strum::Display;
 
-use crate::config::ConfigError;
-use crate::config::core_config::{BlobStorageConfig, BlobStorageType};
+use crate::config::core_config::BlobStorageConfig;
+use crate::config::{ConfigError, core_config};
 use crate::model::blob::{Blob, UpdateBlobRequest};
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::repository::blob_repository::BlobRepository;
 
-// #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait BlobStorageProvider: Send + Sync {
-    async fn get_blob_storage(
-        &self,
-        r#type: impl AsRef<str> + Send + Sync,
-    ) -> Option<Arc<dyn BlobStorage>>;
+    async fn get_blob_storage(&self, r#type: BlobStorageType) -> Option<Arc<dyn BlobStorage>>;
 }
 
-// #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[derive(Clone, Debug, Copy, Display, PartialEq, Eq, PartialOrd, Ord, Hash, From)]
+#[from(crate::config::core_config::BlobStorageType)]
+pub enum BlobStorageType {
+    Db,
+}
+
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait BlobStorage: Send + Sync {
     async fn create(&self, blob: Blob) -> Result<(), BlobStorageError>;
@@ -34,22 +39,19 @@ pub trait BlobStorage: Send + Sync {
 }
 
 pub struct BlobStorageProviderImpl {
-    storages: HashMap<String, Arc<dyn BlobStorage>>,
+    storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>,
 }
 
 impl BlobStorageProviderImpl {
-    pub fn new(storages: HashMap<String, Arc<dyn BlobStorage>>) -> Self {
+    pub fn new(storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>) -> Self {
         Self { storages }
     }
 }
 
 #[async_trait]
 impl BlobStorageProvider for BlobStorageProviderImpl {
-    async fn get_blob_storage(
-        &self,
-        r#type: impl AsRef<str> + Send + Sync,
-    ) -> Option<Arc<dyn BlobStorage>> {
-        self.storages.get(r#type.as_ref()).map(Arc::clone)
+    async fn get_blob_storage(&self, r#type: BlobStorageType) -> Option<Arc<dyn BlobStorage>> {
+        self.storages.get(&r#type).map(Arc::clone)
     }
 }
 
@@ -82,19 +84,19 @@ impl BlobStorage for RepositoryBlobStorage {
 pub(crate) fn blob_storage_providers_from_config(
     blob_storage_config: &BlobStorageConfig,
     blob_repository: Arc<dyn BlobRepository>,
-) -> Result<HashMap<String, Arc<dyn BlobStorage>>, ConfigError> {
-    let mut providers: HashMap<String, Arc<dyn BlobStorage>> = HashMap::new();
+) -> Result<HashMap<BlobStorageType, Arc<dyn BlobStorage>>, ConfigError> {
+    let mut providers: HashMap<BlobStorageType, Arc<dyn BlobStorage>> = HashMap::new();
 
-    for (name, fields) in blob_storage_config.iter() {
-        if !fields.enabled() {
+    for (r#type, fields) in blob_storage_config.iter() {
+        if !fields.enabled.unwrap_or_default() {
             continue;
         }
-        let blob_provider = match fields.r#type {
-            BlobStorageType::Db => RepositoryBlobStorage {
+        let blob_provider = match r#type {
+            core_config::BlobStorageType::Db => RepositoryBlobStorage {
                 blob_repository: blob_repository.clone(),
             },
         };
-        providers.insert(name.to_string(), Arc::new(blob_provider));
+        providers.insert((*r#type).into(), Arc::new(blob_provider));
     }
 
     Ok(providers)

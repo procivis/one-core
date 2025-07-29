@@ -1,4 +1,4 @@
-use one_core::model::blob::{Blob, BlobType};
+use one_core::model;
 use one_core::model::certificate::CertificateState as ModelCertificateState;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
@@ -20,7 +20,7 @@ pub struct Model {
     #[sea_orm(column_type = "Blob")]
     pub value: Vec<u8>,
     #[sea_orm(column_name = "type")]
-    pub r#type: BlobStorageTypeState,
+    pub r#type: BlobType,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -29,10 +29,10 @@ impl ActiveModelBehavior for ActiveModel {}
 pub enum Relation {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
-#[from(BlobType)]
-#[into(BlobType)]
+#[from(model::blob::BlobType)]
+#[into(model::blob::BlobType)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
-pub enum BlobStorageTypeState {
+pub enum BlobType {
     #[sea_orm(string_value = "CREDENTIAL")]
     Credential,
     #[sea_orm(string_value = "PROOF")]

@@ -161,6 +161,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         identifier_id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -437,6 +438,7 @@ async fn test_get_history_list_schema_joins_credentials() {
             identifier_id,
             None,
             None,
+            Uuid::new_v4().into(),
         )
         .await
         .unwrap();

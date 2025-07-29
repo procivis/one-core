@@ -41,7 +41,7 @@ use uuid::Uuid;
 
 use super::ProofProvider;
 use crate::entity::key_did::KeyRole;
-use crate::entity::{claim, credential, proof_claim};
+use crate::entity::{blob, claim, credential, proof_claim};
 use crate::test_utilities::*;
 
 struct TestSetup {
@@ -561,7 +561,6 @@ async fn test_get_proof_with_relations() {
                 issuance_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 deleted_at: None,
-                credential: b"credential".to_vec(),
                 protocol: "protocol".to_string(),
                 redirect_uri: None,
                 role: CredentialRole::Verifier,
@@ -576,6 +575,7 @@ async fn test_get_proof_with_relations() {
                 revocation_list: None,
                 key: None,
                 profile: None,
+                credential_blob_id: Some(Uuid::new_v4().into()),
             }))
         });
 
@@ -629,6 +629,18 @@ async fn test_get_proof_with_relations() {
     .await
     .unwrap();
 
+    let blob_id = Uuid::new_v4().into();
+    blob::ActiveModel {
+        id: Set(blob_id),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        value: Set(vec![0, 0, 0, 0]),
+        r#type: Set(blob::BlobType::Credential),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
     credential::ActiveModel {
         id: Set(credential_id),
         credential_schema_id: Set(credential_schema_id),
@@ -638,12 +650,12 @@ async fn test_get_proof_with_relations() {
         redirect_uri: Set(None),
         deleted_at: Set(None),
         protocol: Set("OPENID4VCI_DRAFT13".to_owned()),
-        credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
         interaction_id: Set(None),
         revocation_list_id: Set(None),
         key_id: Set(None),
         state: Set(credential::CredentialState::Accepted),
+        credential_blob_id: Set(Some(blob_id)),
         ..Default::default()
     }
     .insert(&db)
@@ -855,6 +867,7 @@ async fn test_set_proof_claims_success() {
         identifier_id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();

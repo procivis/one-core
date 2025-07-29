@@ -29,6 +29,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
@@ -84,6 +85,7 @@ struct TestInputs {
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub blob_storage_provider: MockBlobStorageProvider,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIParams>,
 }
@@ -101,6 +103,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
+        Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
         inputs.params.unwrap_or(OpenID4VCIParams {
@@ -253,7 +256,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -309,6 +311,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         key: None,
         revocation_list: None,
         profile: None,
+        credential_blob_id: None,
     }
 }
 

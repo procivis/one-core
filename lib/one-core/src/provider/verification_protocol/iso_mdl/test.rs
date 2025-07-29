@@ -429,7 +429,6 @@ async fn test_get_presentation_definition_ok() {
                 protocol: "ISO_MDL".to_string(),
                 schema: Some(credential_schema),
                 role: CredentialRole::Holder,
-                credential: vec![],
                 deleted_at: None,
                 redirect_uri: None,
                 state: CredentialStateEnum::Accepted,
@@ -442,6 +441,7 @@ async fn test_get_presentation_definition_ok() {
                 interaction: None,
                 revocation_list: None,
                 profile: None,
+                credential_blob_id: None,
             }])
         });
 

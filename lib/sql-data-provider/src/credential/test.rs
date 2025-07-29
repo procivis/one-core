@@ -210,6 +210,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -337,7 +338,6 @@ async fn test_create_credential_success() {
             issuance_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
-            credential: vec![],
             protocol: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
@@ -352,6 +352,7 @@ async fn test_create_credential_success() {
             revocation_list: None,
             key: None,
             profile: None,
+            credential_blob_id: None,
         })
         .await;
 
@@ -416,7 +417,6 @@ async fn test_create_credential_empty_claims() {
             issuance_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
-            credential: vec![],
             protocol: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
@@ -431,6 +431,7 @@ async fn test_create_credential_empty_claims() {
             revocation_list: None,
             key: None,
             profile: None,
+            credential_blob_id: None,
         })
         .await;
 
@@ -479,7 +480,6 @@ async fn test_create_credential_already_exists() {
             issuance_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
-            credential: vec![],
             protocol: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
@@ -494,6 +494,7 @@ async fn test_create_credential_already_exists() {
             revocation_list: None,
             key: None,
             profile: None,
+            credential_blob_id: None,
         })
         .await;
 
@@ -522,6 +523,7 @@ async fn test_delete_credential_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -551,7 +553,6 @@ async fn test_delete_credential_failed_not_found() {
             issuance_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
-            credential: vec![],
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
@@ -566,6 +567,7 @@ async fn test_delete_credential_failed_not_found() {
             revocation_list: None,
             key: None,
             profile: None,
+            credential_blob_id: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
@@ -588,6 +590,7 @@ async fn test_get_credential_list_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -599,6 +602,7 @@ async fn test_get_credential_list_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -611,6 +615,7 @@ async fn test_get_credential_list_success() {
         identifier.id,
         Some(OffsetDateTime::now_utc()),
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap()
@@ -664,6 +669,7 @@ async fn test_get_credential_list_success_filter_state() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -676,6 +682,7 @@ async fn test_get_credential_list_success_filter_state() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -894,6 +901,7 @@ async fn test_get_credential_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap()
@@ -1052,6 +1060,8 @@ async fn test_update_credential_success() {
         .expect_get_credential_schema()
         .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
+    let blob_id = Uuid::new_v4().into();
+
     let credential_id = insert_credential(
         &db,
         &credential_schema.id,
@@ -1060,6 +1070,7 @@ async fn test_update_credential_success() {
         identifier.id,
         None,
         None,
+        blob_id,
     )
     .await
     .unwrap()
@@ -1098,8 +1109,10 @@ async fn test_update_credential_success() {
     let credential_before_update = credential_before_update.unwrap().unwrap();
     assert_eq!(credential_id, credential_before_update.id);
 
-    let token = vec![1, 2, 3];
-    assert_ne!(token, credential_before_update.credential);
+    assert_eq!(
+        blob_id,
+        credential_before_update.credential_blob_id.unwrap()
+    );
 
     let organisation_id = test_utilities::insert_organisation_to_database(&db, None, None)
         .await
@@ -1117,10 +1130,10 @@ async fn test_update_credential_success() {
             .update_credential(
                 credential_id,
                 UpdateCredentialRequest {
-                    credential: Some(token.to_owned()),
                     state: Some(CredentialStateEnum::Pending),
                     suspend_end_date: Clearable::DontTouch,
                     interaction: Some(interaction_id),
+                    credential_blob_id: Some(blob_id),
                     ..Default::default()
                 }
             )
@@ -1138,7 +1151,7 @@ async fn test_update_credential_success() {
         .await;
     assert!(credential_after_update.is_ok());
     let credential_after_update = credential_after_update.unwrap().unwrap();
-    assert_eq!(token, credential_after_update.credential);
+    assert_eq!(blob_id, credential_after_update.credential_blob_id.unwrap());
     assert_eq!(
         interaction_id,
         credential_after_update.interaction.unwrap().id
@@ -1174,6 +1187,7 @@ async fn test_get_credential_by_claim_id_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -1186,6 +1200,7 @@ async fn test_get_credential_by_claim_id_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -1244,6 +1259,7 @@ async fn test_delete_credential_blobs_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -1256,6 +1272,7 @@ async fn test_delete_credential_blobs_success() {
         identifier.id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -1267,14 +1284,14 @@ async fn test_delete_credential_blobs_success() {
         .await
         .unwrap()
         .unwrap();
-    assert!(!credential.credential.is_empty());
+    assert!(credential.credential_blob_id.is_some());
 
     let credential_two = provider
         .get_credential(&credential_two.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();
-    assert!(!credential_two.credential.is_empty());
+    assert!(credential_two.credential_blob_id.is_some());
 
     provider
         .delete_credential_blobs(HashSet::from([credential.id, credential_two.id]))
@@ -1286,12 +1303,12 @@ async fn test_delete_credential_blobs_success() {
         .await
         .unwrap()
         .unwrap();
-    assert!(credential.credential.is_empty());
+    assert!(credential.credential_blob_id.is_none());
 
     let credential_two = provider
         .get_credential(&credential_two.id, &CredentialRelations::default())
         .await
         .unwrap()
         .unwrap();
-    assert!(credential_two.credential.is_empty());
+    assert!(credential_two.credential_blob_id.is_none());
 }

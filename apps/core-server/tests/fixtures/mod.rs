@@ -6,6 +6,7 @@ use std::str::FromStr;
 use core_server::ServerConfig;
 use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
+use one_core::model::blob::{Blob, BlobType};
 use one_core::model::certificate::Certificate;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -39,7 +40,9 @@ use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use sea_orm::ConnectionTrait;
 use secrecy::{SecretSlice, SecretString};
-use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId, ProofId};
+use shared_types::{
+    BlobId, CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId, ProofId,
+};
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
@@ -48,6 +51,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub fn unwrap_or_random(op: Option<String>) -> String {
@@ -622,7 +626,6 @@ type TestClaimSchema = Uuid;
 #[derive(Debug, Default)]
 pub struct TestingCredentialParams<'a> {
     pub holder_identifier: Option<Identifier>,
-    pub credential: Option<&'a str>,
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
@@ -632,6 +635,7 @@ pub struct TestingCredentialParams<'a> {
     pub random_claims: bool,
     pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, ClaimValue<'a>)>>,
     pub profile: Option<String>,
+    pub credential_blob_id: Option<BlobId>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -668,7 +672,6 @@ pub async fn create_credential(
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
         deleted_at: params.deleted_at,
-        credential: params.credential.unwrap_or("").as_bytes().to_owned(),
         protocol: exchange.to_owned(),
         redirect_uri: None,
         role: params.role.unwrap_or(CredentialRole::Issuer),
@@ -683,6 +686,7 @@ pub async fn create_credential(
         revocation_list: None,
         key: params.key,
         profile: None,
+        credential_blob_id: params.credential_blob_id,
     };
 
     data_layer
@@ -692,6 +696,29 @@ pub async fn create_credential(
         .unwrap();
 
     credential
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_blob(db_conn: &DbConn, params: TestingBlobParams) -> Blob {
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
+
+    let now = OffsetDateTime::now_utc();
+
+    let blob = Blob {
+        id: params.id.unwrap_or(Uuid::new_v4().into()),
+        created_date: params.created_date.unwrap_or(now),
+        last_modified: params.last_modified.unwrap_or(now),
+        value: params.value.unwrap_or(vec![1, 2, 3, 4, 5]),
+        r#type: params.r#type.unwrap_or(BlobType::Credential),
+    };
+
+    data_layer
+        .get_blob_repository()
+        .create(blob.clone())
+        .await
+        .unwrap();
+
+    blob
 }
 
 #[allow(clippy::too_many_arguments)]

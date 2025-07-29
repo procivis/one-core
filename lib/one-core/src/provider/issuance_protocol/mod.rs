@@ -24,6 +24,7 @@ use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -82,6 +83,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 ) -> Result<HashMap<String, Arc<dyn IssuanceProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
 
@@ -108,6 +110,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 key_algorithm_provider.clone(),
                 key_provider.clone(),
                 certificate_validator.clone(),
+                blob_storage_provider.clone(),
                 core_base_url.clone(),
                 config.clone(),
                 params,
@@ -132,6 +135,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    blob_storage_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),
                     params,

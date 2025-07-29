@@ -190,7 +190,6 @@ fn dummy_credential(
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: b"credential".to_vec(),
         protocol: protocol.to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -211,6 +210,7 @@ fn dummy_credential(
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: Some(Uuid::new_v4().into()),
     }
 }
 

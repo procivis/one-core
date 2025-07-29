@@ -111,7 +111,6 @@ impl CredentialsDB {
             last_modified: get_dummy_date(),
             issuance_date: get_dummy_date(),
             deleted_at: params.deleted_at,
-            credential: params.credential.unwrap_or("").as_bytes().to_owned(),
             protocol: protocol.to_owned(),
             redirect_uri: None,
             role: params.role.unwrap_or(CredentialRole::Issuer),
@@ -129,6 +128,7 @@ impl CredentialsDB {
             revocation_list: None,
             key: params.key,
             profile: params.profile,
+            credential_blob_id: params.credential_blob_id,
         };
 
         let id = self

@@ -15,9 +15,11 @@ use self::proofs::ProofsDB;
 use self::revocation_lists::RevocationListsDB;
 use self::trust_anchors::TrustAnchorDB;
 use self::trust_entities::TrustEntityDB;
+use crate::utils::db_clients::blobs::BlobsDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 
+pub mod blobs;
 pub mod certificates;
 pub mod credential_schemas;
 pub mod credentials;
@@ -52,6 +54,7 @@ pub struct DbClient {
     pub interactions: InteractionsDB,
     pub trust_anchors: TrustAnchorDB,
     pub trust_entities: TrustEntityDB,
+    pub blobs: BlobsDB,
     pub db_conn: DbConn,
 }
 
@@ -78,6 +81,7 @@ impl DbClient {
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
             trust_anchors: TrustAnchorDB::new(layer.get_trust_anchor_repository()),
             trust_entities: TrustEntityDB::new(layer.get_trust_entity_repository()),
+            blobs: BlobsDB::new(layer.get_blob_repository()),
         }
     }
 }

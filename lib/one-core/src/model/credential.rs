@@ -1,4 +1,4 @@
-use shared_types::{CertificateId, CredentialId, IdentifierId, KeyId};
+use shared_types::{BlobId, CertificateId, CredentialId, IdentifierId, KeyId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -21,13 +21,13 @@ pub struct Credential {
     pub issuance_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
-    pub credential: Vec<u8>,
     pub protocol: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
     pub state: CredentialStateEnum,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
+    pub credential_blob_id: Option<BlobId>,
 
     // Relations:
     pub claims: Option<Vec<Claim>>,
@@ -77,7 +77,6 @@ pub type GetCredentialQuery =
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateCredentialRequest {
-    pub credential: Option<Vec<u8>>,
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_certificate_id: Option<CertificateId>,
     pub holder_identifier_id: Option<IdentifierId>,
@@ -88,6 +87,7 @@ pub struct UpdateCredentialRequest {
     pub suspend_end_date: Clearable<Option<OffsetDateTime>>,
 
     pub claims: Option<Vec<Claim>>,
+    pub credential_blob_id: Option<BlobId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Display)]

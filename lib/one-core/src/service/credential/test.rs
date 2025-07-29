@@ -26,6 +26,7 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
+use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
@@ -84,6 +85,7 @@ struct Repositories {
     pub config: CoreConfig,
     pub lvvc_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
+    pub blob_storage_provider: MockBlobStorageProvider,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -105,6 +107,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         None,
         Arc::new(ReqwestClient::default()),
         Arc::new(repositories.certificate_validator),
+        Arc::new(repositories.blob_storage_provider),
     )
 }
 
@@ -156,7 +159,6 @@ fn generic_credential() -> Credential {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -213,6 +215,7 @@ fn generic_credential() -> Credential {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     }
 }
 
@@ -225,7 +228,6 @@ fn generic_credential_list_entity() -> Credential {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -283,6 +285,7 @@ fn generic_credential_list_entity() -> Credential {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     }
 }
 
@@ -3874,7 +3877,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -3954,6 +3956,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     {
@@ -4442,7 +4445,6 @@ async fn test_get_credential_success_array_index_sorting() {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -4522,6 +4524,7 @@ async fn test_get_credential_success_array_index_sorting() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     {
@@ -4759,7 +4762,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -4839,6 +4841,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     {
@@ -4979,7 +4982,6 @@ async fn test_get_credential_success_array_single_element() {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -5059,6 +5061,7 @@ async fn test_get_credential_success_array_single_element() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     {

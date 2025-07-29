@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
+use crate::model::blob::{Blob, BlobType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -18,6 +19,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
+use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
@@ -43,7 +45,7 @@ use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential::CredentialService;
-use crate::service::test_utilities::{dummy_organisation, generic_config};
+use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
 #[tokio::test]
 async fn test_task_holder_check_credential_status_being_revoked() {
@@ -135,6 +137,24 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_get().once().return_once(|id| {
+        Ok(Some(Blob {
+            id: id.to_owned(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            value: vec![1, 2, 3, 4, 5],
+            r#type: BlobType::Credential,
+        }))
+    });
+
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let credential_repository = Arc::new(credential_repository);
     let service = setup_service(Repositories {
         credential_repository: credential_repository.clone(),
@@ -142,6 +162,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
         config: Arc::new(generic_config().core),
+        blob_storage_provider: Arc::new(blob_storage_provider),
         ..Default::default()
     });
 
@@ -180,6 +201,7 @@ struct Repositories {
     pub certificate_validator: Arc<MockCertificateValidator>,
     pub config: Arc<CoreConfig>,
     pub lvvc_repository: Arc<MockValidityCredentialRepository>,
+    pub blob_storage_provider: Arc<MockBlobStorageProvider>,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -201,6 +223,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         None,
         Arc::new(ReqwestClient::default()),
         repositories.certificate_validator,
+        repositories.blob_storage_provider,
     )
 }
 
@@ -252,7 +275,6 @@ fn generic_credential() -> Credential {
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -309,5 +331,6 @@ fn generic_credential() -> Credential {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: Some(Uuid::new_v4().into()),
     }
 }

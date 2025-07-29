@@ -18,6 +18,7 @@ use crate::fixtures::{
 use crate::utils;
 use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::server::run_server;
 
 #[tokio::test]
@@ -368,6 +369,15 @@ async fn setup_submittable_presentation(
     )
     .await;
 
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some("TOKEN".as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = fixtures::create_credential(
         &context.db.db_conn,
         &credential_schema,
@@ -377,7 +387,7 @@ async fn setup_submittable_presentation(
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier.clone()),
             role: Some(CredentialRole::Holder),
-            credential: Some("TOKEN"),
+            credential_blob_id: Some(blob.id),
             ..Default::default()
         },
     )
@@ -552,6 +562,15 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     )
     .await;
 
+    let blob = fixtures::create_blob(
+        &db_conn,
+        TestingBlobParams {
+            value: Some("TOKEN".as_bytes().to_vec()),
+            ..Default::default()
+        },
+    )
+    .await;
+
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
@@ -560,7 +579,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier),
-            credential: Some("TOKEN"),
+            credential_blob_id: Some(blob.id),
             role: Some(CredentialRole::Holder),
             ..Default::default()
         },
@@ -985,6 +1004,15 @@ async fn setup_submittable_presentation_dcql(
     )
     .await;
 
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some("TOKEN".as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = fixtures::create_credential(
         &context.db.db_conn,
         &credential_schema,
@@ -994,7 +1022,7 @@ async fn setup_submittable_presentation_dcql(
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier.clone()),
             role: Some(CredentialRole::Holder),
-            credential: Some("TOKEN"),
+            credential_blob_id: Some(blob.id),
             ..Default::default()
         },
     )

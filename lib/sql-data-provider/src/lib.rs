@@ -47,7 +47,7 @@ use trust_entity::TrustEntityProvider;
 use trust_entity::history::TrustEntityHistoryDecorator;
 use validity_credential::ValidityCredentialProvider;
 
-use crate::blob_storage::BlobProvider;
+use crate::blob::BlobProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
@@ -364,6 +364,6 @@ pub async fn db_conn(
     Ok(db)
 }
 
-mod blob_storage;
+mod blob;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;

@@ -10,6 +10,7 @@ use crate::config::core_config::{
     AppConfig, IdentifierType as ConfigIdentifierType, InputFormat, IssuanceProtocolType,
     KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::model::blob::{Blob, BlobType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -253,7 +254,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: b"credential".to_vec(),
         protocol: exchange.to_owned(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -321,6 +321,17 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         }),
         revocation_list: None,
         key: None,
+        credential_blob_id: None,
+    }
+}
+
+pub fn dummy_blob() -> Blob {
+    Blob {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: vec![1, 2, 3, 4, 5],
+        r#type: BlobType::Credential,
     }
 }
 

@@ -19,6 +19,7 @@ use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::model::revocation_list::RevocationListId;
+use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
@@ -126,6 +127,9 @@ pub enum ServiceError {
 
     #[error("Trust management error `{0}`")]
     TrustManagementError(#[from] TrustManagementError),
+
+    #[error("Blob storage error `{0}`")]
+    BlobStorageError(#[from] BlobStorageError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -683,6 +687,9 @@ pub enum MissingProviderError {
 
     #[error("Cannot find trust manager `{0}`")]
     TrustManager(String),
+
+    #[error("Cannot find blob storage `{0}`")]
+    BlobStorage(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage)]
@@ -1258,6 +1265,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Basic constraints violation")]
     BR_0250,
+
+    #[strum(message = "Blob storage error")]
+    BR_0251,
+
+    #[strum(message = "Blob storage provider not found")]
+    BR_0252,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1301,6 +1314,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::Revocation(_) => ErrorCode::BR_0101,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
             Self::KeyHandleError(_) => ErrorCode::BR_0201,
+            Self::BlobStorageError(_) => ErrorCode::BR_0251,
         }
     }
 }
@@ -1619,6 +1633,7 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::ExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::Task(_) => ErrorCode::BR_0103,
             Self::TrustManager(_) => ErrorCode::BR_0132,
+            Self::BlobStorage(_) => ErrorCode::BR_0252,
         }
     }
 }

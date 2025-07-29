@@ -25,6 +25,7 @@ use crate::fixtures::{
     TestingCredentialParams, TestingDidParams, TestingIdentifierParams, encrypted_token,
 };
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
@@ -294,6 +295,14 @@ async fn test_revoke_check_success_statuslist2021() {
         .credential_schemas
         .create("test", &organisation, "STATUSLIST2021", Default::default())
         .await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(credential_jwt.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -303,7 +312,7 @@ async fn test_revoke_check_success_statuslist2021() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&credential_jwt),
+                credential_blob_id: Some(blob.id),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
@@ -544,6 +553,16 @@ async fn setup_bitstring_status_list_success(
             Default::default(),
         )
         .await;
+
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(credential_jwt.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -553,8 +572,8 @@ async fn setup_bitstring_status_list_success(
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&credential_jwt),
                 role: Some(CredentialRole::Holder),
+                credential_blob_id: Some(blob.id),
                 ..Default::default()
             },
         )
@@ -821,6 +840,16 @@ async fn setup_lvvc_revoke_check_valid(
         .credential_schemas
         .create("test", &organisation, "LVVC", Default::default())
         .await;
+
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(credential_jwt.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -830,7 +859,7 @@ async fn setup_lvvc_revoke_check_valid(
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&credential_jwt),
+                credential_blob_id: Some(blob.id),
                 holder_identifier: Some(holder_identifier),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
@@ -959,6 +988,15 @@ async fn test_revoke_check_mdoc_update() {
         )
         .await;
 
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(expired_mdoc_credential().await.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -968,11 +1006,11 @@ async fn test_revoke_check_mdoc_update() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&expired_mdoc_credential().await),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
                 role: Some(CredentialRole::Holder),
+                credential_blob_id: Some(blob.id),
                 ..Default::default()
             },
         )
@@ -1007,8 +1045,12 @@ async fn test_revoke_check_mdoc_update() {
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(updated_credentials.credential, valid_credential.as_bytes());
+    let updated_credentials = context
+        .db
+        .blobs
+        .get(&credential.credential_blob_id.unwrap())
+        .await;
+    assert_eq!(updated_credentials.value, valid_credential.as_bytes());
 }
 
 #[tokio::test]
@@ -1107,8 +1149,15 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &organisation,
         )
         .await;
-
     let expired_credential = expired_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(expired_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -1118,7 +1167,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&expired_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1155,9 +1204,13 @@ async fn test_revoke_check_mdoc_update_invalid() {
     assert_eq!("SUSPENDED", resp[0]["status"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    let updated_credentials = context
+        .db
+        .blobs
+        .get(&credential.credential_blob_id.unwrap())
+        .await;
     assert_eq!(
-        updated_credentials.credential,
+        updated_credentials.value,
         expired_credential.as_bytes() // invalid content was rejected / credential not updated
     );
 }
@@ -1260,6 +1313,15 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .await;
 
     let valid_credential = valid_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(valid_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -1269,7 +1331,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&valid_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1310,8 +1372,12 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         assert_eq!(true, resp[0]["success"]);
         assert!(resp[0]["reason"].is_null());
 
-        let updated_credentials = context.db.credentials.get(&credential.id).await;
-        assert_eq!(updated_credentials.credential, valid_credential2.as_bytes());
+        let updated_credentials = context
+            .db
+            .blobs
+            .get(&credential.credential_blob_id.unwrap())
+            .await;
+        assert_eq!(updated_credentials.value, valid_credential2.as_bytes());
         assert!(updated_credentials.last_modified > before_refresh);
     }
 }
@@ -1413,6 +1479,14 @@ async fn test_revoke_check_token_update() {
         .await;
 
     let valid_credential = valid_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(valid_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -1422,7 +1496,7 @@ async fn test_revoke_check_token_update() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&valid_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1553,6 +1627,14 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .await;
 
     let expired_credential = expired_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(expired_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -1562,7 +1644,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&expired_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1588,11 +1670,16 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    let updated_credentials_blob = context
+        .db
+        .blobs
+        .get(&credential.credential_blob_id.unwrap())
+        .await;
     assert_eq!(
-        updated_credentials.credential,
+        updated_credentials_blob.value,
         expired_credential.as_bytes()
     );
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(updated_credentials.state, CredentialStateEnum::Revoked,);
 }
 
@@ -1689,6 +1776,14 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .await;
 
     let valid_credential = valid_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(valid_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -1698,7 +1793,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&valid_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1829,6 +1924,14 @@ async fn test_suspended_to_valid_mdoc() {
         .await;
 
     let expired_credential = expired_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(expired_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -1838,7 +1941,7 @@ async fn test_suspended_to_valid_mdoc() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&expired_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -1887,8 +1990,13 @@ async fn test_suspended_to_valid_mdoc() {
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
+    let updated_credentials_blob = context
+        .db
+        .blobs
+        .get(&credential.credential_blob_id.unwrap())
+        .await;
+    assert_eq!(updated_credentials_blob.value, valid_credential.as_bytes());
     let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(updated_credentials.credential, valid_credential.as_bytes());
     assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
     let history = context
         .db
@@ -2010,6 +2118,14 @@ async fn test_suspended_to_suspended_update_failed() {
         .await;
 
     let expired_credential = expired_mdoc_credential().await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(expired_credential.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -2019,7 +2135,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&expired_credential),
+                credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -2050,11 +2166,16 @@ async fn test_suspended_to_suspended_update_failed() {
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    let updated_credentials_blob = context
+        .db
+        .blobs
+        .get(&credential.credential_blob_id.unwrap())
+        .await;
     assert_eq!(
-        updated_credentials.credential,
+        updated_credentials_blob.value,
         expired_credential.as_bytes()
     );
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(updated_credentials.state, CredentialStateEnum::Suspended,);
 }
 
@@ -2106,6 +2227,14 @@ async fn test_revoke_check_failed_deleted_credential() {
             Default::default(),
         )
         .await;
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(credential_jwt.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
     let credential = context
         .db
         .credentials
@@ -2115,7 +2244,7 @@ async fn test_revoke_check_failed_deleted_credential() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(credential_jwt),
+                credential_blob_id: Some(blob.id),
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 ..Default::default()
             },

@@ -599,15 +599,35 @@ pub enum TrustManagementType {
     SimpleTrustList,
 }
 
-pub type BlobStorageConfig = ConfigBlock<BlobStorageType>;
+pub type BlobStorageConfig = Dict<BlobStorageType, BlobStorageFields>;
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    Hash,
 )]
 pub enum BlobStorageType {
     #[serde(rename = "DB")]
     #[strum(serialize = "DB")]
     Db,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlobStorageFields {
+    pub enabled: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_params")]
+    pub params: Option<Params>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

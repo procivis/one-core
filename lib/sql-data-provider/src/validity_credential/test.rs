@@ -167,6 +167,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         identifier_id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap()

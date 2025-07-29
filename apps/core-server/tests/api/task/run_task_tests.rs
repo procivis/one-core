@@ -24,6 +24,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
@@ -510,6 +511,15 @@ async fn test_run_task_holder_check_credential_status_with_no_params() {
         .create("test", &organisation, "LVVC", Default::default())
         .await;
 
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(credential_jwt.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -519,9 +529,9 @@ async fn test_run_task_holder_check_credential_status_with_no_params() {
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&credential_jwt),
                 holder_identifier: Some(holder_identifier),
                 role: Some(CredentialRole::Holder),
+                credential_blob_id: Some(blob.id),
                 ..Default::default()
             },
         )
@@ -733,6 +743,15 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .create("test", &organisation, "LVVC", Default::default())
         .await;
 
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(credential_jwt.as_bytes().to_vec()),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -742,7 +761,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                credential: Some(&credential_jwt),
+                credential_blob_id: Some(blob.id),
                 holder_identifier: Some(holder_identifier),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()

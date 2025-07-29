@@ -4,7 +4,9 @@ use one_core::model::credential::{
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use shared_types::{CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId};
+use shared_types::{
+    BlobId, CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
+};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -24,9 +26,6 @@ pub struct Model {
     pub protocol: String,
     pub redirect_uri: Option<String>,
 
-    #[sea_orm(column_type = "Blob")]
-    pub credential: Vec<u8>,
-
     pub role: CredentialRole,
 
     pub issuer_identifier_id: Option<IdentifierId>,
@@ -43,6 +42,8 @@ pub struct Model {
     pub state: CredentialState,
 
     pub profile: Option<String>,
+
+    pub credential_blob_id: Option<BlobId>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

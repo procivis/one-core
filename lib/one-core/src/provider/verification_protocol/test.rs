@@ -433,7 +433,6 @@ fn dummy_credential() -> Credential {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: b"credential".to_vec(),
         protocol: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -498,5 +497,6 @@ fn dummy_credential() -> Credential {
         }),
         key: None,
         revocation_list: None,
+        credential_blob_id: Some(Uuid::new_v4().into()),
     }
 }

@@ -91,6 +91,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         identifier_id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -223,6 +224,7 @@ async fn test_delete_claims_for_credentials() {
         identifier_id,
         None,
         None,
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap()

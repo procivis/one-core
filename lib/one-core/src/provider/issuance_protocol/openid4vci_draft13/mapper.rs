@@ -789,7 +789,6 @@ pub(crate) fn create_credential(
         issuance_date: now,
         last_modified: now,
         deleted_at: None,
-        credential: vec![],
         protocol: "OPENID4VCI_DRAFT13".to_string(), // this will be rewritten later in SSIHolderService
         redirect_uri,
         role: CredentialRole::Holder,
@@ -804,6 +803,7 @@ pub(crate) fn create_credential(
         key: None,
         interaction: Some(interaction),
         revocation_list: None,
+        credential_blob_id: None,
     }
 }
 

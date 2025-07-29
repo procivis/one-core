@@ -536,3 +536,6 @@ holderKeyStorage:
   REMOTE_SECURE_ELEMENT:
     display: "holderKeyStorage.remoteSecureElement"
     order: 20
+blobStorage:
+  DB:
+    enabled: true

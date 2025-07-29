@@ -33,7 +33,6 @@ pub struct CredentialListItemResponseDTO {
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
-    pub credential: Vec<u8>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub protocol: String,

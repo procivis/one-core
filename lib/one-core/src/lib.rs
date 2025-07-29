@@ -452,6 +452,13 @@ impl OneCore {
         .map_err(OneCoreBuildError::Config)?;
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
+        let blob_storage_providers = blob_storage_providers_from_config(
+            &core_config.blob_storage,
+            data_provider.get_blob_repository(),
+        )
+        .map_err(OneCoreBuildError::Config)?;
+        let blob_storage_provider = Arc::new(BlobStorageProviderImpl::new(blob_storage_providers));
+
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
@@ -467,6 +474,7 @@ impl OneCore {
             did_method_provider.clone(),
             certificate_validator.clone(),
             client.clone(),
+            blob_storage_provider.clone(),
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
@@ -529,6 +537,7 @@ impl OneCore {
             providers.core_base_url.clone(),
             client.clone(),
             certificate_validator.clone(),
+            blob_storage_provider.clone(),
         );
 
         let task_providers = tasks_from_config(
@@ -544,14 +553,6 @@ impl OneCore {
         )
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
-
-        let blob_storage_providers = blob_storage_providers_from_config(
-            &config.blob_storage,
-            data_provider.get_blob_repository(),
-        )
-        .map_err(OneCoreBuildError::Config)?;
-
-        let _blob_storage_provider = Arc::new(BlobStorageProviderImpl::new(blob_storage_providers));
 
         Ok(OneCore {
             trust_anchor_service: TrustAnchorService::new(
@@ -783,6 +784,7 @@ impl OneCore {
                 config.clone(),
                 client.clone(),
                 vct_type_metadata_cache,
+                blob_storage_provider,
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),

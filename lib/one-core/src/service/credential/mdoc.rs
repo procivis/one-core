@@ -4,10 +4,12 @@ use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use time::OffsetDateTime;
 
 use crate::config::core_config;
+use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::did::KeyRole;
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::http_client::HttpClient;
@@ -20,7 +22,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
-use crate::service::error::ServiceError;
+use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 use crate::util::key_verification::KeyVerification;
 
@@ -175,9 +177,34 @@ impl CredentialService {
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        let blob_id = match credential.credential_blob_id {
+            None => {
+                let blob = Blob::new(result.credential.as_bytes().to_vec(), BlobType::Credential);
+                db_blob_storage.create(blob.clone()).await?;
+                blob.id
+            }
+            Some(blob_id) => {
+                db_blob_storage
+                    .update(
+                        &blob_id,
+                        UpdateBlobRequest {
+                            value: Some(result.credential.as_bytes().to_vec()),
+                        },
+                    )
+                    .await?;
+                blob_id
+            }
+        };
+
         // Update credential value
         let update_request = UpdateCredentialRequest {
-            credential: Some(result.credential.as_bytes().to_vec()),
+            credential_blob_id: Some(blob_id),
             suspend_end_date: Clearable::DontTouch,
             ..Default::default()
         };

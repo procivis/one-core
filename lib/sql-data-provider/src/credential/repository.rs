@@ -19,11 +19,11 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::sea_query::{Expr, IntoCondition};
+use sea_orm::sea_query::{Expr, IntoCondition, Query};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult,
+    JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
+    SqlErr, TransactionTrait, Unchanged,
 };
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
@@ -33,8 +33,10 @@ use crate::common::calculate_pages_count;
 use crate::credential::CredentialProvider;
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
+use crate::entity::blob::BlobType;
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, identifier,
+    blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
+    identifier,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
@@ -340,10 +342,6 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
                 "credential_schema_schema_layout_properties",
             );
         }
-
-        if include.contains(&CredentialListIncludeEntityTypeEnum::Credential) {
-            query = query.column(credential::Column::Credential);
-        }
     }
 
     query
@@ -399,6 +397,7 @@ impl CredentialRepository for CredentialProvider {
             interaction_id,
             revocation_list_id,
             convert_inner(key_id),
+            request.credential_blob_id,
         )
         .insert(&self.db)
         .await
@@ -530,9 +529,9 @@ impl CredentialRepository for CredentialProvider {
             Some(certificate_id) => Set(Some(certificate_id)),
         };
 
-        let credential = match request.credential {
+        let credential_blob_id = match request.credential_blob_id {
             None => Unchanged(Default::default()),
-            Some(token) => Set(token),
+            Some(blob_id) => Set(Some(blob_id)),
         };
 
         let interaction_id = match request.interaction {
@@ -569,12 +568,12 @@ impl CredentialRepository for CredentialProvider {
             holder_identifier_id,
             issuer_identifier_id,
             issuer_certificate_id,
-            credential,
             interaction_id,
             key_id,
             redirect_uri,
             suspend_end_date,
             state,
+            credential_blob_id,
             ..Default::default()
         };
 
@@ -686,16 +685,43 @@ impl CredentialRepository for CredentialProvider {
         &self,
         request: HashSet<CredentialId>,
     ) -> Result<(), DataLayerError> {
-        credential::Entity::update_many()
-            .filter(credential::Column::Id.is_in(request))
-            .set(credential::ActiveModel {
-                credential: Set(vec![]),
-                ..Default::default()
-            })
-            .exec(&self.db)
+        let transaction = self
+            .db
+            .begin()
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
+        credential::Entity::update_many()
+            .filter(credential::Column::Id.is_in(request))
+            .set(credential::ActiveModel {
+                credential_blob_id: Set(None),
+                ..Default::default()
+            })
+            .exec(&transaction)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        blob::Entity::delete_many()
+            .filter(
+                Condition::any()
+                    .add(blob::Column::Type.eq(BlobType::Credential))
+                    .add(
+                        blob::Column::Id.not_in_subquery(
+                            Query::select()
+                                .column(credential::Column::CredentialBlobId)
+                                .from(credential::Entity)
+                                .to_owned(),
+                        ),
+                    ),
+            )
+            .exec(&transaction)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        transaction
+            .commit()
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
     }
 }

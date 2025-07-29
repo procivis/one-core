@@ -25,6 +25,7 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
 use crate::provider::revocation::model::{
@@ -787,7 +788,27 @@ impl CredentialService {
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?
             .clone();
 
-        let credential_str = String::from_utf8(credential.credential.clone())
+        let credentials = if let Some(credential_blob_id) = credential.credential_blob_id {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| {
+                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                })?;
+
+            blob_storage
+                .get(&credential_blob_id)
+                .await?
+                .ok_or(ServiceError::MappingError(
+                    "credential blob is None".to_string(),
+                ))?
+                .value
+        } else {
+            vec![]
+        };
+
+        let credential_str = String::from_utf8(credentials)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         // Workaround credential format detection

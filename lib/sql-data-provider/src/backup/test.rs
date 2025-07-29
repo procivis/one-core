@@ -72,7 +72,6 @@ async fn insert_credential_to_database(
         },
         protocol: Set("protocol".to_owned()),
         redirect_uri: Set(None),
-        credential: Set(vec![]),
         role: Set(CredentialRole::Holder),
         issuer_identifier_id: Set(None),
         issuer_certificate_id: Set(None),
@@ -81,6 +80,7 @@ async fn insert_credential_to_database(
         revocation_list_id: Set(None),
         key_id: Set(Some(key_id)),
         profile: Set(None),
+        credential_blob_id: Set(None),
     }
     .insert(database)
     .await

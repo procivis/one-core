@@ -19,6 +19,7 @@ use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -65,8 +66,8 @@ use crate::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use crate::service::test_utilities::{
-    dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof, generic_config,
-    generic_formatter_capabilities,
+    dummy_blob, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
+    generic_config, generic_formatter_capabilities,
 };
 
 #[tokio::test]
@@ -329,7 +330,6 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_, _| {
             Ok(Some(Credential {
                 id: credential_id,
-                credential: b"credential data".to_vec(),
                 claims: Some(vec![]),
                 ..dummy_credential()
             }))
@@ -421,6 +421,18 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage
+        .expect_get()
+        .once()
+        .returning(|_| Ok(Some(dummy_blob())));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -428,6 +440,7 @@ async fn test_submit_proof_succeeds() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
+        blob_storage_provider: Arc::new(blob_storage_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -520,7 +533,6 @@ async fn test_submit_proof_succeeds_with_did() {
         .returning(move |_, _| {
             Ok(Some(Credential {
                 id: credential_id,
-                credential: b"credential data".to_vec(),
                 claims: Some(vec![]),
                 ..dummy_credential()
             }))
@@ -612,6 +624,18 @@ async fn test_submit_proof_succeeds_with_did() {
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage
+        .expect_get()
+        .once()
+        .returning(|_| Ok(Some(dummy_blob())));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -619,6 +643,7 @@ async fn test_submit_proof_succeeds_with_did() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
+        blob_storage_provider: Arc::new(blob_storage_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -696,7 +721,6 @@ async fn test_submit_proof_repeating_claims() {
         .returning(move |_, _| {
             Ok(Some(Credential {
                 id: credential_id,
-                credential: b"credential data".to_vec(),
                 claims: Some(vec![Claim {
                     id: claim_id,
                     credential_id,
@@ -843,6 +867,18 @@ async fn test_submit_proof_repeating_claims() {
         .times(2)
         .returning(|_| Some(Arc::new(Ecdsa)));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage
+        .expect_get()
+        .times(2)
+        .returning(|_| Ok(Some(dummy_blob())));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .times(2)
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -850,6 +886,7 @@ async fn test_submit_proof_repeating_claims() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
+        blob_storage_provider: Arc::new(blob_storage_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1013,6 +1050,18 @@ async fn test_accept_credential() {
         .times(2)
         .returning(move |_| Some(formatter.clone()));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage
+        .expect_update()
+        .once()
+        .return_once(|_, _| Ok(()));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         history_repository: Arc::new(history_repository),
@@ -1021,6 +1070,7 @@ async fn test_accept_credential() {
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
+        blob_storage_provider: Arc::new(blob_storage_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1166,6 +1216,18 @@ async fn test_accept_credential_with_did() {
         .times(2)
         .returning(move |_| Some(formatter.clone()));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage
+        .expect_update()
+        .once()
+        .return_once(|_, _| Ok(()));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
@@ -1174,6 +1236,7 @@ async fn test_accept_credential_with_did() {
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
+        blob_storage_provider: Arc::new(blob_storage_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1251,6 +1314,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         issuance_protocol_provider: Arc::new(MockIssuanceProtocolProvider::new()),
         verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        blob_storage_provider: Arc::new(MockBlobStorageProvider::new()),
         certificate_validator: Arc::new(MockCertificateValidator::new()),
         config: Arc::new(generic_config().core),
         client: client.clone(),
@@ -1271,7 +1335,6 @@ fn dummy_credential() -> Credential {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: b"credential".to_vec(),
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
@@ -1346,5 +1409,6 @@ fn dummy_credential() -> Credential {
         }),
         revocation_list: None,
         key: None,
+        credential_blob_id: Some(Uuid::new_v4().into()),
     }
 }

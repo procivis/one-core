@@ -9,21 +9,22 @@ use one_core::model::organisation::Organisation;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
-    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId, HistoryId,
-    IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
+    HistoryId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::entity::blob::BlobType;
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
+    blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
     identifier, interaction, key, key_did, organisation, proof, proof_claim,
     proof_input_claim_schema, proof_input_schema, proof_schema,
 };
@@ -42,8 +43,19 @@ pub async fn insert_credential(
     issuer_identifier_id: IdentifierId,
     deleted_at: Option<OffsetDateTime>,
     suspend_end_date: Option<OffsetDateTime>,
+    blob_id: BlobId,
 ) -> Result<Credential, DbErr> {
     let now = OffsetDateTime::now_utc();
+
+    blob::ActiveModel {
+        id: Set(blob_id),
+        created_date: Set(now),
+        last_modified: Set(now),
+        value: Set(vec![0, 0, 0, 0]),
+        r#type: Set(BlobType::Credential),
+    }
+    .insert(db)
+    .await?;
 
     let credential = credential::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -54,7 +66,6 @@ pub async fn insert_credential(
         redirect_uri: Set(None),
         deleted_at: Set(deleted_at),
         protocol: Set(protocol.to_owned()),
-        credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
         issuer_identifier_id: Set(Some(issuer_identifier_id)),
         issuer_certificate_id: Set(None),
@@ -65,6 +76,7 @@ pub async fn insert_credential(
         state: Set(state.into()),
         suspend_end_date: Set(suspend_end_date),
         profile: Set(None),
+        credential_blob_id: Set(Some(blob_id)),
     }
     .insert(db)
     .await?;

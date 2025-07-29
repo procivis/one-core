@@ -43,7 +43,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             issuance_date: value.issuance_date,
             last_modified: value.last_modified,
             deleted_at: value.deleted_at,
-            credential: value.credential,
             protocol: value.protocol,
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
@@ -84,6 +83,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             interaction: None,
             revocation_list: None,
             key: None,
+            credential_blob_id: None,
         })
     }
 }

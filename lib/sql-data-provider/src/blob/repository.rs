@@ -7,7 +7,7 @@ use sea_orm::{ActiveModelTrait, EntityTrait, Set, Unchanged};
 use shared_types::BlobId;
 use time::OffsetDateTime;
 
-use crate::blob_storage::BlobProvider;
+use crate::blob::BlobProvider;
 use crate::entity::blob;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -27,8 +27,9 @@ impl BlobRepository for BlobProvider {
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
-            .map(Into::into);
-        Ok(result)
+            .map(Blob::from);
+
+        return Ok(result);
     }
 
     async fn update(&self, id: &BlobId, update: UpdateBlobRequest) -> Result<(), DataLayerError> {

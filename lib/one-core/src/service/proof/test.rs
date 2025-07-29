@@ -603,7 +603,6 @@ async fn test_get_proof_with_array_holder() {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: vec![],
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -637,6 +636,7 @@ async fn test_get_proof_with_array_holder() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     let proof = Proof {
@@ -842,7 +842,6 @@ async fn test_get_proof_with_array_in_object_holder() {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: vec![],
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -876,6 +875,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     let proof = Proof {
@@ -1086,7 +1086,6 @@ async fn test_get_proof_with_object_array_holder() {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: vec![],
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -1120,6 +1119,7 @@ async fn test_get_proof_with_object_array_holder() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     let proof = Proof {
@@ -1313,7 +1313,6 @@ async fn test_get_proof_with_array() {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: vec![],
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -1347,6 +1346,7 @@ async fn test_get_proof_with_array() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     let proof = Proof {
@@ -1566,7 +1566,6 @@ async fn test_get_proof_with_array_in_object() {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: vec![],
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -1600,6 +1599,7 @@ async fn test_get_proof_with_array_in_object() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     let proof = Proof {
@@ -1825,7 +1825,6 @@ async fn test_get_proof_with_object_array() {
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
-        credential: vec![],
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
@@ -1859,6 +1858,7 @@ async fn test_get_proof_with_object_array() {
         revocation_list: None,
         key: None,
         profile: None,
+        credential_blob_id: None,
     };
 
     let proof = Proof {

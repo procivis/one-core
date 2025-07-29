@@ -10,10 +10,10 @@ use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
-use shared_types::{CertificateId, IdentifierId, KeyId};
+use shared_types::{BlobId, CertificateId, IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::entity::{self, claim, credential, credential_schema, identifier};
+use crate::entity::{claim, credential, credential_schema, identifier};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
@@ -83,15 +83,14 @@ impl IntoJoinRelations for CredentialFilterValue {
     }
 }
 
-impl From<entity::credential::Model> for Credential {
-    fn from(credential: entity::credential::Model) -> Self {
+impl From<credential::Model> for Credential {
+    fn from(credential: credential::Model) -> Self {
         Self {
             id: credential.id,
             created_date: credential.created_date,
             issuance_date: credential.issuance_date,
             last_modified: credential.last_modified,
             deleted_at: credential.deleted_at,
-            credential: credential.credential,
             protocol: credential.protocol,
             redirect_uri: credential.redirect_uri,
             role: credential.role.into(),
@@ -106,6 +105,7 @@ impl From<entity::credential::Model> for Credential {
             interaction: None,
             revocation_list: None,
             key: None,
+            credential_blob_id: credential.credential_blob_id,
         }
     }
 }
@@ -120,6 +120,7 @@ pub(super) fn request_to_active_model(
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
     key_id: Option<KeyId>,
+    credential_blob: Option<BlobId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id),
@@ -129,7 +130,6 @@ pub(super) fn request_to_active_model(
         issuance_date: Set(request.issuance_date),
         deleted_at: Set(request.deleted_at),
         protocol: Set(request.protocol.to_owned()),
-        credential: Set(request.credential.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
         issuer_identifier_id: Set(issuer_identifier_id),
         issuer_certificate_id: Set(issuer_certificate_id),
@@ -141,6 +141,7 @@ pub(super) fn request_to_active_model(
         state: Set(request.state.into()),
         suspend_end_date: Set(request.suspend_end_date),
         profile: Set(request.profile.clone()),
+        credential_blob_id: Set(credential_blob),
     }
 }
 
@@ -210,7 +211,6 @@ pub(super) fn credential_list_model_to_repository_model(
         issuance_date: credential.issuance_date,
         last_modified: credential.last_modified,
         deleted_at: credential.deleted_at,
-        credential: credential.credential.unwrap_or_default(),
         protocol: credential.protocol,
         redirect_uri: credential.redirect_uri,
         role: credential.role.into(),
@@ -225,6 +225,7 @@ pub(super) fn credential_list_model_to_repository_model(
         interaction: None,
         revocation_list: None,
         key: None,
+        credential_blob_id: credential.credential_blob_id,
     })
 }
 

@@ -23,6 +23,7 @@ use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
@@ -307,13 +308,28 @@ impl SSIHolderService {
                         "Failed to find preloaded credential with id {}",
                         credential_request.credential_id
                     )))?;
-            let credential_data = credential.credential.as_slice();
-            if credential_data.is_empty() {
-                return Err(BusinessLogicError::MissingCredentialData {
+
+            let credential_blob_id =
+                credential
+                    .credential_blob_id
+                    .ok_or(BusinessLogicError::MissingCredentialData {
+                        credential_id: credential_request.credential_id,
+                    })?;
+
+            let db_blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| {
+                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                })?;
+            let credential_blob = db_blob_storage.get(&credential_blob_id).await?.ok_or(
+                BusinessLogicError::MissingCredentialData {
                     credential_id: credential_request.credential_id,
-                }
-                .into());
-            }
+                },
+            )?;
+
+            let credential_data = credential_blob.value.as_slice();
             let credential_content = std::str::from_utf8(credential_data)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 

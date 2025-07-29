@@ -10,6 +10,7 @@ use super::SSIHolderService;
 use super::dto::{CredentialConfigurationSupportedResponseDTO, HandleInvitationResultDTO};
 use crate::common_mapper::value_to_model_claims;
 use crate::common_validator::throw_if_credential_state_not_eq;
+use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -24,6 +25,7 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -270,15 +272,43 @@ impl SSIHolderService {
             .extract_claims(&credential.id, &issuer_response.credential, schema)
             .await?;
 
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        let blob_id = match credential.credential_blob_id {
+            None => {
+                let blob = Blob::new(
+                    issuer_response.credential.as_bytes().to_vec(),
+                    BlobType::Credential,
+                );
+                db_blob_storage.create(blob.clone()).await?;
+                blob.id
+            }
+            Some(blob_id) => {
+                db_blob_storage
+                    .update(
+                        &blob_id,
+                        UpdateBlobRequest {
+                            value: Some(issuer_response.credential.as_bytes().to_vec()),
+                        },
+                    )
+                    .await?;
+                blob_id
+            }
+        };
+
         self.credential_repository
             .update_credential(
                 credential.id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Accepted),
-                    credential: Some(issuer_response.credential.bytes().collect()),
                     holder_identifier_id: Some(holder_identifer.id),
                     key: Some(selected_key.id),
                     claims: Some(claims),
+                    credential_blob_id: Some(blob_id),
                     ..Default::default()
                 },
             )
