@@ -18,9 +18,9 @@ use crate::model::key::{Key, KeyRelations};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::caching_loader::CachingLoader;
-use crate::provider::did_method::model::DidCapabilities;
+use crate::provider::did_method::model::{DidCapabilities, Operation};
 use crate::provider::did_method::provider::DidMethodProviderImpl;
-use crate::provider::did_method::{DidCreated, DidMethod, MockDidMethod};
+use crate::provider::did_method::{DidCreated, DidMethod, DidUpdate, MockDidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -31,11 +31,12 @@ use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
+use crate::service::did::DidDeactivationError;
+use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
-use crate::service::test_utilities::dummy_organisation;
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
 
 fn setup_service(
     did_repository: MockDidRepository,
@@ -482,6 +483,132 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
         result,
         Err(ServiceError::Validation(
             ValidationError::DidInvalidKeyNumber
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_update_did() {
+    let did = Did {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        organisation: Some(dummy_organisation(None)),
+        did: "did:web:abc".parse().unwrap(),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        keys: Some(vec![]),
+        deactivated: false,
+        log: None,
+    };
+
+    let update_request = DidPatchRequestDTO {
+        deactivated: Some(true),
+    };
+
+    let mut did_method = MockDidMethod::default();
+    did_method.expect_deactivate().once().returning(|_, _, _| {
+        Ok(DidUpdate {
+            deactivated: Some(true),
+            log: None,
+        })
+    });
+    did_method
+        .expect_get_capabilities()
+        .returning(|| DidCapabilities {
+            operations: vec![Operation::DEACTIVATE],
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
+            method_names: vec!["example".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
+        });
+
+    let mut did_repository = MockDidRepository::default();
+    did_repository.expect_get_did().once().returning({
+        let clone = did.to_owned();
+        move |_, _| Ok(Some(clone.to_owned()))
+    });
+    did_repository
+        .expect_update_did()
+        .once()
+        .returning(|_| Ok(()));
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_from_did_id()
+        .once()
+        .return_once(|_, _| Ok(Some(dummy_identifier())));
+    identifier_repository
+        .expect_update()
+        .once()
+        .return_once(|_, _| Ok(()));
+
+    let service = setup_service(
+        did_repository,
+        MockKeyRepository::default(),
+        identifier_repository,
+        MockOrganisationRepository::default(),
+        did_method,
+        MockKeyAlgorithmProvider::default(),
+        get_did_config(),
+    );
+
+    service.update_did(&did.id, update_request).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_update_did_fail_reactivation() {
+    let did = Did {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        organisation: Some(dummy_organisation(None)),
+        did: "did:web:abc".parse().unwrap(),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        keys: Some(vec![]),
+        deactivated: true,
+        log: None,
+    };
+
+    let update_request = DidPatchRequestDTO {
+        deactivated: Some(false),
+    };
+
+    let mut did_method = MockDidMethod::default();
+    did_method
+        .expect_get_capabilities()
+        .returning(|| DidCapabilities {
+            operations: vec![Operation::DEACTIVATE],
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
+            method_names: vec!["example".to_string()],
+            features: vec![],
+            supported_update_key_types: vec![],
+        });
+
+    let mut did_repository = MockDidRepository::default();
+    did_repository.expect_get_did().once().returning({
+        let clone = did.to_owned();
+        move |_, _| Ok(Some(clone.to_owned()))
+    });
+
+    let service = setup_service(
+        did_repository,
+        MockKeyRepository::default(),
+        MockIdentifierRepository::default(),
+        MockOrganisationRepository::default(),
+        did_method,
+        MockKeyAlgorithmProvider::default(),
+        get_did_config(),
+    );
+
+    let result = service.update_did(&did.id, update_request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::DidDeactivation(DidDeactivationError::CannotBeReactivated { .. })
         ))
     ));
 }

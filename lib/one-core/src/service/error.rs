@@ -776,7 +776,7 @@ pub enum ErrorCode {
     #[strum(message = "DID value already exists")]
     BR_0028,
 
-    #[strum(message = "DID cannot be deactivated ")]
+    #[strum(message = "DID cannot be deactivated")]
     BR_0029,
 
     #[strum(message = "DID invalid key number")]
@@ -1271,6 +1271,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Blob storage provider not found")]
     BR_0252,
+
+    #[strum(message = "DID cannot be reactivated")]
+    BR_0256,
 }
 
 impl From<uuid::Error> for ServiceError {

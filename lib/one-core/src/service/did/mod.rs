@@ -60,6 +60,8 @@ pub enum DidDeactivationError {
     DeactivatedSameValue { value: bool, method: String },
     #[error("DID method {method} cannot be deactivated")]
     CannotBeDeactivated { method: String },
+    #[error("DID method {method} cannot be reactivated")]
+    CannotBeReactivated { method: String },
     #[error("Remote DID cannot be deactivated")]
     RemoteDid,
 }
@@ -69,6 +71,7 @@ impl DidDeactivationError {
         match self {
             Self::DeactivatedSameValue { .. } => ErrorCode::BR_0027,
             Self::CannotBeDeactivated { .. } | Self::RemoteDid => ErrorCode::BR_0029,
+            Self::CannotBeReactivated { .. } => ErrorCode::BR_0256,
         }
     }
 }

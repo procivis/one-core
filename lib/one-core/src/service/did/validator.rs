@@ -50,12 +50,20 @@ pub(super) fn validate_deactivation_request(
         return Err(DidDeactivationError::RemoteDid.into());
     }
 
-    if !did_method
-        .get_capabilities()
-        .operations
-        .contains(&Operation::DEACTIVATE)
+    if deactivate
+        && !did_method
+            .get_capabilities()
+            .operations
+            .contains(&Operation::DEACTIVATE)
     {
         return Err(DidDeactivationError::CannotBeDeactivated {
+            method: did.did_method.to_owned(),
+        }
+        .into());
+    }
+
+    if !deactivate {
+        return Err(DidDeactivationError::CannotBeReactivated {
             method: did.did_method.to_owned(),
         }
         .into());
