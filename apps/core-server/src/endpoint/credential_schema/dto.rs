@@ -48,7 +48,6 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
-    #[serde(default)]
     pub external_schema: bool,
 }
 
