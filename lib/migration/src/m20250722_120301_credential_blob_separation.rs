@@ -44,7 +44,7 @@ impl MigrationTrait for Migration {
             let id: String = found_credential.try_get_by_index(0)?;
             let set_blob_uuid = Query::update()
                 .table(Credential::Table)
-                .value(Credential::CredentialBlobId, Uuid::new_v4())
+                .value(Credential::CredentialBlobId, Uuid::new_v4().to_string())
                 .cond_where(Expr::col(Credential::Id).eq(id))
                 .to_owned();
             manager.exec_stmt(set_blob_uuid).await?;
