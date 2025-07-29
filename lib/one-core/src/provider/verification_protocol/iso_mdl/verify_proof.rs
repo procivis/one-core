@@ -427,7 +427,7 @@ pub(crate) async fn accept_proof(
             .first()
             .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
 
-        let (issuer_identifier, ..) = get_or_create_identifier(
+        let (issuer_identifier, issuer_identifier_relation) = get_or_create_identifier(
             did_method_provider,
             did_repository,
             certificate_repository,
@@ -455,6 +455,7 @@ pub(crate) async fn accept_proof(
             credential_schema.to_owned(),
             claims,
             issuer_identifier,
+            issuer_identifier_relation,
             Some(holder_identifier.clone()),
             proof.protocol.to_owned(),
         )?;

@@ -209,7 +209,7 @@ impl ProofService {
             claim_schemas.push(claim_schema.to_owned());
         }
 
-        let (issuer_identifier, ..) = get_or_create_identifier(
+        let (issuer_identifier, issuer_identifier_relation) = get_or_create_identifier(
             &*self.did_method_provider,
             &*self.did_repository,
             &*self.certificate_repository,
@@ -228,6 +228,7 @@ impl ProofService {
             credential_schema.to_owned(),
             claims,
             issuer_identifier,
+            issuer_identifier_relation,
             None,
             proof.protocol.to_owned(),
         )?;

@@ -51,7 +51,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             profile: value.profile,
             claims: Some(convert_inner(claims_with_schema)),
             issuer_identifier: None,
-            // TODO ONE-5920: Fill in value if issued using certificate
             issuer_certificate: None,
             holder_identifier: None,
             schema: Some(CredentialSchema {

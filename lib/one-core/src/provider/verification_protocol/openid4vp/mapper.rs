@@ -517,7 +517,6 @@ pub(crate) fn extracted_credential_to_model(
             profile: profile.clone(),
             claims: Some(model_claims.to_owned()),
             issuer_identifier: None,
-            // TODO ONE-5920: Fill in value if issued using certificate
             issuer_certificate: None,
             holder_identifier: None,
             schema: Some(credential_schema),
