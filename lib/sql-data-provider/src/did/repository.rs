@@ -70,6 +70,7 @@ impl DidProvider {
                 related_keys.push(RelatedKey {
                     role: key_did_model.role.into(),
                     key,
+                    reference: key_did_model.reference,
                 })
             }
             result.keys = Some(related_keys);
@@ -155,6 +156,7 @@ impl DidRepository for DidProvider {
                         did_id: Set(did.id),
                         key_id: Set(key.key.id),
                         role: Set(key.role.into()),
+                        reference: Set(key.reference),
                     })
                     .collect::<Vec<_>>(),
             )

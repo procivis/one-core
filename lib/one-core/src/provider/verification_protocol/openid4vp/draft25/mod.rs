@@ -696,7 +696,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             client_id_scheme,
             &self.key_algorithm_provider,
             &*self.key_provider,
-            &*self.did_method_provider,
         )
         .await?;
 

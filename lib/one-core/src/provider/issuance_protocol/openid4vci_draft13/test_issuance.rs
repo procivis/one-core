@@ -51,7 +51,7 @@ use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::test_utilities::{
-    dummy_did_document, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
+    dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
 
 #[tokio::test]
@@ -84,6 +84,7 @@ async fn test_issuer_submit_succeeds() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..dummy_did()
             }),
@@ -166,12 +167,6 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(move |did| Ok(dummy_did_document(did)));
-
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
         .expect_get_revocation_by_issuer_identifier_id()
@@ -229,7 +224,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(history_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
-        Arc::new(did_method_provider),
+        Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
@@ -278,6 +273,7 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..dummy_did()
             }),
@@ -352,12 +348,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(move |did| Ok(dummy_did_document(did)));
-
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
         .expect_get_revocation_by_issuer_identifier_id()
@@ -427,7 +417,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(history_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
-        Arc::new(did_method_provider),
+        Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
@@ -511,12 +501,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .expect_get_signature_provider()
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
-
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_resolve()
-        .once()
-        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
@@ -616,7 +600,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockHistoryRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
-        Arc::new(did_method_provider),
+        Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),

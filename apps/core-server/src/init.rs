@@ -598,7 +598,6 @@ pub async fn initialize_core(
                         Arc::new(LvvcProvider::new(
                             Some(core_base_url.clone()),
                             formatter_provider.clone(),
-                            did_method_provider.clone(),
                             data_repository.get_validity_credential_repository(),
                             key_provider.clone(),
                             key_algorithm_provider.clone(),

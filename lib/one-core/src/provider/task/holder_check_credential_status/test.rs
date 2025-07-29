@@ -240,6 +240,7 @@ fn generic_credential() -> Credential {
                 key_type: "EDDSA".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         deactivated: false,
         log: None,

@@ -10,7 +10,6 @@ use super::model::{
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -40,7 +39,6 @@ pub(crate) async fn create_openidvp20_authorization_request(
     client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<OpenID4VP20AuthorizationRequestQueryParams, VerificationProtocolError> {
     if openidvc_params.use_request_uri {
         Ok(OpenID4VP20AuthorizationRequestQueryParams {
@@ -88,7 +86,6 @@ pub(crate) async fn create_openidvp20_authorization_request(
                     &interaction_id,
                     key_algorithm_provider,
                     key_provider,
-                    did_method_provider,
                 )
                 .await?;
 
@@ -106,7 +103,6 @@ pub(crate) async fn create_openidvp20_authorization_request(
                     &interaction_id,
                     key_algorithm_provider,
                     key_provider,
-                    did_method_provider,
                 )
                 .await?;
 

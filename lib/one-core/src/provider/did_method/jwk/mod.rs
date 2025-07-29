@@ -12,6 +12,7 @@ use shared_types::{DidId, DidValue};
 use super::common::expect_one_key;
 use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::model::key::Key;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::{
@@ -76,10 +77,6 @@ impl DidMethod for JWKDidMethod {
         Err(DidMethodError::NotSupported)
     }
 
-    fn can_be_deactivated(&self) -> bool {
-        false
-    }
-
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
@@ -101,6 +98,10 @@ impl DidMethod for JWKDidMethod {
 
     fn get_keys(&self) -> Option<Keys> {
         Some(Keys::default())
+    }
+
+    fn get_reference_for_key(&self, _key: &Key) -> Result<String, DidMethodError> {
+        Ok("0".to_string())
     }
 }
 

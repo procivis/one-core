@@ -32,6 +32,7 @@ async fn test_list_proof_success() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -136,6 +137,7 @@ async fn test_list_proofs_by_ids() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -256,6 +258,7 @@ async fn test_list_proofs_by_name() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -411,6 +414,7 @@ async fn test_list_proofs_by_schema_ids() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -566,6 +570,7 @@ async fn test_list_proofs_by_state() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -701,6 +706,7 @@ async fn test_list_proof_with_retain_date() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -905,6 +911,7 @@ async fn test_list_proofs_by_role() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1070,6 +1077,7 @@ async fn test_list_proof_with_profile() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

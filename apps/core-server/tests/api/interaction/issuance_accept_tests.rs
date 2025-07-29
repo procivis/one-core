@@ -75,6 +75,7 @@ async fn test_issuance_accept_openid4vc() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -257,6 +258,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -421,6 +423,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -580,6 +583,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -745,6 +749,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -991,6 +996,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1114,6 +1120,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1237,6 +1244,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -1362,6 +1370,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1475,6 +1484,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -1604,6 +1614,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -1773,6 +1784,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
@@ -1940,6 +1952,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:z6MkviStFZjsFT9KP8R8vaXZJj5i4ouvmHxh7CpGrptzfMHD")

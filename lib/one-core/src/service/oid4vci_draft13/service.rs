@@ -569,7 +569,6 @@ impl OID4VCIDraft13Service {
                         &*self.formatter_provider,
                         &*self.key_provider,
                         &self.key_algorithm_provider,
-                        &*self.did_method_provider,
                         &self.base_url,
                     )
                     .await?,

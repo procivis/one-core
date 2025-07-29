@@ -13,6 +13,7 @@ use super::keys::Keys;
 use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Feature, Operation};
 use super::{DidCreated, DidKeys, DidMethod, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::webvh::common::{
@@ -228,10 +229,6 @@ impl DidMethod for DidWebVh {
         })
     }
 
-    fn can_be_deactivated(&self) -> bool {
-        true
-    }
-
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::CREATE, Operation::RESOLVE, Operation::DEACTIVATE],
@@ -248,5 +245,9 @@ impl DidMethod for DidWebVh {
 
     fn get_keys(&self) -> Option<Keys> {
         Some(self.params.keys.clone())
+    }
+
+    fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError> {
+        Ok(format!("key-{}", key.id))
     }
 }

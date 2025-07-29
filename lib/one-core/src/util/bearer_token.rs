@@ -21,27 +21,26 @@ pub(crate) async fn prepare_bearer_token(
     did: &Did,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ServiceError> {
     let authentication_key = did
         .find_first_matching_key(&KeyFilter::role_filter(KeyRole::Authentication))?
         .ok_or(ValidationError::KeyNotFound)?;
 
     let key_algorithm = authentication_key
+        .key
         .key_algorithm_type()
         .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
         .ok_or(ServiceError::MissingProvider(
             MissingProviderError::KeyAlgorithmProvider(
                 KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                    authentication_key.key_type.to_owned(),
+                    authentication_key.key.key_type.to_owned(),
                 ),
             ),
         ))?;
 
     let algorithm = key_algorithm
         .issuance_jose_alg_id()
-        .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?
-        .to_owned();
+        .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?;
 
     let payload = JWTPayload {
         issuer: Some(did.did.to_string()),
@@ -51,12 +50,10 @@ pub(crate) async fn prepare_bearer_token(
         ..Default::default()
     };
 
-    let key_id = did_method_provider
-        .get_verification_method_id_from_did_and_key(did, authentication_key)
-        .await?;
+    let key_id = did.verification_method_id(authentication_key);
 
     let signer = key_provider.get_signature_provider(
-        authentication_key,
+        &authentication_key.key,
         None,
         key_algorithm_provider.clone(),
     )?;

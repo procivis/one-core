@@ -146,6 +146,7 @@ async fn test_create_did() {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key,
+                reference: "1".to_string(),
             }]),
             deactivated: false,
             log: None,

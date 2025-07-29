@@ -445,7 +445,6 @@ impl BitstringStatusList {
             encoded_list,
             purpose,
             &*self.key_provider,
-            &*self.did_method_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
             &*self.get_formatter_for_issuance(is_bbs)?,
@@ -522,7 +521,6 @@ pub(crate) async fn format_status_list_credential(
     encoded_list: String,
     purpose: RevocationListPurpose,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
@@ -537,13 +535,6 @@ pub(crate) async fn format_status_list_credential(
         .into());
     }
 
-    let key = issuer_identifier
-        .find_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
-        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
-        .ok_or(RevocationError::KeyWithRoleNotFound(
-            KeyRole::AssertionMethod,
-        ))?;
-
     let issuer_did = issuer_identifier
         .did
         .as_ref()
@@ -552,9 +543,15 @@ pub(crate) async fn format_status_list_credential(
         ))?
         .clone();
 
-    let key_id = did_method_provider
-        .get_verification_method_id_from_did_and_key(&issuer_did, key)
-        .await?;
+    let key = issuer_did
+        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
+        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
+        .ok_or(RevocationError::KeyWithRoleNotFound(
+            KeyRole::AssertionMethod,
+        ))?;
+
+    let key_id = issuer_did.verification_method_id(key);
+    let key = &key.key;
 
     let auth_fn =
         key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;

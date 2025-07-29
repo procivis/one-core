@@ -279,10 +279,12 @@ async fn setup_submittable_presentation(
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: verifier_key.clone(),
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: verifier_key.clone(),
+                        reference: "1".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -336,6 +338,7 @@ async fn setup_submittable_presentation(
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key: holder_key,
+                reference: "1".to_string(),
             }]),
             ..Default::default()
         }),
@@ -519,6 +522,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key: holder_key,
+                reference: "1".to_string(),
             }]),
             ..Default::default()
         }),
@@ -892,10 +896,12 @@ async fn setup_submittable_presentation_dcql(
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: verifier_key.clone(),
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: verifier_key.clone(),
+                        reference: "1".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -949,6 +955,7 @@ async fn setup_submittable_presentation_dcql(
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key: holder_key,
+                reference: "1".to_string(),
             }]),
             ..Default::default()
         }),

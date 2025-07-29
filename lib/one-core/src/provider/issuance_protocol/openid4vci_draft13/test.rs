@@ -702,9 +702,31 @@ async fn test_holder_accept_credential_success() {
             Ok(Box::new(mock_signature_provider))
         });
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
+        key_algorithm_provider,
         config: dummy_config(),
         ..Default::default()
     });
@@ -881,6 +903,26 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .expect_parse_jwk()
         .returning(move |k| real_key_algorithm_provider.parse_jwk(k));
 
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -1053,9 +1095,31 @@ async fn test_holder_accept_expired_credential_fails() {
             Ok(Box::new(mock_signature_provider))
         });
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
+        key_algorithm_provider,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1171,7 +1235,18 @@ async fn test_holder_reject_credential() {
                     .expect_sign()
                     .returning(|_| Ok("signature".as_bytes().to_vec()));
 
-                let public_key = MockSignaturePublicKeyHandle::default();
+                let mut public_key = MockSignaturePublicKeyHandle::default();
+                public_key.expect_as_jwk().return_once(|| {
+                    Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                        alg: None,
+                        r#use: None,
+                        kid: None,
+                        crv: "P-256".to_string(),
+                        x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                        y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                    }))
+                });
+
                 Ok(GeneratedKey {
                     key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
                         private: Arc::new(private_key),
@@ -1197,13 +1272,12 @@ async fn test_holder_reject_credential() {
                 log: None,
             })
         });
+        method
+            .expect_get_reference_for_key()
+            .return_once(|_| Ok("1".to_string()));
 
         Some(Arc::new(method))
     });
-
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .returning(|_, _| Ok("key-id".to_string()));
 
     let openid_provider = setup_protocol(TestInputs {
         did_method_provider,

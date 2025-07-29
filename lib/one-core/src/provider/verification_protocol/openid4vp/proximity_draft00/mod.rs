@@ -429,7 +429,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 type_to_descriptor,
                 format_to_type_mapper,
                 key_id,
-                did_method_provider: &*self.did_method_provider,
                 formatter_provider: &*self.credential_formatter_provider,
                 key_provider: &*self.key_provider,
                 key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -827,7 +826,6 @@ pub(super) struct ProofShareParams<'a> {
     format_to_type_mapper: FormatMapper,
     key_id: KeyId,
 
-    did_method_provider: &'a dyn DidMethodProvider,
     formatter_provider: &'a dyn CredentialFormatterProvider,
     key_provider: &'a dyn KeyProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -883,16 +881,12 @@ pub(super) async fn prepare_proof_share(
         )));
     };
 
-    let verifier_jwk_key_id = params
-        .did_method_provider
-        .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
-        .await
-        .map_err(|err| VerificationProtocolError::Failed(format!("Failed resolving did {err}")))?;
+    let verifier_jwk_key_id = verifier_did.verification_method_id(verifier_key);
 
     let auth_fn_ble = params
         .key_provider
         .get_signature_provider(
-            verifier_key,
+            &verifier_key.key,
             Some(verifier_jwk_key_id.clone()),
             params.key_algorithm_provider.clone(),
         )
@@ -900,7 +894,7 @@ pub(super) async fn prepare_proof_share(
     let auth_fn_mqtt = params
         .key_provider
         .get_signature_provider(
-            verifier_key,
+            &verifier_key.key,
             Some(verifier_jwk_key_id),
             params.key_algorithm_provider,
         )

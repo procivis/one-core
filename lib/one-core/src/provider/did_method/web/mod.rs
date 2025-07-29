@@ -10,6 +10,7 @@ use url::Url;
 
 use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::model::key::Key;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
@@ -109,10 +110,6 @@ impl DidMethod for WebDidMethod {
         })
     }
 
-    fn can_be_deactivated(&self) -> bool {
-        true
-    }
-
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE, Operation::DEACTIVATE],
@@ -134,6 +131,10 @@ impl DidMethod for WebDidMethod {
 
     fn get_keys(&self) -> Option<Keys> {
         Some(self.params.keys.to_owned())
+    }
+
+    fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError> {
+        Ok(format!("key-{}", key.id))
     }
 }
 

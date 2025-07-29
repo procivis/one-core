@@ -163,6 +163,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key,
+                    reference: "1".to_string(),
                 }]),
                 did: Some(did_value.clone()),
                 ..Default::default()

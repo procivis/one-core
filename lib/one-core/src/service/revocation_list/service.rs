@@ -149,7 +149,6 @@ impl RevocationListService {
                 formatter,
                 self.key_provider.clone(),
                 self.key_algorithm_provider.clone(),
-                self.did_method_provider.clone(),
                 revocation.get_json_ld_context()?,
             )
             .await?

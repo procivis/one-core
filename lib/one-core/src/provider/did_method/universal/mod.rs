@@ -8,6 +8,7 @@ use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 
 use super::{DidCreated, DidKeys, DidUpdate};
+use crate::model::key::Key;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
@@ -80,10 +81,6 @@ impl DidMethod for UniversalDidMethod {
         Err(DidMethodError::NotSupported)
     }
 
-    fn can_be_deactivated(&self) -> bool {
-        false
-    }
-
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE],
@@ -100,6 +97,10 @@ impl DidMethod for UniversalDidMethod {
 
     fn get_keys(&self) -> Option<Keys> {
         None
+    }
+
+    fn get_reference_for_key(&self, _key: &Key) -> Result<String, DidMethodError> {
+        unimplemented!()
     }
 }
 

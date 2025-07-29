@@ -37,7 +37,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
     UpdateCredentialSchemaRequest,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
@@ -336,7 +336,6 @@ impl OpenID4VCI13 {
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &*self.key_provider,
-                    &*self.did_method_provider,
                     &self.key_algorithm_provider,
                     &self.base_url,
                     &*formatter,
@@ -352,7 +351,6 @@ impl OpenID4VCI13 {
                         RevocationListPurpose::Suspension,
                         &*self.revocation_list_repository,
                         &*self.key_provider,
-                        &*self.did_method_provider,
                         &self.key_algorithm_provider,
                         &self.base_url,
                         &*formatter,
@@ -386,7 +384,6 @@ impl OpenID4VCI13 {
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &*self.key_provider,
-                    &*self.did_method_provider,
                     &self.key_algorithm_provider,
                     &self.base_url,
                     &*formatter,
@@ -405,7 +402,7 @@ impl OpenID4VCI13 {
         Ok(credential_data)
     }
 
-    async fn jwk_key_id_from_identifier(
+    fn jwk_key_id_from_identifier(
         &self,
         issuer_identifier: &Identifier,
         key: &Key,
@@ -414,31 +411,13 @@ impl OpenID4VCI13 {
             return Ok(None);
         };
 
-        let did_document = self
-            .did_method_provider
-            .resolve(&did.did)
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        let assertion_methods =
-            did_document
-                .assertion_method
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing assertion_method keys".to_owned(),
-                ))?;
+        let related_did_key = did
+            .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .ok_or_else(|| IssuanceProtocolError::Failed("Missing related key".to_string()))?;
 
-        let issuer_jwk_key_id = match assertion_methods
-            .iter()
-            .find(|id| id.contains(&key.id.to_string()))
-            .cloned()
-        {
-            Some(id) => id,
-            None => assertion_methods
-                .first()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing first assertion_method key".to_owned(),
-                ))?
-                .to_owned(),
-        };
+        let issuer_jwk_key_id = did.verification_method_id(related_did_key);
+
         Ok(Some(issuer_jwk_key_id))
     }
 
@@ -700,10 +679,12 @@ impl OpenID4VCI13 {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
         holder_did: &DidValue,
+        holder_key: PublicKeyJwk,
         schema: &CredentialSchema,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
@@ -729,7 +710,7 @@ impl OpenID4VCI13 {
                 // that way the did does not need to be resolved.
                 if methods
                     .iter()
-                    .any(|method| holder_did.as_str().starts_with(method.as_str()))
+                    .any(|method| &format!("did:{}", holder_did.method()) == method)
                     // swiyu specific workaround: in the swiyu configuration did:jwk is specified, but jwk is expected instead
                     && methods != vec!["did:jwk".to_string()]
                 {
@@ -738,28 +719,7 @@ impl OpenID4VCI13 {
                     // swiyu specific workaround
                     || methods == vec!["did:jwk".to_string()]
                 {
-                    let resolved =
-                        self.did_method_provider
-                            .resolve(holder_did)
-                            .await
-                            .map_err(|_| {
-                                IssuanceProtocolError::Failed(
-                                    "Could not resolve did method".to_string(),
-                                )
-                            })?;
-
-                    Some(
-                        resolved
-                            .verification_method
-                            .first()
-                            .ok_or(IssuanceProtocolError::Failed(
-                                "Could find verification method in resolved did document"
-                                    .to_string(),
-                            ))?
-                            .public_key_jwk
-                            .clone()
-                            .into(),
-                    )
+                    Some(holder_key.into())
                 } else {
                     None
                 }
@@ -927,17 +887,29 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(
-                &key.to_owned(),
-                jwk_key_id.clone(),
-                self.key_algorithm_provider.clone(),
+            .get_signature_provider(key, jwk_key_id.clone(), self.key_algorithm_provider.clone())
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        let key = self
+            .key_algorithm_provider
+            .reconstruct_key(
+                key.key_algorithm_type()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Invalid key algorithm".to_string(),
+                    ))?,
+                &key.public_key,
+                None,
+                None,
             )
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .public_key_as_jwk()
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let credential_response = self
             .holder_request_credential(
                 &interaction_data,
                 &holder_did.did,
+                key,
                 schema,
                 token_response.c_nonce,
                 auth_fn,
@@ -1067,6 +1039,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
+        let related_key = RelatedKey {
+            role: KeyRole::AssertionMethod,
+            key: key.to_owned(),
+            reference: did_method_impl
+                .get_reference_for_key(&key)
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+        };
         let did = Did {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
@@ -1077,23 +1056,20 @@ impl IssuanceProtocol for OpenID4VCI13 {
             did_method,
             deactivated: false,
             log: None,
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: key.to_owned(),
-            }]),
+            keys: Some(vec![related_key.to_owned()]),
             organisation: None,
         };
 
-        let jwk_key_id = self
-            .did_method_provider
-            .get_verification_method_id_from_did_and_key(&did, &key)
-            .await
-            .ok();
+        let jwk_key_id = did.verification_method_id(&related_key);
+
+        let jwk = key_handle
+            .public_key_as_jwk()
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let auth_fn = Box::new(SignatureProviderImpl {
             key,
             key_handle,
-            jwk_key_id,
+            jwk_key_id: Some(jwk_key_id),
             key_algorithm_provider: self.key_algorithm_provider.clone(),
         });
 
@@ -1111,6 +1087,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .holder_request_credential(
                 &interaction_data,
                 &holder_did,
+                jwk,
                 schema,
                 token_response.c_nonce,
                 auth_fn,
@@ -1310,9 +1287,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
         let auth_fn = self
             .key_provider
             .get_signature_provider(
-                &key.to_owned(),
-                self.jwk_key_id_from_identifier(issuer_identifier, key)
-                    .await?,
+                key,
+                self.jwk_key_id_from_identifier(issuer_identifier, key)?,
                 self.key_algorithm_provider.clone(),
             )
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;

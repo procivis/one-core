@@ -242,6 +242,7 @@ async fn issuer_setup() -> TestIssuerSetup {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")

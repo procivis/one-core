@@ -766,6 +766,7 @@ async fn setup_lvvc_revoke_check_valid(
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: holder_key,
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -887,6 +888,7 @@ async fn test_revoke_check_mdoc_update() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: local_key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1035,6 +1037,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: local_key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1185,6 +1188,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: local_key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1750,6 +1754,7 @@ async fn test_suspended_to_valid_mdoc() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: local_key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

@@ -10,7 +10,6 @@ use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -78,7 +77,6 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
     interaction_id: &InteractionId,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, VerificationProtocolError> {
     let client_response = generate_authorization_request_params(
         proof,
@@ -116,10 +114,15 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
         .ok_or(VerificationProtocolError::Failed(
             "verifier_did is None".to_string(),
         ))?;
-    let key_id = did_method_provider
-        .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    let key = verifier_did
+        .find_key(&verifier_key.id, &Default::default())
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier key not found".to_string(),
+        ))?;
+
+    let key_id = verifier_did.verification_method_id(key);
 
     let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
 
@@ -280,7 +283,6 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
     interaction_id: &InteractionId,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, VerificationProtocolError> {
     let client_response = generate_authorization_request_params(
         proof,
@@ -309,10 +311,14 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_did(
             "verifier_did is None".to_string(),
         ))?;
 
-    let key_id = did_method_provider
-        .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let key = verifier_did
+        .find_key(&verifier_key.id, &Default::default())
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier key not found".to_string(),
+        ))?;
+
+    let key_id = verifier_did.verification_method_id(key);
 
     let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
 

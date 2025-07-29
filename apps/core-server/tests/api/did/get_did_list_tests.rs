@@ -110,10 +110,12 @@ async fn test_get_did_list_filters_with_key_filtering() {
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: key1.clone(),
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key1,
+                        reference: "1".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -131,6 +133,7 @@ async fn test_get_did_list_filters_with_key_filtering() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: key3,
+                    reference: "3".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -147,10 +150,12 @@ async fn test_get_did_list_filters_with_key_filtering() {
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: key2.clone(),
+                        reference: "2".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key2,
+                        reference: "2".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -289,10 +294,12 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: key1.clone(),
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key1.clone(),
+                        reference: "1".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -310,6 +317,7 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: key3,
+                    reference: "3".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -326,10 +334,12 @@ async fn test_get_did_list_filters_with_key_id_filtering() {
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: key2.clone(),
+                        reference: "2".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key2,
+                        reference: "2".to_string(),
                     },
                 ]),
                 ..Default::default()

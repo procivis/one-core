@@ -229,10 +229,8 @@ impl SSIHolderService {
                 .ok_or(ValidationError::KeyNotFound)?,
         };
 
-        let holder_jwk_key_id = self
-            .did_method_provider
-            .get_verification_method_id_from_did_and_key(&holder_did, selected_key)
-            .await?;
+        let holder_jwk_key_id = holder_did.verification_method_id(selected_key);
+        let selected_key = &selected_key.key;
 
         let verification_protocol = self
             .verification_protocol_provider
@@ -428,7 +426,6 @@ impl SSIHolderService {
                     &*self.validity_credential_repository,
                     &*self.key_provider,
                     &self.key_algorithm_provider,
-                    &*self.did_method_provider,
                     &*self.client,
                     &revocation_params,
                     false,

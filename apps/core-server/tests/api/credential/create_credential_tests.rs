@@ -278,14 +278,17 @@ async fn test_create_credential_with_issuer_key() {
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key1,
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key2,
+                        reference: "2".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key3.clone(),
+                        reference: "3".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -364,6 +367,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::CapabilityInvocation,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

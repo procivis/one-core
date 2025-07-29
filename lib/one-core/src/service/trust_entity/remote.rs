@@ -182,13 +182,8 @@ impl TrustEntityService {
         let remote_anchor_id = TrustAnchorId::from_str(remote_anchor_id)
             .map_err(|e| ServiceError::MappingError(format!("Invalid publisher reference: {e}")))?;
 
-        let bearer_token = prepare_bearer_token(
-            &did,
-            &*self.key_provider,
-            &self.key_algorithm_provider,
-            &*self.did_method_provider,
-        )
-        .await?;
+        let bearer_token =
+            prepare_bearer_token(&did, &*self.key_provider, &self.key_algorithm_provider).await?;
 
         Ok(RemoteOperationProperties {
             did,

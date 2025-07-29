@@ -277,6 +277,7 @@ async fn test_submit_proof_succeeds() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: dummy_key(),
+                    reference: "1".to_string(),
                 }]),
                 did_method: "KEY".to_string(),
                 ..dummy_did()
@@ -414,12 +415,6 @@ async fn test_submit_proof_succeeds() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .once()
-        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -432,7 +427,6 @@ async fn test_submit_proof_succeeds() {
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         ..mock_ssi_holder_service()
     };
@@ -474,6 +468,7 @@ async fn test_submit_proof_succeeds_with_did() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::Authentication,
                         key: dummy_key(),
+                        reference: "1".to_string(),
                     }]),
                     did_method: "KEY".to_string(),
                     ..dummy_did()
@@ -611,12 +606,6 @@ async fn test_submit_proof_succeeds_with_did() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .once()
-        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -629,7 +618,6 @@ async fn test_submit_proof_succeeds_with_did() {
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         ..mock_ssi_holder_service()
     };
@@ -672,6 +660,7 @@ async fn test_submit_proof_repeating_claims() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::Authentication,
                         key: dummy_key(),
+                        reference: "1".to_string(),
                     }]),
                     did_method: "KEY".to_string(),
                     ..dummy_did()
@@ -848,12 +837,6 @@ async fn test_submit_proof_repeating_claims() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .once()
-        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -866,7 +849,6 @@ async fn test_submit_proof_repeating_claims() {
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         ..mock_ssi_holder_service()
     };
@@ -910,6 +892,7 @@ async fn test_accept_credential() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: dummy_key(),
+                    reference: "1".to_string(),
                 }]),
                 did_method: "KEY".to_string(),
                 ..dummy_did()
@@ -1062,6 +1045,7 @@ async fn test_accept_credential_with_did() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::Authentication,
                         key: dummy_key(),
+                        reference: "1".to_string(),
                     }]),
                     did_method: "KEY".to_string(),
                     ..dummy_did()
@@ -1246,11 +1230,6 @@ async fn test_reject_credential() {
 }
 
 fn mock_ssi_holder_service() -> SSIHolderService {
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
-
     let client = Arc::new(ReqwestClient::default());
     let remote_entity_storage = Arc::new(MockRemoteEntityStorage::new());
 
@@ -1271,7 +1250,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         issuance_protocol_provider: Arc::new(MockIssuanceProtocolProvider::new()),
         verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
-        did_method_provider: Arc::new(did_method_provider),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         certificate_validator: Arc::new(MockCertificateValidator::new()),
         config: Arc::new(generic_config().core),
         client: client.clone(),

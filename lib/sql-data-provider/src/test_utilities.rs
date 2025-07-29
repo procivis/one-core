@@ -440,6 +440,7 @@ pub async fn insert_key_did(
         did_id: Set(did_id),
         key_id: Set(key_id),
         role: Set(role),
+        reference: Set("1".to_string()),
     }
     .insert(database)
     .await?;

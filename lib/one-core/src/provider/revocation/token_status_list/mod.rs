@@ -318,7 +318,6 @@ impl TokenStatusList {
             issuer_identifier,
             encoded_list,
             &*self.key_provider,
-            &*self.did_method_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
             &*self.get_formatter_for_issuance()?,
@@ -400,7 +399,6 @@ pub(crate) async fn format_status_list_credential(
     issuer_identifier: &Identifier,
     encoded_list: String,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
@@ -420,14 +418,16 @@ pub(crate) async fn format_status_list_credential(
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer did is None".to_string(),
-            ))?
-            .clone();
+            ))?;
 
-        Some(
-            did_method_provider
-                .get_verification_method_id_from_did_and_key(&issuer_did, key)
-                .await?,
-        )
+        let key = issuer_did
+            .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
+            .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
+            .ok_or(RevocationError::KeyWithRoleNotFound(
+                KeyRole::AssertionMethod,
+            ))?;
+
+        Some(issuer_did.verification_method_id(key))
     } else {
         None
     };

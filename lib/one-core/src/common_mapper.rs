@@ -611,7 +611,7 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
                 return Ok(None);
             };
 
-            encryption_key
+            &encryption_key.key
         }
     }
     .to_owned();

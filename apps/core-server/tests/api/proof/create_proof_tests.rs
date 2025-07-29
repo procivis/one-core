@@ -389,10 +389,12 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key.to_owned(),
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: key.to_owned(),
+                        reference: "1".to_string(),
                     },
                 ]),
                 ..Default::default()
@@ -494,10 +496,12 @@ async fn test_create_proof_success_without_key_agreement_key() {
                     RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key.to_owned(),
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         role: KeyRole::Authentication,
                         key: key.to_owned(),
+                        reference: "1".to_string(),
                     },
                 ]),
                 ..Default::default()

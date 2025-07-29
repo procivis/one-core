@@ -102,14 +102,17 @@ async fn test_share_proof_success_with_separate_encryption_key() {
                     RelatedKey {
                         key: signing_key.clone(),
                         role: KeyRole::AssertionMethod,
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         key: signing_key.clone(),
                         role: KeyRole::Authentication,
+                        reference: "1".to_string(),
                     },
                     RelatedKey {
                         key: encryption_key.clone(),
                         role: KeyRole::KeyAgreement,
+                        reference: "2".to_string(),
                     },
                 ]),
                 did: Some(

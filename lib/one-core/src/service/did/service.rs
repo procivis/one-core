@@ -16,19 +16,18 @@ use super::mapper::{
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
-use crate::model::did::{Did, DidListQuery, DidRelations};
+use crate::model::did::{Did, DidListQuery, DidRelations, RelatedKey};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::did_method::DidKeys;
+use crate::provider::did_method::common::jwk_verification_method;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::error::DataLayerError;
-use crate::service::did::mapper::{
-    map_did_model_to_did_web_response, map_key_to_verification_method,
-};
+use crate::service::did::mapper::map_did_model_to_did_web_response;
 use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -67,39 +66,35 @@ impl DidService {
             return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
         }
 
-        let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
+        let mut grouped_key: HashMap<KeyId, RelatedKey> = HashMap::new();
         let keys = did
             .keys
             .as_ref()
             .ok_or(ServiceError::MappingError("No keys found".to_string()))?;
         for key in keys {
-            grouped_key.insert(key.key.id, key.key.clone());
+            grouped_key.insert(key.key.id, key.to_owned());
         }
         map_did_model_to_did_web_response(
             &did,
             keys,
             &grouped_key
-                .iter()
-                .map(|(key, value)| {
-                    let key_type = value.key_algorithm_type().ok_or(
-                        KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                            value.key_type.to_string(),
-                        ),
-                    )?;
+                .into_iter()
+                .map(|(key_id, key)| {
+                    let Some(key_type) = key.key.key_algorithm_type() else {
+                        return Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                            key.key.key_type,
+                        )
+                        .into());
+                    };
 
-                    let public_key = self.key_algorithm_provider.reconstruct_key(
-                        key_type,
-                        &value.public_key,
-                        None,
-                        None,
-                    )?;
+                    let jwk = self
+                        .key_algorithm_provider
+                        .reconstruct_key(key_type, &key.key.public_key, None, None)?
+                        .public_key_as_jwk()?;
                     Ok((
-                        key.to_owned(),
-                        map_key_to_verification_method(
-                            &did.did,
-                            key,
-                            public_key.public_key_as_jwk()?.into(),
-                        )?,
+                        key_id,
+                        jwk_verification_method(did.verification_method_id(&key), &did.did, jwk)
+                            .into(),
                     ))
                 })
                 .collect::<Result<HashMap<_, _>, ServiceError>>()?,
@@ -224,13 +219,13 @@ impl DidService {
         );
 
         let key_ids = key_ids.into_iter().collect::<Vec<_>>();
-        let keys = self.key_repository.get_keys(&key_ids).await?;
+        let mut all_keys = self.key_repository.get_keys(&key_ids).await?;
 
         let new_id = Uuid::new_v4();
         let new_did_id = DidId::from(new_id);
 
         let capabilities = did_method.get_capabilities();
-        for key in &keys {
+        for key in &all_keys {
             if key.is_remote() {
                 return Err(ValidationError::KeyMustNotBeRemote(key.name.clone()).into());
             }
@@ -252,7 +247,7 @@ impl DidService {
             }
         }
 
-        let mut keys = build_keys_request(&request.keys, keys)?;
+        let mut keys = build_keys_request(&request.keys, all_keys.clone())?;
 
         let mut update_keys = None;
         if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
@@ -275,12 +270,27 @@ impl DidService {
 
         if let Some(update_keys) = update_keys {
             for key in update_keys {
-                self.key_repository.create_key(key).await?;
+                self.key_repository.create_key(key.clone()).await?;
+                all_keys.push(key);
             }
         }
 
+        let mut key_reference_mapping: HashMap<KeyId, String> = HashMap::new();
+        for key in all_keys {
+            let reference = did_method.get_reference_for_key(&key)?;
+            key_reference_mapping.insert(key.id, reference);
+        }
+
         let now = OffsetDateTime::now_utc();
-        let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now);
+        let did = did_from_did_request(
+            new_did_id,
+            request,
+            organisation,
+            did_value,
+            keys,
+            now,
+            key_reference_mapping,
+        )?;
         let did_value = did.did.clone();
 
         self.did_repository

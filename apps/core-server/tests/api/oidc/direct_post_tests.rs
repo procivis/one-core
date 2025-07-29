@@ -255,6 +255,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key: verifier_key.clone(),
+                reference: "1".to_string(),
             }]),
             ..Default::default()
         }),
@@ -460,6 +461,7 @@ async fn test_direct_post_multiple_presentations() {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key: verifier_key.clone(),
+                reference: "1".to_string(),
             }]),
             ..Default::default()
         }),
@@ -707,6 +709,7 @@ async fn test_direct_post_wrong_claim_format() {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key: verifier_key.clone(),
+                reference: "1".to_string(),
             }]),
             ..Default::default()
         }),

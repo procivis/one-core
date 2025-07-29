@@ -8,7 +8,6 @@ use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
@@ -61,7 +60,6 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
     let params = if openidvc_params.use_request_uri {
         AuthorizationRequestQueryParams {
@@ -108,7 +106,6 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     &interaction_id,
                     key_algorithm_provider,
                     key_provider,
-                    did_method_provider,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
@@ -127,7 +124,6 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     &interaction_id,
                     key_algorithm_provider,
                     key_provider,
-                    did_method_provider,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {

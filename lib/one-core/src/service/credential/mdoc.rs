@@ -9,6 +9,7 @@ use crate::model::credential::{
 };
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -97,14 +98,18 @@ impl CredentialService {
             .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
             .clone();
 
-        let key_id = self
-            .did_method_provider
-            .get_verification_method_id_from_did_and_key(&holder_did, &key)
-            .await?;
+        let key = holder_did.find_key(&key.id, &Default::default())?.ok_or(
+            DidMethodProviderError::VerificationMethodIdNotFound {
+                key_id: key.id,
+                did_id: holder_did.id,
+            },
+        )?;
+
+        let key_id = holder_did.verification_method_id(key);
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
+            .get_signature_provider(&key.key, None, self.key_algorithm_provider.clone())
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(

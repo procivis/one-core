@@ -72,6 +72,7 @@ async fn test_reactivate_credential_with_lvvc_success() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 did: Some(
                     DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")

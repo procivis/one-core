@@ -56,7 +56,8 @@ impl Identifier {
                 .did
                 .as_ref()
                 .and_then(|did| did.find_first_matching_key(filter).transpose())
-                .transpose()?,
+                .transpose()?
+                .map(|related_key| &related_key.key),
             IdentifierType::Certificate => {
                 let Some(certificates) = self.certificates.as_ref() else {
                     return Ok(None);

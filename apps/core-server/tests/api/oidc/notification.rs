@@ -98,6 +98,7 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

@@ -113,14 +113,17 @@ impl TestContext {
                         RelatedKey {
                             role: KeyRole::AssertionMethod,
                             key: key.to_owned(),
+                            reference: "1".to_string(),
                         },
                         RelatedKey {
                             role: KeyRole::Authentication,
                             key: key.to_owned(),
+                            reference: "1".to_string(),
                         },
                         RelatedKey {
                             role: KeyRole::KeyAgreement,
                             key: key.to_owned(),
+                            reference: "1".to_string(),
                         },
                     ]),
                     did: Some(

@@ -134,7 +134,6 @@ impl OID4VPDraft25Service {
                     &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
-                    &*self.did_method_provider,
                 )
                 .await?
             }
@@ -145,7 +144,6 @@ impl OID4VPDraft25Service {
                     &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
-                    &*self.did_method_provider,
                 )
                 .await?
             }

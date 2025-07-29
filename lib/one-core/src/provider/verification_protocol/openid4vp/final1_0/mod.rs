@@ -569,7 +569,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             client_id_scheme,
             &self.key_algorithm_provider,
             &*self.key_provider,
-            &*self.did_method_provider,
         )
         .await?;
 

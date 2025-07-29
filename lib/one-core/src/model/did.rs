@@ -40,6 +40,7 @@ pub enum KeyRole {
 pub struct RelatedKey {
     pub role: KeyRole,
     pub key: Key,
+    pub reference: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -107,7 +108,7 @@ impl Did {
         &self,
         key_id: &KeyId,
         filter: &KeyFilter,
-    ) -> Result<Option<&Key>, ServiceError> {
+    ) -> Result<Option<&RelatedKey>, ServiceError> {
         let mut same_id_keys = self
             .keys
             .as_ref()
@@ -121,26 +122,29 @@ impl Did {
         }
 
         Ok(Some(
-            &same_id_keys
+            same_id_keys
                 .find(|entry| filter.matches_key(entry))
                 .ok_or_else(|| {
                     ValidationError::InvalidKey("key has wrong role or algorithm".into())
-                })?
-                .key,
+                })?,
         ))
+    }
+
+    /// constructs full verification method identifier for the given key
+    pub fn verification_method_id(&self, key: &RelatedKey) -> String {
+        format!("{}#{}", self.did, key.reference)
     }
 
     pub fn find_first_matching_key(
         &self,
         filter: &KeyFilter,
-    ) -> Result<Option<&Key>, ServiceError> {
+    ) -> Result<Option<&RelatedKey>, ServiceError> {
         Ok(self
             .keys
             .as_ref()
             .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
             .iter()
-            .find(|entry| filter.matches_key(entry))
-            .map(|entry| &entry.key))
+            .find(|entry| filter.matches_key(entry)))
     }
 }
 

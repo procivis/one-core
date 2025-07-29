@@ -449,6 +449,7 @@ async fn test_share_proof_with_use_request_uri() {
                 key_type: "".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         organisation: None,
         log: None,

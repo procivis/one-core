@@ -14,6 +14,8 @@ pub struct Model {
 
     #[sea_orm(primary_key)]
     pub role: KeyRole,
+
+    pub reference: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

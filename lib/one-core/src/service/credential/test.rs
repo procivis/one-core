@@ -144,6 +144,7 @@ fn generic_credential() -> Credential {
                 key_type: "EDDSA".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         deactivated: false,
         log: None,
@@ -2172,6 +2173,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                     key_type: "EDDSA".to_string(),
                     organisation: None,
                 },
+                reference: "1".to_string(),
             },
             RelatedKey {
                 role: KeyRole::AssertionMethod,
@@ -2186,6 +2188,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                     key_type: "EDDSA".to_string(),
                     organisation: None,
                 },
+                reference: "1".to_string(),
             },
         ]),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
@@ -2317,6 +2320,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                 key_type: "EDDSA".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
@@ -2556,6 +2560,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                 key_type: "EDDSA".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
@@ -2680,6 +2685,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                 key_type: "unsupported".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
@@ -3907,6 +3913,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                         key_type: "EDDSA".to_string(),
                         organisation: None,
                     },
+                    reference: "1".to_string(),
                 }]),
                 deactivated: false,
                 log: None,
@@ -4474,6 +4481,7 @@ async fn test_get_credential_success_array_index_sorting() {
                         key_type: "EDDSA".to_string(),
                         organisation: None,
                     },
+                    reference: "1".to_string(),
                 }]),
                 deactivated: false,
                 log: None,
@@ -4790,6 +4798,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                         key_type: "EDDSA".to_string(),
                         organisation: None,
                     },
+                    reference: "1".to_string(),
                 }]),
                 deactivated: false,
                 log: None,
@@ -5009,6 +5018,7 @@ async fn test_get_credential_success_array_single_element() {
                         key_type: "EDDSA".to_string(),
                         organisation: None,
                     },
+                    reference: "1".to_string(),
                 }]),
                 deactivated: false,
                 log: None,
@@ -5201,6 +5211,7 @@ async fn test_create_credential_array(
         keys: Some(vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: dummy_key(),
+            reference: "1".to_string(),
         }]),
         ..dummy_did()
     };

@@ -14,7 +14,6 @@ use crate::model::revocation_list::{
 use crate::model::validity_credential::Lvvc;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -38,7 +37,6 @@ pub(crate) async fn generate_credential_additional_data(
     formatter_provider: &dyn CredentialFormatterProvider,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    did_method_provider: &dyn DidMethodProvider,
     core_base_url: &Option<String>,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
     let status_type = revocation_method.get_status_type();
@@ -89,7 +87,6 @@ pub(crate) async fn generate_credential_additional_data(
         RevocationListPurpose::Revocation,
         revocation_list_repository,
         key_provider,
-        did_method_provider,
         key_algorithm_provider,
         core_base_url,
         &*formatter,
@@ -106,7 +103,6 @@ pub(crate) async fn generate_credential_additional_data(
                 RevocationListPurpose::Suspension,
                 revocation_list_repository,
                 key_provider,
-                did_method_provider,
                 key_algorithm_provider,
                 core_base_url,
                 &*formatter,
@@ -153,7 +149,6 @@ pub(crate) async fn get_or_create_revocation_list_id(
     purpose: RevocationListPurpose,
     revocation_list_repository: &dyn RevocationListRepository,
     key_provider: &dyn KeyProvider,
-    did_method_provider: &dyn DidMethodProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
@@ -195,7 +190,6 @@ pub(crate) async fn get_or_create_revocation_list_id(
                         encoded_list,
                         purpose.to_owned(),
                         key_provider,
-                        did_method_provider,
                         key_algorithm_provider,
                         core_base_url,
                         formatter,
@@ -208,7 +202,6 @@ pub(crate) async fn get_or_create_revocation_list_id(
                         &issuer_identifier,
                         encoded_list,
                         key_provider,
-                        did_method_provider,
                         key_algorithm_provider,
                         core_base_url,
                         formatter,

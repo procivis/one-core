@@ -133,7 +133,6 @@ impl OID4VPFinal1_0Service {
                     &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
-                    &*self.did_method_provider,
                 )
                 .await?
             }
@@ -144,7 +143,6 @@ impl OID4VPFinal1_0Service {
                     &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
-                    &*self.did_method_provider,
                 )
                 .await?
             }

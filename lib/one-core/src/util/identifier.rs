@@ -69,14 +69,15 @@ pub(crate) fn entities_for_local_active_identifier<'a>(
             }
 
             let key =
-                match key_id {
+                &match key_id {
                     Some(key_id) => did
                         .find_key(&key_id, key_filter)?
                         .ok_or(ValidationError::KeyNotFound)?,
                     None => did.find_first_matching_key(key_filter)?.ok_or(
                         ValidationError::InvalidKey("No authentication key found".to_string()),
                     )?,
-                };
+                }
+                .key;
 
             Ok(IdentifierEntitySelection::Did { did, key })
         }

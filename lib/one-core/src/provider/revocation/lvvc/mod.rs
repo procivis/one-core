@@ -18,6 +18,7 @@ use uuid::fmt::Urn;
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::model::credential::Credential;
+use crate::model::did::{KeyFilter, KeyRole};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialStatus, IdentifierDetails, Issuer,
 };
@@ -26,7 +27,6 @@ use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -68,7 +68,6 @@ pub struct Params {
 pub struct LvvcProvider {
     core_base_url: Option<String>,
     credential_formatter: Arc<dyn CredentialFormatterProvider>,
-    did_method_provider: Arc<dyn DidMethodProvider>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -81,7 +80,6 @@ impl LvvcProvider {
     pub fn new(
         core_base_url: Option<String>,
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -91,7 +89,6 @@ impl LvvcProvider {
         Self {
             core_base_url,
             credential_formatter,
-            did_method_provider,
             validity_credential_repository,
             key_provider,
             key_algorithm_provider,
@@ -142,7 +139,6 @@ impl LvvcProvider {
                     self.formatter(credential)?,
                     self.key_provider.clone(),
                     self.key_algorithm_provider.clone(),
-                    self.did_method_provider.clone(),
                     self.get_json_ld_context()?,
                 )
                 .await?,
@@ -162,7 +158,6 @@ impl LvvcProvider {
             &*self.validity_credential_repository,
             &*self.key_provider,
             &self.key_algorithm_provider,
-            &*self.did_method_provider,
             &*self.client,
             &self.params,
             force_refresh,
@@ -375,7 +370,6 @@ pub async fn create_lvvc_with_status(
     formatter: Arc<dyn CredentialFormatter>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    did_method_provider: Arc<dyn DidMethodProvider>,
     json_ld_context: JsonLdContext,
 ) -> Result<Lvvc, RevocationError> {
     let base_url = core_base_url.as_ref().ok_or_else(|| {
@@ -399,29 +393,17 @@ pub async fn create_lvvc_with_status(
         .ok_or_else(|| RevocationError::MappingError("LVVC issuance is missing key".to_string()))?
         .to_owned();
 
-    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
-    let assertion_methods = did_document
-        .assertion_method
-        .ok_or(RevocationError::MappingError(
-            "Missing assertion_method keys".to_owned(),
-        ))?;
+    let related_did_key = issuer_did
+        .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
+        .map_err(|e| RevocationError::MappingError(e.to_string()))?
+        .ok_or_else(|| {
+            RevocationError::MappingError("LVVC issuance is missing related key".to_string())
+        })?;
 
-    let issuer_jwk_key_id = match assertion_methods
-        .iter()
-        .find(|id| id.contains(&key.id.to_string()))
-        .cloned()
-    {
-        Some(id) => id,
-        None => assertion_methods
-            .first()
-            .ok_or(RevocationError::MappingError(
-                "Missing first assertion_method key".to_owned(),
-            ))?
-            .to_owned(),
-    };
+    let issuer_jwk_key_id = issuer_did.verification_method_id(related_did_key);
 
     let auth_fn = key_provider.get_signature_provider(
-        &key.to_owned(),
+        &key,
         Some(issuer_jwk_key_id),
         key_algorithm_provider,
     )?;

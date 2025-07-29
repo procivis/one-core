@@ -65,6 +65,7 @@ async fn test_get_proof_success() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -171,6 +172,7 @@ async fn test_get_proof_detached_success() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -285,6 +287,7 @@ async fn test_get_proof_with_nested_claims() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -394,6 +397,7 @@ async fn test_get_proof_with_empty_array() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -545,6 +549,7 @@ async fn test_get_proof_with_array() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -670,6 +675,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -778,6 +784,7 @@ async fn test_get_proof_with_credentials() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -865,6 +872,7 @@ async fn test_get_proof_as_holder_success() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -954,6 +962,7 @@ async fn test_get_proof_with_retain_date() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1088,6 +1097,7 @@ async fn test_get_proof_with_deleted_claims() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -1321,6 +1331,7 @@ async fn test_get_proof_with_credentials_returns_profiles() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

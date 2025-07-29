@@ -21,7 +21,6 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -57,6 +56,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
                 key_type: "EDDSA".to_string(),
                 organisation: None,
             },
+            reference: "1".to_string(),
         }]),
         organisation: None,
         log: None,
@@ -144,12 +144,10 @@ fn create_provider(
     key_provider: MockKeyProvider,
     key_algorithm_provider: MockKeyAlgorithmProvider,
     validity_credential_repository: MockValidityCredentialRepository,
-    did_method_provider: MockDidMethodProvider,
 ) -> LvvcProvider {
     LvvcProvider::new(
         None,
         Arc::new(formatter_provider),
-        Arc::new(did_method_provider),
         Arc::new(validity_credential_repository),
         Arc::new(key_provider),
         Arc::new(key_algorithm_provider),
@@ -176,8 +174,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         .mount(&mock_server)
         .await;
 
-    let (key_provider, formatter_provider, did_method_provider, key_algorithm_provider) =
-        common_mock_providers();
+    let (key_provider, formatter_provider, key_algorithm_provider) = common_mock_providers();
 
     let (did, _, credential) = generic_did_credential(CredentialRole::Holder);
 
@@ -212,7 +209,6 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         key_provider,
         key_algorithm_provider,
         validity_credential_repository,
-        did_method_provider,
     );
 
     let result = provider
@@ -270,7 +266,6 @@ async fn test_check_revocation_status_as_holder_cached() {
         MockKeyProvider::new(),
         MockKeyAlgorithmProvider::new(),
         validity_credential_repository,
-        MockDidMethodProvider::new(),
     );
 
     let result = provider
@@ -325,8 +320,7 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
             }))
         });
 
-    let (key_provider, formatter_provider, did_method_provider, key_algorithm_provider) =
-        common_mock_providers();
+    let (key_provider, formatter_provider, key_algorithm_provider) = common_mock_providers();
 
     let lvvc_url = format!("{}/lvvcurl", mock_server.uri()).parse().unwrap();
     let status = CredentialStatus {
@@ -341,7 +335,6 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
         key_provider,
         key_algorithm_provider,
         validity_credential_repository,
-        did_method_provider,
     );
 
     let result = provider
@@ -359,7 +352,6 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
 fn common_mock_providers() -> (
     MockKeyProvider,
     MockCredentialFormatterProvider,
-    MockDidMethodProvider,
     MockKeyAlgorithmProvider,
 ) {
     let mut key_provider = MockKeyProvider::new();
@@ -386,12 +378,6 @@ fn common_mock_providers() -> (
             Some(Arc::new(formatter))
         });
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_verification_method_id_from_did_and_key()
-        .once()
-        .returning(|_, _| Ok("verification_method_id".to_string()));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -402,10 +388,5 @@ fn common_mock_providers() -> (
                 .returning(|| Some("ES256".to_string()));
             Some(Arc::new(key_algorithm))
         });
-    (
-        key_provider,
-        formatter_provider,
-        did_method_provider,
-        key_algorithm_provider,
-    )
+    (key_provider, formatter_provider, key_algorithm_provider)
 }

@@ -119,6 +119,7 @@ async fn test_get_did_exists() {
                 key_type: "EDDSA".to_string(),
                 organisation: None,
             },
+            reference: "abc".to_string(),
         }]),
         deactivated: false,
         log: None,
@@ -275,6 +276,9 @@ async fn test_create_did_success() {
 
     let mut did_method = MockDidMethod::default();
     did_method.expect_validate_keys().once().returning(|_| true);
+    did_method
+        .expect_get_reference_for_key()
+        .return_once(|_| Ok("1".to_string()));
 
     did_method
         .expect_create()
@@ -376,6 +380,9 @@ async fn test_create_did_value_already_exists() {
 
     let mut did_method = MockDidMethod::default();
     did_method.expect_validate_keys().once().returning(|_| true);
+    did_method
+        .expect_get_reference_for_key()
+        .return_once(|_| Ok("1".to_string()));
 
     did_method.expect_create().once().returning(|_, _, _| {
         Ok(DidCreated {

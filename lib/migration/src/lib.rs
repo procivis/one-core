@@ -132,6 +132,7 @@ mod m20250709_133731_key_reference_nullable;
 mod m20250710_065056_cache_clear_by_last_used;
 mod m20250721_075026_add_profile_field_credentials_proofs;
 mod m20250721_102954_creation_of_blob_storage;
+mod m20250728_090404_did_key_reference;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -266,6 +267,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250710_065056_cache_clear_by_last_used::Migration),
             Box::new(m20250721_075026_add_profile_field_credentials_proofs::Migration),
             Box::new(m20250721_102954_creation_of_blob_storage::Migration),
+            Box::new(m20250728_090404_did_key_reference::Migration),
         ]
     }
 }

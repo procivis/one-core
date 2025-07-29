@@ -945,6 +945,7 @@ async fn test_get_client_metadata_success() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::KeyAgreement,
                     key: verifier_key.clone(),
+                    reference: "1".to_string(),
                 }]),
                 deactivated: false,
                 log: None,

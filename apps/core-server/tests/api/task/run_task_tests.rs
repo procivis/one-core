@@ -157,6 +157,7 @@ async fn test_run_retain_proof_check_with_update() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -453,6 +454,7 @@ async fn test_run_task_holder_check_credential_status_with_no_params() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: holder_key,
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },
@@ -675,6 +677,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: holder_key,
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

@@ -97,6 +97,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
                 }]),
                 ..Default::default()
             },

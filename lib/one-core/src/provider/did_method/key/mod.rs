@@ -10,6 +10,7 @@ use shared_types::{DidId, DidValue};
 use super::common::expect_one_key;
 use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
 use crate::provider::did_method::keys::Keys;
@@ -40,19 +41,8 @@ impl DidMethod for KeyDidMethod {
         let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
-        let key_algorithm_type = key
-            .key_algorithm_type()
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+        let multibase = self.get_multibase(key)?;
 
-        let key_algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_type(key_algorithm_type)
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
-        let multibase = key_algorithm
-            .reconstruct_key(&key.public_key, None, None)
-            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
-            .public_key_as_multibase()
-            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
         format!("did:key:{multibase}")
             .parse()
             .map(|did| DidCreated { did, log: None })
@@ -97,10 +87,6 @@ impl DidMethod for KeyDidMethod {
         Err(DidMethodError::NotSupported)
     }
 
-    fn can_be_deactivated(&self) -> bool {
-        false
-    }
-
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
@@ -121,6 +107,29 @@ impl DidMethod for KeyDidMethod {
 
     fn get_keys(&self) -> Option<Keys> {
         Some(Keys::default())
+    }
+
+    fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError> {
+        self.get_multibase(key)
+    }
+}
+
+impl KeyDidMethod {
+    fn get_multibase(&self, key: &Key) -> Result<String, DidMethodError> {
+        let key_algorithm_type = key
+            .key_algorithm_type()
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_type(key_algorithm_type)
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+        let multibase = key_algorithm
+            .reconstruct_key(&key.public_key, None, None)
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
+            .public_key_as_multibase()
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+        Ok(multibase)
     }
 }
 

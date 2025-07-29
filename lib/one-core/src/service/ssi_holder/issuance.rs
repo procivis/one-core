@@ -134,10 +134,8 @@ impl SSIHolderService {
             }
         };
 
-        let holder_jwk_key_id = self
-            .did_method_provider
-            .get_verification_method_id_from_did_and_key(&did, selected_key)
-            .await?;
+        let holder_jwk_key_id = did.verification_method_id(selected_key);
+        let selected_key = &selected_key.key;
 
         let key_security = self
             .key_provider
