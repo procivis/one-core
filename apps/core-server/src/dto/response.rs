@@ -18,8 +18,9 @@ use super::error::{Cause, ErrorResponseRestDTO};
 use crate::router::AppState;
 
 #[derive(utoipa::IntoResponses)]
-pub enum ErrorResponse {
+pub(crate) enum ErrorResponse {
     #[response(status = 401, description = "Unauthorized")]
+    #[allow(dead_code)]
     Unauthorized,
     #[response(status = 400, description = "Bad Request")]
     BadRequest(#[to_schema] ErrorResponseRestDTO),
@@ -108,7 +109,7 @@ fn with_error_responses<SuccessResponse: utoipa::IntoResponses>()
 }
 
 /// Wrapper for Swagger declaration of a vector response
-pub struct VecResponse<T>(Vec<T>);
+pub(crate) struct VecResponse<T>(Vec<T>);
 
 impl<T, F: Into<T>> From<Vec<F>> for VecResponse<T> {
     fn from(value: Vec<F>) -> Self {
@@ -116,7 +117,7 @@ impl<T, F: Into<T>> From<Vec<F>> for VecResponse<T> {
     }
 }
 
-pub enum OkOrErrorResponse<T> {
+pub(crate) enum OkOrErrorResponse<T> {
     Ok(T),
     Error(ErrorResponse),
 }
@@ -207,7 +208,7 @@ impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<VecResponse<T>> {
     }
 }
 
-pub enum CreatedOrErrorResponse<T> {
+pub(crate) enum CreatedOrErrorResponse<T> {
     Created(T),
     Error(ErrorResponse),
 }
@@ -257,7 +258,7 @@ impl<T: ToSchema> utoipa::IntoResponses for CreatedOrErrorResponse<T> {
     }
 }
 
-pub enum EmptyOrErrorResponse {
+pub(crate) enum EmptyOrErrorResponse {
     NoContent,
     Error(ErrorResponse),
 }

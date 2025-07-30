@@ -2,15 +2,15 @@ use std::collections::HashMap;
 
 use one_core::service::config::dto::ConfigDTO;
 use one_dto_mapper::From;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[schema(example = json!({"format": {}, "identifier": {}, "issuanceProtocol": {}, "verificationProtocol": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}}))]
 #[from(ConfigDTO)]
-pub struct ConfigRestDTO {
+pub(crate) struct ConfigRestDTO {
     /// Credential formats for issuing, holding and verifying.
     pub format: HashMap<String, Value>,
     /// Identifier types to associate entities to schemas, credentials, trust lists and proofs.

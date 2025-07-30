@@ -17,7 +17,7 @@ use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GetListResponseRestDTO<T>
+pub(crate) struct GetListResponseRestDTO<T>
 where
     T: fmt::Debug + Serialize,
 {
@@ -26,22 +26,23 @@ where
     pub total_items: u64,
 }
 
-pub type GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>;
-pub type GetCredentialSchemasResponseDTO =
+pub(crate) type GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>;
+pub(crate) type GetCredentialSchemasResponseDTO =
     GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>;
-pub type GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>;
-pub type GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>;
-pub type GetProofSchemaListResponseRestDTO =
+pub(crate) type GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>;
+pub(crate) type GetCredentialsResponseDTO =
+    GetListResponseRestDTO<CredentialListItemResponseRestDTO>;
+pub(crate) type GetProofSchemaListResponseRestDTO =
     GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>;
-pub type GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>;
-pub type GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>;
-pub type GetTrustAnchorListResponseRestDTO =
+pub(crate) type GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>;
+pub(crate) type GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>;
+pub(crate) type GetTrustAnchorListResponseRestDTO =
     GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>;
-pub type GetTrustEntityListResponseRestDTO =
+pub(crate) type GetTrustEntityListResponseRestDTO =
     GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
-pub struct NoIncludesSupported {}
+pub(crate) struct NoIncludesSupported {}
 
 impl From<NoIncludesSupported> for one_core::model::list_query::NoInclude {
     fn from(_: NoIncludesSupported) -> Self {
@@ -51,7 +52,7 @@ impl From<NoIncludesSupported> for one_core::model::list_query::NoInclude {
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSupported> {
+pub(crate) struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSupported> {
     // pagination
     pub page: u32,
     pub page_size: PageSize<1000>,
@@ -69,7 +70,7 @@ pub struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSupported
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
 #[into("one_core::model::common::SortDirection")]
-pub enum SortDirection {
+pub(crate) enum SortDirection {
     #[serde(rename = "ASC")]
     Ascending,
     #[serde(rename = "DESC")]
@@ -78,14 +79,14 @@ pub enum SortDirection {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
 #[into("one_core::model::common::ExactColumn")]
-pub enum ExactColumn {
+pub(crate) enum ExactColumn {
     #[serde(rename = "name")]
     Name,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct EntityResponseRestDTO {
+pub(crate) struct EntityResponseRestDTO {
     pub id: Uuid,
 }
 
@@ -98,16 +99,16 @@ where
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from("one_core::model::common::EntityShareResponseDTO")]
 #[serde(rename_all = "camelCase")]
-pub struct EntityShareResponseRestDTO {
+pub(crate) struct EntityShareResponseRestDTO {
     pub url: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum Boolean {
+pub(crate) enum Boolean {
     True,
     False,
 }
@@ -119,7 +120,7 @@ impl From<Boolean> for bool {
 }
 
 #[derive(Clone, Debug)]
-pub struct PageSize<const MAX: u32>(u32);
+pub(crate) struct PageSize<const MAX: u32>(u32);
 
 impl<const MAX: u32> PageSize<MAX> {
     pub fn inner(&self) -> u32 {

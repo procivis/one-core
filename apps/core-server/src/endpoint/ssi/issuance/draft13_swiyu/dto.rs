@@ -23,7 +23,7 @@ use utoipa::{IntoParams, ToSchema};
 use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
@@ -32,7 +32,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataDisplayResponseDTO)]
 pub(crate) struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
     pub name: String,
@@ -40,7 +40,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialConfigurationData)]
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
@@ -82,7 +82,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
     pub name: String,
@@ -147,19 +147,19 @@ pub(crate) struct OpenID4VCICredentialRequestRestDTO {
     pub proof: OpenID4VCIProofRequestRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCIProofRequestDTO)]
 pub(crate) struct OpenID4VCIProofRequestRestDTO {
     pub proof_type: String,
     pub jwt: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(transparent)]
 pub(crate) struct TimestampRest(pub i64);
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCITokenResponseDTO)]
 pub(crate) struct OpenID4VCITokenResponseRestDTO {
     #[serde(with = "secret_string")]
@@ -176,12 +176,12 @@ pub(crate) struct OpenID4VCITokenResponseRestDTO {
     pub c_nonce: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIErrorResponseRestDTO {
     pub error: OpenID4VCIErrorRestEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
 #[serde(rename_all = "snake_case")]
 #[from(OpenID4VCIError)]
 pub(crate) enum OpenID4VCIErrorRestEnum {
@@ -199,7 +199,7 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(OpenID4VCISwiyuCredentialResponseDTO)]
 pub(crate) struct OpenID4VCISwiyuCredentialResponseRestDTO {
@@ -223,7 +223,7 @@ pub(crate) struct OpenID4VCICredentialOfferRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
+#[derive(Clone, Serialize, Debug, From, ToSchema)]
 #[from(ExtendedSubjectDTO)]
 pub(crate) struct ExtendedSubjectRestDTO {
     #[from(with_fn = convert_inner)]
@@ -232,13 +232,13 @@ pub(crate) struct ExtendedSubjectRestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+#[derive(Clone, Serialize, Debug, ToSchema)]
 pub(crate) struct ExtendedSubjectClaimsRestDTO {
     #[serde(flatten)]
     pub claims: IndexMap<String, ProcivisSubjectClaimValueRestDTO>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
+#[derive(Clone, Serialize, Debug, From, ToSchema)]
 #[from(OpenID4VCICredentialValueDetails)]
 pub(crate) struct ProcivisSubjectClaimValueRestDTO {
     pub value: Option<String>,

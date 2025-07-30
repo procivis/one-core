@@ -14,7 +14,7 @@ use serde_with::skip_serializing_none;
 use super::error::DidResolverError;
 use crate::endpoint::ssi::dto::DidDocumentRestDTO;
 
-#[derive(Debug, Serialize, Deserialize, Into)]
+#[derive(Debug, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CredentialIssueRequest)]
 pub struct CredentialIssueRequestDTO {
@@ -23,7 +23,7 @@ pub struct CredentialIssueRequestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default, Into)]
+#[derive(Debug, Deserialize, Default, Into)]
 #[into(CredentialIssueOptions)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueOptionsDTO {
@@ -32,7 +32,7 @@ pub struct IssueOptionsDTO {
     pub revocation_method: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, From)]
+#[derive(Debug, Serialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialIssueResponse)]
 pub struct CredentialIssueResponseDTO {
@@ -40,7 +40,7 @@ pub struct CredentialIssueResponseDTO {
     pub verifiable_credential: LdCredential,
 }
 
-#[derive(Debug, Serialize, Deserialize, Into)]
+#[derive(Debug, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CredentialVerifiyRequest)]
 pub struct CredentialVerifyRequestDTO {
@@ -49,7 +49,7 @@ pub struct CredentialVerifyRequestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default, Into)]
+#[derive(Debug, Deserialize, Default, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(VerifyOptions)]
 pub struct VerifyOptionsDTO {
@@ -58,7 +58,7 @@ pub struct VerifyOptionsDTO {
     pub credential_format: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, From)]
+#[derive(Debug, Serialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialVerifyResponse)]
 pub struct CredentialVerifyResponseDTO {
@@ -68,7 +68,7 @@ pub struct CredentialVerifyResponseDTO {
     pub credential: VcdmCredential,
 }
 
-#[derive(Debug, Serialize, Deserialize, Into)]
+#[derive(Debug, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(PresentationVerifyRequest)]
 pub struct PresentationVerifyRequestDTO {
@@ -76,7 +76,7 @@ pub struct PresentationVerifyRequestDTO {
     pub options: VerifyOptionsDTO,
 }
 
-#[derive(Debug, Serialize, Deserialize, From)]
+#[derive(Debug, Serialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationVerifyResponse)]
 pub struct PresentationVerifyResponseDTO {
@@ -86,14 +86,14 @@ pub struct PresentationVerifyResponseDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct IdentifierResponseDTO {
     pub result: VcApiDidDocumentRestDTO,
     pub error: Option<String>,
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct VcApiDidDocumentRestDTO {
     pub document: Option<DidDocumentRestDTO>,
 }
@@ -123,9 +123,6 @@ pub struct DidResolutionMetadataResponseDTO {
     pub(crate) content_type: String,
     pub(crate) error: Option<DidResolverError>,
 }
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DidDocumentMetadataRestDTO {}
 
 impl From<DidDocumentDTO> for DidDocumentResolutionResponseDTO {
     fn from(value: DidDocumentDTO) -> Self {

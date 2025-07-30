@@ -143,7 +143,7 @@ pub(crate) struct OpenID4VCICredentialRequestRestDTO {
     pub proof: OpenID4VCIProofRequestRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCIProofRequestDTO)]
 pub(crate) struct OpenID4VCIProofRequestRestDTO {
     pub proof_type: String,
@@ -153,7 +153,8 @@ pub(crate) struct OpenID4VCIProofRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCINotificationEvent)]
 #[serde(rename_all = "snake_case")]
-pub enum OpenID4VCINotificationEventRest {
+#[allow(clippy::enum_variant_names)]
+pub(crate) enum OpenID4VCINotificationEventRest {
     CredentialAccepted,
     CredentialFailure,
     CredentialDeleted,
@@ -161,7 +162,7 @@ pub enum OpenID4VCINotificationEventRest {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCINotificationRequestDTO)]
-pub struct OpenID4VCINotificationRequestRestDTO {
+pub(crate) struct OpenID4VCINotificationRequestRestDTO {
     pub notification_id: String,
     pub event: OpenID4VCINotificationEventRest,
     pub event_description: Option<String>,

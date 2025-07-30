@@ -18,14 +18,14 @@ use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
-pub type GetHistoryQuery =
+pub(crate) type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(HistoryResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct HistoryResponseRestDTO {
+pub(crate) struct HistoryResponseRestDTO {
     pub id: HistoryId,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -43,7 +43,7 @@ pub struct HistoryResponseRestDTO {
 #[derive(Serialize, ToSchema, TryFrom)]
 #[try_from(T = HistoryResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct HistoryResponseDetailRestDTO {
+pub(crate) struct HistoryResponseDetailRestDTO {
     #[try_from(infallible)]
     pub id: HistoryId,
     #[serde(serialize_with = "front_time")]
@@ -68,14 +68,14 @@ pub struct HistoryResponseDetailRestDTO {
 
 #[derive(Serialize, ToSchema, TryFrom)]
 #[try_from(T = one_core::service::history::dto::HistoryMetadataResponse, Error = MapperError)]
-pub enum HistoryMetadataRestEnum {
+pub(crate) enum HistoryMetadataRestEnum {
     UnexportableEntities(UnexportableEntitiesResponseRestDTO),
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = one_core::service::backup::dto::UnexportableEntitiesResponseDTO, Error = MapperError)]
-pub struct UnexportableEntitiesResponseRestDTO {
+pub(crate) struct UnexportableEntitiesResponseRestDTO {
     #[try_from(with_fn = try_convert_inner)]
     pub credentials: Vec<GetCredentialResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
@@ -91,7 +91,7 @@ pub struct UnexportableEntitiesResponseRestDTO {
 }
 
 #[derive(Serialize, ToSchema)]
-pub struct HistoryErrorMetadataRestDTO {
+pub(crate) struct HistoryErrorMetadataRestDTO {
     pub error_code: &'static str,
     pub message: String,
 }
@@ -109,7 +109,7 @@ impl From<HistoryErrorMetadataDTO> for HistoryErrorMetadataRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::history::HistoryAction")]
 #[into("one_core::model::history::HistoryAction")]
-pub enum HistoryAction {
+pub(crate) enum HistoryAction {
     Accepted,
     Created,
     CsrGenerated,
@@ -140,7 +140,7 @@ pub enum HistoryAction {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::history::HistoryEntityType")]
 #[into("one_core::model::history::HistoryEntityType")]
-pub enum HistoryEntityType {
+pub(crate) enum HistoryEntityType {
     Key,
     Did,
     Certificate,
@@ -158,7 +158,7 @@ pub enum HistoryEntityType {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into("one_core::model::history::SortableHistoryColumn")]
-pub enum SortableHistoryColumnRestDTO {
+pub(crate) enum SortableHistoryColumnRestDTO {
     CreatedDate,
     Action,
     EntityType,
@@ -166,7 +166,7 @@ pub enum SortableHistoryColumnRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct HistoryFilterQueryParamsRest {
+pub(crate) struct HistoryFilterQueryParamsRest {
     /// Return only events associated with the specified entity type(s).
     #[param(rename = "entityTypes[]", inline, nullable = false)]
     pub entity_types: Option<Vec<HistoryEntityType>>,
@@ -209,10 +209,10 @@ pub struct HistoryFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[into("one_core::model::history::HistorySearchEnum")]
 #[serde(rename_all = "camelCase")]
-pub enum HistorySearchEnumRest {
+pub(crate) enum HistorySearchEnumRest {
     ClaimName,
     ClaimValue,
     CredentialSchemaName,

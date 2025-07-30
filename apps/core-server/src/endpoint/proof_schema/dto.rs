@@ -23,10 +23,10 @@ use crate::endpoint::credential_schema::dto::{
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, Into)]
 #[into(CreateProofSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateProofSchemaRequestRestDTO {
+pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[schema(min_length = 1)]
     pub name: String,
@@ -43,10 +43,10 @@ pub struct CreateProofSchemaRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, Into)]
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofInputSchemaRequestRestDTO {
+pub(crate) struct ProofInputSchemaRequestRestDTO {
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
     pub credential_schema_id: Uuid,
@@ -60,10 +60,10 @@ pub struct ProofInputSchemaRequestRestDTO {
 
 /// Defines the set of attributes being requested when making proof requests
 /// using this schema.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateProofSchemaClaimRequestDTO)]
-pub struct ClaimProofSchemaRequestRestDTO {
+pub(crate) struct ClaimProofSchemaRequestRestDTO {
     /// The `id` of the attribute being requested, from the `claims` object.
     pub id: Uuid,
     /// Whether the attribute is required in the proof request.
@@ -73,7 +73,7 @@ pub struct ClaimProofSchemaRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportProofSchemaRequestRestDTO {
+pub(crate) struct ImportProofSchemaRequestRestDTO {
     #[try_into(infallible)]
     pub organisation_id: Uuid,
     pub schema: ImportProofSchemaRestDTO,
@@ -82,7 +82,7 @@ pub struct ImportProofSchemaRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportProofSchemaRestDTO {
+pub(crate) struct ImportProofSchemaRestDTO {
     #[try_into(infallible)]
     pub id: ProofSchemaId,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -109,7 +109,7 @@ pub struct ImportProofSchemaRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaInputSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportProofSchemaInputSchemaRestDTO {
+pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaRestDTO,
@@ -120,7 +120,7 @@ pub struct ImportProofSchemaInputSchemaRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ImportProofSchemaClaimSchemaDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportProofSchemaClaimSchemaRestDTO {
+pub(crate) struct ImportProofSchemaClaimSchemaRestDTO {
     pub id: Uuid,
     pub requested: bool,
     pub required: bool,
@@ -138,7 +138,7 @@ pub struct ImportProofSchemaClaimSchemaRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaCredentialSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportProofSchemaCredentialSchemaRestDTO {
+pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[try_into(infallible)]
     pub id: Uuid,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -173,17 +173,17 @@ pub struct ImportProofSchemaCredentialSchemaRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into("one_core::model::proof_schema::SortableProofSchemaColumn")]
-pub enum SortableProofSchemaColumnRestEnum {
+pub(crate) enum SortableProofSchemaColumnRestEnum {
     Name,
     CreatedDate,
 }
 
-pub type GetProofSchemaQuery =
+pub(crate) type GetProofSchemaQuery =
     ListQueryParamsRest<ProofSchemasFilterQueryParamsRest, SortableProofSchemaColumnRestEnum>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofSchemasFilterQueryParamsRest {
+pub(crate) struct ProofSchemasFilterQueryParamsRest {
     /// Specify the organization from which to return proof schemas.
     pub organisation_id: OrganisationId,
     /// Return only proof schemas with a name starting with this string.
@@ -202,10 +202,10 @@ pub struct ProofSchemasFilterQueryParamsRest {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetProofSchemaListItemDTO)]
-pub struct GetProofSchemaListItemResponseRestDTO {
+pub(crate) struct GetProofSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -224,10 +224,10 @@ pub struct GetProofSchemaListItemResponseRestDTO {
 
 // detail endpoint
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetProofSchemaResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct GetProofSchemaResponseRestDTO {
+pub(crate) struct GetProofSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -245,10 +245,10 @@ pub struct GetProofSchemaResponseRestDTO {
 
 /// The set of attributes being requested when using this proof schema.
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimSchemaResponseDTO)]
-pub struct ProofClaimSchemaResponseRestDTO {
+pub(crate) struct ProofClaimSchemaResponseRestDTO {
     pub id: Uuid,
     /// Marking attributes that are targeted with proof request
     pub requested: bool,
@@ -265,10 +265,10 @@ pub struct ProofClaimSchemaResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputSchemaResponseDTO)]
-pub struct ProofInputSchemaResponseRestDTO {
+pub(crate) struct ProofInputSchemaResponseRestDTO {
     /// Defines the set of attributes being requested when making proof requests using this schema.
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
@@ -280,6 +280,6 @@ pub struct ProofInputSchemaResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofSchemaShareResponseDTO)]
-pub struct ProofSchemaShareResponseRestDTO {
+pub(crate) struct ProofSchemaShareResponseRestDTO {
     pub url: String,
 }

@@ -15,23 +15,24 @@ use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
-pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
+pub(crate) type GetDidQuery =
+    ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 
 /// Whether a DID was locally created or is the DID of a remote wallet.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::did::DidType")]
 #[into("one_core::model::did::DidType")]
-pub enum DidType {
+pub(crate) enum DidType {
     Remote,
     Local,
 }
 
 /// DID details.
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidListItemResponseDTO)]
-pub struct DidListItemResponseRestDTO {
+pub(crate) struct DidListItemResponseRestDTO {
     pub id: DidId,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -49,10 +50,10 @@ pub struct DidListItemResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
+#[derive(Clone, Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct DidResponseRestDTO {
+pub(crate) struct DidResponseRestDTO {
     #[try_from(infallible)]
     pub id: DidId,
     #[try_from(infallible)]
@@ -81,10 +82,10 @@ pub struct DidResponseRestDTO {
 }
 
 /// The key, or keys, defining the verification relationships of the DID.
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryFrom)]
+#[derive(Clone, Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseKeysDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct DidResponseKeysRestDTO {
+pub(crate) struct DidResponseKeysRestDTO {
     #[try_from(with_fn = try_convert_inner)]
     pub authentication: Vec<KeyListItemResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
@@ -98,9 +99,9 @@ pub struct DidResponseKeysRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateDidRequestRestDTO {
+pub(crate) struct CreateDidRequestRestDTO {
     /// The DID name must be unique within the organization.
     pub name: String,
     /// Specify the organization.
@@ -118,10 +119,10 @@ pub struct CreateDidRequestRestDTO {
 
 /// Each DID has five verification relationships defining the verification
 /// method used for different purposes. Related guide: [Keys object](/dids#keys-object)
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateDidRequestKeysRestDTO {
+pub(crate) struct CreateDidRequestKeysRestDTO {
     #[into(with_fn = convert_inner)]
     pub authentication: Vec<KeyId>,
     #[into(with_fn = convert_inner)]
@@ -137,7 +138,7 @@ pub struct CreateDidRequestKeysRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into("one_core::model::did::SortableDidColumn")]
-pub enum SortableDidColumnRestDTO {
+pub(crate) enum SortableDidColumnRestDTO {
     Name,
     CreatedDate,
     Method,
@@ -146,17 +147,17 @@ pub enum SortableDidColumnRestDTO {
     Deactivated,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum ExactDidFilterColumnRestEnum {
+pub(crate) enum ExactDidFilterColumnRestEnum {
     Name,
     Did,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into("one_core::model::did::KeyRole")]
-pub enum KeyRoleRestEnum {
+pub(crate) enum KeyRoleRestEnum {
     Authentication,
     AssertionMethod,
     KeyAgreement,
@@ -167,7 +168,7 @@ pub enum KeyRoleRestEnum {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct DidFilterQueryParamsRest {
+pub(crate) struct DidFilterQueryParamsRest {
     /// Return only DIDs with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
@@ -208,6 +209,6 @@ pub struct DidFilterQueryParamsRest {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(DidPatchRequestDTO)]
-pub struct DidPatchRequestRestDTO {
+pub(crate) struct DidPatchRequestRestDTO {
     pub deactivated: Option<bool>,
 }

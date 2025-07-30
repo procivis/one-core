@@ -25,7 +25,7 @@ use crate::serialize::front_time;
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateTrustEntityRequestRestDTO {
+pub(crate) struct CreateTrustEntityRequestRestDTO {
     /// Specify the entity name.
     pub(super) name: String,
     /// base64 encoded image. Maximum size = 50kb.
@@ -66,11 +66,11 @@ pub enum TrustEntityRoleRest {
 }
 
 /// Trust entity state.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, Into, From)]
 #[into(TrustEntityState)]
 #[from(TrustEntityState)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustEntityStateRest {
+pub(crate) enum TrustEntityStateRest {
     Active,
     Removed,
     Withdrawn,
@@ -81,7 +81,7 @@ pub enum TrustEntityStateRest {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct GetTrustEntityResponseRestDTO {
+pub(crate) struct GetTrustEntityResponseRestDTO {
     /// Trust entity ID.
     pub id: TrustEntityId,
     pub organisation_id: Option<OrganisationId>,
@@ -122,7 +122,7 @@ pub struct GetTrustEntityResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(TrustEntityCertificateResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct TrustEntityCertificateResponseRestDTO {
+pub(crate) struct TrustEntityCertificateResponseRestDTO {
     pub state: CertificateStateRest,
     pub public_key: String,
     pub common_name: Option<String>,
@@ -144,7 +144,7 @@ pub struct TrustEntityCertificateResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetRemoteTrustEntityResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct GetRemoteTrustEntityResponseRestDTO {
+pub(crate) struct GetRemoteTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
     pub organisation_id: Option<OrganisationId>,
     #[serde(serialize_with = "front_time")]
@@ -166,7 +166,7 @@ pub struct GetRemoteTrustEntityResponseRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(SortableTrustEntityColumnEnum)]
-pub enum SortableTrustEntityColumnRestEnum {
+pub(crate) enum SortableTrustEntityColumnRestEnum {
     Name,
     Role,
     LastModified,
@@ -175,12 +175,12 @@ pub enum SortableTrustEntityColumnRestEnum {
     Type,
 }
 
-pub type ListTrustEntitiesQuery =
+pub(crate) type ListTrustEntitiesQuery =
     ListQueryParamsRest<TrustEntityFilterQueryParamsRestDto, SortableTrustEntityColumnRestEnum>;
 
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct TrustEntityFilterQueryParamsRestDto {
+pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
@@ -209,7 +209,7 @@ pub struct TrustEntityFilterQueryParamsRestDto {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(TrustEntitiesResponseItemDTO)]
-pub struct ListTrustEntitiesResponseItemRestDTO {
+pub(crate) struct ListTrustEntitiesResponseItemRestDTO {
     pub id: TrustEntityId,
     pub name: String,
 
@@ -234,7 +234,7 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateRemoteTrustEntityRequestRestDTO {
+pub(crate) struct CreateRemoteTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     #[serde(default)]
     #[schema(nullable = false)]

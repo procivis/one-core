@@ -37,7 +37,7 @@ use crate::serialize::{front_time, front_time_option};
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofStateEnum)]
 #[into(ProofStateEnum)]
-pub enum ProofStateRestEnum {
+pub(crate) enum ProofStateRestEnum {
     Created,
     Pending,
     Requested,
@@ -52,7 +52,7 @@ pub enum ProofStateRestEnum {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofRole)]
 #[into(ProofRole)]
-pub enum ProofRoleRestEnum {
+pub(crate) enum ProofRoleRestEnum {
     Holder,
     Verifier,
 }
@@ -61,7 +61,7 @@ pub enum ProofRoleRestEnum {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateProofRequestRestDTO {
+pub(crate) struct CreateProofRequestRestDTO {
     /// Choose a proof schema to use.
     pub proof_schema_id: ProofSchemaId,
     #[into(rename = "verifier_did_id")]
@@ -118,7 +118,7 @@ pub struct CreateProofRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ScanToVerifyRequestRestDTO {
+pub(crate) struct ScanToVerifyRequestRestDTO {
     pub credential: String,
     pub barcode: String,
     pub barcode_type: ScanToVerifyBarcodeTypeRestEnum,
@@ -126,7 +126,8 @@ pub struct ScanToVerifyRequestRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyBarcodeTypeEnum)]
-pub enum ScanToVerifyBarcodeTypeRestEnum {
+pub(crate) enum ScanToVerifyBarcodeTypeRestEnum {
+    #[allow(clippy::upper_case_acronyms)]
     MRZ,
     PDF417,
 }
@@ -135,7 +136,7 @@ pub enum ScanToVerifyBarcodeTypeRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(SortableProofColumn)]
-pub enum SortableProofColumnRestEnum {
+pub(crate) enum SortableProofColumnRestEnum {
     #[serde(rename = "schema.name")]
     SchemaName,
     Verifier,
@@ -145,7 +146,7 @@ pub enum SortableProofColumnRestEnum {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofsFilterQueryParamsRest {
+pub(crate) struct ProofsFilterQueryParamsRest {
     /// Specify the organization from which to return proof requests.
     pub organisation_id: OrganisationId,
     /// Return only proof requests with a name starting with this string.
@@ -173,14 +174,14 @@ pub struct ProofsFilterQueryParamsRest {
     pub exact: Option<Vec<ExactColumn>>,
 }
 
-pub type GetProofQuery =
+pub(crate) type GetProofQuery =
     ListQueryParamsRest<ProofsFilterQueryParamsRest, SortableProofColumnRestEnum>;
 
 #[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofListItemResponseRestDTO {
+pub(crate) struct ProofListItemResponseRestDTO {
     pub id: ProofId,
 
     #[serde(serialize_with = "front_time")]
@@ -232,7 +233,7 @@ pub struct ProofListItemResponseRestDTO {
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = PresentationDefinitionResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct PresentationDefinitionResponseRestDTO {
+pub(crate) struct PresentationDefinitionResponseRestDTO {
     #[try_from(with_fn = convert_inner, infallible)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
@@ -243,7 +244,7 @@ pub struct PresentationDefinitionResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestGroupResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct PresentationDefinitionRequestGroupResponseRestDTO {
+pub(crate) struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
@@ -258,7 +259,7 @@ pub struct PresentationDefinitionRequestGroupResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestedCredentialResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
+pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
@@ -278,7 +279,7 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionFieldDTO)]
-pub struct PresentationDefinitionFieldRestDTO {
+pub(crate) struct PresentationDefinitionFieldRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
@@ -288,7 +289,7 @@ pub struct PresentationDefinitionFieldRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRuleTypeEnum)]
-pub enum PresentationDefinitionRuleTypeRestEnum {
+pub(crate) enum PresentationDefinitionRuleTypeRestEnum {
     #[serde(rename = "all")]
     All,
     #[serde(rename = "pick")]
@@ -299,7 +300,7 @@ pub enum PresentationDefinitionRuleTypeRestEnum {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionRuleDTO)]
-pub struct PresentationDefinitionRuleRestDTO {
+pub(crate) struct PresentationDefinitionRuleRestDTO {
     pub r#type: PresentationDefinitionRuleTypeRestEnum,
     pub min: Option<u32>,
     pub max: Option<u32>,
@@ -311,7 +312,7 @@ pub struct PresentationDefinitionRuleRestDTO {
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = ProofDetailResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofDetailResponseRestDTO {
+pub(crate) struct ProofDetailResponseRestDTO {
     #[try_from(infallible)]
     pub id: ProofId,
 
@@ -391,7 +392,7 @@ pub struct ProofDetailResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimDTO)]
-pub struct ProofClaimRestDTO {
+pub(crate) struct ProofClaimRestDTO {
     pub schema: ProofClaimSchemaResponseRestDTO,
     #[from(with_fn = convert_inner)]
     pub value: Option<ProofClaimValueRestDTO>,
@@ -401,7 +402,7 @@ pub struct ProofClaimRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofClaimValueDTO)]
 #[serde(untagged)]
-pub enum ProofClaimValueRestDTO {
+pub(crate) enum ProofClaimValueRestDTO {
     Value(String),
     #[schema(no_recursion)]
     Claims(#[from(with_fn = convert_inner)] Vec<ProofClaimRestDTO>),
@@ -411,7 +412,7 @@ pub enum ProofClaimValueRestDTO {
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
 #[try_from(T = ProofInputDTO, Error = MapperError)]
-pub struct ProofInputRestDTO {
+pub(crate) struct ProofInputRestDTO {
     /// The set of claims being asserted by the credential shared during the
     /// proof request.
     #[try_from(with_fn = convert_inner, infallible)]
@@ -432,7 +433,7 @@ pub struct ProofInputRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[into(ShareProofRequestDTO)]
-pub struct ShareProofRequestRestDTO {
+pub(crate) struct ShareProofRequestRestDTO {
     #[into(with_fn = "convert_inner")]
     #[serde(default)]
     pub params: Option<ShareProofRequestParamsRestDTO>,
@@ -442,7 +443,7 @@ pub struct ShareProofRequestRestDTO {
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[into(ShareProofRequestParamsDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ShareProofRequestParamsRestDTO {
+pub(crate) struct ShareProofRequestParamsRestDTO {
     #[into(with_fn = "convert_inner")]
     #[serde(default)]
     pub client_id_scheme: Option<ClientIdSchemeRestEnum>,

@@ -4,7 +4,7 @@ use one_core::service::certificate::dto::{
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use shared_types::{CertificateId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -17,7 +17,7 @@ use crate::serialize::front_time;
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
 #[try_from(T = CertificateResponseDTO, Error = MapperError)]
-pub struct CertificateResponseRestDTO {
+pub(crate) struct CertificateResponseRestDTO {
     #[try_from(infallible)]
     pub id: CertificateId,
     #[try_from(infallible)]
@@ -42,11 +42,11 @@ pub struct CertificateResponseRestDTO {
     pub organisation_id: Option<OrganisationId>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CertificateState)]
 #[into(CertificateState)]
-pub enum CertificateStateRest {
+pub(crate) enum CertificateStateRest {
     NotYetActive,
     Active,
     Revoked,
@@ -56,7 +56,7 @@ pub enum CertificateStateRest {
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CertificateX509AttributesDTO)]
-pub struct CertificateX509AttributesRestDTO {
+pub(crate) struct CertificateX509AttributesRestDTO {
     pub serial_number: String,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
@@ -74,7 +74,7 @@ pub struct CertificateX509AttributesRestDTO {
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CertificateX509ExtensionDTO)]
-pub struct CertificateX509ExtensionRestDTO {
+pub(crate) struct CertificateX509ExtensionRestDTO {
     pub oid: String,
     pub value: String,
     pub critical: bool,

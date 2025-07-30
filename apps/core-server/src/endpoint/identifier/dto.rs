@@ -33,7 +33,7 @@ use crate::serialize::front_time;
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateIdentifierRequestDTO)]
-pub struct CreateIdentifierRequestRestDTO {
+pub(crate) struct CreateIdentifierRequestRestDTO {
     pub name: String,
     #[into(with_fn = "convert_inner")]
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
@@ -47,7 +47,7 @@ pub struct CreateIdentifierRequestRestDTO {
 #[derive(Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateIdentifierDidRequestDTO)]
-pub struct CreateIdentifierDidRequestRestDTO {
+pub(crate) struct CreateIdentifierDidRequestRestDTO {
     pub name: Option<String>,
     /// Specify the DID method. Check the `did` object of your configuration
     /// for supported options.
@@ -60,7 +60,7 @@ pub struct CreateIdentifierDidRequestRestDTO {
 #[derive(Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateCertificateRequestDTO)]
-pub struct CreateCertificateRequestRestDTO {
+pub(crate) struct CreateCertificateRequestRestDTO {
     pub name: Option<String>,
     pub chain: String,
     pub key_id: KeyId,
@@ -70,7 +70,7 @@ pub struct CreateCertificateRequestRestDTO {
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetIdentifierListItemResponseDTO)]
-pub struct GetIdentifierListItemResponseRestDTO {
+pub(crate) struct GetIdentifierListItemResponseRestDTO {
     pub id: IdentifierId,
     pub name: String,
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -91,7 +91,7 @@ pub struct GetIdentifierListItemResponseRestDTO {
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
 #[serde(rename_all = "camelCase")]
 #[try_from(T = GetIdentifierResponseDTO, Error = MapperError)]
-pub struct GetIdentifierResponseRestDTO {
+pub(crate) struct GetIdentifierResponseRestDTO {
     #[try_from(infallible)]
     pub id: IdentifierId,
     #[try_from(infallible)]
@@ -124,7 +124,7 @@ pub struct GetIdentifierResponseRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(IdentifierState)]
 #[into(IdentifierState)]
-pub enum IdentifierStateRest {
+pub(crate) enum IdentifierStateRest {
     Active,
     Deactivated,
 }
@@ -133,17 +133,17 @@ pub enum IdentifierStateRest {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(IdentifierType)]
 #[into(IdentifierType)]
-pub enum IdentifierTypeRest {
+pub(crate) enum IdentifierTypeRest {
     Did,
     Key,
     Certificate,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "camelCase")]
 #[from(SortableIdentifierColumn)]
 #[into(SortableIdentifierColumn)]
-pub enum SortableIdentifierColumnRest {
+pub(crate) enum SortableIdentifierColumnRest {
     Name,
     CreatedDate,
     Type,
@@ -152,7 +152,7 @@ pub enum SortableIdentifierColumnRest {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct IdentifierFilterQueryParamsRestDTO {
+pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     /// Specify identifiers to return by their UUID.
     #[param(rename = "ids[]", nullable = false)]
     pub ids: Option<Vec<IdentifierId>>,
@@ -189,20 +189,20 @@ pub struct IdentifierFilterQueryParamsRestDTO {
     pub organisation_id: OrganisationId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum ExactIdentifierFilterColumnRestEnum {
+pub(crate) enum ExactIdentifierFilterColumnRestEnum {
     Name,
 }
 
-pub type GetIdentifierQuery =
+pub(crate) type GetIdentifierQuery =
     ListQueryParamsRest<IdentifierFilterQueryParamsRestDTO, SortableIdentifierColumnRest>;
 
 #[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetIdentifierListResponseDTO)]
-pub struct GetIdentifierListResponseRestDTO {
+pub(crate) struct GetIdentifierListResponseRestDTO {
     pub total_pages: u64,
     pub total_items: u64,
     #[from(with_fn = "convert_inner")]
@@ -212,7 +212,7 @@ pub struct GetIdentifierListResponseRestDTO {
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(ResolveTrustEntitiesRequestDTO)]
-pub struct ResolveTrustEntitiesRequestRestDTO {
+pub(crate) struct ResolveTrustEntitiesRequestRestDTO {
     #[into(with_fn = "convert_inner")]
     pub identifiers: Vec<ResolveTrustEntityRequestRestDTO>,
 }
@@ -221,7 +221,7 @@ pub struct ResolveTrustEntitiesRequestRestDTO {
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(ResolveTrustEntityRequestDTO)]
-pub struct ResolveTrustEntityRequestRestDTO {
+pub(crate) struct ResolveTrustEntityRequestRestDTO {
     pub id: IdentifierId,
     pub certificate_id: Option<CertificateId>,
 }
@@ -229,7 +229,7 @@ pub struct ResolveTrustEntityRequestRestDTO {
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ResolveTrustEntitiesResponseDTO)]
-pub struct ResolveTrustEntitiesResponseRestDTO {
+pub(crate) struct ResolveTrustEntitiesResponseRestDTO {
     #[serde(flatten)]
     #[from(with_fn = "convert_inner_of_inner")]
     pub identifier_to_trust_entity:
@@ -240,7 +240,7 @@ pub struct ResolveTrustEntitiesResponseRestDTO {
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ResolvedIdentifierTrustEntityResponseDTO)]
-pub struct ResolvedIdentifierTrustEntityResponseRestDTO {
+pub(crate) struct ResolvedIdentifierTrustEntityResponseRestDTO {
     #[serde(flatten)]
     pub trust_entity: GetTrustEntityResponseRestDTO,
     #[serde(skip_serializing_if = "Vec::is_empty")]

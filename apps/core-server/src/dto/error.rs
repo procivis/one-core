@@ -10,7 +10,7 @@ use utoipa::ToSchema;
 
 #[options_not_nullable]
 #[derive(Serialize, ToSchema)]
-pub struct ErrorResponseRestDTO {
+pub(crate) struct ErrorResponseRestDTO {
     pub code: &'static str,
     pub message: String,
     pub cause: Option<Cause>,
@@ -27,7 +27,7 @@ impl ErrorResponseRestDTO {
 }
 
 #[derive(Serialize, ToSchema)]
-pub struct Cause {
+pub(crate) struct Cause {
     pub message: String,
 }
 

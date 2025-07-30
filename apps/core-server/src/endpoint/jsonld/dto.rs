@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
-#[derive(Debug, Serialize, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
-pub struct ResolveJsonLDContextQuery {
+pub(crate) struct ResolveJsonLDContextQuery {
     pub url: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ResolveJsonLDContextResponseRestDTO {
+#[derive(Debug, Serialize, ToSchema)]
+pub(crate) struct ResolveJsonLDContextResponseRestDTO {
     pub context: serde_json::Value,
 }

@@ -35,11 +35,11 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
+use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::ToSchema;
 
 use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRestDTO;
 use crate::endpoint::trust_entity::dto::{
@@ -48,7 +48,7 @@ use crate::endpoint::trust_entity::dto::{
 use crate::serialize::front_time;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidDocumentDTO)]
 pub(crate) struct DidDocumentRestDTO {
@@ -68,7 +68,7 @@ pub(crate) struct DidDocumentRestDTO {
 }
 
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidServiceEndointDTO)]
 pub(crate) struct DidServiceEndointRestDTO {
@@ -78,7 +78,7 @@ pub(crate) struct DidServiceEndointRestDTO {
     pub service_endpoint: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidVerificationMethodDTO)]
 pub(crate) struct DidVerificationMethodRestDTO {
@@ -89,11 +89,11 @@ pub(crate) struct DidVerificationMethodRestDTO {
 }
 
 /// JWK representation of the public key used to verify the DID.
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kty")]
 #[from(PublicKeyJwkDTO)]
-pub enum PublicKeyJwkRestDTO {
+pub(crate) enum PublicKeyJwkRestDTO {
     #[serde(rename = "EC")]
     Ec(PublicKeyJwkEllipticDataRestDTO),
     #[serde(rename = "RSA")]
@@ -107,27 +107,27 @@ pub enum PublicKeyJwkRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PublicKeyJwkMlweDataDTO)]
-pub struct PublicKeyJwkMlweDataRestDTO {
+pub(crate) struct PublicKeyJwkMlweDataRestDTO {
     pub r#use: Option<String>,
     pub alg: Option<String>,
     pub x: String,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PublicKeyJwkOctDataDTO)]
-pub struct PublicKeyJwkOctDataRestDTO {
+pub(crate) struct PublicKeyJwkOctDataRestDTO {
     pub alg: Option<String>,
     pub r#use: Option<String>,
     pub k: String,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PublicKeyJwkRsaDataDTO)]
-pub struct PublicKeyJwkRsaDataRestDTO {
+pub(crate) struct PublicKeyJwkRsaDataRestDTO {
     pub r#use: Option<String>,
     pub alg: Option<String>,
     pub e: String,
@@ -135,9 +135,9 @@ pub struct PublicKeyJwkRsaDataRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PublicKeyJwkEllipticDataDTO)]
-pub struct PublicKeyJwkEllipticDataRestDTO {
+pub(crate) struct PublicKeyJwkEllipticDataRestDTO {
     pub r#use: Option<String>,
     pub alg: Option<String>,
     pub crv: String,
@@ -145,12 +145,12 @@ pub struct PublicKeyJwkEllipticDataRestDTO {
     pub y: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIErrorResponseRestDTO {
     pub error: OpenID4VCIErrorRestEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
 #[serde(rename_all = "snake_case")]
 #[from(OpenID4VCIError)]
 pub(crate) enum OpenID4VCIErrorRestEnum {
@@ -188,20 +188,6 @@ pub(crate) enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
 #[from(IssuerResponseDTO)]
 pub(crate) struct LVVCIssuerResponseRestDTO {
     pub credential: String,
-}
-
-#[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PostSsiIssuerRejectQueryParams {
-    pub credential_id: CredentialId,
-}
-
-#[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PostSsiIssuerSubmitQueryParams {
-    pub credential_id: CredentialId,
-    pub did_value: DidValue,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -317,15 +303,11 @@ pub(crate) struct GetSsiTrustEntityResponseRestDTO {
 pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
     pub vct: String,
     pub name: Option<String>,
-    #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcDisplayMetadataRestDTO>,
-    #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub claims: Vec<SdJwtVcClaimRestDTO>,
-    #[serde(default)]
     pub schema: Option<serde_json::Value>,
-    #[serde(default)]
     pub schema_uri: Option<Url>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
@@ -374,7 +356,6 @@ pub(crate) struct SdJwtVcSimpleRenderingLogoRestDTO {
 #[from(SdJwtVcClaimDTO)]
 pub(crate) struct SdJwtVcClaimRestDTO {
     pub path: Vec<Value>,
-    #[serde(default)]
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcClaimDisplayRestDTO>,
     #[from(with_fn = convert_inner)]

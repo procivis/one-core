@@ -18,10 +18,10 @@ use crate::serialize::{front_time, front_time_option};
 
 /// Credential schema details.
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialSchemaListItemResponseDTO)]
-pub struct CredentialSchemaListItemResponseRestDTO {
+pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -55,7 +55,7 @@ pub struct CredentialSchemaListItemResponseRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, From, Into)]
 #[from(one_core::service::credential::dto::CredentialSchemaType)]
 #[into(one_core::service::credential::dto::CredentialSchemaType)]
-pub enum CredentialSchemaType {
+pub(crate) enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
     #[serde(rename = "mdoc")]
@@ -100,10 +100,10 @@ impl utoipa::PartialSchema for CredentialSchemaType {
 impl utoipa::ToSchema for CredentialSchemaType {}
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(CredentialSchemaDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialSchemaResponseRestDTO {
+pub(crate) struct CredentialSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -133,10 +133,10 @@ pub struct CredentialSchemaResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialClaimSchemaDTO)]
-pub struct CredentialClaimSchemaResponseRestDTO {
+pub(crate) struct CredentialClaimSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -149,21 +149,20 @@ pub struct CredentialClaimSchemaResponseRestDTO {
     pub required: bool,
     pub array: bool,
     #[from(with_fn = convert_inner)]
-    #[serde(default)]
     #[schema(no_recursion)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum CredentialSchemasExactColumn {
+pub(crate) enum CredentialSchemasExactColumn {
     Name,
     SchemaId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialSchemasFilterQueryParamsRest {
+pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
     /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
@@ -186,11 +185,11 @@ pub struct CredentialSchemasFilterQueryParamsRest {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CredentialSchemaListIncludeEntityTypeEnum)]
-pub enum CredentialSchemaListIncludeEntityTypeRestEnum {
+pub(crate) enum CredentialSchemaListIncludeEntityTypeRestEnum {
     LayoutProperties,
 }
 
-pub type GetCredentialSchemaQuery = ListQueryParamsRest<
+pub(crate) type GetCredentialSchemaQuery = ListQueryParamsRest<
     CredentialSchemasFilterQueryParamsRest,
     SortableCredentialSchemaColumnRestEnum,
     CredentialSchemaListIncludeEntityTypeRestEnum,
@@ -199,7 +198,7 @@ pub type GetCredentialSchemaQuery = ListQueryParamsRest<
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into("one_core::model::credential_schema::SortableCredentialSchemaColumn")]
-pub enum SortableCredentialSchemaColumnRestEnum {
+pub(crate) enum SortableCredentialSchemaColumnRestEnum {
     Name,
     Format,
     CreatedDate,
@@ -209,7 +208,7 @@ pub enum SortableCredentialSchemaColumnRestEnum {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into("one_core::model::credential_schema::WalletStorageTypeEnum")]
 #[from("one_core::model::credential_schema::WalletStorageTypeEnum")]
-pub enum WalletStorageTypeRestEnum {
+pub(crate) enum WalletStorageTypeRestEnum {
     Software,
     Hardware,
     RemoteSecureElement,
@@ -219,7 +218,7 @@ pub enum WalletStorageTypeRestEnum {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto)]
 #[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateCredentialSchemaRequestRestDTO {
+pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[try_into(infallible)]
     pub name: String,
@@ -280,7 +279,7 @@ pub struct CreateCredentialSchemaRequestRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into(one_core::model::credential_schema::LayoutType)]
 #[from(one_core::model::credential_schema::LayoutType)]
-pub enum CredentialSchemaLayoutType {
+pub(crate) enum CredentialSchemaLayoutType {
     #[default]
     Card,
     Document,
@@ -290,7 +289,7 @@ pub enum CredentialSchemaLayoutType {
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
 #[into(CredentialClaimSchemaRequestDTO)]
-pub struct CredentialClaimSchemaRequestRestDTO {
+pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
     /// The type of data accepted for this attribute. The `DATE` datatype
     /// only accepts full date-time. See the
@@ -314,7 +313,7 @@ pub struct CredentialClaimSchemaRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 #[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO, Error=ServiceError)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO)]
-pub struct CredentialSchemaLayoutPropertiesRestDTO {
+pub(crate) struct CredentialSchemaLayoutPropertiesRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
@@ -343,7 +342,7 @@ pub struct CredentialSchemaLayoutPropertiesRestDTO {
 #[serde(rename_all = "camelCase")]
 #[try_into(T = one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO, Error = ServiceError)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesResponseDTO)]
-pub struct CredentialSchemaBackgroundPropertiesRestDTO {
+pub(crate) struct CredentialSchemaBackgroundPropertiesRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub color: Option<String>,
@@ -357,7 +356,7 @@ pub struct CredentialSchemaBackgroundPropertiesRestDTO {
 #[serde(rename_all = "camelCase")]
 #[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO, Error = ServiceError)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesResponseDTO)]
-pub struct CredentialSchemaLogoPropertiesRestDTO {
+pub(crate) struct CredentialSchemaLogoPropertiesRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub font_color: Option<String>,
@@ -373,7 +372,7 @@ pub struct CredentialSchemaLogoPropertiesRestDTO {
 #[serde(rename_all = "camelCase")]
 #[into(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesDTO)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesDTO)]
-pub struct CredentialSchemaCodePropertiesRestDTO {
+pub(crate) struct CredentialSchemaCodePropertiesRestDTO {
     pub attribute: String,
     pub r#type: CredentialSchemaCodeTypeRestEnum,
 }
@@ -382,7 +381,7 @@ pub struct CredentialSchemaCodePropertiesRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into(one_core::service::credential_schema::dto::CredentialSchemaCodeTypeEnum)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaCodeTypeEnum)]
-pub enum CredentialSchemaCodeTypeRestEnum {
+pub(crate) enum CredentialSchemaCodeTypeRestEnum {
     Barcode,
     Mrz,
     QrCode,
@@ -390,14 +389,14 @@ pub enum CredentialSchemaCodeTypeRestEnum {
 
 #[derive(Debug, Clone, From, Serialize, ToSchema)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaShareResponseDTO)]
-pub struct CredentialSchemaShareResponseRestDTO {
+pub(crate) struct CredentialSchemaShareResponseRestDTO {
     pub url: String,
 }
 
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportCredentialSchemaRequestRestDTO {
+pub(crate) struct ImportCredentialSchemaRequestRestDTO {
     #[try_into(infallible)]
     pub organisation_id: OrganisationId,
     pub schema: ImportCredentialSchemaRequestSchemaRestDTO,
@@ -407,7 +406,7 @@ pub struct ImportCredentialSchemaRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportCredentialSchemaRequestSchemaRestDTO {
+pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[try_into(infallible)]
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
@@ -454,7 +453,7 @@ pub struct ImportCredentialSchemaRequestSchemaRestDTO {
 #[derive(Clone, Debug, Deserialize, Into, ToSchema)]
 #[into(one_core::service::credential_schema::dto::ImportCredentialSchemaClaimSchemaDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportCredentialSchemaClaimSchemaRestDTO {
+pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -477,7 +476,7 @@ pub struct ImportCredentialSchemaClaimSchemaRestDTO {
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO, Error=ServiceError)]
-pub struct ImportCredentialSchemaLayoutPropertiesRestDTO {
+pub(crate) struct ImportCredentialSchemaLayoutPropertiesRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesRestDTO>,

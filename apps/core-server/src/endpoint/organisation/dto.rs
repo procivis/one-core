@@ -15,7 +15,7 @@ use crate::serialize::{front_time, front_time_option};
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateOrganisationRequestDTO)]
-pub struct CreateOrganisationRequestRestDTO {
+pub(crate) struct CreateOrganisationRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub id: Option<OrganisationId>,
     pub name: Option<String>,
@@ -24,16 +24,16 @@ pub struct CreateOrganisationRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct UpsertOrganisationRequestRestDTO {
+pub(crate) struct UpsertOrganisationRequestRestDTO {
     #[schema(value_type = String, example = "My Organization")]
     pub name: Option<String>,
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateOrganisationResponseRestDTO {
+pub(crate) struct CreateOrganisationResponseRestDTO {
     pub id: OrganisationId,
 }
 
@@ -41,7 +41,7 @@ pub struct CreateOrganisationResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(GetOrganisationDetailsResponseDTO)]
-pub struct GetOrganisationDetailsResponseRestDTO {
+pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     pub id: Uuid,
     pub name: String,
     #[serde(serialize_with = "front_time")]

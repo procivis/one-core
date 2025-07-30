@@ -16,10 +16,10 @@ use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyRequestRestDTO {
+pub(crate) struct KeyRequestRestDTO {
     /// Specify the organization.
     pub organisation_id: Uuid,
     /// Choose which key algorithm to use to create the key pair. Check
@@ -42,10 +42,10 @@ pub struct KeyRequestRestDTO {
     pub storage_params: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
+#[derive(Clone, Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = KeyResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyResponseRestDTO {
+pub(crate) struct KeyResponseRestDTO {
     #[try_from(infallible)]
     pub id: Uuid,
     #[try_from(infallible)]
@@ -70,10 +70,10 @@ pub struct KeyResponseRestDTO {
     pub is_remote: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
+#[derive(Clone, Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = KeyListItemResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyListItemResponseRestDTO {
+pub(crate) struct KeyListItemResponseRestDTO {
     #[try_from(infallible)]
     pub id: Uuid,
     #[try_from(infallible)]
@@ -99,7 +99,7 @@ pub struct KeyListItemResponseRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into("one_core::model::key::SortableKeyColumn")]
-pub enum SortableKeyColumnRestDTO {
+pub(crate) enum SortableKeyColumnRestDTO {
     Name,
     CreatedDate,
     PublicKey,
@@ -109,7 +109,7 @@ pub enum SortableKeyColumnRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyFilterQueryParamsRest {
+pub(crate) struct KeyFilterQueryParamsRest {
     /// Specify the organization from which to retrieve keys.
     pub organisation_id: OrganisationId,
     /// Return all keys with a name starting with this string. Not case-sensitive.
@@ -132,12 +132,13 @@ pub struct KeyFilterQueryParamsRest {
     pub is_remote: Option<Boolean>,
 }
 
-pub type GetKeyQuery = ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKeyColumnRestDTO>;
+pub(crate) type GetKeyQuery =
+    ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKeyColumnRestDTO>;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyGenerateCSRRequestRestDTO {
+pub(crate) struct KeyGenerateCSRRequestRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
 }
@@ -145,7 +146,7 @@ pub struct KeyGenerateCSRRequestRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestProfile)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum KeyGenerateCSRRequestProfileRest {
+pub(crate) enum KeyGenerateCSRRequestProfileRest {
     Generic,
     Mdl,
 }
@@ -154,7 +155,7 @@ pub enum KeyGenerateCSRRequestProfileRest {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestSubjectDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyGenerateCSRRequestSubjectRestDTO {
+pub(crate) struct KeyGenerateCSRRequestSubjectRestDTO {
     /// Two-letter country code.
     pub country_name: Option<String>,
     /// Common name to include in the CSR, typically the domain name of the organization.
@@ -166,9 +167,9 @@ pub struct KeyGenerateCSRRequestSubjectRestDTO {
     pub serial_number: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(KeyGenerateCSRResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyGenerateCSRResponseRestDTO {
+pub(crate) struct KeyGenerateCSRResponseRestDTO {
     pub content: String,
 }

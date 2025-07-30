@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::dto::common::GetListResponseRestDTO;
 
 #[derive(Debug, Error)]
-pub enum MapperError {
+pub(crate) enum MapperError {
     #[error("ct_codecs error: `{0}`")]
     CtCodecsError(#[from] ct_codecs::Error),
 }
@@ -27,7 +27,7 @@ where
     }
 }
 
-pub fn list_try_from<T, K>(
+pub(crate) fn list_try_from<T, K>(
     value: GetListResponse<K>,
 ) -> Result<GetListResponseRestDTO<T>, MapperError>
 where

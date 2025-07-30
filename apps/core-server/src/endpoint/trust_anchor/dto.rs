@@ -14,7 +14,7 @@ use crate::serialize::front_time;
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateTrustAnchorRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateTrustAnchorRequestRestDTO {
+pub(crate) struct CreateTrustAnchorRequestRestDTO {
     /// Must be unique.
     pub name: String,
     /// Specify the type of trust management anchor to publish or subscribe
@@ -33,10 +33,10 @@ pub struct CreateTrustAnchorRequestRestDTO {
     pub publisher_reference: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(GetTrustAnchorDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct GetTrustAnchorResponseRestDTO {
+pub(crate) struct GetTrustAnchorResponseRestDTO {
     pub id: TrustAnchorId,
     pub name: String,
 
@@ -55,7 +55,7 @@ pub struct GetTrustAnchorResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(TrustAnchorsListItemResponseDTO)]
-pub struct ListTrustAnchorsResponseItemRestDTO {
+pub(crate) struct ListTrustAnchorsResponseItemRestDTO {
     pub id: TrustAnchorId,
     pub name: String,
 
@@ -74,14 +74,14 @@ pub struct ListTrustAnchorsResponseItemRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum ExactTrustAnchorFilterColumnRestEnum {
+pub(crate) enum ExactTrustAnchorFilterColumnRestEnum {
     Name,
     Type,
 }
 
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct TrustAnchorsFilterQueryParamsRest {
+pub(crate) struct TrustAnchorsFilterQueryParamsRest {
     /// Return only trust anchors with a name starting with this string.
     /// Not case-sensitive.
     #[param(nullable = false)]
@@ -101,20 +101,20 @@ pub struct TrustAnchorsFilterQueryParamsRest {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(SortableTrustAnchorColumn)]
-pub enum SortableTrustAnchorColumnRestEnum {
+pub(crate) enum SortableTrustAnchorColumnRestEnum {
     Name,
     CreatedDate,
     Type,
 }
 
-pub type ListTrustAnchorsQuery =
+pub(crate) type ListTrustAnchorsQuery =
     ListQueryParamsRest<TrustAnchorsFilterQueryParamsRest, SortableTrustAnchorColumnRestEnum>;
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, ToSchema, From, Into)]
+#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From, Into)]
 #[from(GetTrustAnchorDetailResponseDTO)]
 #[into(GetTrustAnchorDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct GetTrustAnchorDetailResponseRestDTO {
+pub(crate) struct GetTrustAnchorDetailResponseRestDTO {
     pub id: TrustAnchorId,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
