@@ -115,12 +115,12 @@ pub struct KeyFilterQueryParamsRest {
     /// Return all keys with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only keys of the specified algorithm.
-    #[param(nullable = false)]
-    pub key_type: Option<String>,
-    /// Return only keys stored in the specified storage type.
-    #[param(nullable = false)]
-    pub key_storage: Option<String>,
+    /// Return only keys of the specified algorithms.
+    #[param(rename = "keyTypes[]", nullable = false)]
+    pub key_types: Option<Vec<String>>,
+    /// Return only keys stored in the specified storage types.
+    #[param(rename = "keyStorages[]", nullable = false)]
+    pub key_storages: Option<Vec<String>>,
     /// Specify keys to return by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<KeyId>>,

@@ -50,10 +50,10 @@ impl IntoFilterCondition for KeyFilterValue {
             Self::OrganisationId(organisation_id) => {
                 get_equals_condition(entity::key::Column::OrganisationId, organisation_id)
             }
-            Self::KeyType(r#type) => get_equals_condition(entity::key::Column::KeyType, r#type),
-            Self::KeyStorage(storage) => {
-                get_equals_condition(entity::key::Column::StorageType, storage)
-            }
+            Self::KeyTypes(types) => entity::key::Column::KeyType.is_in(types).into_condition(),
+            Self::KeyStorages(storages) => entity::key::Column::StorageType
+                .is_in(storages)
+                .into_condition(),
             Self::Ids(ids) => entity::key::Column::Id.is_in(ids).into_condition(),
             Self::Remote(is_remote) => {
                 get_nullability_condition(entity::key::Column::KeyReference, is_remote)

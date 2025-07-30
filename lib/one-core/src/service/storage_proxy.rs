@@ -258,7 +258,7 @@ impl StorageProxy for StorageProxyImpl {
             .get_key_list(KeyListQuery {
                 filtering: Some(
                     KeyFilterValue::RawPublicKey(raw_key).condition()
-                        & KeyFilterValue::KeyType(key_type.to_string())
+                        & KeyFilterValue::KeyTypes(vec![key_type.to_string()])
                         & KeyFilterValue::OrganisationId(organisation_id),
                 ),
                 ..Default::default()

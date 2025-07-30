@@ -10,8 +10,8 @@ pub struct KeyFilters {
     pub page_size: u64,
     pub organisation_id: OrganisationId,
     pub name: Option<String>,
-    pub key_type: Option<String>,
-    pub key_storage: Option<String>,
+    pub key_types: Option<Vec<String>>,
+    pub key_storages: Option<Vec<String>>,
     pub ids: Option<Vec<KeyId>>,
     pub is_remote: Option<bool>,
 }
@@ -74,8 +74,8 @@ impl KeysApi {
             page_size,
             organisation_id,
             name,
-            key_type,
-            key_storage,
+            key_types,
+            key_storages,
             ids,
             is_remote,
         }: KeyFilters,
@@ -88,13 +88,15 @@ impl KeysApi {
             url += &format!("&name={name}");
         }
 
-        if let Some(key_type) = key_type {
-            url += &format!("&keyType={key_type}");
-        }
+        url = key_types
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&keyTypes[]={v}"));
 
-        if let Some(key_storage) = key_storage {
-            url += &format!("&keyStorage={key_storage}");
-        }
+        url = key_storages
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&keyStorages[]={v}"));
 
         if let Some(is_remote) = is_remote {
             url += &format!("&isRemote={is_remote}");

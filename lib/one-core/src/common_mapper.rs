@@ -365,7 +365,7 @@ pub(crate) async fn get_or_create_key_identifier(
         .get_key_list(KeyListQuery {
             filtering: Some(
                 KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw()).condition()
-                    & KeyFilterValue::KeyType(parsed_key.algorithm_type.to_string())
+                    & KeyFilterValue::KeyTypes(vec![parsed_key.algorithm_type.to_string()])
                     & organisation_id.map(KeyFilterValue::OrganisationId),
             ),
             ..Default::default()

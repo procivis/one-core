@@ -56,8 +56,8 @@ pub enum SortableKeyColumn {
 pub enum KeyFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
-    KeyType(String),
-    KeyStorage(String),
+    KeyTypes(Vec<String>),
+    KeyStorages(Vec<String>),
     Ids(Vec<KeyId>),
     Remote(bool),
     RawPublicKey(Vec<u8>),
