@@ -621,6 +621,19 @@ fn format_presentation_context(
                 "response_uri is None".to_string(),
             ))?;
     let ctx = if presentation_format == FormatType::Mdoc {
+        let Some(OpenID4VPClientMetadata::Final1_0(metadata)) = &interaction_data.client_metadata
+        else {
+            return Err(VerificationProtocolError::Failed(
+                "missing or invalid client_metadata".to_string(),
+            ));
+        };
+
+        let encryption_key = metadata
+            .jwks
+            .as_ref()
+            .and_then(|jwks| jwks.keys.first())
+            .map(|key| key.jwk.clone().into());
+
         mdoc_presentation_context(Handover::OID4VPFinal1_0(
             OID4VPFinal1_0Handover::compute(
                 &encode_client_id_with_scheme(
@@ -629,7 +642,7 @@ fn format_presentation_context(
                 ),
                 response_uri.as_str(),
                 &verifier_nonce,
-                None,
+                encryption_key.as_ref(),
             )
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
         ))?
