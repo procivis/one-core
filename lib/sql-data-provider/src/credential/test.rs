@@ -335,7 +335,7 @@ async fn test_create_credential_success() {
         .create_credential(Credential {
             id: credential_id,
             created_date: get_dummy_date(),
-            issuance_date: get_dummy_date(),
+            issuance_date: None,
             last_modified: get_dummy_date(),
             deleted_at: None,
             protocol: "exchange".to_string(),
@@ -414,7 +414,7 @@ async fn test_create_credential_empty_claims() {
         .create_credential(Credential {
             id: credential_id,
             created_date: get_dummy_date(),
-            issuance_date: get_dummy_date(),
+            issuance_date: None,
             last_modified: get_dummy_date(),
             deleted_at: None,
             protocol: "exchange".to_string(),
@@ -477,7 +477,7 @@ async fn test_create_credential_already_exists() {
         .create_credential(Credential {
             id: credential_id,
             created_date: get_dummy_date(),
-            issuance_date: get_dummy_date(),
+            issuance_date: None,
             last_modified: get_dummy_date(),
             deleted_at: None,
             protocol: "exchange".to_string(),
@@ -550,7 +550,7 @@ async fn test_delete_credential_failed_not_found() {
         .delete_credential(&Credential {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
-            issuance_date: OffsetDateTime::now_utc(),
+            issuance_date: None,
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             protocol: "OPENID4VCI_DRAFT13".to_string(),

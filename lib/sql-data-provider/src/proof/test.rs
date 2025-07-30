@@ -558,7 +558,7 @@ async fn test_get_proof_with_relations() {
             Ok(Some(Credential {
                 id: credential_id,
                 created_date: get_dummy_date(),
-                issuance_date: get_dummy_date(),
+                issuance_date: None,
                 last_modified: get_dummy_date(),
                 deleted_at: None,
                 protocol: "protocol".to_string(),
@@ -646,7 +646,7 @@ async fn test_get_proof_with_relations() {
         credential_schema_id: Set(credential_schema_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        issuance_date: Set(get_dummy_date()),
+        issuance_date: Set(Some(get_dummy_date())),
         redirect_uri: Set(None),
         deleted_at: Set(None),
         protocol: Set("OPENID4VCI_DRAFT13".to_owned()),

@@ -272,7 +272,7 @@ fn generic_credential() -> Credential {
     Credential {
         id: credential_id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),

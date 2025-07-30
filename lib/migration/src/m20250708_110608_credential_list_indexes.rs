@@ -7,10 +7,10 @@ use crate::m20241212_08000_migrate_credential_state::Credential as CredentialWit
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-const CREDENTIAL_ROLE_INDEX: &str = "index-Credential-Role";
-const CREDENTIAL_STATE_INDEX: &str = "index-Credential-State";
-const CREDENTIAL_DELETED_AT_INDEX: &str = "index-Credential-DeletedAt";
-const CREDENTIAL_SUSPEND_END_DATE_INDEX: &str = "index-Credential-SuspendEndDate";
+pub const CREDENTIAL_ROLE_INDEX: &str = "index-Credential-Role";
+pub const CREDENTIAL_STATE_INDEX: &str = "index-Credential-State";
+pub const CREDENTIAL_DELETED_AT_INDEX: &str = "index-Credential-DeletedAt";
+pub const CREDENTIAL_SUSPEND_END_DATE_INDEX: &str = "index-Credential-SuspendEndDate";
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {

@@ -600,7 +600,7 @@ async fn test_get_proof_with_array_holder() {
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: "".into(),
@@ -839,7 +839,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: "".into(),
@@ -1083,7 +1083,7 @@ async fn test_get_proof_with_object_array_holder() {
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: "".into(),
@@ -1310,7 +1310,7 @@ async fn test_get_proof_with_array() {
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: "".into(),
@@ -1563,7 +1563,7 @@ async fn test_get_proof_with_array_in_object() {
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: "".into(),
@@ -1822,7 +1822,7 @@ async fn test_get_proof_with_object_array() {
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: "".into(),

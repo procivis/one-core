@@ -5,7 +5,7 @@ use crate::m20240110_000001_initial::{Credential, CredentialSchema, Did, Key, Pr
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-const CREDENTIAL_CREATED_DATE_INDEX: &str = "index-Credential-CreatedDate";
+pub const CREDENTIAL_CREATED_DATE_INDEX: &str = "index-Credential-CreatedDate";
 const CREDENTIAL_SCHEMA_CREATED_DATE_INDEX: &str = "index-CredentialSchema-CreatedDate";
 const PROOF_CREATED_DATE_INDEX: &str = "index-Proof-CreatedDate";
 const PROOF_SCHEMA_CREATED_DATE_INDEX: &str = "index-ProofSchema-CreatedDate";

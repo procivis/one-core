@@ -27,7 +27,7 @@ use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 pub struct CredentialListItemResponseDTO {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
-    pub issuance_date: OffsetDateTime,
+    pub issuance_date: Option<OffsetDateTime>,
     pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
     pub last_modified: OffsetDateTime,
@@ -46,8 +46,8 @@ pub struct CredentialDetailResponseDTO {
     pub id: CredentialId,
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub issuance_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub issuance_date: Option<OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339::option")]
     pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,

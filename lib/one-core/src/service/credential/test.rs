@@ -156,7 +156,7 @@ fn generic_credential() -> Credential {
     Credential {
         id: credential_id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
@@ -225,7 +225,7 @@ fn generic_credential_list_entity() -> Credential {
     Credential {
         id: Uuid::new_v4().into(),
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
@@ -3874,7 +3874,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
     let credential = Credential {
         id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
@@ -4442,7 +4442,7 @@ async fn test_get_credential_success_array_index_sorting() {
     let credential = Credential {
         id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
@@ -4759,7 +4759,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     let credential = Credential {
         id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
@@ -4979,7 +4979,7 @@ async fn test_get_credential_success_array_single_element() {
     let credential = Credential {
         id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),

@@ -14,7 +14,7 @@ use crate::entity::{claim, claim_schema, credential_schema_claim_schema};
 pub struct UnexportableCredentialModel {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
-    pub issuance_date: OffsetDateTime,
+    pub issuance_date: Option<OffsetDateTime>,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
     pub protocol: String,

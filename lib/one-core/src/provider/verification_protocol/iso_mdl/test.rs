@@ -424,7 +424,7 @@ async fn test_get_presentation_definition_ok() {
             Ok(vec![Credential {
                 id: credential_id,
                 created_date: OffsetDateTime::now_utc(),
-                issuance_date: OffsetDateTime::now_utc(),
+                issuance_date: None,
                 last_modified: OffsetDateTime::now_utc(),
                 protocol: "ISO_MDL".to_string(),
                 schema: Some(credential_schema),

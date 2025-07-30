@@ -29,7 +29,7 @@ fn generate_credential_detail_response(
     CredentialDetailResponseDTO {
         id: Uuid::new_v4().into(),
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         revocation_date: None,
         state: CredentialStateEnum::Created,
         last_modified: now,

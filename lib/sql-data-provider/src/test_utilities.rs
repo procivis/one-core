@@ -62,7 +62,7 @@ pub async fn insert_credential(
         credential_schema_id: Set(*credential_schema_id),
         created_date: Set(now),
         last_modified: Set(now),
-        issuance_date: Set(now),
+        issuance_date: Set(None),
         redirect_uri: Set(None),
         deleted_at: Set(deleted_at),
         protocol: Set(protocol.to_owned()),

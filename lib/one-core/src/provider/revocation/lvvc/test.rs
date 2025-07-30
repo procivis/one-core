@@ -80,7 +80,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
     let credential = Credential {
         id: Uuid::new_v4().into(),
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),

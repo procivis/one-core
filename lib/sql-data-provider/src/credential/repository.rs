@@ -562,9 +562,15 @@ impl CredentialRepository for CredentialProvider {
             Some(state) => Set(state.into()),
         };
 
+        let issuance_date = match request.issuance_date {
+            None => Unchanged(Default::default()),
+            Some(issuance_date) => Set(issuance_date.into()),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(credential_id),
             last_modified: Set(OffsetDateTime::now_utc()),
+            issuance_date,
             holder_identifier_id,
             issuer_identifier_id,
             issuer_certificate_id,

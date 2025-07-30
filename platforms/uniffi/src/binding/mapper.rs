@@ -79,7 +79,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
-            issuance_date: value.issuance_date.format_timestamp(),
+            issuance_date: value.issuance_date.map(|inner| inner.format_timestamp()),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
             issuer: value.issuer.map(Into::into),
@@ -117,7 +117,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
-            issuance_date: value.issuance_date.format_timestamp(),
+            issuance_date: value.issuance_date.map(|inner| inner.format_timestamp()),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
             issuer: optional_identifier_id_string(value.issuer),

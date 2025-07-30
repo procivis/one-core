@@ -251,7 +251,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
     Credential {
         id: credential_id,
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: exchange.to_owned(),

@@ -325,7 +325,7 @@ pub(super) fn from_create_request(
     Credential {
         id: credential_id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         last_modified: now,

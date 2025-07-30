@@ -164,7 +164,7 @@ impl OneCoreBinding {
 pub struct CredentialDetailBindingDTO {
     pub id: String,
     pub created_date: String,
-    pub issuance_date: String,
+    pub issuance_date: Option<String>,
     pub last_modified: String,
     pub revocation_date: Option<String>,
     pub issuer: Option<GetIdentifierListItemBindingDTO>,
@@ -291,7 +291,7 @@ pub enum CredentialRoleBindingDTO {
 pub struct CredentialListItemBindingDTO {
     pub id: String,
     pub created_date: String,
-    pub issuance_date: String,
+    pub issuance_date: Option<String>,
     pub last_modified: String,
     pub revocation_date: Option<String>,
     pub issuer: Option<String>,

@@ -20,7 +20,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
 
-    pub issuance_date: OffsetDateTime,
+    pub issuance_date: Option<OffsetDateTime>,
     pub deleted_at: Option<OffsetDateTime>,
 
     pub protocol: String,

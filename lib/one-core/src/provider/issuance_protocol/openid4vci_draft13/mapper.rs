@@ -786,7 +786,7 @@ pub(crate) fn create_credential(
     Credential {
         id: credential_id,
         created_date: now,
-        issuance_date: now,
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(), // this will be rewritten later in SSIHolderService

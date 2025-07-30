@@ -544,7 +544,8 @@ pub(crate) fn extracted_credential_to_model(
     Ok(Credential {
         id: credential_id,
         created_date: now,
-        issuance_date: now,
+        // TODO: Should either be `iat` claim or `create` timestamp of embedded data integrity proof
+        issuance_date: None,
         last_modified: now,
         deleted_at: None,
         protocol: exchange,

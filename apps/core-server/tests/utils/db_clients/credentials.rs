@@ -109,7 +109,7 @@ impl CredentialsDB {
             id: credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            issuance_date: get_dummy_date(),
+            issuance_date: None,
             deleted_at: params.deleted_at,
             protocol: protocol.to_owned(),
             redirect_uri: None,

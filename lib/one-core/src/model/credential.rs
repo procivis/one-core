@@ -18,7 +18,7 @@ use crate::service::credential::dto::{CredentialFilterValue, CredentialListInclu
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
-    pub issuance_date: OffsetDateTime,
+    pub issuance_date: Option<OffsetDateTime>,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
     pub protocol: String,
@@ -79,6 +79,7 @@ pub type GetCredentialQuery =
 pub struct UpdateCredentialRequest {
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_certificate_id: Option<CertificateId>,
+    pub issuance_date: Option<OffsetDateTime>,
     pub holder_identifier_id: Option<IdentifierId>,
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,

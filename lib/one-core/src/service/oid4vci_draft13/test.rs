@@ -187,7 +187,7 @@ fn dummy_credential(
     Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
+        issuance_date: None,
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         protocol: protocol.to_string(),

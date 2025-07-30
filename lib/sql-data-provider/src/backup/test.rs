@@ -62,7 +62,7 @@ async fn insert_credential_to_database(
         credential_schema_id: Set(schema_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        issuance_date: Set(get_dummy_date()),
+        issuance_date: Set(None),
         state: Set(CredentialState::Created),
         suspend_end_date: Set(None),
         deleted_at: if deleted {

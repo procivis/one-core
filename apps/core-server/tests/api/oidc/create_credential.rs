@@ -392,6 +392,7 @@ async fn test_post_issuer_credential_with(
             .get_by_entity_id(&credential.id.into())
             .await;
         let credential = context.db.credentials.get(&credential.id).await;
+        assert!(credential.issuance_date.is_some());
         assert_eq!(
             credential_history
                 .values

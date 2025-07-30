@@ -384,6 +384,7 @@ impl OID4VCIDraft13Service {
             .update_credential(
                 credential.id,
                 UpdateCredentialRequest {
+                    issuance_date: Some(OffsetDateTime::now_utc()),
                     holder_identifier_id: Some(holder_identifier.id),
                     ..Default::default()
                 },
