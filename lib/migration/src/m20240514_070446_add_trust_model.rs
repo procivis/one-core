@@ -1,10 +1,9 @@
-use sea_orm::sea_query::extension::postgres::Type;
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
 use crate::m20240110_000001_initial::Organisation;
-use crate::m20240130_105023_add_history::{History, HistoryAction, HistoryEntityType};
+use crate::m20240130_105023_add_history::{History, HistoryAction};
 
 const UNIQUE_TRUST_ANCHOR_NAME_IN_ORGANISATION_INDEX: &str =
     "index-TrustAnchor-Name-OrganisationId-Unique";
@@ -18,17 +17,9 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         match manager.get_database_backend() {
-            sea_orm::DatabaseBackend::Postgres => {
-                manager
-                    .exec_stmt(
-                        Type::alter()
-                            .name(HistoryEntityType::Table)
-                            .add_value(UpdatedHistoryEntityType::TrustAnchor)
-                            .add_value(UpdatedHistoryEntityType::TrustEntity)
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+            // Skip because it is not supported. If support for Postgres is added in the future
+            // the schema can be setup in its entirety in a new, later migration.
+            sea_orm::DatabaseBackend::Postgres => return Ok(()),
             sea_orm::DatabaseBackend::MySql => {
                 manager
                     .alter_table(

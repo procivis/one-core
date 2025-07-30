@@ -27,24 +27,7 @@ impl MigrationTrait for Migration {
             }
             // we don't need to change enums for sqlite since they are stored as TEXT
             DatabaseBackend::Sqlite => {}
-            // Postgres not supported but adding this as a reference.
-            DatabaseBackend::Postgres => {
-                manager
-                    .alter_table(
-                        Table::alter()
-                            .table(RemoteEntityCache::Table)
-                            .modify_column(
-                                ColumnDef::new(RemoteEntityCache::Type)
-                                    .enumeration(
-                                        RemoteEntityTypeEnum::Table,
-                                        RemoteEntityType::iter(),
-                                    )
-                                    .extra("ADD VALUE 'VCT_METADATA'"),
-                            )
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+            DatabaseBackend::Postgres => {}
         }
 
         Ok(())

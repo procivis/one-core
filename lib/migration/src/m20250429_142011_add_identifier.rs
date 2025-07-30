@@ -16,10 +16,11 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         match manager.get_database_backend() {
+            DatabaseBackend::Postgres => {}
             DatabaseBackend::Sqlite => {
                 sqlite_migration(manager).await?;
             }
-            _ => {
+            DatabaseBackend::MySql => {
                 sane_migration(manager).await?;
             }
         }

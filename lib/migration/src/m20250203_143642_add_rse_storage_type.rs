@@ -25,21 +25,7 @@ impl MigrationTrait for Migration {
             }
             // we don't need to change enums for sqlite since they are stored as TEXT
             DatabaseBackend::Sqlite => {}
-            // Postgres not supported at the moment, adding this as a reference.
-            DbBackend::Postgres => {
-                manager
-                    .alter_table(
-                        Table::alter()
-                            .table(CredentialSchema::Table)
-                            .modify_column(
-                                ColumnDef::new(CredentialSchema::WalletStorageType)
-                                    .enumeration(CredentialSchema::Table, WalletStorageType::iter())
-                                    .extra("ADD VALUE 'REMOTE_SECURE_ELEMENT'"),
-                            )
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+            DbBackend::Postgres => {}
         };
         Ok(())
     }

@@ -10,7 +10,8 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         match manager.get_database_backend() {
-            DbBackend::Postgres | DbBackend::MySql => {
+            DbBackend::Postgres => {}
+            DbBackend::MySql => {
                 manager
                     .alter_table(
                         Table::alter()

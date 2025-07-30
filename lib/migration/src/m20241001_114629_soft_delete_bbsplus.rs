@@ -12,6 +12,11 @@ const AFFECTED_FORMATS: [&str; 2] = ["JSON_LD_BBSPLUS", "JSON_LD_CLASSIC"];
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+            // Skip because it is not supported. If support for Postgres is added in the future
+            // the schema can be setup in its entirety in a new, later migration.
+            return Ok(());
+        }
         let db = manager.get_connection();
 
         let query = match manager.get_database_backend() {

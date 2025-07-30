@@ -1,4 +1,3 @@
-use extension::postgres::TypeAlterStatement;
 use sea_orm::{DatabaseBackend, EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
@@ -50,19 +49,7 @@ impl MigrationTrait for Migration {
                     )
                     .await?;
             }
-            // Postgres not supported at the moment, adding this as a reference.
-            DatabaseBackend::Postgres => {
-                manager
-                    .alter_type(
-                        TypeAlterStatement::new()
-                            .name(RemoteEntityTypeEnum::Table)
-                            .rename_value(
-                                Alias::new("STATUSLIST_CREDENTIAL"),
-                                Alias::new("STATUS_LIST_CREDENTIAL"),
-                            ),
-                    )
-                    .await?;
-            }
+            DatabaseBackend::Postgres => {}
         }
 
         Ok(())

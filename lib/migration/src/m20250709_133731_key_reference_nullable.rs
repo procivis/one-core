@@ -16,7 +16,8 @@ const KEY_CREATED_DATE_INDEX: &str = "index-Key-CreatedDate";
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         match manager.get_database_backend() {
-            DbBackend::MySql | DbBackend::Postgres => {
+            DbBackend::Postgres => Ok(()),
+            DbBackend::MySql => {
                 manager
                     .alter_table(
                         Table::alter()

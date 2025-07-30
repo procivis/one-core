@@ -2,7 +2,6 @@ use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
-use crate::extension::postgres::Type;
 use crate::m20240130_105023_add_history::{History, HistoryAction};
 
 #[derive(DeriveMigrationName)]
@@ -12,24 +11,9 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         match manager.get_database_backend() {
-            sea_orm::DatabaseBackend::Postgres => {
-                manager
-                    .exec_stmt(
-                        Type::alter()
-                            .name(State::Table)
-                            .add_value(UpdatedStates::Suspended)
-                            .to_owned(),
-                    )
-                    .await?;
-                manager
-                    .exec_stmt(
-                        Type::alter()
-                            .name(HistoryAction::Table)
-                            .add_value(UpdatedHistoryAction::Suspended)
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+            // Skip because it is not supported. If support for Postgres is added in the future,
+            // the schema can be setup in its entirety in a new, later migration
+            sea_orm::DatabaseBackend::Postgres => return Ok(()),
             sea_orm::DatabaseBackend::MySql => {
                 manager
                     .alter_table(

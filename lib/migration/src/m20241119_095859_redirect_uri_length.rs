@@ -7,26 +7,23 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        match manager.get_database_backend() {
-            DbBackend::MySql | DbBackend::Postgres => {
-                manager
-                    .alter_table(
-                        Table::alter()
-                            .table(Credential::Table)
-                            .modify_column(ColumnDef::new(Credential::RedirectUri).string_len(1000))
-                            .to_owned(),
-                    )
-                    .await?;
-                manager
-                    .alter_table(
-                        Table::alter()
-                            .table(Proof::Table)
-                            .modify_column(ColumnDef::new(Proof::RedirectUri).string_len(1000))
-                            .to_owned(),
-                    )
-                    .await?;
-            }
-            _ => {}
+        if manager.get_database_backend() == DbBackend::MySql {
+            manager
+                .alter_table(
+                    Table::alter()
+                        .table(Credential::Table)
+                        .modify_column(ColumnDef::new(Credential::RedirectUri).string_len(1000))
+                        .to_owned(),
+                )
+                .await?;
+            manager
+                .alter_table(
+                    Table::alter()
+                        .table(Proof::Table)
+                        .modify_column(ColumnDef::new(Proof::RedirectUri).string_len(1000))
+                        .to_owned(),
+                )
+                .await?;
         }
         Ok(())
     }

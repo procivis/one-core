@@ -1,4 +1,4 @@
-use sea_orm::DatabaseBackend;
+use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
@@ -11,17 +11,19 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        if manager.get_database_backend() == DatabaseBackend::Sqlite {
-            sqlite_migration(manager).await
-        } else {
-            manager
-                .alter_table(
-                    Table::alter()
-                        .table(Identifier::Table)
-                        .rename_column(Identifier::Status, IdentifierNew::State)
-                        .to_owned(),
-                )
-                .await
+        match manager.get_database_backend() {
+            DbBackend::Postgres => Ok(()),
+            DbBackend::MySql => {
+                manager
+                    .alter_table(
+                        Table::alter()
+                            .table(Identifier::Table)
+                            .rename_column(Identifier::Status, IdentifierNew::State)
+                            .to_owned(),
+                    )
+                    .await
+            }
+            DbBackend::Sqlite => sqlite_migration(manager).await,
         }
     }
 }

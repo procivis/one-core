@@ -47,38 +47,7 @@ impl MigrationTrait for Migration {
                     )
                     .await?;
             }
-            // Postgres not supported but adding this as a reference.
-            DatabaseBackend::Postgres => {
-                manager
-                    .alter_table(
-                        Table::alter()
-                            .table(RemoteEntityCache::Table)
-                            .add_column(
-                                ColumnDef::new(RemoteEntityCache::Persistent)
-                                    .boolean()
-                                    .not_null()
-                                    .default(false),
-                            )
-                            .modify_column(
-                                ColumnDef::new(RemoteEntityCache::Type)
-                                    .enumeration(
-                                        RemoteEntityTypeEnum::Table,
-                                        RemoteEntityType::iter(),
-                                    )
-                                    .extra("ADD VALUE 'VCT_METADATA'"),
-                            )
-                            .modify_column(
-                                ColumnDef::new(RemoteEntityCache::Type)
-                                    .enumeration(
-                                        RemoteEntityTypeEnum::Table,
-                                        RemoteEntityType::iter(),
-                                    )
-                                    .extra("ADD VALUE 'JSON_SCHEMA'"),
-                            )
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+            DatabaseBackend::Postgres => {}
         }
 
         Ok(())

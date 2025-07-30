@@ -22,6 +22,11 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
         let backend = db.get_database_backend();
+        if backend == DatabaseBackend::Postgres {
+            // Skip because it is not supported. If support for Postgres is added in the future
+            // the schema can be setup in its entirety in a new, later migration.
+            return Ok(());
+        }
 
         let entries = DidQueryResult::find_by_statement(
             backend.build(

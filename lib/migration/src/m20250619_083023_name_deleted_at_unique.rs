@@ -29,6 +29,11 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let backend = manager.get_database_backend();
+        if backend == DatabaseBackend::Postgres {
+            // Skip because it is not supported. If support for Postgres is added in the future
+            // the schema can be setup in its entirety in a new, later migration.
+            return Ok(());
+        }
 
         // remove old indexes
         drop_old_unique_index(UNIQUE_KEY_NAME_IN_ORGANISATION_INDEX, Key::Table, manager).await?;
