@@ -441,9 +441,13 @@ fn dcql_path_to_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String
     }
 
     segments_iter
-        .map(ToString::to_string)
-        // remove the quotes around strings
-        .map(|s| s.replace("\"", ""))
+        .filter_map(|segment| {
+            if let PathSegment::PropertyName(name) = segment {
+                Some(name.to_string())
+            } else {
+                None
+            }
+        })
         .collect::<Vec<_>>()
         .join("/")
 }
