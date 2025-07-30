@@ -16,7 +16,7 @@ pub fn nest_claims(
     claims.sort_unstable_by(|a, b| a.key.cmp(&b.key));
 
     for claim in claims {
-        let path = format!("/{}", claim.key);
+        let path = format!("/{}", json_pointer_escape(&claim.key));
         let pointer = jsonptr::Pointer::parse(&path)?;
         let value: serde_json::Value = claim.value.try_into()?;
         pointer.assign(&mut data, value)?;
@@ -30,6 +30,12 @@ pub fn nest_claims(
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .collect())
+}
+
+/// Escape paths based on <https://datatracker.ietf.org/doc/html/rfc6901#section-3>
+/// except forward slash `/`, as that is used internally
+fn json_pointer_escape(input: &str) -> String {
+    input.replace("~", "~0")
 }
 
 pub(super) fn map_claims(
@@ -180,5 +186,41 @@ mod tests {
         ]);
 
         assert_eq!(expected, nest_claims(claims).unwrap());
+    }
+
+    #[test]
+    fn test_format_special_characters() {
+        let claims = vec![
+            PublishedClaim {
+                key: "name".into(),
+                value: "John".into(),
+                datatype: None,
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "location/weird ~!@#$%^&*()_+{}|:\"<>?`-=[]\\;',.".into(),
+                value: "1".into(),
+                datatype: None,
+                array_item: false,
+            },
+        ];
+        let expected = IndexMap::from([
+            (
+                "location".to_string(),
+                json!({
+                  "weird ~!@#$%^&*()_+{}|:\"<>?`-=[]\\;',.": "1",
+                }),
+            ),
+            ("name".to_string(), json!("John")),
+        ]);
+
+        assert_eq!(expected, nest_claims(claims).unwrap());
+    }
+
+    #[test]
+    fn test_json_pointer_escape() {
+        assert_eq!(json_pointer_escape("bar"), "bar");
+        assert_eq!(json_pointer_escape("/~bar/foo"), "/~0bar/foo");
+        assert_eq!(json_pointer_escape("/bar/foo"), "/bar/foo");
     }
 }
