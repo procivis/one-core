@@ -1,6 +1,7 @@
 use std::ops::Sub;
 
 use axum::http::Method;
+use one_core::model::blob::BlobType;
 use one_core::model::certificate::CertificateState;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
@@ -178,7 +179,37 @@ async fn test_run_retain_proof_check_with_update() {
         )
         .await;
 
-    let credential = context
+    let credential_1_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Credential),
+            ..Default::default()
+        })
+        .await;
+
+    let credential_2_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Credential),
+            ..Default::default()
+        })
+        .await;
+
+    let other_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![5, 4, 3, 2, 1]),
+            r#type: Some(BlobType::Credential),
+            ..Default::default()
+        })
+        .await;
+
+    let credential_1 = context
         .db
         .credentials
         .create(
@@ -186,11 +217,29 @@ async fn test_run_retain_proof_check_with_update() {
             CredentialStateEnum::Created,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            Default::default(),
+            TestingCredentialParams {
+                credential_blob_id: Some(credential_1_blob.id),
+                ..Default::default()
+            },
         )
         .await;
 
-    let proof = context
+    let credential_2 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                credential_blob_id: Some(credential_2_blob.id),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let proof_1 = context
         .db
         .proofs
         .create(
@@ -199,6 +248,21 @@ async fn test_run_retain_proof_check_with_update() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.clone(),
+        )
+        .await;
+
+    let proof_2 = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
             None,
             verifier_key,
@@ -213,7 +277,22 @@ async fn test_run_retain_proof_check_with_update() {
             TestingHistoryParams {
                 action: Some(HistoryAction::Accepted),
                 created_date: Some(get_dummy_date()),
-                entity_id: Some(proof.id.into()),
+                entity_id: Some(proof_1.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Created),
+                created_date: Some(get_dummy_date()),
+                entity_id: Some(proof_2.id.into()),
                 entity_type: Some(HistoryEntityType::Proof),
                 ..Default::default()
             },
@@ -223,11 +302,20 @@ async fn test_run_retain_proof_check_with_update() {
     context
         .db
         .proofs
-        .set_proof_claims(&proof.id, credential.claims.unwrap())
+        .set_proof_claims(&proof_1.id, credential_1.claims.unwrap())
         .await;
 
-    let credential = context.db.credentials.get(&credential.id).await;
-    assert!(!credential.claims.unwrap().is_empty());
+    context
+        .db
+        .proofs
+        .set_proof_claims(&proof_2.id, credential_2.claims.unwrap())
+        .await;
+
+    let credential_1 = context.db.credentials.get(&credential_1.id).await;
+    assert!(!credential_1.claims.unwrap().is_empty());
+
+    let credential_2 = context.db.credentials.get(&credential_2.id).await;
+    assert!(!credential_2.claims.unwrap().is_empty());
 
     // WHEN
     let resp = context.api.tasks.run("RETAIN_PROOF_CHECK").await;
@@ -235,11 +323,26 @@ async fn test_run_retain_proof_check_with_update() {
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let proof = context.db.proofs.get(&proof.id).await;
+    let proof = context.db.proofs.get(&proof_1.id).await;
     assert!(proof.claims.unwrap().is_empty());
 
-    let credential = context.db.credentials.get(&credential.id).await;
+    let credential = context.db.credentials.get(&credential_1.id).await;
     assert!(credential.claims.unwrap().is_empty());
+
+    let get_credential_blob = context.db.blobs.get(&credential_1_blob.id).await;
+    assert!(get_credential_blob.is_none());
+
+    let proof = context.db.proofs.get(&proof_2.id).await;
+    assert!(!proof.claims.unwrap().is_empty());
+
+    let credential = context.db.credentials.get(&credential_2.id).await;
+    assert!(!credential.claims.unwrap().is_empty());
+
+    let get_credential_blob = context.db.blobs.get(&credential_2_blob.id).await;
+    assert!(get_credential_blob.is_some());
+
+    let get_other_blob = context.db.blobs.get(&other_blob.id).await;
+    assert!(get_other_blob.is_some());
 }
 
 #[tokio::test]

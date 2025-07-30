@@ -1049,7 +1049,8 @@ async fn test_revoke_check_mdoc_update() {
         .db
         .blobs
         .get(&credential.credential_blob_id.unwrap())
-        .await;
+        .await
+        .unwrap();
     assert_eq!(updated_credentials.value, valid_credential.as_bytes());
 }
 
@@ -1208,7 +1209,8 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .db
         .blobs
         .get(&credential.credential_blob_id.unwrap())
-        .await;
+        .await
+        .unwrap();
     assert_eq!(
         updated_credentials.value,
         expired_credential.as_bytes() // invalid content was rejected / credential not updated
@@ -1376,7 +1378,8 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             .db
             .blobs
             .get(&credential.credential_blob_id.unwrap())
-            .await;
+            .await
+            .unwrap();
         assert_eq!(updated_credentials.value, valid_credential2.as_bytes());
         assert!(updated_credentials.last_modified > before_refresh);
     }
@@ -1674,7 +1677,8 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .db
         .blobs
         .get(&credential.credential_blob_id.unwrap())
-        .await;
+        .await
+        .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
         expired_credential.as_bytes()
@@ -1994,7 +1998,8 @@ async fn test_suspended_to_valid_mdoc() {
         .db
         .blobs
         .get(&credential.credential_blob_id.unwrap())
-        .await;
+        .await
+        .unwrap();
     assert_eq!(updated_credentials_blob.value, valid_credential.as_bytes());
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
@@ -2170,7 +2175,8 @@ async fn test_suspended_to_suspended_update_failed() {
         .db
         .blobs
         .get(&credential.credential_blob_id.unwrap())
-        .await;
+        .await
+        .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
         expired_credential.as_bytes()

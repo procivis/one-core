@@ -1,3 +1,4 @@
+use one_core::model::blob::BlobType;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::HistoryAction;
 use one_core::model::proof::ProofStateEnum;
@@ -5,7 +6,9 @@ use shared_types::EntityId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
@@ -61,6 +64,26 @@ async fn test_delete_proof_claims_success() {
         )
         .await;
 
+    let credential_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Credential),
+            ..Default::default()
+        })
+        .await;
+
+    let other_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![5, 4, 3, 2, 1]),
+            r#type: Some(BlobType::Credential),
+            ..Default::default()
+        })
+        .await;
+
     let proof = context
         .db
         .proofs
@@ -84,7 +107,10 @@ async fn test_delete_proof_claims_success() {
             CredentialStateEnum::Created,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            Default::default(),
+            TestingCredentialParams {
+                credential_blob_id: Some(credential_blob.id),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -120,4 +146,10 @@ async fn test_delete_proof_claims_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert!(credential.claims.unwrap().is_empty());
+
+    let get_credential_blob = context.db.blobs.get(&credential_blob.id).await;
+    assert!(get_credential_blob.is_none());
+
+    let get_other_blob = context.db.blobs.get(&other_blob.id).await;
+    assert!(get_other_blob.is_some());
 }

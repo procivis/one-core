@@ -52,7 +52,7 @@ impl BlobsDB {
         blob
     }
 
-    pub async fn get(&self, blob_id: &BlobId) -> Blob {
-        self.repository.get(blob_id).await.unwrap().unwrap()
+    pub async fn get(&self, blob_id: &BlobId) -> Option<Blob> {
+        self.repository.get(blob_id).await.unwrap()
     }
 }
