@@ -24,7 +24,7 @@ use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
-use crate::common_mapper::{NESTED_CLAIM_MARKER, PublicKeyWithJwk, decode_cbor_base64};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::Did;
@@ -245,7 +245,6 @@ impl VerificationProtocol for IsoMdl {
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
-        _encryption_key_jwk: Option<PublicKeyWithJwk>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,

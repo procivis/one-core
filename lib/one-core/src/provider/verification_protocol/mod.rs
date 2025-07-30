@@ -19,7 +19,6 @@ use serde_json::json;
 use url::Url;
 
 use super::mqtt_client::MqttClient;
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     CoreConfig, FormatType, VerificationProtocolConfig, VerificationProtocolType,
@@ -360,7 +359,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        encryption_key_jwk: Option<PublicKeyWithJwk>,
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,

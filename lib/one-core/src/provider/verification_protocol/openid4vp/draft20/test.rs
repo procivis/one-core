@@ -4,6 +4,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use mockall::predicate::eq;
 use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -16,12 +17,11 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VP20HTTP;
 use super::model::OpenID4Vp20Params;
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -211,18 +211,6 @@ async fn test_share_proof() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let encryption_key_jwk = PublicKeyWithJwk {
-        key_id: Uuid::new_v4().into(),
-        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }),
-    };
-
     let ShareResponse {
         url,
         interaction_id,
@@ -231,7 +219,6 @@ async fn test_share_proof() {
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            Some(encryption_key_jwk),
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -317,23 +304,10 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let encryption_key_jwk = PublicKeyWithJwk {
-        key_id: Uuid::new_v4().into(),
-        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }),
-    };
-
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            Some(encryption_key_jwk),
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -395,21 +369,47 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         }),
         claims: None,
         verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                deactivated: false,
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        public_key: vec![],
+                        name: "".to_string(),
+                        key_reference: None,
+                        storage_type: "".to_string(),
+                        key_type: "".to_string(),
+                        organisation: None,
+                    },
+                    reference: "1".to_string(),
+                }]),
+                organisation: None,
+                log: None,
+            }),
+            ..dummy_identifier()
+        }),
+        holder_identifier: None,
+        verifier_key: Some(Key {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            name: "identifier".to_string(),
-            r#type: IdentifierType::Did,
-            is_remote: false,
-            state: IdentifierState::Active,
-            deleted_at: None,
+            public_key: vec![],
+            name: "verifier_key".to_string(),
+            key_reference: None,
+            storage_type: "".to_string(),
+            key_type: "".to_string(),
             organisation: None,
-            did: None,
-            key: None,
-            certificates: None,
         }),
-        holder_identifier: None,
-        verifier_key: None,
         verifier_certificate: None,
         interaction: None,
         profile: None,
@@ -418,103 +418,37 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
 
 #[tokio::test]
 async fn test_share_proof_with_use_request_uri() {
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter = MockCredentialFormatter::new();
+    credential_formatter
+        .expect_get_capabilities()
+        .returning(FormatterCapabilities::default);
+
+    let arc = Arc::new(credential_formatter);
+    credential_formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq("JWT"))
+        .returning(move |_| Some(arc.clone()));
+
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4Vp20Params {
             use_request_uri: true,
             ..generic_params()
         }),
+        credential_formatter_provider,
         ..Default::default()
     });
 
-    let now = OffsetDateTime::now_utc();
-    let did = Did {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-        name: "did".to_string(),
-        did: "did:example:123".parse().unwrap(),
-        did_type: DidType::Local,
-        did_method: "KEY".to_string(),
-        deactivated: false,
-        keys: Some(vec![RelatedKey {
-            role: KeyRole::Authentication,
-            key: Key {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                public_key: vec![],
-                name: "".to_string(),
-                key_reference: None,
-                storage_type: "".to_string(),
-                key_type: "".to_string(),
-                organisation: None,
-            },
-            reference: "1".to_string(),
-        }]),
-        organisation: None,
-        log: None,
-    };
     let proof_id = Uuid::new_v4();
-    let proof = Proof {
-        id: proof_id.into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
-        transport: "HTTP".to_string(),
-        redirect_uri: None,
-        state: ProofStateEnum::Created,
-        role: ProofRole::Verifier,
-        requested_date: None,
-        completed_date: None,
-        schema: Some(ProofSchema {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            deleted_at: None,
-            name: "test-share-proof".into(),
-            expire_duration: 123,
-            imported_source_url: None,
-            organisation: None,
-            input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
-                claim_schemas: None,
-                credential_schema: None,
-            }]),
-        }),
-        claims: None,
-        verifier_identifier: Some(Identifier {
-            did: Some(did.clone()),
-            ..dummy_identifier()
-        }),
-        holder_identifier: None,
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: None,
-        profile: None,
-    };
-
+    let proof = test_proof(proof_id, "JWT");
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
-
-    let encryption_key_jwk = PublicKeyWithJwk {
-        key_id: Uuid::new_v4().into(),
-        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }),
-    };
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            Some(encryption_key_jwk),
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -528,7 +462,7 @@ async fn test_share_proof_with_use_request_uri() {
 
     assert_eq!(
         HashSet::from_iter([
-            ("client_id".into(), (&did.did.to_string()).into()),
+            ("client_id".into(), ("did:example:123".to_string()).into()),
             ("client_id_scheme".into(), "did".into()),
             (
                 "request_uri".into(),
@@ -567,23 +501,10 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let encryption_key_jwk = PublicKeyWithJwk {
-        key_id: Uuid::new_v4().into(),
-        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }),
-    };
-
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            Some(encryption_key_jwk),
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -1097,23 +1018,10 @@ async fn test_share_proof_custom_scheme() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let encryption_key_jwk = PublicKeyWithJwk {
-        key_id: Uuid::new_v4().into(),
-        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }),
-    };
-
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            Some(encryption_key_jwk),
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {

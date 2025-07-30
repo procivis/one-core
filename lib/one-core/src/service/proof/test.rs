@@ -97,7 +97,6 @@ use crate::util::ble_resource::BleWaiter;
 struct Repositories {
     pub proof_repository: MockProofRepository,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub key_provider: MockKeyProvider,
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
     pub identifier_repository: MockIdentifierRepository,
@@ -124,7 +123,6 @@ fn setup_service(repositories: Repositories) -> ProofService {
     ProofService::new(
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.key_algorithm_provider),
-        Arc::new(repositories.key_provider),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.certificate_repository),
@@ -3499,7 +3497,7 @@ async fn test_share_proof_created_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -3564,7 +3562,6 @@ async fn test_share_proof_created_success() {
         history_repository,
         interaction_repository,
         key_algorithm_provider,
-        key_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -3614,7 +3611,7 @@ async fn test_share_proof_pending_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -3678,7 +3675,6 @@ async fn test_share_proof_pending_success() {
         history_repository,
         interaction_repository,
         key_algorithm_provider,
-        key_provider,
         config: generic_config().core,
         ..Default::default()
     });

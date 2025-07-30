@@ -7,6 +7,7 @@ use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_sc
 use model::OpenID4Vp25Params;
 use one_crypto::utilities;
 use serde_json::Value;
+use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_25_query, validate_interaction_data};
@@ -18,7 +19,6 @@ use super::mapper::{
     map_presented_credentials_to_presentation_format_type,
 };
 use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
@@ -48,6 +48,7 @@ use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_de
 use crate::provider::verification_protocol::openid4vp::draft25::dcql::create_dcql_query;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
+    generate_client_metadata_draft,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -64,6 +65,7 @@ use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::service::certificate::validator::CertificateValidator;
+use crate::service::oid4vp_draft25::proof_request::generate_authorization_request_params_draft25;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 mod dcql;
@@ -580,7 +582,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        encryption_key_jwk: Option<PublicKeyWithJwk>,
         type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
@@ -674,36 +675,65 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             )
         };
 
+        let client_metadata = generate_client_metadata_draft(
+            proof,
+            &*self.key_algorithm_provider,
+            &*self.key_provider,
+        )?;
+
+        let authorization_request = generate_authorization_request_params_draft25(
+            proof,
+            &interaction_id,
+            nonce.clone(),
+            presentation_definition.clone(),
+            dcql_query.clone(),
+            encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
+            response_uri.clone(),
+            client_metadata.clone(),
+        )?;
+
+        let encryption_key_id = client_metadata
+            .jwks
+            .as_ref()
+            .and_then(|jwks| jwks.keys.first().map(|key| key.key_id.clone()))
+            .map(|key_id| {
+                key_id.parse::<KeyId>().map_err(|e| {
+                    VerificationProtocolError::Failed(format!("Failed to parse key_id: {e}"))
+                })
+            })
+            .transpose()?;
+
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
-            presentation_definition,
+            presentation_definition: presentation_definition.clone(),
             client_id: encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
-            dcql_query,
-            encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
+            dcql_query: dcql_query.clone(),
+            encryption_key_id,
             client_id_scheme: Some(client_id_scheme),
-            response_uri: Some(response_uri),
+            response_uri: Some(response_uri.clone()),
         };
 
-        let offer = create_openid4vp25_authorization_request(
+        let request = create_openid4vp25_authorization_request(
             base_url,
             &self.params,
             client_id,
             interaction_id,
-            &interaction_content,
-            nonce,
             proof,
-            encryption_key_jwk,
             client_id_scheme,
             &self.key_algorithm_provider,
             &*self.key_provider,
+            authorization_request,
         )
         .await?;
 
-        let encoded_offer = serde_urlencoded::to_string(offer)
+        let encoded_authorization_request = serde_urlencoded::to_string(request)
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         Ok(ShareResponse {
-            url: format!("{}://?{encoded_offer}", self.params.url_scheme),
+            url: format!(
+                "{}://?{encoded_authorization_request}",
+                self.params.url_scheme
+            ),
             interaction_id,
             context: serde_json::to_value(&interaction_content)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,

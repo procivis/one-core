@@ -894,12 +894,6 @@ async fn test_get_client_metadata_success() {
             }),
             vp_formats_supported: HashMap::from([
                 (
-                    "jwt_vc_json".to_string(),
-                    OpenID4VpPresentationFormat::W3CJwtAlgs(OpenID4VPW3CJwtAlgs {
-                        alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    })
-                ),
-                (
                     "ldp_vc".to_string(),
                     OpenID4VpPresentationFormat::W3CLdpAlgs(OpenID4VPW3CLdpAlgs {
                         proof_type_values: vec!["DataIntegrityProof".to_string()],
@@ -924,9 +918,16 @@ async fn test_get_client_metadata_success() {
                         kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
+                (
+                    "jwt_vc_json".to_string(),
+                    OpenID4VpPresentationFormat::W3CJwtAlgs(OpenID4VPW3CJwtAlgs {
+                        alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    })
+                ),
             ]),
             encrypted_response_enc_values_supported: Some(vec![
-                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256
             ]),
             ..Default::default()
         },

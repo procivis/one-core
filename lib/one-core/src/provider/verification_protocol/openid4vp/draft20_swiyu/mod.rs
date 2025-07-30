@@ -5,7 +5,6 @@ use maplit::hashmap;
 use serde::Deserialize;
 use url::Url;
 
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::did::Did;
 use crate::model::key::Key;
@@ -198,7 +197,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        encryption_key_jwk: Option<PublicKeyWithJwk>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
@@ -208,7 +206,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             .verifier_share_proof(
                 proof,
                 format_to_type_mapper,
-                encryption_key_jwk,
                 type_to_descriptor,
                 callback,
                 params,

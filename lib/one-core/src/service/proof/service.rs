@@ -19,7 +19,7 @@ use super::validator::{
     validate_did_and_format_compatibility, validate_mdl_exchange, validate_redirect_uri,
     validate_verification_key_storage_compatibility,
 };
-use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
+use crate::common_mapper::list_response_try_into;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::config::validator::protocol::{
@@ -543,12 +543,6 @@ impl ProofService {
             MissingProviderError::ExchangeProtocol(proof.protocol.to_owned()),
         )?;
 
-        let encryption_key = get_encryption_key_jwk_from_proof(
-            &proof,
-            &*self.key_algorithm_provider,
-            &*self.key_provider,
-        )?;
-
         let config = self.config.clone();
         let format_type_mapper: FormatMapper = Arc::new(move |input| {
             Ok(config
@@ -571,7 +565,6 @@ impl ProofService {
             .verifier_share_proof(
                 &proof,
                 format_type_mapper,
-                encryption_key,
                 type_to_descriptor_mapper,
                 on_submission_callback,
                 request.params,

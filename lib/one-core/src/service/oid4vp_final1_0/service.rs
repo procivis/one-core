@@ -10,12 +10,7 @@ use uuid::Uuid;
 
 use super::OID4VPFinal1_0Service;
 use super::mapper::credential_from_proved;
-use super::proof_request::{
-    generate_authorization_request_client_id_scheme_did,
-    generate_authorization_request_client_id_scheme_redirect_uri,
-    generate_authorization_request_client_id_scheme_verifier_attestation,
-    generate_authorization_request_client_id_scheme_x509_san_dns,
-};
+use super::proof_request::generate_authorization_request_params_final1_0;
 use crate::common_mapper::{
     IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
 };
@@ -38,8 +33,16 @@ use crate::model::validity_credential::Mdoc;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
+    create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
+};
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    format_authorization_request_client_id_scheme_did,
+    format_authorization_request_client_id_scheme_redirect_uri,
+    format_authorization_request_client_id_scheme_verifier_attestation,
+    format_authorization_request_client_id_scheme_x509_san_dns,
+};
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
     OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
@@ -51,7 +54,9 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::oid4vp_final1_0::mapper::parse_interaction_content;
-use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
+use crate::service::oid4vp_final1_0::proof_request::{
+    generate_client_metadata_final1_0, generate_vp_formats_supported,
+};
 use crate::service::oid4vp_final1_0::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 
@@ -105,54 +110,67 @@ impl OID4VPFinal1_0Service {
                 "missing proof interaction".to_string(),
             ))?;
 
-        let interaction_data: OpenID4VPVerifierInteractionContent =
-            parse_interaction_content(interaction.data.as_ref())
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let OpenID4VPVerifierInteractionContent {
+            nonce,
+            dcql_query: Some(dcql_query),
+            client_id,
+            response_uri: Some(response_uri),
+            client_id_scheme: Some(client_id_scheme),
+            ..
+        } = parse_interaction_content(interaction.data.as_ref())
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        else {
+            return Err(
+                VerificationProtocolError::Failed("missing interaction data".to_string()).into(),
+            );
+        };
 
-        let client_id_scheme =
-            interaction_data
-                .client_id_scheme
-                .ok_or(VerificationProtocolError::Failed(
-                    "missing client_id_scheme".to_string(),
-                ))?;
+        let (client_id_without_prefix, _) = decode_client_id_with_scheme(&client_id)?;
+
+        let authorization_request = generate_authorization_request_params_final1_0(
+            nonce.clone(),
+            dcql_query.clone(),
+            client_id.clone(),
+            response_uri.clone(),
+            &interaction.id,
+            generate_client_metadata_final1_0(
+                &proof,
+                &*self.key_algorithm_provider,
+                &*self.key_provider,
+            )?,
+        )?;
+
         Ok(match client_id_scheme {
             ClientIdScheme::RedirectUri => {
-                generate_authorization_request_client_id_scheme_redirect_uri(
-                    &proof,
-                    interaction_data,
-                    &interaction.id,
-                    &*self.key_algorithm_provider,
-                    &*self.key_provider,
-                )
-                .await?
+                format_authorization_request_client_id_scheme_redirect_uri(authorization_request)
+                    .await?
             }
             ClientIdScheme::VerifierAttestation => {
-                generate_authorization_request_client_id_scheme_verifier_attestation(
+                format_authorization_request_client_id_scheme_verifier_attestation(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    client_id_without_prefix,
+                    response_uri.clone(),
+                    authorization_request,
                 )
                 .await?
             }
             ClientIdScheme::Did => {
-                generate_authorization_request_client_id_scheme_did(
+                format_authorization_request_client_id_scheme_did(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    authorization_request,
                 )
                 .await?
             }
             ClientIdScheme::X509SanDns => {
-                generate_authorization_request_client_id_scheme_x509_san_dns(
+                format_authorization_request_client_id_scheme_x509_san_dns(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    authorization_request,
                 )
                 .await?
             }

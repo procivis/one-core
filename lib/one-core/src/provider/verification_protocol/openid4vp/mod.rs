@@ -2,6 +2,7 @@
 //! https://openid.net/specs/openid-4-verifiable-presentations-1_0.html
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
 use one_dto_mapper::convert_inner;
@@ -10,7 +11,12 @@ use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionRes
 use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
 use crate::model::identifier::{Identifier, IdentifierType};
+use crate::model::key::Key;
 use crate::model::proof::Proof;
+use crate::provider::credential_formatter::model::AuthenticationFn;
+use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
@@ -201,4 +207,49 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
         convert_inner(credential_groups),
         config,
     )
+}
+
+struct JWTSigner<'a> {
+    pub auth_fn: AuthenticationFn,
+    pub verifier_key: &'a Key,
+    pub key_algorithm: Arc<dyn KeyAlgorithm>,
+    pub jose_algorithm: String,
+}
+
+fn get_jwt_signer<'a>(
+    proof: &'a Proof,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_provider: &dyn KeyProvider,
+) -> Result<JWTSigner<'a>, VerificationProtocolError> {
+    let verifier_key = proof
+        .verifier_key
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_key is None".to_string(),
+        ))?;
+
+    let auth_fn = key_provider
+        .get_signature_provider(verifier_key, None, key_algorithm_provider.to_owned())
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    let key_algorithm = verifier_key
+        .key_algorithm_type()
+        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
+        .ok_or(VerificationProtocolError::Failed(
+            "algorithm not found".to_string(),
+        ))?;
+
+    let jose_algorithm =
+        key_algorithm
+            .issuance_jose_alg_id()
+            .ok_or(VerificationProtocolError::Failed(
+                "JOSE algorithm not found".to_string(),
+            ))?;
+
+    Ok(JWTSigner {
+        auth_fn,
+        verifier_key,
+        key_algorithm,
+        jose_algorithm,
+    })
 }

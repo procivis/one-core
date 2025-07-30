@@ -6,23 +6,21 @@ use url::Url;
 
 use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
 use crate::common_mapper::PublicKeyWithJwk;
-use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    format_authorization_request_client_id_scheme_did,
+    format_authorization_request_client_id_scheme_verifier_attestation,
+    format_authorization_request_client_id_scheme_x509_san_dns,
+};
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
+    OpenID4VpPresentationFormat,
 };
-use crate::service::oid4vp_final1_0::proof_request::{
-    generate_authorization_request_client_id_scheme_did,
-    generate_authorization_request_client_id_scheme_verifier_attestation,
-    generate_authorization_request_client_id_scheme_x509_san_dns, generate_vp_formats_supported,
-};
-use crate::util::oidc::determine_response_mode;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
     jwk: Option<PublicKeyWithJwk>,
@@ -41,6 +39,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
         });
         metadata.encrypted_response_enc_values_supported = Some(vec![
             AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
+            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256,
         ]);
     }
 
@@ -52,14 +51,11 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     base_url: &str,
     openidvc_params: &Params,
     client_id_without_prefix: String,
-    interaction_id: InteractionId,
-    interaction_data: &OpenID4VPVerifierInteractionContent,
-    nonce: String,
     proof: &Proof,
-    jwk: Option<PublicKeyWithJwk>,
     client_id_scheme: ClientIdScheme,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
+    authorization_request: AuthorizationRequest,
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
     let params = if openidvc_params.use_request_uri {
         AuthorizationRequestQueryParams {
@@ -72,22 +68,13 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
         }
     } else {
         match client_id_scheme {
-            ClientIdScheme::RedirectUri => get_params_for_redirect_uri(
-                client_id_without_prefix,
-                interaction_id,
-                nonce,
-                proof,
-                jwk,
-                generate_vp_formats_supported(),
-                interaction_data,
-            )?,
+            ClientIdScheme::RedirectUri => format_params_for_redirect_uri(authorization_request)?,
             ClientIdScheme::X509SanDns => {
-                let token = generate_authorization_request_client_id_scheme_x509_san_dns(
+                let token = format_authorization_request_client_id_scheme_x509_san_dns(
                     proof,
-                    interaction_data.to_owned(),
-                    &interaction_id,
                     key_algorithm_provider,
                     key_provider,
+                    authorization_request,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
@@ -100,12 +87,21 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 });
             }
             ClientIdScheme::VerifierAttestation => {
-                let token = generate_authorization_request_client_id_scheme_verifier_attestation(
+                let response_uri = authorization_request
+                    .response_uri
+                    .as_ref()
+                    .ok_or(VerificationProtocolError::Failed(
+                        "missing client_id".to_string(),
+                    ))
+                    .map(|url| url.to_string())?;
+
+                let token = format_authorization_request_client_id_scheme_verifier_attestation(
                     proof,
-                    interaction_data.to_owned(),
-                    &interaction_id,
                     key_algorithm_provider,
                     key_provider,
+                    client_id_without_prefix.clone(),
+                    response_uri,
+                    authorization_request,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
@@ -118,12 +114,11 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 });
             }
             ClientIdScheme::Did => {
-                let token = generate_authorization_request_client_id_scheme_did(
+                let token = format_authorization_request_client_id_scheme_did(
                     proof,
-                    interaction_data.to_owned(),
-                    &interaction_id,
                     key_algorithm_provider,
                     key_provider,
+                    authorization_request,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
@@ -141,51 +136,33 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     Ok(params)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn get_params_for_redirect_uri(
-    response_uri: String,
-    interaction_id: InteractionId,
-    nonce: String,
-    proof: &Proof,
-    jwk: Option<PublicKeyWithJwk>,
-    vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
-    interaction_data: &OpenID4VPVerifierInteractionContent,
+fn format_params_for_redirect_uri(
+    authorization_request: AuthorizationRequest,
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
-    if interaction_data.presentation_definition.is_some() && interaction_data.dcql_query.is_some() {
-        return Err(
-            VerificationProtocolError::InvalidDcqlQueryOrPresentationDefinition(
-                "Either presentation_definition or dcql_query must be present".to_string(),
-            ),
-        );
-    }
+    let Some(dcql_query) = authorization_request.dcql_query else {
+        return Err(VerificationProtocolError::Failed(
+            "dcql_query is None".to_string(),
+        ));
+    };
 
-    let dcql_query = interaction_data
-        .dcql_query
-        .as_ref()
-        .map(|dcql| {
-            serde_json::to_string(&dcql)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-        })
-        .transpose()?;
+    let dcql_query = serde_json::to_string(&dcql_query)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata_final1_0(
-        jwk,
-        vp_formats_supported,
-    ))
-    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let metadata = serde_json::to_string(&authorization_request.client_metadata)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(AuthorizationRequestQueryParams {
-        client_id: encode_client_id_with_scheme(response_uri.clone(), ClientIdScheme::RedirectUri),
-        response_type: Some("vp_token".to_string()),
-        state: Some(interaction_id.to_string()),
-        response_mode: Some(determine_response_mode(proof)?),
+        client_id: authorization_request.client_id,
+        state: authorization_request.state,
+        nonce: authorization_request.nonce,
+        response_type: authorization_request.response_type,
+        response_mode: authorization_request.response_mode,
+        response_uri: Some(authorization_request.response_uri.unwrap().to_string()),
         client_metadata: Some(metadata),
-        response_uri: Some(response_uri),
-        nonce: Some(nonce),
+        dcql_query: Some(dcql_query),
         request: None,
         request_uri: None,
         redirect_uri: None,
-        dcql_query,
     })
 }
 

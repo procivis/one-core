@@ -13,7 +13,6 @@ use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
@@ -107,7 +106,6 @@ impl VerificationProtocol for ScanToVerify {
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
-        _encryption_key_jwk: Option<PublicKeyWithJwk>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,

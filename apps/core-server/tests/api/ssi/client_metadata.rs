@@ -64,6 +64,7 @@ async fn test_get_client_metadata() {
         serde_json::json!({
             "jwks": {
                 "keys": [{
+                    "alg": "ECDH-ES",
                     "crv": "P-256",
                     "kid": key.id.to_string(),
                     "kty": "EC",

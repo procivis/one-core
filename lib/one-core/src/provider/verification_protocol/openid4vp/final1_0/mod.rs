@@ -8,6 +8,7 @@ use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_
 use model::Params;
 use one_crypto::utilities;
 use serde_json::Value;
+use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
@@ -16,7 +17,6 @@ use uuid::Uuid;
 use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::format_to_type;
 use super::mdoc::mdoc_presentation_context;
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
@@ -57,6 +57,9 @@ use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::service::certificate::validator::CertificateValidator;
+use crate::service::oid4vp_final1_0::proof_request::{
+    generate_authorization_request_params_final1_0, generate_client_metadata_final1_0,
+};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 mod dcql;
@@ -468,7 +471,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        encryption_key_jwk: Option<PublicKeyWithJwk>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
@@ -544,39 +546,62 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 "Proof schema not found".to_string(),
             ))?;
 
+        let client_metadata = generate_client_metadata_final1_0(
+            proof,
+            &*self.key_algorithm_provider,
+            &*self.key_provider,
+        )?;
+
+        let encryption_key_id = client_metadata
+            .jwks
+            .as_ref()
+            .and_then(|jwks| jwks.keys.first().map(|key| key.key_id.clone()))
+            .map(|key_id| {
+                key_id.parse::<KeyId>().map_err(|e| {
+                    VerificationProtocolError::Failed(format!("Failed to parse key_id: {e}"))
+                })
+            })
+            .transpose()?;
+
+        let authorization_request = generate_authorization_request_params_final1_0(
+            nonce.clone(),
+            create_dcql_query(proof_schema, &format_to_type_mapper)?,
+            encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
+            response_uri.clone(),
+            &interaction_id,
+            client_metadata,
+        )?;
+
         let interaction_content = OpenID4VPVerifierInteractionContent {
-            nonce: nonce.to_owned(),
+            nonce,
             presentation_definition: None,
-            client_id: encode_client_id_with_scheme(
-                client_id_without_prefix.clone(),
-                client_id_scheme,
-            ),
-            dcql_query: Some(create_dcql_query(proof_schema, &format_to_type_mapper)?),
-            encryption_key_id: encryption_key_jwk.as_ref().map(|jwk| jwk.key_id),
+            client_id: authorization_request.client_id.clone(),
+            dcql_query: authorization_request.dcql_query.clone(),
+            encryption_key_id,
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
         };
 
-        let offer = create_openid4vp_final1_0_authorization_request(
+        let authorization_request = create_openid4vp_final1_0_authorization_request(
             base_url,
             &self.params,
             client_id_without_prefix,
-            interaction_id,
-            &interaction_content,
-            nonce,
             proof,
-            encryption_key_jwk,
             client_id_scheme,
             &self.key_algorithm_provider,
             &*self.key_provider,
+            authorization_request,
         )
         .await?;
 
-        let encoded_offer = serde_urlencoded::to_string(offer)
+        let encoded_authorization_request = serde_urlencoded::to_string(authorization_request)
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         Ok(ShareResponse {
-            url: format!("{}://?{encoded_offer}", self.params.url_scheme),
+            url: format!(
+                "{}://?{encoded_authorization_request}",
+                self.params.url_scheme
+            ),
             interaction_id,
             context: serde_json::to_value(&interaction_content)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,

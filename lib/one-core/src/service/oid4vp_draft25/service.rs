@@ -10,12 +10,7 @@ use uuid::Uuid;
 
 use super::OID4VPDraft25Service;
 use super::mapper::credential_from_proved;
-use super::proof_request::{
-    generate_authorization_request_client_id_scheme_did,
-    generate_authorization_request_client_id_scheme_redirect_uri,
-    generate_authorization_request_client_id_scheme_verifier_attestation,
-    generate_authorization_request_client_id_scheme_x509_san_dns,
-};
+use super::proof_request::generate_authorization_request_params_draft25;
 use crate::common_mapper::{
     IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
 };
@@ -38,7 +33,12 @@ use crate::model::validity_credential::Mdoc;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_formats;
+use crate::provider::verification_protocol::openid4vp::mapper::{
+    create_open_id_for_vp_formats, format_authorization_request_client_id_scheme_did,
+    format_authorization_request_client_id_scheme_redirect_uri,
+    format_authorization_request_client_id_scheme_verifier_attestation,
+    format_authorization_request_client_id_scheme_x509_san_dns,
+};
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
     OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
@@ -106,9 +106,35 @@ impl OID4VPDraft25Service {
                 "missing proof interaction".to_string(),
             ))?;
 
+        let client_metadata = create_open_id_for_vp_client_metadata_draft(
+            get_encryption_key_jwk_from_proof(
+                &proof,
+                &*self.key_algorithm_provider,
+                &*self.key_provider,
+            )?,
+            create_open_id_for_vp_formats(),
+        );
+
         let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        let Some(response_uri) = interaction_data.response_uri else {
+            return Err(ServiceError::MappingError(
+                "missing response_uri".to_string(),
+            ));
+        };
+
+        let authorization_request = generate_authorization_request_params_draft25(
+            &proof,
+            &interaction.id,
+            interaction_data.nonce,
+            interaction_data.presentation_definition,
+            interaction_data.dcql_query,
+            interaction_data.client_id.clone(),
+            response_uri.clone(),
+            client_metadata,
+        )?;
 
         let client_id_scheme =
             interaction_data
@@ -118,42 +144,35 @@ impl OID4VPDraft25Service {
                 ))?;
         Ok(match client_id_scheme {
             ClientIdScheme::RedirectUri => {
-                generate_authorization_request_client_id_scheme_redirect_uri(
-                    &proof,
-                    interaction_data,
-                    &interaction.id,
-                    &*self.key_algorithm_provider,
-                    &*self.key_provider,
-                )
-                .await?
+                format_authorization_request_client_id_scheme_redirect_uri(authorization_request)
+                    .await?
             }
             ClientIdScheme::VerifierAttestation => {
-                generate_authorization_request_client_id_scheme_verifier_attestation(
+                format_authorization_request_client_id_scheme_verifier_attestation(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    interaction_data.client_id,
+                    response_uri.clone(),
+                    authorization_request,
                 )
                 .await?
             }
             ClientIdScheme::Did => {
-                generate_authorization_request_client_id_scheme_did(
+                format_authorization_request_client_id_scheme_did(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    authorization_request,
                 )
                 .await?
             }
             ClientIdScheme::X509SanDns => {
-                generate_authorization_request_client_id_scheme_x509_san_dns(
+                format_authorization_request_client_id_scheme_x509_san_dns(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    authorization_request,
                 )
                 .await?
             }

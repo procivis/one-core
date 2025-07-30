@@ -1,388 +1,41 @@
 use std::collections::HashMap;
-use std::ops::Add;
-use std::sync::Arc;
 
-use time::{Duration, OffsetDateTime};
+use dcql::DcqlQuery;
+use one_crypto::jwe::RemoteJwk;
 use url::Url;
 
-use crate::common_mapper::get_encryption_key_jwk_from_proof;
+use crate::common_mapper::PublicKeyWithJwk;
+use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
-use crate::model::key::Key;
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::error::KeyStorageError;
+use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
-    create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
-};
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::{
     AuthorizationRequest, OpenID4VPFinal1_0ClientMetadata,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VCVerifierAttestationPayload, OpenID4VPMdocAlgs, OpenID4VPVcSdJwtAlgs,
-    OpenID4VPVerifierInteractionContent, OpenID4VPW3CJwtAlgs, OpenID4VPW3CLdpAlgs,
+    OpenID4VPMdocAlgs, OpenID4VPVcSdJwtAlgs, OpenID4VPW3CJwtAlgs, OpenID4VPW3CLdpAlgs,
     OpenID4VpPresentationFormat,
 };
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
-use crate::util::oidc::determine_response_mode;
-use crate::util::x509::pem_chain_into_x5c;
+use crate::service::error::{ServiceError, ValidationError};
 
-pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri(
-    proof: &Proof,
-    interaction_data: OpenID4VPVerifierInteractionContent,
+pub(crate) fn generate_authorization_request_params_final1_0(
+    nonce: String,
+    dcql_query: DcqlQuery,
+    client_id: String,
+    response_uri: String,
     interaction_id: &InteractionId,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    key_provider: &dyn KeyProvider,
-) -> Result<String, VerificationProtocolError> {
-    let client_response = generate_authorization_request_params(
-        proof,
-        interaction_data,
-        interaction_id,
-        key_algorithm_provider,
-        key_provider,
-    )?;
-
-    let unsigned_jwt = Jwt {
-        header: JWTHeader {
-            algorithm: "none".to_string(),
-            key_id: None,
-            r#type: Some("oauth-authz-req+jwt".to_string()),
-            jwk: None,
-            jwt: None,
-            x5c: None,
-        },
-        payload: JWTPayload {
-            issued_at: None,
-            expires_at: None,
-            invalid_before: None,
-            issuer: None,
-            subject: None,
-            audience: Some(vec!["https://self-issued.me/v2".to_string()]),
-            jwt_id: None,
-            proof_of_possession_key: None,
-            custom: client_response,
-        },
-    };
-
-    unsigned_jwt
-        .tokenize(None)
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-}
-
-pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_attestation(
-    proof: &Proof,
-    interaction_data: OpenID4VPVerifierInteractionContent,
-    interaction_id: &InteractionId,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    key_provider: &dyn KeyProvider,
-) -> Result<String, VerificationProtocolError> {
-    let client_response = generate_authorization_request_params(
-        proof,
-        interaction_data,
-        interaction_id,
-        key_algorithm_provider.as_ref(),
-        key_provider,
-    )?;
-
-    let JWTSigner {
-        auth_fn,
-        verifier_key,
-        key_algorithm,
-        jose_algorithm,
-    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
-
-    let jwk = key_algorithm
-        .reconstruct_key(&verifier_key.public_key, None, None)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .public_key_as_jwk()
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-    let proof_of_possession_key = Some(ProofOfPossessionKey {
-        key_id: None,
-        jwk: ProofOfPossessionJwk::Jwk { jwk: jwk.into() },
-    });
-
-    let verifier_did = proof
-        .verifier_identifier
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_identifier is None".to_string(),
-        ))?
-        .did
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_did is None".to_string(),
-        ))?;
-
-    let key = verifier_did
-        .find_key(&verifier_key.id, &Default::default())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier key not found".to_string(),
-        ))?;
-
-    let key_id = verifier_did.verification_method_id(key);
-
-    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
-
-    /*
-     * TODO(ONE-3846): this needs to be issued and obtained from external authority,
-     *     holder needs to know the authority and should check if it's signed by it
-     */
-    let response_uri = client_response
-        .response_uri
-        .as_ref()
-        .map(|url| url.to_string())
-        .unwrap_or_default();
-    let custom = OpenID4VCVerifierAttestationPayload {
-        redirect_uris: vec![response_uri],
-    };
-
-    let (client_id_without_prefix, _) = decode_client_id_with_scheme(&client_response.client_id)?;
-
-    let attestation_jwt = Jwt {
-        header: JWTHeader {
-            algorithm: jose_algorithm.to_owned(),
-            key_id: Some(key_id),
-            r#type: Some("verifier-attestation+jwt".to_string()),
-            jwk: None,
-            jwt: None,
-            x5c: None,
-        },
-        payload: JWTPayload {
-            expires_at,
-            issuer: Some(verifier_did.did.to_string()),
-
-            // ... the original Client Identifier (the part without the verifier_attestation: prefix) MUST equal the sub claim value in the Verifier attestation JWT
-            // <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.9.3-3.4.1>
-            subject: Some(client_id_without_prefix.to_owned()),
-            custom,
-            proof_of_possession_key,
-            ..Default::default()
-        },
-    }
-    .tokenize(Some(auth_fn))
-    .await
-    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-    let auth_fn = key_provider
-        .get_signature_provider(verifier_key, None, key_algorithm_provider.clone())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-    let request_jwt = Jwt {
-        header: JWTHeader {
-            algorithm: jose_algorithm,
-            key_id: None,
-            r#type: Some("oauth-authz-req+jwt".to_string()),
-            jwk: None,
-            jwt: Some(attestation_jwt),
-            x5c: None,
-        },
-        payload: JWTPayload {
-            issued_at: None,
-            expires_at,
-            invalid_before: None,
-            issuer: Some(verifier_did.did.to_string()),
-            subject: Some(client_id_without_prefix),
-            audience: Some(vec!["https://self-issued.me/v2".to_string()]),
-            jwt_id: None,
-            proof_of_possession_key: None,
-            custom: client_response,
-        },
-    };
-
-    request_jwt
-        .tokenize(Some(auth_fn))
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-}
-
-pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns(
-    proof: &Proof,
-    interaction_data: OpenID4VPVerifierInteractionContent,
-    interaction_id: &InteractionId,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    key_provider: &dyn KeyProvider,
-) -> Result<String, VerificationProtocolError> {
-    let client_response = generate_authorization_request_params(
-        proof,
-        interaction_data,
-        interaction_id,
-        key_algorithm_provider.as_ref(),
-        key_provider,
-    )?;
-
-    let JWTSigner {
-        auth_fn,
-        jose_algorithm,
-        ..
-    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
-
-    let verifier_identifier =
-        proof
-            .verifier_identifier
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "verifier_identifier is None".to_string(),
-            ))?;
-
-    let (x5c, issuer) =
-        match verifier_identifier.r#type {
-            IdentifierType::Did => {
-                return Err(VerificationProtocolError::Failed(
-                    "invalid verifier identifier type".to_string(),
-                ));
-            }
-            IdentifierType::Certificate => {
-                let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
-                    VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
-                )?;
-
-                let x5c = pem_chain_into_x5c(&verifier_certificate.chain)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-                (x5c, None)
-            }
-            IdentifierType::Key => {
-                return Err(VerificationProtocolError::Failed(
-                    "invalid verifier identifier type".to_string(),
-                ));
-            }
-        };
-
-    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
-
-    let request_jwt = Jwt {
-        header: JWTHeader {
-            algorithm: jose_algorithm,
-            key_id: None,
-            r#type: Some("oauth-authz-req+jwt".to_string()),
-            jwk: None,
-            jwt: None,
-            x5c: Some(x5c),
-        },
-        payload: JWTPayload {
-            issued_at: None,
-            expires_at,
-            invalid_before: None,
-            issuer,
-            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
-            subject: None,
-            audience: Some(vec!["https://self-issued.me/v2".to_string()]),
-            jwt_id: None,
-            proof_of_possession_key: None,
-            custom: client_response,
-        },
-    };
-
-    request_jwt
-        .tokenize(Some(auth_fn))
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-}
-
-pub(crate) async fn generate_authorization_request_client_id_scheme_did(
-    proof: &Proof,
-    interaction_data: OpenID4VPVerifierInteractionContent,
-    interaction_id: &InteractionId,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
-    key_provider: &dyn KeyProvider,
-) -> Result<String, VerificationProtocolError> {
-    let client_response = generate_authorization_request_params(
-        proof,
-        interaction_data,
-        interaction_id,
-        key_algorithm_provider.as_ref(),
-        key_provider,
-    )?;
-
-    let JWTSigner {
-        auth_fn,
-        jose_algorithm,
-        verifier_key,
-        ..
-    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
-
-    let verifier_did = proof
-        .verifier_identifier
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_identifier is None".to_string(),
-        ))?
-        .did
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_did is None".to_string(),
-        ))?;
-
-    let key = verifier_did
-        .find_key(&verifier_key.id, &Default::default())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier key not found".to_string(),
-        ))?;
-
-    let key_id = verifier_did.verification_method_id(key);
-
-    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
-
-    let request_jwt = Jwt {
-        header: JWTHeader {
-            algorithm: jose_algorithm,
-            key_id: Some(key_id),
-            r#type: Some("oauth-authz-req+jwt".to_string()),
-            jwk: None,
-            jwt: None,
-            x5c: None,
-        },
-        payload: JWTPayload {
-            issued_at: None,
-            expires_at,
-            invalid_before: None,
-            issuer: Some(verifier_did.did.to_string()),
-            subject: None,
-            audience: Some(vec!["https://self-issued.me/v2".to_string()]),
-            jwt_id: None,
-            proof_of_possession_key: None,
-            custom: client_response,
-        },
-    };
-
-    request_jwt
-        .tokenize(Some(auth_fn))
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-}
-
-fn generate_authorization_request_params(
-    proof: &Proof,
-    interaction_data: OpenID4VPVerifierInteractionContent,
-    interaction_id: &InteractionId,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    key_provider: &dyn KeyProvider,
+    client_metadata: OpenID4VPFinal1_0ClientMetadata,
 ) -> Result<AuthorizationRequest, VerificationProtocolError> {
-    let client_metadata = generate_client_metadata(proof, key_algorithm_provider, key_provider)?;
-
-    let OpenID4VPVerifierInteractionContent {
-        nonce,
-        dcql_query,
-        client_id,
-        response_uri: Some(response_uri),
-        ..
-    } = interaction_data
-    else {
-        return Err(VerificationProtocolError::Failed(
-            "invalid interaction data".to_string(),
-        ));
-    };
-
     Ok(AuthorizationRequest {
         response_type: Some("vp_token".to_string()),
-        response_mode: Some(determine_response_mode(proof)?),
+        response_mode: Some(determine_response_mode_final1_0(&client_metadata)),
         client_id,
         client_metadata: Some(client_metadata.into()),
         response_uri: Some(
@@ -391,18 +44,26 @@ fn generate_authorization_request_params(
         ),
         nonce: Some(nonce),
         state: Some(interaction_id.to_string()),
-        dcql_query,
+        dcql_query: Some(dcql_query),
         redirect_uri: None,
     })
 }
 
-fn generate_client_metadata(
+fn determine_response_mode_final1_0(metadata: &OpenID4VPFinal1_0ClientMetadata) -> String {
+    if metadata.encrypted_response_enc_values_supported.is_some() {
+        "direct_post.jwt".to_string()
+    } else {
+        "direct_post".to_string()
+    }
+}
+
+pub(crate) fn generate_client_metadata_final1_0(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
 ) -> Result<OpenID4VPFinal1_0ClientMetadata, VerificationProtocolError> {
     let vp_formats_supported = generate_vp_formats_supported();
-    let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, key_provider)
+    let jwk = select_key_agreement_key_from_proof(proof, key_algorithm_provider, key_provider)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(create_open_id_for_vp_client_metadata_final1_0(
@@ -453,47 +114,128 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresen
     formats
 }
 
-struct JWTSigner<'a> {
-    pub auth_fn: AuthenticationFn,
-    pub verifier_key: &'a Key,
-    pub key_algorithm: Arc<dyn KeyAlgorithm>,
-    pub jose_algorithm: String,
-}
-
-fn get_jwt_signer<'a>(
-    proof: &'a Proof,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+fn select_key_agreement_key_from_proof(
+    proof: &Proof,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
-) -> Result<JWTSigner<'a>, VerificationProtocolError> {
-    let verifier_key = proof
-        .verifier_key
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier_key is None".to_string(),
-        ))?;
+) -> Result<Option<PublicKeyWithJwk>, VerificationProtocolError> {
+    let Some(verifier_identifier) = proof.verifier_identifier.as_ref() else {
+        return Err(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ));
+    };
 
-    let auth_fn = key_provider
-        .get_signature_provider(verifier_key, None, key_algorithm_provider.to_owned())
+    let Some(verifier_key) = proof.verifier_key.as_ref() else {
+        return Err(VerificationProtocolError::Failed(
+            "verifier_key is None".to_string(),
+        ));
+    };
+
+    let candidate_encryption_key = match verifier_identifier.r#type {
+        IdentifierType::Certificate | IdentifierType::Key => Some(verifier_key),
+        IdentifierType::Did => {
+            let Some(verifier_did) = verifier_identifier.did.as_ref() else {
+                return Err(VerificationProtocolError::Failed(
+                    "verifier_did is None".to_string(),
+                ));
+            };
+
+            let key_agreement_key_filter = KeyFilter::role_filter(KeyRole::KeyAgreement);
+            // We ensure the specified key is a key agreement key
+            let encryption_key = verifier_did.find_key(&verifier_key.id, &key_agreement_key_filter);
+            match encryption_key {
+                Ok(Some(key)) => Some(&key.key),
+                // If the key is not a key agreement key or not found, we try to find a matching key
+                Err(ServiceError::Validation(ValidationError::InvalidKey(_))) | Ok(None) => {
+                    verifier_did
+                        .find_first_matching_key(&key_agreement_key_filter)
+                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                        .map(|key| &key.key)
+                }
+                Err(error) => {
+                    return Err(VerificationProtocolError::Failed(error.to_string()));
+                }
+            }
+        }
+    };
+
+    // If no key is found, we return None, the verifier will only support the direct_post response_mode
+    let Some(candidate_encryption_key) = candidate_encryption_key else {
+        return Ok(None);
+    };
+
+    let key_algorithm = candidate_encryption_key
+        .key_algorithm_type()
+        .and_then(|key_type| key_algorithm_provider.key_algorithm_from_type(key_type))
+        .ok_or(VerificationProtocolError::Failed(format!(
+            "key algorithm not found for key type: {}",
+            candidate_encryption_key.key_type
+        )))?;
+    let key_storage = key_provider
+        .get_key_storage(&candidate_encryption_key.storage_type)
+        .ok_or(KeyStorageError::NotSupported(
+            candidate_encryption_key.storage_type.to_owned(),
+        ))
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let key_algorithm = verifier_key
-        .key_algorithm_type()
-        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
-        .ok_or(VerificationProtocolError::Failed(
-            "algorithm not found".to_string(),
-        ))?;
+    /*
+     * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params
+     * This needs more investigation and a refactor to support creating shared secret
+     * through key storage
+     */
+    let r#use = if key_storage
+        .get_capabilities()
+        .security
+        .contains(&KeySecurity::RemoteSecureElement)
+    {
+        None
+    } else {
+        Some("enc".to_string())
+    };
 
-    let jose_algorithm =
-        key_algorithm
-            .issuance_jose_alg_id()
-            .ok_or(VerificationProtocolError::Failed(
-                "JOSE algorithm not found".to_string(),
-            ))?;
+    let key_agreement_key = key_algorithm
+        .reconstruct_key(&candidate_encryption_key.public_key, None, r#use)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .key_agreement()
+        .map(|k| k.public().as_jwk())
+        .transpose()
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    Ok(JWTSigner {
-        auth_fn,
-        verifier_key,
-        key_algorithm,
-        jose_algorithm,
-    })
+    if let Some(key_agreement_key) = key_agreement_key {
+        let public_key_jwk = remote_jwk_to_public_key_jwk(key_agreement_key)
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        Ok(Some(PublicKeyWithJwk {
+            key_id: candidate_encryption_key.id,
+            jwk: public_key_jwk,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Converts a RemoteJwk (used for encryption) to PublicKeyJwk (used for general key operations)
+fn remote_jwk_to_public_key_jwk(remote_jwk: RemoteJwk) -> Result<PublicKeyJwk, ServiceError> {
+    match remote_jwk.kty.as_str() {
+        "EC" => Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            alg: Some("ECDH-ES".to_string()),
+            r#use: Some("enc".to_string()),
+            kid: None,
+            crv: remote_jwk.crv,
+            x: remote_jwk.x,
+            y: remote_jwk.y,
+        })),
+        "OKP" => Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            alg: Some("ECDH-ES".to_string()),
+            r#use: Some("enc".to_string()),
+            kid: None,
+            crv: remote_jwk.crv,
+            x: remote_jwk.x,
+            y: remote_jwk.y,
+        })),
+        _ => Err(ServiceError::MappingError(format!(
+            "Unsupported key type '{}' in RemoteJwk conversion",
+            remote_jwk.kty
+        ))),
+    }
 }

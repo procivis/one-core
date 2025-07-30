@@ -95,7 +95,9 @@ pub(crate) fn detect_format_with_crypto_suite(
 /// - `direct_post.jwt` for `MDOC` presentations
 ///     - `MDOC` will only be used for a [Proof] if _all_ credentials presented have the format `MDOC`
 /// - `direct_post` for everything else
-pub(crate) fn determine_response_mode(proof: &Proof) -> Result<String, VerificationProtocolError> {
+pub(crate) fn determine_response_mode_openid4vp_draft(
+    proof: &Proof,
+) -> Result<String, VerificationProtocolError> {
     let mut format_iter = proof
         .schema
         .iter()

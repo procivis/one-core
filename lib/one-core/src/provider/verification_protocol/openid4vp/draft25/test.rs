@@ -9,11 +9,11 @@ use uuid::Uuid;
 
 use super::OpenID4VP25HTTP;
 use super::model::OpenID4Vp25Params;
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
-use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -27,16 +27,15 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VC25PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPDraftClientMetadata,
-    OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
+    OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
+use crate::service::test_utilities::dummy_identifier;
 
 #[derive(Default)]
 struct TestInputs {
@@ -112,18 +111,6 @@ async fn test_share_proof() {
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let encryption_key_jwk = PublicKeyWithJwk {
-        key_id: Uuid::new_v4().into(),
-        jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }),
-    };
-
     let ShareResponse {
         url,
         interaction_id,
@@ -132,7 +119,6 @@ async fn test_share_proof() {
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            Some(encryption_key_jwk),
             type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
@@ -188,15 +174,19 @@ async fn test_share_proof() {
     )
     .unwrap();
 
-    assert_eq!(returned_client_metadata.jwks.unwrap().keys.len(), 1);
+    // Direct post - no encryption, the verifier also does not have any key agreement keys
+    assert_eq!(returned_client_metadata.jwks, None);
     assert_eq!(
         returned_client_metadata.authorization_encrypted_response_alg,
-        Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
+        None
     );
     assert_eq!(
         returned_client_metadata.authorization_encrypted_response_enc,
-        Some(AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM)
+        None
     );
+
+    assert!(!returned_client_metadata.vp_formats.is_empty());
+
     assert_eq!(returned_presentation_definition.input_descriptors.len(), 1);
     assert_eq!(
         returned_presentation_definition.input_descriptors[0].id,
@@ -266,21 +256,47 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         }),
         claims: None,
         verifier_identifier: Some(Identifier {
+            did: Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                deactivated: false,
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        public_key: vec![],
+                        name: "".to_string(),
+                        key_reference: None,
+                        storage_type: "".to_string(),
+                        key_type: "".to_string(),
+                        organisation: None,
+                    },
+                    reference: "1".to_string(),
+                }]),
+                organisation: None,
+                log: None,
+            }),
+            ..dummy_identifier()
+        }),
+        holder_identifier: None,
+        verifier_key: Some(Key {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            name: "identifier".to_string(),
-            r#type: IdentifierType::Did,
-            is_remote: false,
-            state: IdentifierState::Active,
-            deleted_at: None,
+            public_key: vec![],
+            name: "verifier_key".to_string(),
+            key_reference: None,
+            storage_type: "".to_string(),
+            key_type: "".to_string(),
             organisation: None,
-            did: None,
-            key: None,
-            certificates: None,
         }),
-        holder_identifier: None,
-        verifier_key: None,
         verifier_certificate: None,
         interaction: None,
         profile: None,

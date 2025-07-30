@@ -9,12 +9,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::OID4VPDraft20Service;
-use super::proof_request::{
-    generate_authorization_request_client_id_scheme_did,
-    generate_authorization_request_client_id_scheme_redirect_uri,
-    generate_authorization_request_client_id_scheme_verifier_attestation,
-    generate_authorization_request_client_id_scheme_x509_san_dns,
-};
+use super::proof_request::generate_authorization_request_params_draft20;
 use crate::common_mapper::{
     IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
 };
@@ -40,6 +35,10 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_formats, credential_from_proved,
+    format_authorization_request_client_id_scheme_did,
+    format_authorization_request_client_id_scheme_redirect_uri,
+    format_authorization_request_client_id_scheme_verifier_attestation,
+    format_authorization_request_client_id_scheme_x509_san_dns,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
@@ -114,44 +113,69 @@ impl OID4VPDraft20Service {
                 .ok_or(VerificationProtocolError::Failed(
                     "missing client_id_scheme".to_string(),
                 ))?;
+
+        let OpenID4VPVerifierInteractionContent {
+            presentation_definition: Some(presentation_definition),
+            response_uri: Some(response_uri),
+            ..
+        } = interaction_data.clone()
+        else {
+            return Err(ServiceError::VerificationProtocolError(
+                VerificationProtocolError::Failed("invalid interaction data".to_string()),
+            ));
+        };
+
+        let client_metadata = create_open_id_for_vp_client_metadata_draft(
+            get_encryption_key_jwk_from_proof(
+                &proof,
+                &*self.key_algorithm_provider,
+                &*self.key_provider,
+            )?,
+            create_open_id_for_vp_formats(),
+        );
+
+        let authorization_request = generate_authorization_request_params_draft20(
+            &proof,
+            &interaction.id,
+            interaction_data.nonce,
+            presentation_definition,
+            interaction_data.client_id.clone(),
+            response_uri,
+            client_id_scheme,
+            client_metadata,
+        )?;
+
         Ok(match client_id_scheme {
             ClientIdScheme::RedirectUri => {
-                generate_authorization_request_client_id_scheme_redirect_uri(
-                    &proof,
-                    interaction_data,
-                    &interaction.id,
-                    &*self.key_algorithm_provider,
-                    &*self.key_provider,
-                )
-                .await?
+                format_authorization_request_client_id_scheme_redirect_uri(authorization_request)
+                    .await?
             }
             ClientIdScheme::VerifierAttestation => {
-                generate_authorization_request_client_id_scheme_verifier_attestation(
+                format_authorization_request_client_id_scheme_verifier_attestation(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    interaction_data.client_id,
+                    interaction_data.response_uri.unwrap(),
+                    authorization_request,
                 )
                 .await?
             }
             ClientIdScheme::Did => {
-                generate_authorization_request_client_id_scheme_did(
+                format_authorization_request_client_id_scheme_did(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    authorization_request,
                 )
                 .await?
             }
             ClientIdScheme::X509SanDns => {
-                generate_authorization_request_client_id_scheme_x509_san_dns(
+                format_authorization_request_client_id_scheme_x509_san_dns(
                     &proof,
-                    interaction_data,
-                    &interaction.id,
                     &self.key_algorithm_provider,
                     &*self.key_provider,
+                    authorization_request,
                 )
                 .await?
             }

@@ -18,7 +18,6 @@ use super::model::{
     OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
     default_presentation_url_scheme,
 };
-use crate::common_mapper::PublicKeyWithJwk;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
@@ -400,7 +399,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        _encryption_key_jwk: Option<PublicKeyWithJwk>,
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
