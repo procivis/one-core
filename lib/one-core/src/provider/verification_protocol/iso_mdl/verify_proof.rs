@@ -84,6 +84,7 @@ pub(crate) async fn validate_proof(
                 expiration_date: None,
                 client_id: None,
                 response_uri: None,
+                verifier_key: None,
             },
         )
         .await?;

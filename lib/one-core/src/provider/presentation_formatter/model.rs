@@ -3,6 +3,7 @@ use serde_with::skip_serializing_none;
 use time::OffsetDateTime;
 
 use crate::config::core_config::{FormatType, VerificationProtocolType};
+use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 
 #[derive(Clone, Default, Serialize)]
@@ -49,4 +50,5 @@ pub struct ExtractPresentationCtx {
     pub mdoc_session_transcript: Option<Vec<u8>>,
     pub client_id: Option<String>,
     pub response_uri: Option<String>,
+    pub verifier_key: Option<PublicKeyJwk>,
 }

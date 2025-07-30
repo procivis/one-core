@@ -60,6 +60,7 @@ pub(super) async fn peek_presentation(
                 client_id: None,
                 response_uri: None,
                 mdoc_session_transcript: None,
+                verifier_key: None,
             },
         )
         .await

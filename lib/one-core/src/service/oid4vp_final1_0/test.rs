@@ -120,7 +120,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let credential_schema = dummy_credential_schema();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
-        encryption_key_id: None,
+        encryption_key: None,
         dcql_query: None,
         presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: interaction_id.to_string(),
@@ -425,7 +425,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
     let credential_schema = dummy_credential_schema();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
-        encryption_key_id: None,
+        encryption_key: None,
         dcql_query: None,
         presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: interaction_id.to_string(),

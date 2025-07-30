@@ -134,7 +134,7 @@ async fn test_presentation_definition_success() {
         }),
         client_id: "client_id".to_string(),
         client_id_scheme: None,
-        encryption_key_id: None,
+        encryption_key: None,
         response_uri: None,
     })
     .unwrap();
@@ -251,7 +251,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let credential_schema = dummy_credential_schema();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
-        encryption_key_id: None,
+        encryption_key: None,
         dcql_query: None,
         presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: interaction_id.to_string(),

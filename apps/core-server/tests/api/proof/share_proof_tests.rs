@@ -194,7 +194,7 @@ async fn test_share_proof_success_with_separate_encryption_key() {
     let interaction = proof.interaction.unwrap();
     let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
 
-    assert_eq!(data["encryption_key_id"], encryption_key.id.to_string());
+    assert_eq!(data["encryption_key"]["kid"], encryption_key.id.to_string());
 }
 
 #[tokio::test]

@@ -8,7 +8,6 @@ use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_
 use model::Params;
 use one_crypto::utilities;
 use serde_json::Value;
-use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
@@ -552,16 +551,10 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             &*self.key_provider,
         )?;
 
-        let encryption_key_id = client_metadata
+        let encryption_key = client_metadata
             .jwks
             .as_ref()
-            .and_then(|jwks| jwks.keys.first().map(|key| key.key_id.clone()))
-            .map(|key_id| {
-                key_id.parse::<KeyId>().map_err(|e| {
-                    VerificationProtocolError::Failed(format!("Failed to parse key_id: {e}"))
-                })
-            })
-            .transpose()?;
+            .and_then(|jwks| jwks.keys.first().cloned());
 
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
@@ -577,7 +570,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             presentation_definition: None,
             client_id: authorization_request.client_id.clone(),
             dcql_query: authorization_request.dcql_query.clone(),
-            encryption_key_id,
+            encryption_key,
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
         };

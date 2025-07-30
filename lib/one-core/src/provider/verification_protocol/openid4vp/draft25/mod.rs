@@ -7,7 +7,6 @@ use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_sc
 use model::OpenID4Vp25Params;
 use one_crypto::utilities;
 use serde_json::Value;
-use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_25_query, validate_interaction_data};
@@ -692,23 +691,17 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             client_metadata.clone(),
         )?;
 
-        let encryption_key_id = client_metadata
+        let encryption_key = client_metadata
             .jwks
             .as_ref()
-            .and_then(|jwks| jwks.keys.first().map(|key| key.key_id.clone()))
-            .map(|key_id| {
-                key_id.parse::<KeyId>().map_err(|e| {
-                    VerificationProtocolError::Failed(format!("Failed to parse key_id: {e}"))
-                })
-            })
-            .transpose()?;
+            .and_then(|jwks| jwks.keys.first().cloned());
 
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
             presentation_definition: presentation_definition.clone(),
             client_id: encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
             dcql_query: dcql_query.clone(),
-            encryption_key_id,
+            encryption_key,
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri.clone()),
         };

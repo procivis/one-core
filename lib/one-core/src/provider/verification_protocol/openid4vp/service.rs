@@ -277,6 +277,7 @@ async fn process_proof_submission_dcql_query(
                 client_id: None,
                 response_uri: None,
                 mdoc_session_transcript: None,
+                verifier_key: None,
             }
         };
 
@@ -510,6 +511,7 @@ async fn process_proof_submission_presentation_exchange(
                 client_id: None,
                 response_uri: None,
                 mdoc_session_transcript: None,
+                verifier_key: None,
             }
         };
 

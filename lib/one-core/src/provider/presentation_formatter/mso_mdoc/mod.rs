@@ -313,8 +313,13 @@ impl MsoMdocPresentationFormatter {
 
         let handover = match &context.verification_protocol_type {
             VerificationProtocolType::OpenId4VpFinal1_0 => Handover::OID4VPFinal1_0(
-                OID4VPFinal1_0Handover::compute(&client_id, response_uri, &nonce, None)
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                OID4VPFinal1_0Handover::compute(
+                    &client_id,
+                    response_uri,
+                    &nonce,
+                    context.verifier_key.as_ref(),
+                )
+                .map_err(|e| FormatterError::Failed(e.to_string()))?,
             ),
             _ => {
                 let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(

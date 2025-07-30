@@ -68,6 +68,7 @@ async fn test_extract_presentation() {
                 mdoc_session_transcript: None,
                 client_id: None,
                 response_uri: None,
+                verifier_key: None,
             },
         )
         .await

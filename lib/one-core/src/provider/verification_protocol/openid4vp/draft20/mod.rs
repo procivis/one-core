@@ -6,7 +6,6 @@ use futures::future::BoxFuture;
 use mappers::create_openidvp20_authorization_request;
 use model::OpenID4Vp20Params;
 use one_crypto::utilities;
-use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_20_query, validate_interaction_data};
@@ -573,16 +572,10 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             client_metadata.clone(),
         )?;
 
-        let encryption_key_id = client_metadata
+        let encryption_key = client_metadata
             .jwks
             .as_ref()
-            .and_then(|jwks| jwks.keys.first().map(|key| key.key_id.clone()))
-            .map(|key_id| {
-                key_id.parse::<KeyId>().map_err(|e| {
-                    VerificationProtocolError::Failed(format!("Failed to parse key_id: {e}"))
-                })
-            })
-            .transpose()?;
+            .and_then(|jwks| jwks.keys.first().cloned());
 
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce,
@@ -591,7 +584,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
             dcql_query: None,
-            encryption_key_id,
+            encryption_key,
         };
 
         let request = create_openidvp20_authorization_request(

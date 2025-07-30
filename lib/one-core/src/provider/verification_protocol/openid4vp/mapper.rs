@@ -473,6 +473,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
         issuance_date: None,
         expiration_date: None,
         mdoc_session_transcript: None,
+        verifier_key: content.encryption_key.map(|k| k.jwk.into()),
     }
 }
 

@@ -287,15 +287,15 @@ impl OID4VPDraft25Service {
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
-            let encryption_key_id =
-                interaction_data
-                    .encryption_key_id
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "missing encryption key".to_string(),
-                    ))?;
+            let encryption_key_id = interaction_data
+                .encryption_key
+                .as_ref()
+                .map(|key| key.key_id.to_string())
+                .ok_or(ServiceError::MappingError(
+                    "missing encryption key".to_string(),
+                ))?;
 
-            if used_key_id != *encryption_key_id {
+            if used_key_id.to_string() != encryption_key_id {
                 tracing::info!("Proof encrypted with an incorrect key");
                 return Err(OpenID4VCError::ValidationError(
                     "Proof encrypted with an incorrect key".to_string(),
