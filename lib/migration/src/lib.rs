@@ -135,6 +135,7 @@ mod m20250721_102954_creation_of_blob_storage;
 mod m20250722_120301_credential_blob_separation;
 mod m20250728_090404_did_key_reference;
 mod m20250729_132707_issuance_date_nullable;
+mod m20250730_090958_drop_proof_issuance_date;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -272,6 +273,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250728_090404_did_key_reference::Migration),
             Box::new(m20250722_120301_credential_blob_separation::Migration),
             Box::new(m20250729_132707_issuance_date_nullable::Migration),
+            Box::new(m20250730_090958_drop_proof_issuance_date::Migration),
         ]
     }
 }

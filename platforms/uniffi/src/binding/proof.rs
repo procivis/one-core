@@ -232,8 +232,6 @@ pub struct ProofListItemBindingDTO {
     pub created_date: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub issuance_date: String,
     #[from(with_fn = optional_time)]
     pub requested_date: Option<String>,
     #[from(with_fn = optional_time)]

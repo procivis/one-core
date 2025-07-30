@@ -783,7 +783,6 @@ async fn test_get_client_metadata_success() {
         id: proof_id,
         created_date: now,
         last_modified: now,
-        issuance_date: now,
         protocol: VerificationProtocolType::OpenId4VpFinal1_0.to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,

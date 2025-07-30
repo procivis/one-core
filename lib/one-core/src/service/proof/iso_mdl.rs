@@ -50,7 +50,6 @@ impl ProofService {
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
-            issuance_date: now,
             protocol: exchange.to_owned(),
             redirect_uri: None,
             state: ProofStateEnum::Pending,

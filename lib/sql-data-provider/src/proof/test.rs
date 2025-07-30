@@ -300,7 +300,6 @@ async fn test_create_proof_success() {
         id: proof_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        issuance_date: get_dummy_date(),
         protocol: "test".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,

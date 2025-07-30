@@ -192,11 +192,6 @@ pub(crate) struct ProofListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
-    /// When proof request was shared.
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub issuance_date: OffsetDateTime,
-
     /// When proof request state changed from `PENDING` to `REQUESTED`.
     /// Not supported in all exchange protocols.
     #[serde(serialize_with = "front_time_option")]
@@ -325,11 +320,6 @@ pub(crate) struct ProofDetailResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-
-    #[try_from(infallible)]
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub issuance_date: OffsetDateTime,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]

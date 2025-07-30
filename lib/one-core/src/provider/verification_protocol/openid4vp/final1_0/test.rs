@@ -103,7 +103,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
         id: proof_id.into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
         protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
