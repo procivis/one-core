@@ -19,11 +19,11 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::sea_query::{Expr, IntoCondition, Query};
+use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult,
-    JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
-    SqlErr, TransactionTrait, Unchanged,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
+    Unchanged,
 };
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
@@ -33,10 +33,8 @@ use crate::common::calculate_pages_count;
 use crate::credential::CredentialProvider;
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
-use crate::entity::blob::BlobType;
 use crate::entity::{
-    blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-    identifier,
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, identifier,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
@@ -691,41 +689,13 @@ impl CredentialRepository for CredentialProvider {
         &self,
         request: HashSet<CredentialId>,
     ) -> Result<(), DataLayerError> {
-        let transaction = self
-            .db
-            .begin()
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
         credential::Entity::update_many()
             .filter(credential::Column::Id.is_in(request))
             .set(credential::ActiveModel {
                 credential_blob_id: Set(None),
                 ..Default::default()
             })
-            .exec(&transaction)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        blob::Entity::delete_many()
-            .filter(
-                Condition::any()
-                    .add(blob::Column::Type.eq(BlobType::Credential))
-                    .add(
-                        blob::Column::Id.not_in_subquery(
-                            Query::select()
-                                .column(credential::Column::CredentialBlobId)
-                                .from(credential::Entity)
-                                .to_owned(),
-                        ),
-                    ),
-            )
-            .exec(&transaction)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        transaction
-            .commit()
+            .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -56,6 +57,7 @@ pub struct ProofService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
 impl ProofService {
@@ -84,6 +86,7 @@ impl ProofService {
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
         key_repository: Arc<dyn KeyRepository>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
     ) -> Self {
         Self {
             proof_repository,
@@ -109,6 +112,7 @@ impl ProofService {
             organisation_repository,
             validity_credential_repository,
             certificate_validator,
+            blob_storage_provider,
         }
     }
 }

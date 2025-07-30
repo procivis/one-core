@@ -9,6 +9,7 @@ use serde_json::Value;
 use self::suspend_check::SuspendCheckProvider;
 use crate::config::core_config::{Fields, TaskConfig, TaskType};
 use crate::config::{ConfigError, ConfigParsingError};
+use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::task::holder_check_credential_status::HolderCheckCredentialStatus;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
@@ -43,6 +44,7 @@ pub(crate) fn tasks_from_config(
     identifier_repository: Arc<dyn IdentifierRepository>,
     credential_service: CredentialService,
     certificate_validator: Arc<dyn CertificateValidator>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
@@ -61,6 +63,7 @@ pub(crate) fn tasks_from_config(
                 credential_repository.clone(),
                 proof_repository.clone(),
                 history_repository.clone(),
+                blob_storage_provider.clone(),
             )) as _,
             TaskType::CertificateCheck => Arc::new(CertificateCheck::new(
                 certificate_repository.clone(),

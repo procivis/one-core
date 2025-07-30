@@ -38,6 +38,7 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
@@ -117,6 +118,7 @@ struct Repositories {
     pub certificate_validator: MockCertificateValidator,
     pub certificate_repository: MockCertificateRepository,
     pub key_repository: MockKeyRepository,
+    pub blob_storage_provider: MockBlobStorageProvider,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -146,6 +148,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.validity_credential_repository),
         Arc::new(repositories.certificate_validator),
         Arc::new(repositories.key_repository),
+        Arc::new(repositories.blob_storage_provider),
     )
 }
 

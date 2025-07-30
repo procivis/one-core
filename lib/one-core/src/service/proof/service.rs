@@ -48,6 +48,7 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, ShareResponse,
 };
@@ -630,6 +631,23 @@ impl ProofService {
         self.claim_repository
             .delete_claims_for_credentials(credential_ids.clone())
             .await?;
+
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        for credential in &credential_ids {
+            let credential_blob_id = self
+                .credential_repository
+                .get_credential(credential, &Default::default())
+                .await?
+                .and_then(|credential| credential.credential_blob_id);
+            if let Some(credential_blob_id) = &credential_blob_id {
+                blob_storage.delete(credential_blob_id).await?;
+            }
+        }
 
         self.credential_repository
             .delete_credential_blobs(credential_ids)

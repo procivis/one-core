@@ -550,6 +550,7 @@ impl OneCore {
             data_provider.get_identifier_repository(),
             credential_service.clone(),
             certificate_validator.clone(),
+            blob_storage_provider.clone(),
         )
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
@@ -741,6 +742,7 @@ impl OneCore {
                 data_provider.get_validity_credential_repository().clone(),
                 certificate_validator.clone(),
                 data_provider.get_key_repository().clone(),
+                blob_storage_provider.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
