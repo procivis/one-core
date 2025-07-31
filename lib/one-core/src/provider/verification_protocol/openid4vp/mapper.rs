@@ -487,6 +487,7 @@ pub(crate) fn extracted_credential_to_model(
     mdoc_mso: Option<MobileSecurityObject>,
     verification_protocol: &str,
     profile: &Option<String>,
+    issuance_date: Option<OffsetDateTime>,
 ) -> Result<ProvedCredential, OpenID4VCError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -516,8 +517,7 @@ pub(crate) fn extracted_credential_to_model(
         credential: Credential {
             id: credential_id,
             created_date: now,
-            // TODO: Should either be `iat` claim or `create` timestamp of embedded data integrity proof
-            issuance_date: None,
+            issuance_date,
             last_modified: now,
             deleted_at: None,
             protocol: verification_protocol.to_string(),

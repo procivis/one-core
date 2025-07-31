@@ -830,6 +830,7 @@ async fn accept_proof(
             first_claim.mdoc_mso.to_owned(),
             &proof.protocol,
             &proof.profile,
+            credential.issuance_date,
         )?;
 
         proof_claims.append(

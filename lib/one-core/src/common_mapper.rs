@@ -512,6 +512,7 @@ pub(crate) fn value_to_model_claims(
     Ok(model_claims)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
@@ -520,6 +521,7 @@ pub(crate) fn extracted_credential_to_model(
     issuer_identifier_relation: RemoteIdentifierRelation,
     holder_identifier: Option<Identifier>,
     exchange: String,
+    issuance_date: Option<OffsetDateTime>,
 ) -> Result<Credential, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -544,8 +546,7 @@ pub(crate) fn extracted_credential_to_model(
     Ok(Credential {
         id: credential_id,
         created_date: now,
-        // TODO: Should either be `iat` claim or `create` timestamp of embedded data integrity proof
-        issuance_date: None,
+        issuance_date,
         last_modified: now,
         deleted_at: None,
         protocol: exchange,
@@ -913,6 +914,8 @@ mod tests {
             },
         ];
 
+        let issuance_date = OffsetDateTime::now_utc();
+
         let did = Did {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
@@ -965,6 +968,7 @@ mod tests {
             RemoteIdentifierRelation::Did(did),
             None,
             "ISO_MDL".to_string(),
+            Some(issuance_date),
         )
         .unwrap();
 
@@ -972,5 +976,6 @@ mod tests {
         assert_eq!(claims.len(), 1);
         assert_eq!(claims[0].schema.as_ref().unwrap(), &element_claim_schema);
         assert_eq!(claims[0].value, "Test");
+        assert_eq!(credential.issuance_date, Some(issuance_date));
     }
 }

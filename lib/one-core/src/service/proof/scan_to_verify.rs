@@ -231,6 +231,7 @@ impl ProofService {
             issuer_identifier_relation,
             None,
             proof.protocol.to_owned(),
+            credential.issuance_date,
         )?;
 
         let proof_claims = credential

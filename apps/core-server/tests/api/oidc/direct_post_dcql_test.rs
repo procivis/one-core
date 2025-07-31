@@ -167,6 +167,17 @@ async fn test_direct_post_draft25_with_dcql_query() {
 
     let claims = proof.claims.unwrap();
     assert!(
+        claims
+            .first()
+            .as_ref()
+            .unwrap()
+            .credential
+            .as_ref()
+            .unwrap()
+            .issuance_date
+            .is_some()
+    );
+    assert!(
         new_claim_schemas
             .iter()
             .filter(|required_claim| required_claim.2) //required

@@ -459,6 +459,7 @@ pub(crate) async fn accept_proof(
             issuer_identifier_relation,
             Some(holder_identifier.clone()),
             proof.protocol.to_owned(),
+            first_claim.credential.issuance_date,
         )?;
 
         proof_claims.append(
