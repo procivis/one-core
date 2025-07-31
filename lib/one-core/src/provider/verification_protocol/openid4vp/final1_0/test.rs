@@ -316,7 +316,6 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
     key_algorithm
         .expect_reconstruct_key()
         .return_once(|_, _, _| {
-            let signature_key_handle = MockSignaturePublicKeyHandle::default();
             let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
             key_agreement_handle.expect_as_jwk().return_once(|| {
                 Ok(RemoteJwk {
@@ -327,7 +326,9 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
                 })
             });
             Ok(KeyHandle::SignatureAndKeyAgreement {
-                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(signature_key_handle)),
+                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                )),
                 key_agreement: KeyAgreementHandle::PublicKeyOnly(Arc::new(key_agreement_handle)),
             })
         });
@@ -470,7 +471,6 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
     key_algorithm
         .expect_reconstruct_key()
         .return_once(|_, _, _| {
-            let signature_key_handle = MockSignaturePublicKeyHandle::default();
             let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
             key_agreement_handle.expect_as_jwk().return_once(|| {
                 Ok(RemoteJwk {
@@ -481,7 +481,9 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
                 })
             });
             Ok(KeyHandle::SignatureAndKeyAgreement {
-                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(signature_key_handle)),
+                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                )),
                 key_agreement: KeyAgreementHandle::PublicKeyOnly(Arc::new(key_agreement_handle)),
             })
         });

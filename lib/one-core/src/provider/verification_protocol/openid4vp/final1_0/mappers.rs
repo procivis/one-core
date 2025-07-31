@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Deserialize;
@@ -19,22 +18,24 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPHolderInteractionData,
-    OpenID4VpPresentationFormat,
 };
+use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
-    jwk: Option<PublicKeyWithJwk>,
-    vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
-) -> OpenID4VPFinal1_0ClientMetadata {
+    key_agreement_key: Option<PublicKeyWithJwk>,
+) -> Result<OpenID4VPFinal1_0ClientMetadata, VerificationProtocolError> {
+    let vp_formats_supported = generate_vp_formats_supported();
+
     let mut metadata = OpenID4VPFinal1_0ClientMetadata {
         vp_formats_supported,
         ..Default::default()
     };
-    if let Some(jwk) = jwk {
+
+    if let Some(key_agreement_key) = key_agreement_key {
         metadata.jwks = Some(OpenID4VPClientMetadataJwks {
             keys: vec![OpenID4VPClientMetadataJwkDTO {
-                key_id: jwk.key_id.to_string(),
-                jwk: jwk.jwk.into(),
+                key_id: key_agreement_key.key_id.to_string(),
+                jwk: key_agreement_key.jwk.into(),
             }],
         });
         metadata.encrypted_response_enc_values_supported = Some(vec![
@@ -43,7 +44,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
         ]);
     }
 
-    metadata
+    Ok(metadata)
 }
 
 #[allow(clippy::too_many_arguments)]

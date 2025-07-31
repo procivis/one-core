@@ -15,7 +15,6 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::{
     AuthorizationRequest, OpenID4VPFinal1_0ClientMetadata,
 };
@@ -56,22 +55,6 @@ fn determine_response_mode_final1_0(metadata: &OpenID4VPFinal1_0ClientMetadata) 
         "direct_post".to_string()
     }
 }
-
-pub(crate) fn generate_client_metadata_final1_0(
-    proof: &Proof,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    key_provider: &dyn KeyProvider,
-) -> Result<OpenID4VPFinal1_0ClientMetadata, VerificationProtocolError> {
-    let vp_formats_supported = generate_vp_formats_supported();
-    let jwk = select_key_agreement_key_from_proof(proof, key_algorithm_provider, key_provider)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-    Ok(create_open_id_for_vp_client_metadata_final1_0(
-        jwk,
-        vp_formats_supported,
-    ))
-}
-
 pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresentationFormat> {
     let mut formats = HashMap::new();
 
@@ -114,7 +97,7 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresen
     formats
 }
 
-fn select_key_agreement_key_from_proof(
+pub(crate) fn select_key_agreement_key_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
@@ -171,6 +154,7 @@ fn select_key_agreement_key_from_proof(
             "key algorithm not found for key type: {}",
             candidate_encryption_key.key_type
         )))?;
+
     let key_storage = key_provider
         .get_key_storage(&candidate_encryption_key.storage_type)
         .ok_or(KeyStorageError::NotSupported(
@@ -183,18 +167,20 @@ fn select_key_agreement_key_from_proof(
      * This needs more investigation and a refactor to support creating shared secret
      * through key storage
      */
-    let r#use = if key_storage
+    if key_storage
         .get_capabilities()
         .security
         .contains(&KeySecurity::RemoteSecureElement)
     {
-        None
-    } else {
-        Some("enc".to_string())
-    };
+        return Ok(None);
+    }
 
     let key_agreement_key = key_algorithm
-        .reconstruct_key(&candidate_encryption_key.public_key, None, r#use)
+        .reconstruct_key(
+            &candidate_encryption_key.public_key,
+            None,
+            Some("enc".to_string()),
+        )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
         .key_agreement()
         .map(|k| k.public().as_jwk())
@@ -214,7 +200,8 @@ fn select_key_agreement_key_from_proof(
     }
 }
 
-/// Converts a RemoteJwk (used for encryption) to PublicKeyJwk (used for general key operations)
+/// Converts a RemoteJwk (used for encryption) to PublicKeyJwk suitable
+/// for client_metadata.jwks keys. Should be removed once ONE-6822 is done.
 fn remote_jwk_to_public_key_jwk(remote_jwk: RemoteJwk) -> Result<PublicKeyJwk, ServiceError> {
     match remote_jwk.kty.as_str() {
         "EC" => Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {

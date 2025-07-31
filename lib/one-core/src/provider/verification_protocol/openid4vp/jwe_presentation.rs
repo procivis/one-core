@@ -1,6 +1,7 @@
 use anyhow::anyhow;
-use one_crypto::jwe::Header;
+use one_crypto::jwe::{Header, RemoteJwk};
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, OpenID4VPClientMetadata,
@@ -8,27 +9,21 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn build_jwe(
     payload: JwePayload,
-    verifier_key: OpenID4VPClientMetadataJwkDTO,
+    verifier_key: RemoteJwk,
+    algorithm_type: KeyAlgorithmType,
+    verifier_key_id: String,
     holder_nonce: &str,
     nonce: &str, // nonce from the authorization request object
     encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> anyhow::Result<String> {
     let payload = payload.try_into_json_base64_encode()?;
-
-    let jwk = verifier_key.jwk.clone().into();
-    let parsed_key = key_algorithm_provider.parse_jwk(&jwk)?;
     let algorithm = key_algorithm_provider
-        .key_algorithm_from_type(parsed_key.algorithm_type)
+        .key_algorithm_from_type(algorithm_type)
         .ok_or(anyhow!("Algorithm not found"))?;
-    let public_key_jwk = parsed_key
-        .key
-        .key_agreement()
-        .ok_or(anyhow!("Key agreement not set on parsed JWK"))?
-        .public()
-        .as_jwk()?;
 
     let private_key = algorithm.generate_key()?;
     let key_agreement = private_key
@@ -38,14 +33,14 @@ pub(crate) async fn build_jwe(
     let shared_secret = key_agreement
         .private()
         .ok_or(anyhow!("Private key not set"))?
-        .shared_secret(&public_key_jwk)
+        .shared_secret(&verifier_key)
         .await?;
     let local_jwk = key_agreement.public().as_jwk().map_err(|e| anyhow!(e))?;
 
     Ok(one_crypto::jwe::build_jwe(
         &payload,
         Header {
-            key_id: verifier_key.key_id.to_string(),
+            key_id: verifier_key_id,
             agreement_partyuinfo: holder_nonce.to_owned(),
             agreement_partyvinfo: nonce.to_owned(),
         },

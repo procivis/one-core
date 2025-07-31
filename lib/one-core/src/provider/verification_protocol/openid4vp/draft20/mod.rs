@@ -659,9 +659,25 @@ async fn encrypted_params(
         state: interaction_data.state,
     };
 
+    let parsed_key = key_algorithm_provider
+        .parse_jwk(&verifier_key.jwk.into())
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    let key_agreement_key = parsed_key
+        .key
+        .key_agreement()
+        .ok_or(VerificationProtocolError::Failed(
+            "Key agreement not set on parsed JWK".to_string(),
+        ))?
+        .public()
+        .as_jwk()
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
     let response = jwe_presentation::build_jwe(
         payload,
-        verifier_key,
+        key_agreement_key,
+        parsed_key.algorithm_type,
+        verifier_key.key_id,
         holder_nonce,
         &verifier_nonce,
         encryption_algorithm,

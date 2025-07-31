@@ -6,6 +6,7 @@ use dcql::create_dcql_query;
 use futures::future::BoxFuture;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
 use model::Params;
+use one_crypto::jwe::RemoteJwk;
 use one_crypto::utilities;
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
@@ -17,7 +18,8 @@ use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::format_to_type;
 use super::mdoc::mdoc_presentation_context;
 use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
+    CoreConfig, DidType, FormatType, IdentifierType, KeyAlgorithmType, TransportType,
+    VerificationProtocolType,
 };
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
@@ -28,6 +30,7 @@ use crate::provider::credential_formatter::model::{DetailCredential, HolderBindi
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{CredentialToPresent, FormatPresentationCtx};
@@ -42,6 +45,7 @@ use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
     JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
@@ -56,8 +60,9 @@ use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::service::certificate::validator::CertificateValidator;
+use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oid4vp_final1_0::proof_request::{
-    generate_authorization_request_params_final1_0, generate_client_metadata_final1_0,
+    generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
@@ -545,16 +550,18 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 "Proof schema not found".to_string(),
             ))?;
 
-        let client_metadata = generate_client_metadata_final1_0(
+        let key_agreement_key = select_key_agreement_key_from_proof(
             proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
         )?;
 
+        let client_metadata = create_open_id_for_vp_client_metadata_final1_0(key_agreement_key)?;
         let encryption_key = client_metadata
             .jwks
             .as_ref()
-            .and_then(|jwks| jwks.keys.first().cloned());
+            .and_then(|jwks| jwks.keys.first())
+            .cloned();
 
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
@@ -715,6 +722,39 @@ async fn encrypted_params(
         state: interaction_data.state,
     };
 
+    let (key_agreement_key, algorithm_type) = match verifier_key.jwk {
+        // For X25519 keys we bypass the parse_jwk method on the key_algorithm_provider
+        // because it incorrectly assumes a Ed25519 key, and attempts to repeat the conversion to X25519.
+        // To be done in ONE-6822
+        PublicKeyJwkDTO::Okp(okp) => Ok((
+            RemoteJwk {
+                kty: "OKP".to_string(),
+                crv: okp.crv.to_string(),
+                x: okp.x.to_string(),
+                y: okp.y,
+            },
+            KeyAlgorithmType::Eddsa,
+        )),
+        _ => {
+            let parsed_key = key_algorithm_provider
+                .parse_jwk(&verifier_key.jwk.into())
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+            let KeyHandle::SignatureAndKeyAgreement { key_agreement, .. } = parsed_key.key else {
+                return Err(VerificationProtocolError::Failed(
+                    "Key agreement not set on parsed JWK".to_string(),
+                ));
+            };
+            Ok((
+                key_agreement
+                    .public()
+                    .as_jwk()
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+                parsed_key.algorithm_type,
+            ))
+        }
+    }?;
+
     // All algorithms defined in the AuthorizationEncryptedResponseContentEncryptionAlgorithm enum are supported
     // we pick the first one
     let selected_encryption_alg =
@@ -727,7 +767,9 @@ async fn encrypted_params(
 
     let response = jwe_presentation::build_jwe(
         payload,
-        verifier_key,
+        key_agreement_key,
+        algorithm_type,
+        verifier_key.key_id,
         holder_nonce,
         &verifier_nonce,
         selected_encryption_alg,

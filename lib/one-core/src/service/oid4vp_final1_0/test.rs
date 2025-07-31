@@ -27,7 +27,8 @@ use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
-    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+    KeyAgreementHandle, KeyHandle, MockPublicKeyAgreementHandle, MockSignaturePublicKeyHandle,
+    SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
@@ -833,20 +834,23 @@ async fn test_get_client_metadata_success() {
         key_algorithm
             .expect_reconstruct_key()
             .return_once(|_, _, _| {
-                let mut key_handle = MockSignaturePublicKeyHandle::default();
-                key_handle.expect_as_jwk().return_once(|| {
-                    Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-                        alg: None,
-                        r#use: Some("enc".to_string()),
-                        kid: None,
+                let signature_key_handle = MockSignaturePublicKeyHandle::default();
+                let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
+                key_agreement_handle.expect_as_jwk().return_once(|| {
+                    Ok(one_crypto::jwe::RemoteJwk {
+                        kty: "OKP".to_string(),
                         crv: "123".to_string(),
                         x: "456".to_string(),
                         y: None,
-                    }))
+                    })
                 });
-                Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-                    Arc::new(key_handle),
-                )))
+
+                Ok(KeyHandle::SignatureAndKeyAgreement {
+                    signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(signature_key_handle)),
+                    key_agreement: KeyAgreementHandle::PublicKeyOnly(Arc::new(
+                        key_agreement_handle,
+                    )),
+                })
             });
 
         key_algorithm_provider
@@ -882,7 +886,7 @@ async fn test_get_client_metadata_success() {
                         .unwrap()
                         .into(),
                     jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-                        alg: None,
+                        alg: Some("ECDH-ES".to_string()),
                         r#use: Some("enc".to_string()),
                         kid: None,
                         crv: "123".to_string(),

@@ -11,9 +11,7 @@ use uuid::Uuid;
 use super::OID4VPFinal1_0Service;
 use super::mapper::credential_from_proved;
 use super::proof_request::generate_authorization_request_params_final1_0;
-use crate::common_mapper::{
-    IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
-};
+use crate::common_mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::certificate::CertificateRelations;
@@ -54,9 +52,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::oid4vp_final1_0::mapper::parse_interaction_content;
-use crate::service::oid4vp_final1_0::proof_request::{
-    generate_client_metadata_final1_0, generate_vp_formats_supported,
-};
+use crate::service::oid4vp_final1_0::proof_request::select_key_agreement_key_from_proof;
 use crate::service::oid4vp_final1_0::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 
@@ -127,17 +123,19 @@ impl OID4VPFinal1_0Service {
 
         let (client_id_without_prefix, _) = decode_client_id_with_scheme(&client_id)?;
 
+        let key_handle = select_key_agreement_key_from_proof(
+            &proof,
+            &*self.key_algorithm_provider,
+            &*self.key_provider,
+        )?;
+
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
             dcql_query.clone(),
             client_id.clone(),
             response_uri.clone(),
             &interaction.id,
-            generate_client_metadata_final1_0(
-                &proof,
-                &*self.key_algorithm_provider,
-                &*self.key_provider,
-            )?,
+            create_open_id_for_vp_client_metadata_final1_0(key_handle)?,
         )?;
 
         Ok(match client_id_scheme {
@@ -209,17 +207,13 @@ impl OID4VPFinal1_0Service {
             &proof.protocol,
         )?;
 
-        let vp_formats_supported = generate_vp_formats_supported();
-        let jwk = get_encryption_key_jwk_from_proof(
+        let key_handle = select_key_agreement_key_from_proof(
             &proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
         )?;
 
-        Ok(create_open_id_for_vp_client_metadata_final1_0(
-            jwk,
-            vp_formats_supported,
-        ))
+        create_open_id_for_vp_client_metadata_final1_0(key_handle).map_err(|e| e.into())
     }
 
     pub async fn direct_post(
