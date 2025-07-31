@@ -445,6 +445,7 @@ impl TryFrom<VcdmCredential> for DetailCredential {
 
         Ok(Self {
             id: vcdm.id.map(|url| url.to_string()),
+            issuance_date: vcdm.proof.and_then(|proof| proof.created),
             valid_from: vcdm.valid_from.or(vcdm.issuance_date),
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             update_at: None,

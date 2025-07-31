@@ -124,6 +124,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
 fn extracted_credential(status: &str) -> DetailCredential {
     DetailCredential {
         id: None,
+        issuance_date: None,
         valid_from: None,
         valid_until: None,
         update_at: None,

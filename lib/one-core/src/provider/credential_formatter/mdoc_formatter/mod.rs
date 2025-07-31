@@ -447,6 +447,7 @@ async fn extract_credentials_internal(
 
     Ok(DetailCredential {
         id: None,
+        issuance_date: Some(mso.validity_info.signed.into()),
         valid_from: Some(mso.validity_info.valid_from.into()),
         valid_until: Some(mso.validity_info.valid_until.into()),
         update_at: mso

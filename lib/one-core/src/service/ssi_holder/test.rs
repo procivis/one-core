@@ -1017,6 +1017,7 @@ async fn test_accept_credential() {
         .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
+                issuance_date: None,
                 valid_from: Some(OffsetDateTime::now_utc()),
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
@@ -1183,6 +1184,7 @@ async fn test_accept_credential_with_did() {
         .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
+                issuance_date: None,
                 valid_from: Some(OffsetDateTime::now_utc()),
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,

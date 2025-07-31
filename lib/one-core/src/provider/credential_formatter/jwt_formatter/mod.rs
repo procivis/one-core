@@ -6,6 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::VcClaim;
 use serde::Deserialize;
+use time::OffsetDateTime;
 
 use super::model::{CredentialData, Features, HolderBindingCtx};
 use crate::config::core_config::{
@@ -62,7 +63,7 @@ impl CredentialFormatter for JWTFormatter {
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         let mut vcdm = credential_data.vcdm;
-        let issued_at = vcdm.valid_from.or(vcdm.issuance_date);
+        let invalid_before = vcdm.valid_from.or(vcdm.issuance_date);
         let expires_at = vcdm.valid_until.or(vcdm.expiration_date);
         let credential_id = vcdm.id.clone().map(|id| id.to_string());
 
@@ -81,9 +82,9 @@ impl CredentialFormatter for JWTFormatter {
             .map(|did| did.did.to_string());
 
         let payload = JWTPayload {
-            issued_at,
+            issued_at: Some(OffsetDateTime::now_utc()),
             expires_at,
-            invalid_before: issued_at,
+            invalid_before,
             issuer: Some(issuer),
             subject: holder_did,
             jwt_id: credential_id,

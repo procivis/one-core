@@ -187,10 +187,7 @@ async fn test_format_credential() {
         payload.expires_at,
         Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
     );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
+    assert_eq!(payload.invalid_before, Some(payload.issued_at.unwrap()),);
     assert_eq!(
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
@@ -370,10 +367,7 @@ async fn test_format_credential_swiyu() {
         payload.expires_at,
         Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
     );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
+    assert_eq!(payload.invalid_before, Some(payload.issued_at.unwrap()),);
     assert_eq!(
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
@@ -489,6 +483,10 @@ async fn test_extract_credentials() {
     assert_eq!(
         credentials.subject,
         Some(IdentifierDetails::Did(expected_subject.parse().unwrap()))
+    );
+    assert_eq!(
+        credentials.issuance_date,
+        Some(OffsetDateTime::from_unix_timestamp(1698151532).unwrap())
     );
 
     let expected_result = json!(

@@ -654,6 +654,7 @@ impl OpenID4VCI13 {
                     issuer_certificate_id: identifier_updates.issuer_certificate_id,
                     redirect_uri: Some(redirect_uri),
                     suspend_end_date: Clearable::DontTouch,
+                    issuance_date: response_credential.issuance_date,
                     ..Default::default()
                 },
             )),

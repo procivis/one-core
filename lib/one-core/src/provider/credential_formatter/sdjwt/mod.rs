@@ -66,7 +66,7 @@ pub(crate) async fn format_credential<T: Serialize>(
 ) -> Result<String, FormatterError> {
     let issuer = credential.issuer.as_url().to_string();
     let id = credential.id.clone();
-    let issued_at = credential.valid_from.or(credential.issuance_date);
+    let invalid_before = credential.valid_from.or(credential.issuance_date);
     let expires_at = credential.valid_until.or(credential.expiration_date);
     let (payload, disclosures) = format_hashed_credential(&claims, hasher, digests_to_payload)?;
 
@@ -146,10 +146,9 @@ pub(crate) async fn format_credential<T: Serialize>(
         .map(|did| did.to_string());
 
     let payload = JWTPayload {
-        issued_at,
+        issued_at: Some(OffsetDateTime::now_utc()),
         expires_at,
-        invalid_before: issued_at
-            .and_then(|iat| iat.checked_sub(Duration::seconds(additional_inputs.leeway as i64))),
+        invalid_before,
         subject,
         audience: None,
         issuer: Some(issuer),

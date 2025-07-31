@@ -1806,6 +1806,7 @@ async fn test_check_revocation_non_revocable() {
         .returning(|_, _| {
             Ok(DetailCredential {
                 id: None,
+                issuance_date: None,
                 valid_from: None,
                 valid_until: None,
                 update_at: None,
@@ -1934,6 +1935,7 @@ async fn test_check_revocation_being_revoked() {
         .returning(|_, _| {
             Ok(DetailCredential {
                 id: None,
+                issuance_date: None,
                 valid_from: None,
                 valid_until: None,
                 update_at: None,

@@ -111,6 +111,7 @@ impl IdentifierDetails {
 #[derive(Debug, Clone)]
 pub struct DetailCredential {
     pub id: Option<String>,
+    pub issuance_date: Option<OffsetDateTime>,
     pub valid_from: Option<OffsetDateTime>,
     pub valid_until: Option<OffsetDateTime>,
     pub update_at: Option<OffsetDateTime>,

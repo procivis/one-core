@@ -64,6 +64,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         .returning(|_, _| {
             Ok(DetailCredential {
                 id: None,
+                issuance_date: None,
                 valid_from: None,
                 valid_until: None,
                 update_at: None,

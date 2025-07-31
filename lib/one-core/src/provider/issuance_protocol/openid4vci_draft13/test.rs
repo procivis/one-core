@@ -654,6 +654,7 @@ async fn test_holder_accept_credential_success() {
                 .returning(move |_, _, _, _| {
                     Ok(DetailCredential {
                         id: None,
+                        issuance_date: None,
                         valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
                         valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
                         update_at: None,
@@ -839,6 +840,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 .returning(move |_, _, _, _| {
                     Ok(DetailCredential {
                         id: None,
+                        issuance_date: None,
                         valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
                         valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
                         update_at: None,
@@ -1057,6 +1059,7 @@ async fn test_holder_accept_expired_credential_fails() {
                 .returning(move |_, _, _, _| {
                     Ok(DetailCredential {
                         id: None,
+                        issuance_date: None,
                         valid_from: Some(get_dummy_date() - Duration::weeks(2)),
                         valid_until: Some(get_dummy_date() - Duration::weeks(1)),
                         update_at: None,

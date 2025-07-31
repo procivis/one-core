@@ -480,6 +480,10 @@ async fn test_extract_credentials() {
         credentials.subject,
         Some(IdentifierDetails::Did("did:holder:test".parse().unwrap()))
     );
+    assert_eq!(
+        credentials.issuance_date,
+        Some(OffsetDateTime::from_unix_timestamp(1699354228).unwrap())
+    );
 
     assert_eq!(1, credentials.status.len());
 

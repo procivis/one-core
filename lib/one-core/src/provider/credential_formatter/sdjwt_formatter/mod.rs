@@ -310,6 +310,7 @@ pub(crate) async fn extract_credentials_internal(
     Ok((
         DetailCredential {
             id: jwt.payload.jwt_id,
+            issuance_date: jwt.payload.issued_at,
             valid_from: jwt.payload.issued_at,
             valid_until: jwt.payload.expires_at,
             update_at: None,

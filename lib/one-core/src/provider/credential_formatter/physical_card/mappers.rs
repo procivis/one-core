@@ -120,6 +120,7 @@ impl TryInto<DetailCredential> for OptiocalBarcodeCredential {
 
         Ok(DetailCredential {
             id: self.credential.id.map(|url| url.to_string()),
+            issuance_date: self.credential.proof.and_then(|proof| proof.created),
             valid_from: self.credential.valid_from.or(self.credential.issuance_date),
             valid_until: None,
             update_at: None,

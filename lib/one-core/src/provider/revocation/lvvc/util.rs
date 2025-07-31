@@ -47,6 +47,7 @@ mod tests {
     ) -> DetailCredential {
         DetailCredential {
             id: Some("id".to_string()),
+            issuance_date: None,
             valid_from: None,
             valid_until: None,
             update_at: None,
