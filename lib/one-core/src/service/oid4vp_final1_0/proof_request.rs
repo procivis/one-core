@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use dcql::DcqlQuery;
-use one_crypto::jwe::RemoteJwk;
 use url::Url;
 
 use crate::common_mapper::PublicKeyWithJwk;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::JwkUse;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -179,7 +178,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
         .reconstruct_key(
             &candidate_encryption_key.public_key,
             None,
-            Some("enc".to_string()),
+            Some(JwkUse::Encryption),
         )
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
         .key_agreement()
@@ -188,41 +187,11 @@ pub(crate) fn select_key_agreement_key_from_proof(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     if let Some(key_agreement_key) = key_agreement_key {
-        let public_key_jwk = remote_jwk_to_public_key_jwk(key_agreement_key)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
         Ok(Some(PublicKeyWithJwk {
             key_id: candidate_encryption_key.id,
-            jwk: public_key_jwk,
+            jwk: key_agreement_key,
         }))
     } else {
         Ok(None)
-    }
-}
-
-/// Converts a RemoteJwk (used for encryption) to PublicKeyJwk suitable
-/// for client_metadata.jwks keys. Should be removed once ONE-6822 is done.
-fn remote_jwk_to_public_key_jwk(remote_jwk: RemoteJwk) -> Result<PublicKeyJwk, ServiceError> {
-    match remote_jwk.kty.as_str() {
-        "EC" => Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-            alg: Some("ECDH-ES".to_string()),
-            r#use: Some("enc".to_string()),
-            kid: None,
-            crv: remote_jwk.crv,
-            x: remote_jwk.x,
-            y: remote_jwk.y,
-        })),
-        "OKP" => Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-            alg: Some("ECDH-ES".to_string()),
-            r#use: Some("enc".to_string()),
-            kid: None,
-            crv: remote_jwk.crv,
-            x: remote_jwk.x,
-            y: remote_jwk.y,
-        })),
-        _ => Err(ServiceError::MappingError(format!(
-            "Unsupported key type '{}' in RemoteJwk conversion",
-            remote_jwk.kty
-        ))),
     }
 }

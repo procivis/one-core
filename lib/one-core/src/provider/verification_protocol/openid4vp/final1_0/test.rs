@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use dcql::DcqlQuery;
-use one_crypto::jwe::RemoteJwk;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
@@ -16,7 +15,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
-use crate::model::key::Key;
+use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -318,12 +317,14 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
         .return_once(|_, _, _| {
             let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
             key_agreement_handle.expect_as_jwk().return_once(|| {
-                Ok(RemoteJwk {
-                    kty: "EC".to_string(),
-                    crv: "EC".to_string(),
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: Some(JwkUse::Encryption),
+                    kid: None,
+                    crv: "P-256".to_string(),
                     x: "".to_string(),
                     y: Some("".to_string()),
-                })
+                }))
             });
             Ok(KeyHandle::SignatureAndKeyAgreement {
                 signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
@@ -473,12 +474,14 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
         .return_once(|_, _, _| {
             let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
             key_agreement_handle.expect_as_jwk().return_once(|| {
-                Ok(RemoteJwk {
-                    kty: "OKP".to_string(),
+                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: Some(JwkUse::Encryption),
+                    kid: None,
                     crv: "Ed25519".to_string(),
                     x: "".to_string(),
                     y: None,
-                })
+                }))
             });
             Ok(KeyHandle::SignatureAndKeyAgreement {
                 signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(

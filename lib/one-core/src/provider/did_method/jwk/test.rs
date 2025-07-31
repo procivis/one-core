@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::model::{
@@ -83,7 +83,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
             controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string(),
             public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 alg: None,
-                r#use: Some("enc".to_string()),
+                r#use: Some(JwkUse::Encryption),
                 kid: None,
                 crv: "X25519".to_string(),
                 x: "3p7bfXt9wbTTW2HC7OQ1Nz-DQ8hbeGdNrfx-FG-IK08".to_string(),
@@ -124,7 +124,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
             controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".to_string(),
             public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 alg: None,
-                r#use: Some("sig".to_string()),
+                r#use: Some(JwkUse::Signature),
                 kid: None,
                 crv: "Ed25519".to_string(),
                 x: "3p7bfXt9wbTTW2HC7OQ1Nz-DQ8hbeGdNrfx-FG-IK08".to_string(),

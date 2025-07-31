@@ -6,7 +6,7 @@ use secrecy::SecretSlice;
 use super::KeyAlgorithm;
 use super::error::KeyAlgorithmProviderError;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::PublicKeyJwk;
+use crate::model::key::{JwkUse, PublicKeyJwk};
 use crate::provider::key_algorithm::key::KeyHandle;
 
 #[derive(Clone)]
@@ -38,7 +38,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
         algorithm: KeyAlgorithmType,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
-        r#use: Option<String>,
+        r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError>;
 
     fn supported_verification_jose_alg_ids(&self) -> Vec<String>;
@@ -136,7 +136,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         algorithm: KeyAlgorithmType,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
-        r#use: Option<String>,
+        r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
         let algorithm = self.key_algorithm_from_type(algorithm).ok_or(
             KeyAlgorithmProviderError::MissingAlgorithmImplementation(algorithm.to_string()),

@@ -16,7 +16,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, La
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -969,7 +969,7 @@ async fn test_get_client_metadata_success() {
                 key_handle.expect_as_jwk().return_once(|| {
                     Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                         alg: None,
-                        r#use: Some("enc".to_string()),
+                        r#use: Some(JwkUse::Encryption),
                         kid: None,
                         crv: "123".to_string(),
                         x: "456".to_string(),

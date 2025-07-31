@@ -1,4 +1,4 @@
-use one_dto_mapper::{From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -131,6 +131,8 @@ pub struct PublicKeyJwkRsaDataDTO {
     #[serde(default)]
     pub alg: Option<String>,
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -146,6 +148,8 @@ pub struct PublicKeyJwkOctDataDTO {
     #[serde(default)]
     pub alg: Option<String>,
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -160,6 +164,8 @@ pub struct PublicKeyJwkMlweDataDTO {
     #[serde(default)]
     pub alg: Option<String>,
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -174,6 +180,8 @@ pub struct PublicKeyJwkEllipticDataDTO {
     #[serde(default)]
     pub alg: Option<String>,
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -203,6 +211,8 @@ pub enum PrivateKeyJwkDTO {
 #[from(PrivateKeyJwkMlweData)]
 pub struct PrivateKeyJwkMlweDataDTO {
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,
@@ -218,6 +228,8 @@ pub struct PrivateKeyJwkMlweDataDTO {
 #[from(PrivateKeyJwkEllipticData)]
 pub struct PrivateKeyJwkEllipticDataDTO {
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub r#use: Option<String>,
     #[serde(default)]
     pub kid: Option<String>,

@@ -27,7 +27,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
@@ -3454,7 +3454,7 @@ async fn test_share_proof_created_success() {
             key_handle.expect_as_jwk().return_once(|| {
                 Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                     alg: None,
-                    r#use: Some("enc".to_string()),
+                    r#use: Some(JwkUse::Encryption),
                     kid: None,
                     crv: "123".to_string(),
                     x: "456".to_string(),
@@ -3582,7 +3582,7 @@ async fn test_share_proof_pending_success() {
             key_handle.expect_as_jwk().return_once(|| {
                 Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                     alg: None,
-                    r#use: Some("enc".to_string()),
+                    r#use: Some(JwkUse::Encryption),
                     kid: None,
                     crv: "123".to_string(),
                     x: "456".to_string(),

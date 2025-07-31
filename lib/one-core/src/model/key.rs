@@ -86,11 +86,42 @@ pub enum PublicKeyJwk {
     Mlwe(PublicKeyJwkMlweData),
 }
 
+/// see: <https://datatracker.ietf.org/doc/html/rfc7517#section-4.2>
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum JwkUse {
+    #[serde(rename = "sig")]
+    Signature,
+    #[serde(rename = "enc")]
+    Encryption,
+    #[serde(untagged)]
+    Unknown(String),
+}
+
+impl From<String> for JwkUse {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "sig" => Self::Signature,
+            "enc" => Self::Encryption,
+            _ => Self::Unknown(value),
+        }
+    }
+}
+
+impl From<JwkUse> for String {
+    fn from(value: JwkUse) -> Self {
+        match value {
+            JwkUse::Signature => "sig".to_string(),
+            JwkUse::Encryption => "enc".to_string(),
+            JwkUse::Unknown(value) => value,
+        }
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkRsaData {
     pub alg: Option<String>,
-    pub r#use: Option<String>,
+    pub r#use: Option<JwkUse>,
     pub kid: Option<String>,
     pub e: String,
     pub n: String,
@@ -100,7 +131,7 @@ pub struct PublicKeyJwkRsaData {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkOctData {
     pub alg: Option<String>,
-    pub r#use: Option<String>,
+    pub r#use: Option<JwkUse>,
     pub kid: Option<String>,
     pub k: String,
 }
@@ -108,7 +139,7 @@ pub struct PublicKeyJwkOctData {
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkMlweData {
-    pub r#use: Option<String>,
+    pub r#use: Option<JwkUse>,
     pub kid: Option<String>,
     pub alg: Option<String>,
     pub x: String,
@@ -118,7 +149,7 @@ pub struct PublicKeyJwkMlweData {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyJwkEllipticData {
     pub alg: Option<String>,
-    pub r#use: Option<String>,
+    pub r#use: Option<JwkUse>,
     pub kid: Option<String>,
     pub crv: String,
     pub x: String,
@@ -144,7 +175,7 @@ impl PrivateKeyJwk {
 
 #[derive(Clone, Debug)]
 pub struct PrivateKeyJwkMlweData {
-    pub r#use: Option<String>,
+    pub r#use: Option<JwkUse>,
     pub kid: Option<String>,
     pub alg: String,
     pub x: String,
@@ -153,7 +184,7 @@ pub struct PrivateKeyJwkMlweData {
 
 #[derive(Clone, Debug)]
 pub struct PrivateKeyJwkEllipticData {
-    pub r#use: Option<String>,
+    pub r#use: Option<JwkUse>,
     pub kid: Option<String>,
     pub crv: String,
     pub x: String,

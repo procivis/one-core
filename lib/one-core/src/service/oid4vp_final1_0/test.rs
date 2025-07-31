@@ -15,7 +15,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -837,12 +837,14 @@ async fn test_get_client_metadata_success() {
                 let signature_key_handle = MockSignaturePublicKeyHandle::default();
                 let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
                 key_agreement_handle.expect_as_jwk().return_once(|| {
-                    Ok(one_crypto::jwe::RemoteJwk {
-                        kty: "OKP".to_string(),
+                    Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: Some("ECDH-ES".to_string()),
+                        r#use: Some(JwkUse::Encryption),
+                        kid: None,
                         crv: "123".to_string(),
                         x: "456".to_string(),
                         y: None,
-                    })
+                    }))
                 });
 
                 Ok(KeyHandle::SignatureAndKeyAgreement {

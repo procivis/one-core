@@ -11,7 +11,7 @@ use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PrivateKeyJwk, PublicKeyJwk};
+use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
@@ -67,7 +67,7 @@ impl KeyAlgorithm for Ecdsa {
         &self,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
-        r#use: Option<String>,
+        r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
             let private_handle =
@@ -174,11 +174,11 @@ impl KeyAlgorithm for Ecdsa {
 
 struct EcdsaPublicKeyHandle {
     public_key: Vec<u8>,
-    r#use: Option<String>,
+    r#use: Option<JwkUse>,
 }
 
 impl EcdsaPublicKeyHandle {
-    fn new(public_key: Vec<u8>, r#use: Option<String>) -> Self {
+    fn new(public_key: Vec<u8>, r#use: Option<JwkUse>) -> Self {
         Self { public_key, r#use }
     }
 }
@@ -223,8 +223,8 @@ impl SignaturePrivateKeyHandle for EcdsaPrivateKeyHandle {
 }
 
 impl PublicKeyAgreementHandle for EcdsaPublicKeyHandle {
-    fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError> {
-        ECDSASigner::bytes_as_jwk(&self.public_key).map_err(KeyHandleError::Encryption)
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        ecdsa_public_key_as_jwk(&self.public_key, self.r#use.clone())
     }
 
     fn as_multibase(&self) -> Result<String, KeyHandleError> {

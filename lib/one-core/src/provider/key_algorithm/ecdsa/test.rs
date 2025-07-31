@@ -28,6 +28,12 @@ async fn test_generate_key() {
     let es256_alg = Ecdsa {};
     let key = es256_alg.generate_key().unwrap();
 
+    let jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
+    let PublicKeyJwk::Ec(jwk) = jwk else {
+        panic!("invalid key type");
+    };
+    assert_eq!("P-256", jwk.crv);
+
     let recipient_jwk = RemoteJwk {
         kty: "EC".to_string(),
         crv: "P-256".to_string(),
@@ -45,10 +51,6 @@ async fn test_generate_key() {
         .shared_secret(&recipient_jwk)
         .await
         .unwrap();
-
-    let remote_jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
-    assert_eq!("EC", remote_jwk.kty);
-    assert_eq!("P-256", remote_jwk.crv);
 }
 
 #[tokio::test]

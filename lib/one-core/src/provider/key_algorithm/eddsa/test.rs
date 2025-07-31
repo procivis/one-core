@@ -28,6 +28,17 @@ async fn test_generate_ed25519() {
     let eddsa = Eddsa {};
     let key = eddsa.generate_key().unwrap();
 
+    let jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
+    let PublicKeyJwk::Okp(jwk) = jwk else {
+        panic!("invalid key type");
+    };
+    assert_eq!("X25519", jwk.crv);
+}
+
+#[tokio::test]
+async fn test_shared_secret_against_ed25519() {
+    let key = Eddsa.generate_key().unwrap();
+
     let recipient_jwk = RemoteJwk {
         kty: "OKP".to_string(),
         crv: "Ed25519".to_string(),
@@ -35,7 +46,6 @@ async fn test_generate_ed25519() {
         y: None,
     };
 
-    // verify if it succeeds for given JWK
     let _shared_secret = key
         .key
         .key_agreement()
@@ -45,14 +55,32 @@ async fn test_generate_ed25519() {
         .shared_secret(&recipient_jwk)
         .await
         .unwrap();
-
-    let remote_jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
-    assert_eq!("OKP", remote_jwk.kty);
-    assert_eq!("X25519", remote_jwk.crv);
 }
 
 #[tokio::test]
-async fn test_parse_jwk() {
+async fn test_shared_secret_against_x25519() {
+    let key = Eddsa.generate_key().unwrap();
+
+    let recipient_jwk = RemoteJwk {
+        kty: "OKP".to_string(),
+        crv: "X25519".to_string(),
+        x: "SzTHbXw_wfwSvQumRdHmSTW7tGTDWNKIt7ABGS2E9kc".to_string(),
+        y: None,
+    };
+
+    let _shared_secret = key
+        .key
+        .key_agreement()
+        .unwrap()
+        .private()
+        .unwrap()
+        .shared_secret(&recipient_jwk)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_parse_jwk_eddsa() {
     // given
     let eddsa = Eddsa;
 
@@ -88,6 +116,55 @@ async fn test_parse_jwk() {
             244, 196, 175, 138, 50, 202, 169, 39
         ],
         generated_key.private.expose_secret()
+    );
+}
+
+#[tokio::test]
+async fn test_parse_jwk_x25519() {
+    // given
+
+    let public_jwk = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "X25519".to_owned(),
+        x: "SzTHbXw_wfwSvQumRdHmSTW7tGTDWNKIt7ABGS2E9kc".to_string(),
+        y: None,
+    });
+
+    // when
+    let public_key = Eddsa.parse_jwk(&public_jwk).unwrap();
+
+    // then
+    assert_eq!(
+        public_key.public_key_as_raw(),
+        vec![
+            75, 52, 199, 109, 124, 63, 193, 252, 18, 189, 11, 166, 69, 209, 230, 73, 53, 187, 180,
+            100, 195, 88, 210, 136, 183, 176, 1, 25, 45, 132, 246, 71
+        ],
+    );
+    assert_eq!(
+        public_key.public_key_as_multibase().unwrap(),
+        "z6LSgjkRLLbm634tqaMMtrwmk1svFDVEeGX4ke25A8o72ter"
+    );
+}
+
+#[tokio::test]
+async fn test_check_multibase_conformity() {
+    // examples from: https://w3c-ccg.github.io/did-key-spec/#ed25519-with-x25519
+    const EDDSA_MULTIBASE: &str = "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+    const X25519_MULTIBASE: &str = "z6LSj72tK8brWgZja8NLRwPigth2T9QRiG1uH9oKZuKjdh9p";
+
+    let parsed_eddsa = Eddsa.parse_multibase(EDDSA_MULTIBASE).unwrap();
+
+    assert_eq!(
+        parsed_eddsa
+            .key_agreement()
+            .unwrap()
+            .public()
+            .as_multibase()
+            .unwrap(),
+        X25519_MULTIBASE
     );
 }
 

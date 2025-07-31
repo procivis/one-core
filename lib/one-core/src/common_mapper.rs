@@ -28,7 +28,7 @@ use crate::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierState,
     IdentifierType,
 };
-use crate::model::key::{Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
+use crate::model::key::{JwkUse, Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -645,7 +645,7 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
         .iter()
         .any(|v| *v != KeySecurity::RemoteSecureElement)
     {
-        Some("enc".to_string())
+        Some(JwkUse::Encryption)
     } else {
         None
     };

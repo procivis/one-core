@@ -3,7 +3,7 @@ use model::GeneratedKey;
 use secrecy::SecretSlice;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PrivateKeyJwk, PublicKeyJwk};
+use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 
@@ -32,7 +32,7 @@ pub trait KeyAlgorithm: Send + Sync {
         &self,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
-        r#use: Option<String>,
+        r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmError>;
 
     /// IANA jose/cose identifiers

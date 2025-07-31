@@ -20,6 +20,12 @@ impl EDDSASigner {
         Ok(key.to_vec())
     }
 
+    pub fn check_x25519_public_key(public_key: &[u8]) -> Result<Vec<u8>, SignerError> {
+        let key = x25519::PublicKey::from_slice(public_key)
+            .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
+        Ok(key.to_vec())
+    }
+
     pub fn public_key_from_der(public_key_der: &[u8]) -> Result<Vec<u8>, SignerError> {
         let pk = PublicKey::from_der(public_key_der)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;

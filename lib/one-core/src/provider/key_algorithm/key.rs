@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use one_crypto::SignerError;
 use one_crypto::encryption::EncryptionError;
-use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
+use one_crypto::jwe::PrivateKeyAgreementHandle;
 use one_crypto::signer::bbs::parse_bbs_input;
 use secrecy::SecretString;
 use thiserror::Error;
@@ -16,6 +16,7 @@ pub enum KeyHandle {
         signature: SignatureKeyHandle,
         key_agreement: KeyAgreementHandle,
     },
+    KeyAgreementOnly(KeyAgreementHandle),
     MultiMessageSignature(MultiMessageSignatureKeyHandle),
 }
 
@@ -44,26 +45,28 @@ impl KeyHandle {
     /// ECDSA, EDDSA, dillithium
     pub fn signature(&self) -> Option<&SignatureKeyHandle> {
         match &self {
-            Self::SignatureOnly(signature) => Some(signature),
-            Self::SignatureAndKeyAgreement { signature, .. } => Some(signature),
-            Self::MultiMessageSignature(_) => None,
+            Self::SignatureOnly(signature) | Self::SignatureAndKeyAgreement { signature, .. } => {
+                Some(signature)
+            }
+            Self::KeyAgreementOnly(_) | Self::MultiMessageSignature(_) => None,
         }
     }
 
     /// ECDH
     pub fn key_agreement(&self) -> Option<&KeyAgreementHandle> {
         match &self {
-            Self::SignatureOnly(_) => None,
-            Self::SignatureAndKeyAgreement { key_agreement, .. } => Some(key_agreement),
-            Self::MultiMessageSignature(_) => None,
+            Self::SignatureOnly(_) | Self::MultiMessageSignature(_) => None,
+            Self::SignatureAndKeyAgreement { key_agreement, .. }
+            | Self::KeyAgreementOnly(key_agreement) => Some(key_agreement),
         }
     }
 
     /// BBS+
     pub fn multi_message_signature(&self) -> Option<&MultiMessageSignatureKeyHandle> {
         match &self {
-            Self::SignatureOnly(_) => None,
-            Self::SignatureAndKeyAgreement { .. } => None,
+            Self::SignatureOnly(_)
+            | Self::SignatureAndKeyAgreement { .. }
+            | Self::KeyAgreementOnly(_) => None,
             Self::MultiMessageSignature(multi_message_signature) => Some(multi_message_signature),
         }
     }
@@ -73,6 +76,7 @@ impl KeyHandle {
         match &self {
             Self::SignatureOnly(value) => value.public().as_jwk(),
             Self::SignatureAndKeyAgreement { signature, .. } => signature.public().as_jwk(),
+            Self::KeyAgreementOnly(key_agreement) => key_agreement.public().as_jwk(),
             Self::MultiMessageSignature(multi_message_signature) => {
                 multi_message_signature.public().as_jwk()
             }
@@ -83,6 +87,7 @@ impl KeyHandle {
         match &self {
             Self::SignatureOnly(value) => value.public().as_multibase(),
             Self::SignatureAndKeyAgreement { signature, .. } => signature.public().as_multibase(),
+            Self::KeyAgreementOnly(key_agreement) => key_agreement.public().as_multibase(),
             Self::MultiMessageSignature(multi_message_signature) => {
                 multi_message_signature.public().as_multibase()
             }
@@ -91,50 +96,57 @@ impl KeyHandle {
 
     pub fn verify(&self, message: &[u8], signature_bytes: &[u8]) -> Result<(), SignerError> {
         match &self {
-            KeyHandle::SignatureOnly(value) => value.public().verify(message, signature_bytes),
-            KeyHandle::SignatureAndKeyAgreement { signature, .. } => {
+            Self::SignatureOnly(value) => value.public().verify(message, signature_bytes),
+            Self::SignatureAndKeyAgreement { signature, .. } => {
                 signature.public().verify(message, signature_bytes)
             }
-            KeyHandle::MultiMessageSignature(value) => {
+            Self::MultiMessageSignature(value) => {
                 let input = parse_bbs_input(message);
                 value
                     .public()
                     .verify_signature(input.header, input.messages, signature_bytes)
+            }
+            Self::KeyAgreementOnly(_) => {
+                Err(SignerError::CouldNotVerify("Not supported".to_string()))
             }
         }
     }
 
     pub async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         match &self {
-            KeyHandle::SignatureOnly(value) => {
+            Self::SignatureOnly(value) => {
                 value
                     .private()
                     .ok_or(SignerError::MissingKey)?
                     .sign(message)
                     .await
             }
-            KeyHandle::SignatureAndKeyAgreement { signature, .. } => {
+            Self::SignatureAndKeyAgreement { signature, .. } => {
                 signature
                     .private()
                     .ok_or(SignerError::MissingKey)?
                     .sign(message)
                     .await
             }
-            KeyHandle::MultiMessageSignature(value) => {
+            Self::MultiMessageSignature(value) => {
                 let input = parse_bbs_input(message);
                 value
                     .private()
                     .ok_or(SignerError::MissingKey)?
                     .sign(input.header, input.messages)
             }
+            Self::KeyAgreementOnly(_) => {
+                Err(SignerError::CouldNotSign("Not supported".to_string()))
+            }
         }
     }
 
     pub fn public_key_as_raw(&self) -> Vec<u8> {
         match &self {
-            KeyHandle::SignatureOnly(value) => value.public().as_raw(),
-            KeyHandle::SignatureAndKeyAgreement { signature, .. } => signature.public().as_raw(),
-            KeyHandle::MultiMessageSignature(value) => value.public().as_raw(),
+            Self::SignatureOnly(value) => value.public().as_raw(),
+            Self::SignatureAndKeyAgreement { signature, .. } => signature.public().as_raw(),
+            Self::KeyAgreementOnly(key_agreement) => key_agreement.public().as_raw(),
+            Self::MultiMessageSignature(value) => value.public().as_raw(),
         }
     }
 }
@@ -210,7 +222,7 @@ impl KeyAgreementHandle {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait PublicKeyAgreementHandle: Send + Sync {
-    fn as_jwk(&self) -> Result<RemoteJwk, KeyHandleError>;
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError>;
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
     fn as_raw(&self) -> Vec<u8>;
 }

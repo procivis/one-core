@@ -9,7 +9,7 @@ use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkMlweData};
+use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkMlweData};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -55,7 +55,7 @@ impl KeyAlgorithm for MlDsa {
         &self,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
-        r#use: Option<String>,
+        r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
             Ok(KeyHandle::SignatureOnly(
@@ -144,11 +144,11 @@ impl KeyAlgorithm for MlDsa {
 
 struct MlDsaPublicKeyHandle {
     public_key: Vec<u8>,
-    r#use: Option<String>,
+    r#use: Option<JwkUse>,
 }
 
 impl MlDsaPublicKeyHandle {
-    fn new(public_key: Vec<u8>, r#use: Option<String>) -> Self {
+    fn new(public_key: Vec<u8>, r#use: Option<JwkUse>) -> Self {
         Self { public_key, r#use }
     }
 }

@@ -118,7 +118,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::OID4VPFinal1_0Handover;
-    use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use crate::model::key::{JwkUse, PublicKeyJwk, PublicKeyJwkEllipticData};
 
     #[tokio::test]
     async fn test_oid4vp_handover_compute_against_test_vector() {
@@ -129,7 +129,7 @@ mod tests {
 
         let jwk = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
             alg: Some("ES256".to_string()),
-            r#use: Some("enc".to_string()),
+            r#use: Some(JwkUse::Encryption),
             kid: Some("1".to_string()),
             crv: "P-256".to_string(),
             x: "DxiH5Q4Yx3UrukE2lWCErq8N8bqC9CHLLrAwLz5BmE0".to_string(),

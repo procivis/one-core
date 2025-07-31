@@ -2,17 +2,17 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::signer::eddsa::EDDSASigner;
 
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{JwkUse, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::key::KeyHandleError;
 
-pub fn eddsa_public_key_as_jwk(
+pub(crate) fn eddsa_public_key_as_jwk(
     public_key: &[u8],
     curve: &str,
-    r#use: Option<String>,
+    r#use: Option<JwkUse>,
 ) -> Result<PublicKeyJwk, KeyHandleError> {
-    let alg = match r#use.as_deref() {
-        Some("enc") => Some("ECDH-ES".to_string()),
-        Some("sig") => Some("EdDSA".to_string()),
+    let alg = match r#use {
+        Some(JwkUse::Encryption) => Some("ECDH-ES".to_string()),
+        Some(JwkUse::Signature) => Some("EdDSA".to_string()),
         _ => None,
     };
     Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
@@ -26,7 +26,7 @@ pub fn eddsa_public_key_as_jwk(
     }))
 }
 
-pub fn eddsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+pub(crate) fn eddsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
     let codec = &[0xed, 0x1];
     let key = EDDSASigner::check_public_key(public_key)
         .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
@@ -34,16 +34,24 @@ pub fn eddsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHan
     Ok(format!("z{}", bs58::encode(data).into_string()))
 }
 
-pub fn ecdsa_public_key_as_jwk(
+pub(crate) fn x25519_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+    let codec = &[0xec, 0x1];
+    let key = EDDSASigner::check_x25519_public_key(public_key)
+        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let data = [codec, key.as_slice()].concat();
+    Ok(format!("z{}", bs58::encode(data).into_string()))
+}
+
+pub(crate) fn ecdsa_public_key_as_jwk(
     public_key: &[u8],
-    r#use: Option<String>,
+    r#use: Option<JwkUse>,
 ) -> Result<PublicKeyJwk, KeyHandleError> {
     let (x, y) =
         ECDSASigner::get_public_key_coordinates(public_key).map_err(KeyHandleError::Signer)?;
 
-    let alg = match r#use.as_deref() {
-        Some("enc") => Some("ECDH-ES".to_string()),
-        Some("sig") => Some("ES256".to_string()),
+    let alg = match r#use {
+        Some(JwkUse::Encryption) => Some("ECDH-ES".to_string()),
+        Some(JwkUse::Signature) => Some("ES256".to_string()),
         _ => None,
     };
 
@@ -61,7 +69,7 @@ pub fn ecdsa_public_key_as_jwk(
     }))
 }
 
-pub fn ecdsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+pub(crate) fn ecdsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
     let codec = &[0x80, 0x24];
     let key = ECDSASigner::parse_public_key(public_key, true)
         .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;

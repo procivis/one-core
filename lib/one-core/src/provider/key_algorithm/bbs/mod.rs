@@ -8,7 +8,7 @@ use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, MultiMessageSignatureKeyHandle,
@@ -54,7 +54,7 @@ impl KeyAlgorithm for BBS {
         &self,
         public_key: &[u8],
         private_key: Option<SecretSlice<u8>>,
-        r#use: Option<String>,
+        r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmError> {
         if let Some(private_key) = private_key {
             Ok(KeyHandle::MultiMessageSignature(
@@ -142,11 +142,11 @@ impl BBSPrivateKeyHandle {
 
 struct BBSPublicKeyHandle {
     public_key: Vec<u8>,
-    r#use: Option<String>,
+    r#use: Option<JwkUse>,
 }
 
 impl BBSPublicKeyHandle {
-    fn new(public_key: Vec<u8>, r#use: Option<String>) -> Self {
+    fn new(public_key: Vec<u8>, r#use: Option<JwkUse>) -> Self {
         Self { public_key, r#use }
     }
 }

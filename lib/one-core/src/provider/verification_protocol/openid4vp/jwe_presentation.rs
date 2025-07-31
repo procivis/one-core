@@ -1,19 +1,17 @@
 use anyhow::anyhow;
 use one_crypto::jwe::{Header, RemoteJwk};
 
-use crate::config::core_config::KeyAlgorithmType;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::model::key::PublicKeyJwk;
+use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn build_jwe(
     payload: JwePayload,
-    verifier_key: RemoteJwk,
-    algorithm_type: KeyAlgorithmType,
+    verifier_key: PublicKeyJwk,
     verifier_key_id: String,
     holder_nonce: &str,
     nonce: &str, // nonce from the authorization request object
@@ -21,6 +19,7 @@ pub(crate) async fn build_jwe(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> anyhow::Result<String> {
     let payload = payload.try_into_json_base64_encode()?;
+    let ParsedKey { algorithm_type, .. } = key_algorithm_provider.parse_jwk(&verifier_key)?;
     let algorithm = key_algorithm_provider
         .key_algorithm_from_type(algorithm_type)
         .ok_or(anyhow!("Algorithm not found"))?;
@@ -33,7 +32,7 @@ pub(crate) async fn build_jwe(
     let shared_secret = key_agreement
         .private()
         .ok_or(anyhow!("Private key not set"))?
-        .shared_secret(&verifier_key)
+        .shared_secret(&verifier_key.try_into()?)
         .await?;
     let local_jwk = key_agreement.public().as_jwk().map_err(|e| anyhow!(e))?;
 
@@ -45,7 +44,7 @@ pub(crate) async fn build_jwe(
             agreement_partyvinfo: nonce.to_owned(),
         },
         shared_secret,
-        local_jwk,
+        local_jwk.try_into()?,
         encryption_algorithm.into(),
     )?)
 }
@@ -66,4 +65,24 @@ pub(crate) fn ec_key_from_metadata(
                 PublicKeyJwkDTO::Ec(key) | PublicKeyJwkDTO::Okp(key) if key.r#use.as_deref() == Some("enc")
             )
         })
+}
+
+impl TryFrom<PublicKeyJwk> for RemoteJwk {
+    type Error = anyhow::Error;
+
+    fn try_from(value: PublicKeyJwk) -> Result<Self, Self::Error> {
+        let (kty, ec_data) = match value {
+            PublicKeyJwk::Ec(ec_data) => ("EC", ec_data),
+            PublicKeyJwk::Okp(ec_data) => ("OKP", ec_data),
+            other => {
+                return Err(anyhow!("Invalid key type: {other:?}"));
+            }
+        };
+        Ok(Self {
+            kty: kty.to_string(),
+            crv: ec_data.crv,
+            x: ec_data.x,
+            y: ec_data.y,
+        })
+    }
 }
