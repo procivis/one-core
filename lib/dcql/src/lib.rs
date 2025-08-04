@@ -72,6 +72,8 @@ pub struct ClaimQuery {
     pub id: Option<ClaimQueryId>,
     #[builder(into)]
     pub path: ClaimPath,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub values: Option<Vec<ClaimValue>>,
     // Custom field to mark if a claim is required or optional
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
@@ -109,6 +111,19 @@ pub enum PathSegment {
     ArrayIndex(usize),
     /// Select all elements of an array
     ArrayAll,
+}
+
+/// Possible claim value to match credentials against.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ClaimValue {
+    /// String value
+    String(String),
+    /// Integer value
+    /// Note: DCQL does _not_ support floating point numbers
+    Integer(isize),
+    /// Boolean value
+    Boolean(bool),
 }
 
 #[derive(Clone, Debug, Error)]
@@ -438,6 +453,84 @@ mod tests {
         );
     }
 
+    // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-D-12
+    #[test]
+    fn test_dcql_query_value_parsing() {
+        let json = json!({
+          "credentials": [
+            {
+              "id": "my_credential",
+              "format": "dc+sd-jwt",
+              "meta": {
+                "vct_values": [ "https://credentials.example.com/identity_credential" ]
+              },
+              "claims": [
+                  {
+                    "path": ["last_name"],
+                    "values": ["Doe"]
+                  },
+                  {"path": ["first_name"]},
+                  {"path": ["address", "street_address"]},
+                  {
+                    "path": ["postal_code"],
+                    "values": ["90210", "90211"]
+                  }
+              ]
+            }
+          ]
+        });
+
+        let query: DcqlQuery = serde_json::from_value(json).unwrap();
+
+        // Verify the structure was parsed correctly
+        assert_eq!(query.credentials.len(), 1);
+
+        let credential = &query.credentials[0];
+        assert_eq!(credential.id, "my_credential".into());
+        assert_eq!(credential.format, CredentialFormat::SdJwt);
+
+        // Verify meta data
+        match &credential.meta {
+            CredentialMeta::SdJwtVc { vct_values } => {
+                assert_eq!(
+                    vct_values,
+                    &["https://credentials.example.com/identity_credential"]
+                );
+            }
+            _ => panic!("Expected SdJwtVc meta type"),
+        }
+
+        // Verify claims
+        assert_eq!(credential.claims.as_ref().unwrap().len(), 4);
+
+        let first_claim = &credential.claims.as_ref().unwrap()[0];
+        assert_eq!(first_claim.path, vec!["last_name"].into());
+        assert_eq!(first_claim.values, Some(vec!["Doe".into()]));
+        assert!(first_claim.id.is_none());
+        assert!(first_claim.required.is_none());
+        assert!(first_claim.intent_to_retain.is_none());
+
+        let second_claim = &credential.claims.as_ref().unwrap()[1];
+        assert_eq!(second_claim.path, vec!["first_name"].into());
+        assert_eq!(second_claim.values, None);
+        assert!(second_claim.id.is_none());
+        assert!(second_claim.required.is_none());
+        assert!(second_claim.intent_to_retain.is_none());
+
+        // Verify optional fields are None
+        assert!(credential.claim_sets.is_none());
+
+        let fourth_claim = &credential.claims.as_ref().unwrap()[3];
+        assert_eq!(fourth_claim.path, vec!["postal_code"].into());
+        assert_eq!(
+            fourth_claim.values,
+            Some(vec!["90210".into(), "90211".into()])
+        );
+        assert!(fourth_claim.id.is_none());
+        assert!(fourth_claim.required.is_none());
+        assert!(fourth_claim.intent_to_retain.is_none());
+    }
+
     #[test]
     fn test_dcql_query_custom_fields() {
         let json = json!({
@@ -597,6 +690,34 @@ mod tests {
                 assert_eq!(doctype_value, "org.iso.7367.1.mVRC");
             }
             _ => panic!("Expected MsoMdoc meta type"),
+        }
+    }
+
+    #[test]
+    fn test_dcql_query_parsing_invalid_values() {
+        let invalid_values = [json!({}), json!([]), json!(null), json!(0.85)];
+
+        for invalid_value in &invalid_values {
+            let json = json!({
+              "credentials": [
+                {
+                  "id": "my_credential",
+                  "format": "dc+sd-jwt",
+                  "meta": {
+                    "vct_values": [ "https://credentials.example.com/identity_credential" ]
+                  },
+                  "claims": [
+                      {
+                        "path": ["last_name"],
+                        "values": [invalid_value]
+                      }
+                  ]
+                }
+              ]
+            });
+
+            let result = serde_json::from_value::<DcqlQuery>(json);
+            assert!(result.is_err());
         }
     }
 }

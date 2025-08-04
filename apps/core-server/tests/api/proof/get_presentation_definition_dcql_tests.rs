@@ -76,7 +76,7 @@ async fn test_get_presentation_definition_dcql_simple() {
     body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
         .assert_eq(&vec![credential.id.to_string()]);
     let field = json!({
-        "id": "firstName",
+        "id": "test_id:firstName",
         "keyMap": {
             credential.id.to_string(): "firstName"
         },
@@ -150,7 +150,7 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
     body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
         .assert_eq(&vec![credential.id.to_string()]);
     let field1 = json!({
-        "id": "firstName",
+        "id": "test_id:firstName",
         "keyMap": {
             credential.id.to_string(): "firstName"
         },
@@ -768,15 +768,113 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         .as_array()
         .unwrap();
     // This claim was asked for by the verifier, both credentials are applicable
-    assert!(
-        fields
-            .iter()
-            .any(|field| field["id"] == "firstName"
-                && field["keyMap"].as_object().unwrap().len() == 2)
-    );
+    assert!(fields.iter().any(|field| field["id"] == "test_id:firstName"
+        && field["keyMap"].as_object().unwrap().len() == 2));
 
     // This claim was not asked for by the verifier but since it is included in credential1, and it is not selectively disclosable, it is listed.
     // For credential2 this claim is not even selectable, as it was never asked for.
     assert!(fields.iter().any(|field| field["id"] == "test_id:isOver18"
         && field["keyMap"] == json!({credential1.id.to_string(): "isOver18"})));
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_value_match() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let claim_1 = Uuid::new_v4();
+    let claim_2 = Uuid::new_v4();
+
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "Simple test schema",
+            &org,
+            "NONE",
+            &[
+                (claim_1, "firstName", true, "STRING", false),
+                (claim_2, "isOver18", false, "BOOLEAN", false),
+            ],
+            "SD_JWT_VC",
+            vct,
+        )
+        .await;
+
+    let credential1 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    (claim_1, "firstName", "test-name"),
+                    (claim_2, "isOver18", "true"),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // this one will be inapplicable because the claim values don't match
+    let credential2 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    (claim_1, "firstName", "test-name2"),
+                    (claim_2, "isOver18", "false"),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["isOver18".to_string()])
+                .values(vec![true.into()])
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["credentials"].as_array().unwrap().len(), 2);
+    let expected_requested_credentials = json!({
+        "applicableCredentials": [credential1.id.to_string()],
+        "fields": [{
+            "id": "test_id:isOver18",
+            "keyMap": {
+                credential1.id.to_string(): "isOver18",
+            },
+            "name": "isOver18",
+            "required": true,
+        }],
+        "id": "test_id",
+        "inapplicableCredentials": [credential2.id.to_string()]
+    });
+    body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
 }

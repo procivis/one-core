@@ -840,7 +840,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
-              "submitClaims": ["firstName"]
+              "submitClaims": ["input_0:firstName"]
             }
           }
         }))

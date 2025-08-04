@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-use crate::{ClaimPath, ClaimQueryId, CredentialFormat, CredentialQueryId, PathSegment};
+use crate::{
+    ClaimPath, ClaimQueryId, ClaimValue, CredentialFormat, CredentialQueryId, PathSegment,
+};
 
 impl Display for CredentialQueryId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -44,6 +46,16 @@ impl Display for CredentialFormat {
             CredentialFormat::JwtVc => write!(f, "jwt_vc_json"),
             CredentialFormat::SdJwt => write!(f, "dc+sd-jwt"),
             CredentialFormat::W3cSdJwt => write!(f, "vc+sd-jwt"),
+        }
+    }
+}
+
+impl Display for ClaimValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::String(name) => write!(f, "\"{name}\""),
+            Self::Integer(value) => write!(f, "{value}"),
+            Self::Boolean(value) => write!(f, "{value}"),
         }
     }
 }

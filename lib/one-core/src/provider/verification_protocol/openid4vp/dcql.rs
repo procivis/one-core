@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use dcql::matching::CredentialFilter;
-use dcql::{ClaimPath, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
+use dcql::{ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
 use shared_types::{CredentialId, OrganisationId};
 
 use crate::config::core_config::{CoreConfig, FormatType};
@@ -23,7 +23,6 @@ use crate::service::storage_proxy::StorageAccess;
 /// Limitations:
 ///   - No DCQL support for:
 ///     - credential_sets
-///     - claim value matching
 ///     - trusted authorities
 ///     - `multiple` flag
 ///     - `require_cryptographic_holder_binding` flag
@@ -169,7 +168,7 @@ fn to_requested_credential(
                     .id
                     .as_ref()
                     .map(ToString::to_string)
-                    .unwrap_or(claim_path.clone()),
+                    .unwrap_or(format!("{}:{}", query.id, claim_path)),
                 name: Some(claim_path.clone()),
                 purpose: None,
                 required: Some(required),
@@ -355,10 +354,15 @@ fn select_claims(
             )));
         }
         let path_prefix = dcql_path_to_claim_key(&claim_filter.path, &filter.format);
-        if claims
+        let values_filter = claim_filter
+            .values
             .iter()
-            .any(|claim| claim.path.starts_with(&path_prefix))
-        {
+            .map(stringify_value)
+            .collect::<Vec<_>>();
+        if claims.iter().any(|claim| {
+            claim.path.starts_with(&path_prefix)
+                && (values_filter.is_empty() || values_filter.contains(&claim.value))
+        }) {
             result.push(SelectedClaim {
                 key: path_prefix,
                 // If the format supports it in general, we assume SD is possible for all claims.
@@ -450,6 +454,14 @@ fn dcql_path_to_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String
         })
         .collect::<Vec<_>>()
         .join("/")
+}
+
+fn stringify_value(value: &ClaimValue) -> String {
+    match value {
+        ClaimValue::String(string) => string.to_string(),
+        ClaimValue::Integer(int) => format!("{int}"),
+        ClaimValue::Boolean(bool) => format!("{bool}"),
+    }
 }
 
 impl From<FormatType> for dcql::CredentialFormat {

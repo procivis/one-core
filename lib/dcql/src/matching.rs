@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    ClaimPath, ClaimQuery, ClaimQueryId, CredentialFormat, CredentialMeta, CredentialQueryId,
-    DcqlError, DcqlQuery,
+    ClaimPath, ClaimQuery, ClaimQueryId, ClaimValue, CredentialFormat, CredentialMeta,
+    CredentialQueryId, DcqlError, DcqlQuery,
 };
 
 /// Filter restrictions for credentials held in the wallet.
@@ -24,6 +24,8 @@ pub struct CredentialFilter {
 #[derive(Debug, Clone)]
 pub struct ClaimFilter {
     pub path: ClaimPath,
+    /// If non-empty, filter based on claim values
+    pub values: Vec<ClaimValue>,
     /// Non-standard extension to have optionality on claim level
     pub required: bool,
 }
@@ -112,6 +114,7 @@ fn claim_filters_to_map(
             id.clone(),
             ClaimFilter {
                 path,
+                values: claim_query.values.clone().unwrap_or(vec![]),
                 required: claim_query.required.unwrap_or(true),
             },
         );
