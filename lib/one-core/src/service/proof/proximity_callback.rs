@@ -5,7 +5,7 @@ use futures::FutureExt;
 use futures::future::BoxFuture;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::ProofId;
+use shared_types::{BlobId, ProofId};
 use time::OffsetDateTime;
 use tracing::warn;
 use uuid::Uuid;
@@ -13,6 +13,7 @@ use uuid::Uuid;
 use super::ProofService;
 use crate::common_mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
 use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::HistoryErrorMetadata;
@@ -23,6 +24,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::model::validity_credential::Mdoc;
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::credential_from_proved;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -33,7 +35,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::m
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
 use crate::provider::verification_protocol::openid4vp::service::oid4vp_verifier_process_submission;
 use crate::service::error::ErrorCode::BR_0000;
-use crate::service::error::ServiceError;
+use crate::service::error::{MissingProviderError, ServiceError};
 
 impl ProofService {
     // TODO: This method is used as part of the OID4VP BLE/MQTT flow
@@ -132,7 +134,7 @@ impl ProofService {
             Ok(request_data) => request_data,
             Err(error) => {
                 let message = format!("Failed parsing interaction data: {error}");
-                self.mark_proof_as_failed(&proof.id, message).await;
+                self.mark_proof_as_failed(&proof.id, None, message).await;
                 return;
             }
         };
@@ -192,6 +194,20 @@ impl ProofService {
                 .into());
             }
         }
+
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {
+            ServiceError::MappingError(format!("failed to serialize proof blob data: {e}"))
+        })?;
+
+        let blob = Blob::new(blob_value, BlobType::Proof);
+        let proof_blob_id = blob.id;
+        blob_storage.create(blob).await?;
 
         match oid4vp_verifier_process_submission(
             unpacked_request,
@@ -284,6 +300,7 @@ impl ProofService {
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
                             holder_identifier_id,
+                            proof_blob_id: Some(Some(proof_blob_id)),
                             ..Default::default()
                         },
                         None,
@@ -294,13 +311,19 @@ impl ProofService {
             }
             Err(err) => {
                 let message = format!("Proof validation failed: {err}");
-                self.mark_proof_as_failed(&proof.id, message).await;
+                self.mark_proof_as_failed(&proof.id, Some(proof_blob_id), message)
+                    .await;
                 Err(err.into())
             }
         }
     }
 
-    async fn mark_proof_as_failed(&self, id: &ProofId, message: String) {
+    async fn mark_proof_as_failed(
+        &self,
+        id: &ProofId,
+        proof_blob_id: Option<BlobId>,
+        message: String,
+    ) {
         tracing::info!(message);
         let error_metadata = HistoryErrorMetadata {
             error_code: BR_0000,
@@ -313,6 +336,7 @@ impl ProofService {
                 id,
                 UpdateProofRequest {
                     state: Some(ProofStateEnum::Error),
+                    proof_blob_id: proof_blob_id.map(Some),
                     ..Default::default()
                 },
                 Some(error_metadata),

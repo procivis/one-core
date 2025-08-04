@@ -52,6 +52,7 @@ fn convert_internal_structure_to_dto() {
           "holderKeyStorage": {},
           "keyStorage": {},
           "trustManagement": {},
+          "blobStorage": {},
           "cacheEntities": {},
           "task": {}
         }),
@@ -103,6 +104,7 @@ fn do_not_serialize_private_parameters() {
           "holderKeyStorage": {},
           "keyStorage": {},
           "trustManagement": {},
+          "blobStorage": {},
           "cacheEntities": {},
           "task": {}
         }),

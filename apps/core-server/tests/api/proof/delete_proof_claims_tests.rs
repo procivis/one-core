@@ -84,6 +84,16 @@ async fn test_delete_proof_claims_success() {
         })
         .await;
 
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Proof),
+            ..Default::default()
+        })
+        .await;
+
     let proof = context
         .db
         .proofs
@@ -96,6 +106,7 @@ async fn test_delete_proof_claims_success() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
+            Some(blob.id),
         )
         .await;
 
@@ -152,4 +163,7 @@ async fn test_delete_proof_claims_success() {
 
     let get_other_blob = context.db.blobs.get(&other_blob.id).await;
     assert!(get_other_blob.is_some());
+
+    let blob = context.db.blobs.get(&blob.id).await;
+    assert!(blob.is_none());
 }

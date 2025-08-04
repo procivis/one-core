@@ -18,6 +18,7 @@ use crate::model::interaction::Interaction;
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, FormatterCapabilities, IdentifierDetails,
@@ -72,6 +73,7 @@ struct Mocks {
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
     pub certificate_repository: MockCertificateRepository,
+    pub blob_storage_provider: MockBlobStorageProvider,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -92,6 +94,7 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.validity_credential_repository),
         Arc::new(mocks.certificate_validator),
         Arc::new(mocks.certificate_repository),
+        Arc::new(mocks.blob_storage_provider),
     )
 }
 
@@ -370,11 +373,21 @@ async fn test_submit_proof_failed_credential_suspended() {
         .once()
         .return_once(|_| Some((Arc::new(revocation_method), "".to_string())));
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_create().returning(|_| Ok(()));
+
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = setup_service(Mocks {
         proof_repository,
         credential_formatter_provider,
         presentation_formatter_provider,
         revocation_method_provider,
+        blob_storage_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -723,12 +736,22 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         })
     });
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_create().returning(|_| Ok(()));
+
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .returning(move |_| Some(blob_storage.clone()));
+
     let service = setup_service(Mocks {
         proof_repository,
         credential_formatter_provider,
         presentation_formatter_provider,
         revocation_method_provider,
         did_method_provider,
+        blob_storage_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -828,6 +851,7 @@ async fn test_get_client_metadata_success() {
         verifier_certificate: None,
         interaction: None,
         profile: None,
+        proof_blob_id: None,
     };
     {
         proof_repository

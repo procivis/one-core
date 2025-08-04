@@ -57,6 +57,7 @@ impl ProofService {
             requested_date: Some(now),
             completed_date: None,
             profile,
+            proof_blob_id: None,
             schema: Some(schema),
             transport: transport.to_owned(),
             claims: None,

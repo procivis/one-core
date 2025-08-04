@@ -95,6 +95,7 @@ async fn test_list_proof_success() {
                 "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
+                None,
             )
             .await;
 
@@ -200,6 +201,7 @@ async fn test_list_proofs_by_ids() {
                 "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
+                None,
             )
             .await;
 
@@ -341,6 +343,7 @@ async fn test_list_proofs_by_name() {
                 "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
+                None,
             )
             .await;
 
@@ -359,6 +362,7 @@ async fn test_list_proofs_by_name() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
+            None,
         )
         .await;
 
@@ -497,6 +501,7 @@ async fn test_list_proofs_by_schema_ids() {
                 "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
+                None,
             )
             .await;
 
@@ -515,6 +520,7 @@ async fn test_list_proofs_by_schema_ids() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
+            None,
         )
         .await;
 
@@ -633,6 +639,7 @@ async fn test_list_proofs_by_state() {
                 "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
+                None,
             )
             .await;
 
@@ -651,6 +658,7 @@ async fn test_list_proofs_by_state() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
+            None,
         )
         .await;
 
@@ -766,6 +774,7 @@ async fn test_list_proof_with_retain_date() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
+            None,
         )
         .await;
 
@@ -817,6 +826,7 @@ async fn test_list_proofs_with_org_by_interaction() {
                 "OPENID4VP_DRAFT20",
                 Some(&interaction),
                 key.clone(),
+                None,
             )
             .await;
 
@@ -864,6 +874,7 @@ async fn test_list_proofs_with_org_by_interaction() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
         )
         .await;
 
@@ -972,6 +983,7 @@ async fn test_list_proofs_by_role() {
                 "OPENID4VP_DRAFT20",
                 None,
                 verifier_key.to_owned(),
+                None,
             )
             .await;
 
@@ -994,6 +1006,7 @@ async fn test_list_proofs_by_role() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key.to_owned(),
+            None,
         )
         .await;
 
@@ -1139,6 +1152,7 @@ async fn test_list_proof_with_profile() {
             None,
             verifier_key.to_owned(),
             Some(test_profile_1.to_string()),
+            None,
         )
         .await;
 
@@ -1156,6 +1170,7 @@ async fn test_list_proof_with_profile() {
             None,
             verifier_key.to_owned(),
             Some(test_profile_2.to_string()),
+            None,
         )
         .await;
 
@@ -1171,6 +1186,7 @@ async fn test_list_proof_with_profile() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
+            None,
         )
         .await;
 

@@ -200,6 +200,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
         verifier_certificate: None,
         interaction: None,
         profile: None,
+        proof_blob_id: None,
     }
 }
 

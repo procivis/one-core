@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use shared_types::{IdentifierId, ProofId, ProofSchemaId};
+use shared_types::{BlobId, IdentifierId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::entity::identifier::{IdentifierState, IdentifierType};
@@ -20,6 +20,7 @@ pub(super) struct ProofListItemModel {
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
+    pub proof_blob_id: Option<BlobId>,
 
     // verifier_identifier
     pub verifier_identifier_id: Option<IdentifierId>,

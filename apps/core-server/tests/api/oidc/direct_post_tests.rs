@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use one_core::model::blob::BlobType;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
@@ -8,7 +9,7 @@ use uuid::Uuid;
 
 use crate::fixtures::{
     self, TestingDidParams, TestingIdentifierParams, create_credential_schema_with_claims,
-    create_proof, create_proof_schema, get_proof,
+    create_proof, create_proof_schema, get_blob, get_proof,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -210,6 +211,10 @@ async fn test_direct_post_one_credential_correct() {
                 // Values are just keys uppercase
                 .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
     );
+
+    let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;
+    assert!(str::from_utf8(&blob.value).unwrap().contains("vp_token"));
+    assert_eq!(blob.r#type, BlobType::Proof);
 }
 
 #[tokio::test]

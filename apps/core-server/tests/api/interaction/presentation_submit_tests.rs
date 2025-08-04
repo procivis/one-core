@@ -459,6 +459,7 @@ async fn setup_submittable_presentation(
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
+            None,
         )
         .await;
     (
@@ -1082,6 +1083,7 @@ async fn setup_submittable_presentation_dcql(
             "OPENID4VP_DRAFT25",
             Some(&interaction),
             verifier_key,
+            None,
         )
         .await;
     (

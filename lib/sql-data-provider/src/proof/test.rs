@@ -229,6 +229,7 @@ async fn setup_with_proof(
         &proof_schema_id,
         key_id,
         Some(interaction_id.to_string()),
+        None,
     )
     .await
     .unwrap();
@@ -360,6 +361,7 @@ async fn test_create_proof_success() {
         }),
         interaction: None,
         profile: None,
+        proof_blob_id: None,
     };
 
     let result = repository.create_proof(proof).await.unwrap();

@@ -1,3 +1,4 @@
+use one_core::model::blob::BlobType;
 use one_core::model::history::HistoryAction;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::ProofStateEnum;
@@ -6,6 +7,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
@@ -18,6 +20,17 @@ async fn test_delete_proof_created_holder_success() {
         .interactions
         .create(None, "https://example.com", &[], &organisation)
         .await;
+
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Proof),
+            ..Default::default()
+        })
+        .await;
+
     let proof = context
         .db
         .proofs
@@ -30,6 +43,7 @@ async fn test_delete_proof_created_holder_success() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            Some(blob.id),
         )
         .await;
 
@@ -61,6 +75,9 @@ async fn test_delete_proof_created_holder_success() {
     assert_eq!(resp.status(), 404);
     let resp = context.db.interactions.get(interaction.id).await;
     assert!(resp.is_none());
+
+    let blob = context.db.blobs.get(&blob.id).await;
+    assert!(blob.is_none());
 }
 
 #[tokio::test]
@@ -85,6 +102,7 @@ async fn test_delete_proof_accepted_holder_fail() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
         )
         .await;
 
@@ -113,6 +131,7 @@ async fn test_delete_proof_created_issuer_success() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
         )
         .await;
 
@@ -162,6 +181,7 @@ async fn test_delete_proof_accepted_issuer_fail() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
         )
         .await;
 
@@ -190,6 +210,7 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
         )
         .await;
 
@@ -286,6 +307,7 @@ async fn test_delete_proof_old_exchange() {
             "PROCIVIS_TEMPORARY", // this provider no longer exists
             None,
             key,
+            None,
         )
         .await;
 

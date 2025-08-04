@@ -769,6 +769,7 @@ pub async fn create_proof(
         verifier_certificate: None,
         interaction: interaction.cloned(),
         profile,
+        proof_blob_id: None,
     };
 
     data_layer
@@ -813,6 +814,16 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 interaction: Some(InteractionRelations { organisation: None }),
             },
         )
+        .await
+        .unwrap()
+        .unwrap()
+}
+
+pub async fn get_blob(db_conn: &DbConn, blob_id: &BlobId) -> Blob {
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
+    data_layer
+        .get_blob_repository()
+        .get(blob_id)
         .await
         .unwrap()
         .unwrap()

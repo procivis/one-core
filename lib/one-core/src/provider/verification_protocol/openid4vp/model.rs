@@ -326,7 +326,7 @@ pub struct LdpVcAlgs {
     pub proof_type: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct SubmissionRequestData {
     pub submission_data: VpSubmissionData,
     pub state: Uuid,

@@ -163,6 +163,17 @@ impl Task for RetainProofCheck {
                 self.credential_repository
                     .delete_credential_blobs(credential_ids)
                     .await?;
+                if let Some(proof_blob_id) = proof.proof_blob_id {
+                    let blob_storage = self
+                        .blob_storage_provider
+                        .get_blob_storage(BlobStorageType::Db)
+                        .await
+                        .ok_or_else(|| {
+                            MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                        })?;
+
+                    blob_storage.delete(&proof_blob_id).await?;
+                }
             }
 
             page += 1;

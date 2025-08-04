@@ -101,6 +101,7 @@ async fn test_get_client_request() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key.to_owned(),
+            None,
         )
         .await;
 

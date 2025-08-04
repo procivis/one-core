@@ -402,6 +402,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         verifier_certificate: None,
         interaction: None,
         profile: None,
+        proof_blob_id: None,
     }
 }
 

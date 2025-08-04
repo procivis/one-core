@@ -685,6 +685,7 @@ pub(super) fn proof_from_create_request(
         verifier_key: Some(verifier_key),
         verifier_certificate,
         interaction,
+        proof_blob_id: None,
     }
 }
 
@@ -722,6 +723,7 @@ pub fn proof_for_scan_to_verify(
             data: Some(interaction_data),
             organisation: schema.organisation,
         }),
+        proof_blob_id: None,
     }
 }
 

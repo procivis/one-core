@@ -239,6 +239,26 @@ async fn test_run_retain_proof_check_with_update() {
         )
         .await;
 
+    let proof_blob_1 = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Proof),
+            ..Default::default()
+        })
+        .await;
+
+    let proof_blob_2 = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(vec![1, 2, 3, 4, 5]),
+            r#type: Some(BlobType::Proof),
+            ..Default::default()
+        })
+        .await;
+
     let proof_1 = context
         .db
         .proofs
@@ -251,6 +271,7 @@ async fn test_run_retain_proof_check_with_update() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.clone(),
+            Some(proof_blob_1.id),
         )
         .await;
 
@@ -266,6 +287,7 @@ async fn test_run_retain_proof_check_with_update() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key,
+            Some(proof_blob_2.id),
         )
         .await;
 
@@ -332,6 +354,9 @@ async fn test_run_retain_proof_check_with_update() {
     let get_credential_blob = context.db.blobs.get(&credential_1_blob.id).await;
     assert!(get_credential_blob.is_none());
 
+    let get_proof_blob = context.db.blobs.get(&proof_blob_1.id).await;
+    assert!(get_proof_blob.is_none());
+
     let proof = context.db.proofs.get(&proof_2.id).await;
     assert!(!proof.claims.unwrap().is_empty());
 
@@ -340,6 +365,9 @@ async fn test_run_retain_proof_check_with_update() {
 
     let get_credential_blob = context.db.blobs.get(&credential_2_blob.id).await;
     assert!(get_credential_blob.is_some());
+
+    let get_proof_blob = context.db.blobs.get(&proof_blob_2.id).await;
+    assert!(get_proof_blob.is_some());
 
     let get_other_blob = context.db.blobs.get(&other_blob.id).await;
     assert!(get_other_blob.is_some());

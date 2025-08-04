@@ -653,6 +653,18 @@ impl ProofService {
             .delete_credential_blobs(credential_ids)
             .await?;
 
+        if let Some(proof_blob_id) = proof.proof_blob_id {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| {
+                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                })?;
+
+            blob_storage.delete(&proof_blob_id).await?;
+        }
+
         Ok(())
     }
 
@@ -752,6 +764,7 @@ impl ProofService {
                 verifier_key: None,
                 verifier_certificate: None,
                 interaction: Some(interaction.clone()),
+                proof_blob_id: None,
             })
             .await?;
 
@@ -788,6 +801,18 @@ impl ProofService {
             return Err(EntityNotFoundError::Proof(proof_id).into());
         };
 
+        if let Some(proof_blob_id) = proof.proof_blob_id {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| {
+                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                })?;
+
+            blob_storage.delete(&proof_blob_id).await?;
+        }
+
         match proof.state {
             Created | Pending => {
                 self.exchange_retract_proof(&proof).await?;
@@ -797,6 +822,7 @@ impl ProofService {
                 self.exchange_retract_proof(&proof).await?;
                 let proof_update = UpdateProofRequest {
                     state: Some(Retracted),
+                    proof_blob_id: None,
                     ..Default::default()
                 };
                 self.proof_repository

@@ -305,6 +305,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
         )
         .await;
 
@@ -380,6 +381,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
         )
         .await;
 
@@ -593,6 +595,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
         )
         .await;
 
@@ -1059,6 +1062,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
         )
         .await;
 

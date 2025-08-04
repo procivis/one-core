@@ -1,10 +1,12 @@
+use one_core::model::blob::BlobType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
+    self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_blob,
+    get_proof,
 };
 use crate::utils;
 use crate::utils::context::TestContext;
@@ -186,6 +188,10 @@ async fn test_direct_post_draft25_with_dcql_query() {
                 // Values are just keys uppercase
                 .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
     );
+
+    let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;
+    assert!(str::from_utf8(&blob.value).unwrap().contains("vp_token"));
+    assert_eq!(blob.r#type, BlobType::Proof);
 }
 
 #[tokio::test]
@@ -303,4 +309,6 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
     assert_eq!(proof.state, ProofStateEnum::Error);
     let claims = proof.claims.unwrap();
     assert!(claims.is_empty());
+
+    assert!(proof.proof_blob_id.is_some());
 }

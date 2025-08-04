@@ -654,6 +654,7 @@ impl OneCore {
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
                 data_provider.get_certificate_repository(),
+                blob_storage_provider.clone(),
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
                 data_provider.get_credential_repository(),
@@ -671,6 +672,7 @@ impl OneCore {
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
                 data_provider.get_certificate_repository(),
+                blob_storage_provider.clone(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),
@@ -688,6 +690,7 @@ impl OneCore {
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
                 data_provider.get_certificate_repository(),
+                blob_storage_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),

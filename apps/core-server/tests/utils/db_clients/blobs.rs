@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::blob::{Blob, BlobType, BlobValue};
+use one_core::model::blob::{Blob, BlobType};
 use one_core::repository::blob_repository::BlobRepository;
 use shared_types::BlobId;
 use time::OffsetDateTime;
@@ -11,7 +11,7 @@ pub struct TestingBlobParams {
     pub id: Option<BlobId>,
     pub created_date: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
-    pub value: Option<BlobValue>,
+    pub value: Option<Vec<u8>>,
     pub r#type: Option<BlobType>,
 }
 

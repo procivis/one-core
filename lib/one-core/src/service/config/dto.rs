@@ -19,5 +19,6 @@ pub struct ConfigDTO {
     pub key_storage: HashMap<String, Value>,
     pub trust_management: HashMap<String, Value>,
     pub cache_entities: HashMap<String, Value>,
+    pub blob_storage: HashMap<String, Value>,
     pub task: HashMap<String, Value>,
 }

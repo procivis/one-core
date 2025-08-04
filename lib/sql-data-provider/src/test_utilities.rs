@@ -201,6 +201,7 @@ pub async fn insert_proof_request_to_database(
     proof_schema_id: &ProofSchemaId,
     verifier_key_id: KeyId,
     interaction_id: Option<String>,
+    proof_blob_id: Option<BlobId>,
 ) -> Result<ProofId, DbErr> {
     let proof = proof::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -220,6 +221,7 @@ pub async fn insert_proof_request_to_database(
         verifier_certificate_id: Set(None),
         interaction_id: Set(interaction_id),
         profile: Set(None),
+        proof_blob_id: Set(proof_blob_id),
     }
     .insert(database)
     .await?;

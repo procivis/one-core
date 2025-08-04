@@ -227,6 +227,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         verifier_certificate: None,
         interaction: None,
         profile: None,
+        proof_blob_id: None,
     }
 }
 
@@ -356,6 +357,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         interaction: None,
         role: ProofRole::Verifier,
         profile: None,
+        proof_blob_id: None,
     };
 
     {
@@ -474,6 +476,7 @@ async fn test_get_proof_exists() {
         interaction: None,
         role: ProofRole::Verifier,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -685,6 +688,7 @@ async fn test_get_proof_with_array_holder() {
         interaction: None,
         role: ProofRole::Holder,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -923,6 +927,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         interaction: None,
         role: ProofRole::Holder,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -1166,6 +1171,7 @@ async fn test_get_proof_with_object_array_holder() {
         interaction: None,
         role: ProofRole::Holder,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -1406,6 +1412,7 @@ async fn test_get_proof_with_array() {
         interaction: None,
         role: ProofRole::Verifier,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -1658,6 +1665,7 @@ async fn test_get_proof_with_array_in_object() {
         interaction: None,
         role: ProofRole::Verifier,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -1916,6 +1924,7 @@ async fn test_get_proof_with_object_array() {
         interaction: None,
         role: ProofRole::Verifier,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();
@@ -2096,6 +2105,7 @@ async fn test_get_proof_list_success() {
         verifier_certificate: None,
         interaction: None,
         profile: None,
+        proof_blob_id: None,
     };
     {
         let res_clone = proof.clone();

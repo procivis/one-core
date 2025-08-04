@@ -185,7 +185,7 @@ impl CredentialService {
 
         let blob_id = match credential.credential_blob_id {
             None => {
-                let blob = Blob::new(result.credential.as_bytes().to_vec(), BlobType::Credential);
+                let blob = Blob::new(result.credential, BlobType::Credential);
                 db_blob_storage.create(blob.clone()).await?;
                 blob.id
             }
@@ -194,7 +194,7 @@ impl CredentialService {
                     .update(
                         &blob_id,
                         UpdateBlobRequest {
-                            value: Some(result.credential.as_bytes().to_vec()),
+                            value: Some(result.credential.into()),
                         },
                     )
                     .await?;

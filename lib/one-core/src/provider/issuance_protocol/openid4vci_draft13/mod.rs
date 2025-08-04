@@ -806,7 +806,7 @@ impl OpenID4VCI13 {
 
         let credential_blob_id = match credential.credential_blob_id {
             None => {
-                let blob = Blob::new(token.as_bytes().to_vec(), BlobType::Credential);
+                let blob = Blob::new(token, BlobType::Credential);
                 db_blob_storage
                     .create(blob.clone())
                     .await
@@ -818,7 +818,7 @@ impl OpenID4VCI13 {
                     .update(
                         &blob_id,
                         UpdateBlobRequest {
-                            value: Some(token.as_bytes().to_vec()),
+                            value: Some(token.into()),
                         },
                     )
                     .await

@@ -185,6 +185,7 @@ async fn test_share_proof_success_with_separate_encryption_key() {
             "OPENID4VP_DRAFT20",
             None,
             signing_key,
+            None,
         )
         .await;
 
@@ -272,6 +273,7 @@ async fn test_share_proof_success_mdoc() {
             VerificationProtocolType::OpenId4VpDraft20.as_ref(),
             None,
             key,
+            None,
         )
         .await;
 
@@ -398,6 +400,7 @@ async fn test_share_proof_success_jsonld() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
         )
         .await;
 

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use itertools::Itertools;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_dto_mapper::convert_inner;
-use shared_types::{KeyId, ProofId};
+use shared_types::{BlobId, KeyId, ProofId};
 use time::OffsetDateTime;
 use tracing::warn;
 use uuid::Uuid;
@@ -17,6 +17,7 @@ use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType::{
     OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
 };
+use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
@@ -30,6 +31,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::model::validity_credential::Mdoc;
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
@@ -303,6 +305,20 @@ impl OID4VPDraft20Service {
             }
         }
 
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {
+            ServiceError::MappingError(format!("failed to serialize proof blob data: {e}"))
+        })?;
+
+        let blob = Blob::new(blob_value, BlobType::Proof);
+        let proof_blob_id = blob.id;
+        blob_storage.create(blob).await?;
+
         match oid4vp_verifier_process_submission(
             unpacked_request,
             proof.to_owned(),
@@ -395,6 +411,7 @@ impl OID4VPDraft20Service {
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
                             holder_identifier_id,
+                            proof_blob_id: Some(Some(proof_blob_id)),
                             ..Default::default()
                         },
                         None,
@@ -410,7 +427,8 @@ impl OID4VPDraft20Service {
                     error_code: BR_0000,
                     message,
                 };
-                self.mark_proof_as_failed(&proof.id, error_metadata).await;
+                self.mark_proof_as_failed(&proof.id, proof_blob_id, error_metadata)
+                    .await;
                 Err(err.into())
             }
         }
@@ -461,13 +479,19 @@ impl OID4VPDraft20Service {
         crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition(&proof, presentation_definition).map_err(Into::into)
     }
 
-    async fn mark_proof_as_failed(&self, id: &ProofId, error_metadata: HistoryErrorMetadata) {
+    async fn mark_proof_as_failed(
+        &self,
+        id: &ProofId,
+        proof_blob_id: BlobId,
+        error_metadata: HistoryErrorMetadata,
+    ) {
         let result = self
             .proof_repository
             .update_proof(
                 id,
                 UpdateProofRequest {
                     state: Some(ProofStateEnum::Error),
+                    proof_blob_id: Some(Some(proof_blob_id)),
                     ..Default::default()
                 },
                 Some(error_metadata),

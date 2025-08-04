@@ -162,6 +162,7 @@ async fn test_get_presentation_definition_success() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
+            None,
         )
         .await;
 
@@ -243,6 +244,7 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
+            None,
         )
         .await;
 
@@ -281,6 +283,7 @@ async fn test_get_presentation_definition_failed_wrong_state() {
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             verifier_key,
+            None,
         )
         .await;
 

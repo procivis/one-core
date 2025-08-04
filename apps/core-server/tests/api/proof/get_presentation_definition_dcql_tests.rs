@@ -632,6 +632,7 @@ async fn proof_for_dcql_query(
             "OPENID4VP_DRAFT25",
             Some(&interaction),
             key,
+            None,
         )
         .await
 }

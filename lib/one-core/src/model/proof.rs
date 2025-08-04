@@ -1,4 +1,4 @@
-use shared_types::{IdentifierId, ProofId};
+use shared_types::{BlobId, IdentifierId, ProofId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -27,6 +27,7 @@ pub struct Proof {
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
+    pub proof_blob_id: Option<BlobId>,
 
     // Relations
     pub schema: Option<ProofSchema>,
@@ -100,4 +101,5 @@ pub struct UpdateProofRequest {
     pub redirect_uri: Option<Option<String>>,
     pub transport: Option<String>,
     pub requested_date: Option<Option<OffsetDateTime>>,
+    pub proof_blob_id: Option<Option<BlobId>>,
 }
