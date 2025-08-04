@@ -39,4 +39,6 @@ pub(crate) struct ConfigRestDTO {
     pub cache_entities: HashMap<String, Value>,
     /// Maintenance tasks
     pub task: HashMap<String, Value>,
+    /// Blob storage
+    pub blob_storage: HashMap<String, Value>,
 }
