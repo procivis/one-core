@@ -13,4 +13,6 @@ pub trait BlobRepository: Send + Sync {
     async fn update(&self, id: &BlobId, update: UpdateBlobRequest) -> Result<(), DataLayerError>;
 
     async fn delete(&self, id: &BlobId) -> Result<(), DataLayerError>;
+
+    async fn delete_many(&self, ids: &[BlobId]) -> Result<(), DataLayerError>;
 }

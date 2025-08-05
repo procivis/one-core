@@ -36,6 +36,8 @@ pub trait BlobStorage: Send + Sync {
     async fn update(&self, id: &BlobId, update: UpdateBlobRequest) -> Result<(), BlobStorageError>;
 
     async fn delete(&self, id: &BlobId) -> Result<(), BlobStorageError>;
+
+    async fn delete_many(&self, ids: &[BlobId]) -> Result<(), BlobStorageError>;
 }
 
 pub struct BlobStorageProviderImpl {
@@ -78,6 +80,13 @@ impl BlobStorage for RepositoryBlobStorage {
 
     async fn delete(&self, id: &BlobId) -> Result<(), BlobStorageError> {
         self.blob_repository.delete(id).await.map_err(Into::into)
+    }
+
+    async fn delete_many(&self, ids: &[BlobId]) -> Result<(), BlobStorageError> {
+        self.blob_repository
+            .delete_many(ids)
+            .await
+            .map_err(Into::into)
     }
 }
 

@@ -3,7 +3,7 @@ use autometrics::autometrics;
 use one_core::model::blob::{Blob, UpdateBlobRequest};
 use one_core::repository::blob_repository::BlobRepository;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::BlobId;
 use time::OffsetDateTime;
 
@@ -50,6 +50,16 @@ impl BlobRepository for BlobProvider {
 
     async fn delete(&self, id: &BlobId) -> Result<(), DataLayerError> {
         blob::Entity::delete_by_id(id)
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(())
+    }
+
+    async fn delete_many(&self, ids: &[BlobId]) -> Result<(), DataLayerError> {
+        blob::Entity::delete_many()
+            .filter(blob::Column::Id.is_in(ids))
             .exec(&self.db)
             .await
             .map_err(to_data_layer_error)?;

@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::Task;
 use crate::model::claim::ClaimRelations;
-use crate::model::credential::CredentialRelations;
+use crate::model::credential::{CredentialRelations, GetCredentialQuery};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
@@ -19,6 +19,7 @@ use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::credential::dto::CredentialFilterValue;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::proof::dto::ProofFilterValue;
 
@@ -150,19 +151,28 @@ impl Task for RetainProofCheck {
                         MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
                     })?;
 
-                for credential in &credential_ids {
-                    let credential_blob_id = self
-                        .credential_repository
-                        .get_credential(credential, &Default::default())
-                        .await?
-                        .and_then(|credential| credential.credential_blob_id);
-                    if let Some(credential_blob_id) = &credential_blob_id {
-                        blob_storage.delete(credential_blob_id).await?;
-                    }
-                }
+                let credential_blob_ids = self
+                    .credential_repository
+                    .get_credential_list(GetCredentialQuery {
+                        filtering: Some(
+                            CredentialFilterValue::CredentialIds(Vec::from_iter(
+                                credential_ids.clone(),
+                            ))
+                            .condition(),
+                        ),
+                        ..GetCredentialQuery::default()
+                    })
+                    .await?
+                    .values
+                    .into_iter()
+                    .filter_map(|c| c.credential_blob_id)
+                    .collect::<Vec<_>>();
+
+                blob_storage.delete_many(&credential_blob_ids).await?;
                 self.credential_repository
                     .delete_credential_blobs(credential_ids)
                     .await?;
+
                 if let Some(proof_blob_id) = proof.proof_blob_id {
                     let blob_storage = self
                         .blob_storage_provider
