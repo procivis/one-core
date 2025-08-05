@@ -171,6 +171,81 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
 }
 
 #[tokio::test]
+async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplicable_credential() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let schema_id = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Simple test schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some(schema_id.to_string()),
+                format: Some("JWT".to_owned()),
+                schema_type: Some(CredentialSchemaType::SdJwtVc),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::jwt_vc(vec![vec![
+        "https://www.w3.org/ns/credentials/v2".to_owned(),
+        "https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json".to_owned(),
+        format!("{schema_id}#SimpleTestSchema"),
+    ]])
+    .id("test_id")
+    .claims(vec![
+        ClaimQuery::builder()
+            .path(vec!["non-existing-claim".to_string()])
+            .build(),
+    ])
+    .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    let expected_requested_credentials = json!({
+        "applicableCredentials": [],
+        "fields": [{
+            "id": "test_id:non-existing-claim",
+            "keyMap": {},
+            "name": "non-existing-claim",
+            "required": true,
+        }],
+        "id": "test_id",
+        "inapplicableCredentials": [credential.id.to_string()]
+    });
+    body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
+}
+
+#[tokio::test]
 async fn test_get_presentation_definition_dcql_inapplicable_credential() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;

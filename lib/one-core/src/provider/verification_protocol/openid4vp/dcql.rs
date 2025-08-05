@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use dcql::matching::CredentialFilter;
+use dcql::matching::{ClaimFilter, CredentialFilter};
 use dcql::{ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
 use shared_types::{CredentialId, OrganisationId};
 
 use crate::config::core_config::{CoreConfig, FormatType};
+use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof::Proof;
@@ -320,18 +321,26 @@ fn select_claims(
             credential.id
         )))?;
 
-    // The format does _not_ support selective disclosure, so we are forced to reveal _all_ claims.
+    // The format does _not_ support selective disclosure, so we are forced to reveal _all_ claims
+    // if the credential matches all the filters.
     if !selective_disclosure_supported(credential_schema, formatter_provider)? {
-        let all_claims = credential
-            .claims
-            .iter()
-            .flatten()
-            .map(|claim| SelectedClaim {
-                key: claim.path.to_string(),
-                selective_disclosure_supported: false,
-            })
-            .collect();
-        return Ok(Some(all_claims));
+        let credential_matches_filters = filter.claims.iter().all(|claim_filter| {
+            matching_claim_path(claims, claim_filter, &filter.format).is_some()
+        });
+        return if credential_matches_filters {
+            let all_claims = credential
+                .claims
+                .iter()
+                .flatten()
+                .map(|claim| SelectedClaim {
+                    key: claim.path.to_string(),
+                    selective_disclosure_supported: false,
+                })
+                .collect();
+            Ok(Some(all_claims))
+        } else {
+            Ok(None)
+        };
     }
 
     // The format _does_ support selective disclosure and no claims were requested, hence we show
@@ -353,18 +362,9 @@ fn select_claims(
                 claim_filter.path
             )));
         }
-        let path_prefix = dcql_path_to_claim_key(&claim_filter.path, &filter.format);
-        let values_filter = claim_filter
-            .values
-            .iter()
-            .map(stringify_value)
-            .collect::<Vec<_>>();
-        if claims.iter().any(|claim| {
-            claim.path.starts_with(&path_prefix)
-                && (values_filter.is_empty() || values_filter.contains(&claim.value))
-        }) {
+        if let Some(key) = matching_claim_path(claims, claim_filter, &filter.format) {
             result.push(SelectedClaim {
-                key: path_prefix,
+                key,
                 // If the format supports it in general, we assume SD is possible for all claims.
                 // TODO: actually fill this in accurately based on the given credential
                 selective_disclosure_supported: true,
@@ -375,6 +375,27 @@ fn select_claims(
         }
     }
     Ok(Some(result))
+}
+
+fn matching_claim_path(
+    claims: &[Claim],
+    claim_filter: &ClaimFilter,
+    format: &CredentialFormat,
+) -> Option<String> {
+    let path_prefix = dcql_path_to_claim_key(&claim_filter.path, format);
+    let values_filter = claim_filter
+        .values
+        .iter()
+        .map(stringify_value)
+        .collect::<Vec<_>>();
+    if claims.iter().any(|claim| {
+        claim.path.starts_with(&path_prefix)
+            && (values_filter.is_empty() || values_filter.contains(&claim.value))
+    }) {
+        Some(path_prefix)
+    } else {
+        None
+    }
 }
 
 fn selective_disclosure_supported(
