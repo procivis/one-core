@@ -1,11 +1,14 @@
-use crate::config::core_config;
+use crate::config::core_config::{self, CoreConfig};
+use crate::config::validator::protocol::validate_protocol_type;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::ssi_holder::dto::InitiateIssuanceRequestDTO;
 
 pub(super) fn validate_holder_capabilities(
     config: &core_config::CoreConfig,
@@ -39,6 +42,27 @@ pub(super) fn validate_holder_capabilities(
         .contains(&key_algorithm.algorithm_type())
     {
         return Err(BusinessLogicError::IncompatibleHolderKeyAlgorithm.into());
+    }
+
+    Ok(())
+}
+
+pub(super) fn validate_initiate_issuance_request(
+    request: &InitiateIssuanceRequestDTO,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    validate_protocol_type(&request.protocol, &config.issuance_protocol)?;
+
+    if request.scope.is_none()
+        && request
+            .authorization_details
+            .as_ref()
+            .is_none_or(|details| details.is_empty())
+    {
+        return Err(IssuanceProtocolError::InvalidRequest(
+            "Scope or authenticationDetails must be specified".to_string(),
+        )
+        .into());
     }
 
     Ok(())

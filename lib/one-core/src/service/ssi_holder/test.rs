@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
 
@@ -6,7 +7,11 @@ use mockall::predicate::eq;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
+use wiremock::http::Method;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -63,7 +68,9 @@ use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
-    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
+    OpenIDAuthorizationServerMetadata, PresentationSubmitCredentialRequestDTO,
+    PresentationSubmitRequestDTO,
 };
 use crate::service::test_utilities::{
     dummy_blob, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
@@ -1292,6 +1299,58 @@ async fn test_reject_credential() {
 
     let interaction_id = Uuid::new_v4();
     service.reject_credential(&interaction_id).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_initiate_issuance() {
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .return_once(|_, _| Ok(Some(dummy_organisation(None))));
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .return_once(|_| Ok(Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap()));
+
+    let service = SSIHolderService {
+        organisation_repository: Arc::new(organisation_repository),
+        interaction_repository: Arc::new(interaction_repository),
+        ..mock_ssi_holder_service()
+    };
+
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/oauth-authorization-server"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(OpenIDAuthorizationServerMetadata {
+                authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+            }),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let result = service
+        .initiate_issuance(InitiateIssuanceRequestDTO {
+            organisation_id: Uuid::new_v4().into(),
+            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            issuer: mock_server.uri(),
+            client_id: "clientId".to_string(),
+            redirect_uri: Some("http://redirect.uri".to_string()),
+            scope: Some(vec!["scope1".to_string(), "scope2".to_string()]),
+            authorization_details: Some(vec![InitiateIssuanceAuthorizationDetailDTO {
+                r#type: "type".to_string(),
+                credential_configuration_id: "configurationId".to_string(),
+            }]),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(
+        result.url,
+        "https://authorize.com/authorize?client_id=clientId&state=48db4654-01c4-4a43-9df4-300f1f425c40&redirect_uri=http%3A%2F%2Fredirect.uri&scope=scope1+scope2&authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"
+    );
 }
 
 fn mock_ssi_holder_service() -> SSIHolderService {

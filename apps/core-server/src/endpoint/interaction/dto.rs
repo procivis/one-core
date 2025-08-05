@@ -5,8 +5,9 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use one_core::service::proof::dto::ProposeProofResponseDTO;
 use one_core::service::ssi_holder::dto::{
-    CredentialConfigurationSupportedResponseDTO, PresentationSubmitCredentialRequestDTO,
-    PresentationSubmitRequestDTO,
+    CredentialConfigurationSupportedResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
+    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO,
+    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
@@ -158,5 +159,45 @@ pub(crate) struct ProposeProofRequestRestDTO {
 pub(crate) struct ProposeProofResponseRestDTO {
     pub proof_id: ProofId,
     pub interaction_id: Uuid,
+    pub url: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(InitiateIssuanceRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct InitiateIssuanceRequestRestDTO {
+    /// organisation to place the issued credential into
+    pub organisation_id: OrganisationId,
+    /// Selected issuance protocol
+    pub protocol: String,
+
+    /// OpenID4VCI authorization request parameter
+    pub issuer: String,
+    /// OpenID4VCI authorization request parameter
+    pub client_id: String,
+    /// OpenID4VCI authorization request parameter
+    #[into(with_fn = convert_inner)]
+    pub redirect_uri: Option<String>,
+    /// OpenID4VCI authorization request parameter
+    #[into(with_fn = convert_inner_of_inner)]
+    pub scope: Option<Vec<String>>,
+    /// OpenID4VCI authorization request parameter
+    #[into(with_fn = convert_inner_of_inner)]
+    pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailRestDTO>>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(InitiateIssuanceAuthorizationDetailDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct InitiateIssuanceAuthorizationDetailRestDTO {
+    pub r#type: String,
+    pub credential_configuration_id: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(InitiateIssuanceResponseDTO)]
+pub(crate) struct InitiateIssuanceResponseRestDTO {
     pub url: String,
 }

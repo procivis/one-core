@@ -8,8 +8,10 @@ use super::dto::{
     PresentationSubmitRequestRestDTO, ProposeProofRequestRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse};
-use crate::endpoint::interaction::dto::ProposeProofResponseRestDTO;
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::interaction::dto::{
+    InitiateIssuanceRequestRestDTO, InitiateIssuanceResponseRestDTO, ProposeProofResponseRestDTO,
+};
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -195,4 +197,33 @@ pub(crate) async fn propose_proof(
         .propose_proof(request.protocol, request.organisation_id)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "proposing proof")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/interaction/v1/initiate-issuance",
+    request_body = InitiateIssuanceRequestRestDTO,
+    responses(OkOrErrorResponse<InitiateIssuanceResponseRestDTO>),
+    tag = "interaction",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Initiate OpenID Connect issuance",
+    description = indoc::formatdoc! {"
+        For digital wallets, starts OpenID Connect authorization code flow.
+    "},
+)]
+pub(crate) async fn initiate_issuance(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<InitiateIssuanceRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<InitiateIssuanceResponseRestDTO> {
+    let result = state
+        .core
+        .ssi_holder_service
+        .initiate_issuance(request.into())
+        .await;
+    OkOrErrorResponse::from_result(result, state, "initiating issuance")
 }

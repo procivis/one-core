@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
 
 use super::SSIHolderService;
 use super::dto::{CredentialConfigurationSupportedResponseDTO, HandleInvitationResultDTO};
@@ -22,11 +23,10 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{InteractionId, InteractionRelations};
+use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
@@ -34,11 +34,17 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_ty
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, OpenID4VCIProofTypeSupported, SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::issuance_protocol::{IssuanceProtocol, serialize_interaction_data};
 use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::ssi_holder::validator::validate_holder_capabilities;
+use crate::service::ssi_holder::dto::{
+    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO, OpenIDAuthorizationServerMetadata,
+};
+use crate::service::ssi_holder::validator::{
+    validate_holder_capabilities, validate_initiate_issuance_request,
+};
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_credential;
 
@@ -576,5 +582,105 @@ impl SSIHolderService {
             .into_iter()
             .filter(|t| holder_proof_type_supported.binary_search(t).is_ok())
             .collect()
+    }
+
+    pub async fn initiate_issuance(
+        &self,
+        request: InitiateIssuanceRequestDTO,
+    ) -> Result<InitiateIssuanceResponseDTO, ServiceError> {
+        validate_initiate_issuance_request(&request, &self.config)?;
+
+        let Some(organisation) = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &Default::default())
+            .await?
+        else {
+            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
+        };
+
+        let issuer = Url::parse(&request.issuer)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        // obtain OAuth 2.0 Authorization server metadata (https://datatracker.ietf.org/doc/html/rfc8414#section-3)
+        // prepend `.well-known/oauth-authorization-server` to path to construct provider metadata endpoint
+        let original_path_segments: Vec<_> = issuer
+            .path_segments()
+            .ok_or(IssuanceProtocolError::Failed(
+                "invalid issuer URL".to_string(),
+            ))?
+            .filter_map(|segment| {
+                if segment.is_empty() {
+                    None
+                } else {
+                    Some(segment.to_string())
+                }
+            })
+            .collect();
+
+        let mut authorization_server_metadata_endpoint = issuer;
+        {
+            let mut segments = authorization_server_metadata_endpoint
+                .path_segments_mut()
+                .map_err(|_| IssuanceProtocolError::Failed("invalid issuer URL".to_string()))?;
+
+            segments
+                .clear()
+                .push(".well-known")
+                .push("oauth-authorization-server");
+            if !original_path_segments.is_empty() {
+                segments.extend(&original_path_segments);
+            }
+        }
+
+        let authorization_server_metadata: OpenIDAuthorizationServerMetadata = self
+            .client
+            .get(authorization_server_metadata_endpoint.as_str())
+            .send()
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .json()
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+        // store request parameters inside interaction
+        let data = serialize_interaction_data(&request)?;
+
+        let now = OffsetDateTime::now_utc();
+        let interaction_id = self
+            .interaction_repository
+            .create_interaction(Interaction {
+                id: Uuid::new_v4(),
+                created_date: now,
+                last_modified: now,
+                host: None,
+                data: Some(data),
+                organisation: Some(organisation),
+            })
+            .await?;
+
+        // construct authorization URL by adding all necessary query parameters
+        let mut authorization_url = authorization_server_metadata.authorization_endpoint;
+        {
+            let mut query = authorization_url.query_pairs_mut();
+            query.append_pair("client_id", &request.client_id);
+            query.append_pair("state", &interaction_id.to_string());
+            if let Some(redirect_uri) = &request.redirect_uri {
+                query.append_pair("redirect_uri", redirect_uri);
+            }
+            if let Some(scope) = &request.scope {
+                query.append_pair("scope", &scope.join(" "));
+            }
+            if let Some(authorization_details) = &request.authorization_details {
+                query.append_pair(
+                    "authorization_details",
+                    &serde_json::json!(authorization_details).to_string(),
+                );
+            }
+        }
+
+        Ok(InitiateIssuanceResponseDTO {
+            url: authorization_url.to_string(),
+        })
     }
 }

@@ -4,8 +4,11 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
 use one_core::service::error::ServiceError;
-use one_core::service::ssi_holder::dto::CredentialConfigurationSupportedResponseDTO;
-use one_dto_mapper::{From, convert_inner};
+use one_core::service::ssi_holder::dto::{
+    CredentialConfigurationSupportedResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
+    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO,
+};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use url::Url;
 
 use crate::OneCoreBinding;
@@ -67,6 +70,19 @@ impl OneCoreBinding {
             .reject_credential(&into_id(&interaction_id)?)
             .await?)
     }
+
+    #[uniffi::method]
+    pub async fn initiate_issuance(
+        &self,
+        request: InitiateIssuanceRequestBindingDTO,
+    ) -> Result<InitiateIssuanceResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .ssi_holder_service
+            .initiate_issuance(request.try_into()?)
+            .await?
+            .into())
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
@@ -122,4 +138,36 @@ pub struct OpenID4VCITxCodeBindingDTO {
 pub enum OpenID4VCITxCodeInputModeBindingEnum {
     Numeric,
     Text,
+}
+
+#[derive(Clone, Debug, uniffi::Record, TryInto)]
+#[try_into(T=InitiateIssuanceRequestDTO, Error=ServiceError)]
+pub struct InitiateIssuanceRequestBindingDTO {
+    #[try_into(with_fn = into_id)]
+    pub organisation_id: String,
+    #[try_into(infallible)]
+    pub protocol: String,
+    #[try_into(infallible)]
+    pub issuer: String,
+    #[try_into(infallible)]
+    pub client_id: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub redirect_uri: Option<String>,
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub scope: Option<Vec<String>>,
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailBindingDTO>>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, Into)]
+#[into(InitiateIssuanceAuthorizationDetailDTO)]
+pub struct InitiateIssuanceAuthorizationDetailBindingDTO {
+    pub r#type: String,
+    pub credential_configuration_id: String,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(InitiateIssuanceResponseDTO)]
+pub struct InitiateIssuanceResponseBindingDTO {
+    pub url: String,
 }

@@ -56,4 +56,25 @@ impl InteractionsApi {
             .post("/api/interaction/v1/issuance-reject", body)
             .await
     }
+
+    pub async fn initiate_issuance(
+        &self,
+        organisation_id: impl Into<Uuid>,
+        protocol: impl Into<String>,
+        client_id: impl Into<String>,
+        issuer: impl Into<String>,
+        scope: impl Into<Vec<String>>,
+    ) -> Response {
+        let body = json!({
+          "organisationId": organisation_id.into(),
+          "protocol": protocol.into(),
+          "clientId": client_id.into(),
+          "issuer": issuer.into(),
+          "scope": scope.into(),
+        });
+
+        self.client
+            .post("/api/interaction/v1/initiate-issuance", body)
+            .await
+    }
 }
