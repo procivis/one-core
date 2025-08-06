@@ -134,76 +134,93 @@ async fn test_vct_metadata_nested_claims() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp: Value = resp.json_value().await;
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 5);
-    // claims array is not ordered
-    assert!(resp["claims"].as_array().unwrap().contains(&json!({
-      "path": [
-        "namespace"
+    // VCT metadata _must_ be deterministic because otherwise vct subresource integrity is broken
+    let expected = json!({
+      "claims": [
+        {
+          "display": [
+            {
+              "label": "namespace",
+              "lang": "en-US"
+            }
+          ],
+          "path": [
+            "namespace"
+          ],
+          "sd": "allowed"
+        },
+        {
+          "display": [
+            {
+              "label": "root_array",
+              "lang": "en-US"
+            }
+          ],
+          "path": [
+            "namespace",
+            "root_array"
+          ],
+          "sd": "allowed"
+        },
+        {
+          "display": [
+            {
+              "label": "nested",
+              "lang": "en-US"
+            }
+          ],
+          "path": [
+            "namespace",
+            "root_array",
+            null,
+            "nested"
+          ],
+          "sd": "allowed"
+        },
+        {
+          "display": [
+            {
+              "label": "field",
+              "lang": "en-US"
+            }
+          ],
+          "path": [
+            "namespace",
+            "root_array",
+            null,
+            "nested",
+            null,
+            "field"
+          ],
+          "sd": "allowed"
+        },
+        {
+          "display": [
+            {
+              "label": "root_field",
+              "lang": "en-US"
+            }
+          ],
+          "path": [
+            "namespace",
+            "root_field"
+          ],
+          "sd": "allowed"
+        }
       ],
       "display": [
         {
           "lang": "en-US",
-          "label": "namespace"
+          "name": "test_name",
+          "rendering": {
+            "simple": {
+              "textColor": "#FFFFFF"
+            }
+          }
         }
       ],
-      "sd": "allowed"
-    })));
-    assert!(resp["claims"].as_array().unwrap().contains(&json!({
-      "path": [
-        "namespace",
-        "root_array",
-      ],
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "root_array"
-        }
-      ],
-      "sd": "allowed"
-    })));
-    assert!(resp["claims"].as_array().unwrap().contains(&json!({
-      "path": [
-        "namespace",
-        "root_array",
-        null,
-        "nested",
-      ],
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "nested"
-        }
-      ],
-      "sd": "allowed"
-    })));
-    assert!(resp["claims"].as_array().unwrap().contains(&json!({
-      "path": [
-        "namespace",
-        "root_array",
-        null,
-        "nested",
-        null,
-        "field"
-      ],
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "field"
-        }
-      ],
-      "sd": "allowed"
-    })));
-    assert!(resp["claims"].as_array().unwrap().contains(&json!({
-      "path": [
-        "namespace",
-        "root_field"
-      ],
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "root_field"
-        }
-      ],
-      "sd": "allowed"
-    })));
+      "name": "test_id",
+      "vct": vct
+    });
+    assert_eq!(resp, expected);
 }

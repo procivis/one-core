@@ -145,6 +145,21 @@ fn vct_claims_from_nested_view(
 ) -> Vec<SdJwtVcClaimDTO> {
     let mut vct_claims = vec![];
     vct_claims_from_prefix_and_fields(&mut vct_claims, &[], nested_claims.fields);
+
+    // Sort claims in order to make VCT metadata deterministic
+    vct_claims.sort_by(|a, b| {
+        let a_stringified = a
+            .path
+            .iter()
+            .map(|val| format!("{val}"))
+            .collect::<Vec<_>>();
+        let b_stringified = b
+            .path
+            .iter()
+            .map(|val| format!("{val}"))
+            .collect::<Vec<_>>();
+        a_stringified.cmp(&b_stringified)
+    });
     vct_claims
 }
 
