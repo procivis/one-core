@@ -44,6 +44,14 @@ pub enum HandleInvitationResultDTO {
     },
 }
 
+#[derive(Clone, Debug)]
+pub struct ContinueIssuanceResponseDTO {
+    pub interaction_id: InteractionId,
+    pub credential_ids: Vec<CredentialId>,
+    pub credential_configurations_supported:
+        HashMap<CredentialId, CredentialConfigurationSupportedResponseDTO>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InitiateIssuanceRequestDTO {
     pub organisation_id: OrganisationId,

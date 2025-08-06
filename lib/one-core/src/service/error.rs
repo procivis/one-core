@@ -187,6 +187,9 @@ pub enum EntityNotFoundError {
 
     #[error("Trust entity by entity key `{0}` not found")]
     TrustEntityByEntityKey(TrustEntityKey),
+
+    #[error("Interaction `{0}` not found")]
+    Interaction(InteractionId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1274,6 +1277,9 @@ pub enum ErrorCode {
 
     #[strum(message = "DID cannot be reactivated")]
     BR_0256,
+
+    #[strum(message = "Interaction not found")]
+    BR_0257,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1355,6 +1361,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
             Self::Certificate(_) => ErrorCode::BR_0223,
+            Self::Interaction(_) => ErrorCode::BR_0257,
         }
     }
 }

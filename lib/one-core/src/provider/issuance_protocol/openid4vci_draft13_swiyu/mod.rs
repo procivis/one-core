@@ -17,12 +17,12 @@ use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
-use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
+use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    InvitationResponseDTO, OpenID4VCIParams, OpenID4VCRedirectUriParams, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseDTO, OpenID4VCIParams,
+    OpenID4VCRedirectUriParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::{HandleInvitationOperationsAccess, IssuanceProtocol};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -186,6 +186,23 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
         self.inner
             .issuer_issue_credential(credential_id, holder_identifier, holder_key_id)
+            .await
+    }
+
+    async fn holder_continue_issuance(
+        &self,
+        continue_issuance_dto: ContinueIssuanceDTO,
+        organisation: Organisation,
+        storage_access: &StorageAccess,
+        handle_invitation_operations: &HandleInvitationOperationsAccess,
+    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+        self.inner
+            .holder_continue_issuance(
+                continue_issuance_dto,
+                organisation,
+                storage_access,
+                handle_invitation_operations,
+            )
             .await
     }
 

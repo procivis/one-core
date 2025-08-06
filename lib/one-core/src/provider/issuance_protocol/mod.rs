@@ -28,9 +28,11 @@ use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    InvitationResponseDTO, OpenID4VCIParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseDTO, OpenID4VCIParams, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::{
     OpenID4VCI13Swiyu, OpenID4VCISwiyuParams,
@@ -255,6 +257,14 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         holder_identifier: Identifier,
         holder_key_id: String,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError>;
+
+    async fn holder_continue_issuance(
+        &self,
+        continue_issuance_dto: ContinueIssuanceDTO,
+        organisation: Organisation,
+        storage_access: &StorageAccess,
+        handle_invitation_operations: &HandleInvitationOperationsAccess,
+    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError>;
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities;
 }

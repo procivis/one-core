@@ -77,4 +77,14 @@ impl InteractionsApi {
             .post("/api/interaction/v1/initiate-issuance", body)
             .await
     }
+
+    pub async fn continue_issuance(&self, url: impl Into<String>) -> Response {
+        let body = json!({
+          "url": url.into(),
+        });
+
+        self.client
+            .post("/api/interaction/v1/continue-issuance", body)
+            .await
+    }
 }

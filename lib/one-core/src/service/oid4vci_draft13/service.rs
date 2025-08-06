@@ -621,6 +621,9 @@ impl OID4VCIDraft13Service {
                     OpenID4VCIError::InvalidRequest,
                 ))
             })?,
+            OpenID4VCITokenRequestDTO::AuthorizationCode { .. } => {
+                return Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidGrant));
+            }
             OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } => {
                 parse_refresh_token(refresh_token)?
             }

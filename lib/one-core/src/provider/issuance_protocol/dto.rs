@@ -57,3 +57,13 @@ pub(crate) struct IssuanceProtocolCapabilities {
 pub(crate) enum Features {
     SupportsRejection,
 }
+
+#[derive(Clone, Debug)]
+pub(crate) struct ContinueIssuanceDTO {
+    pub credential_issuer: String,
+    pub authorization_code: String,
+    pub client_id: String,
+    pub redirect_uri: Option<String>,
+    pub scope: Vec<String>,
+    pub credential_configuration_ids: Vec<String>,
+}

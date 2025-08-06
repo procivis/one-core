@@ -246,6 +246,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 "/api/interaction/v1/initiate-issuance",
                 post(interaction::controller::initiate_issuance),
             )
+            .route(
+                "/api/interaction/v1/continue-issuance",
+                post(interaction::controller::continue_issuance),
+            )
             .route("/api/task/v1/run", post(task::controller::post_task))
             .route(
                 "/api/trust-anchor/v1",

@@ -3,6 +3,7 @@ use axum::extract::State;
 use axum_extra::extract::WithRejection;
 
 use super::dto::{
+    ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
     IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
     PresentationSubmitRequestRestDTO, ProposeProofRequestRestDTO,
@@ -226,4 +227,33 @@ pub(crate) async fn initiate_issuance(
         .initiate_issuance(request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "initiating issuance")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/interaction/v1/continue-issuance",
+    request_body = ContinueIssuanceRequestRestDTO,
+    responses(CreatedOrErrorResponse<ContinueIssuanceResponseRestDTO>),
+    tag = "interaction",
+    security(
+        ("bearer" = [])
+    ),
+     summary = "Continue OpenID Connect issuance",
+    description = indoc::formatdoc! {"
+        For digital wallets, continue OpenID Connect authorization code flow.
+    "},
+)]
+pub(crate) async fn continue_issuance(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ContinueIssuanceRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<ContinueIssuanceResponseRestDTO> {
+    let result = state
+        .core
+        .ssi_holder_service
+        .continue_issuance(request.url)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "continue issuance")
 }

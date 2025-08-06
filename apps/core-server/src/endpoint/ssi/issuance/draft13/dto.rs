@@ -2,14 +2,14 @@ use indexmap::IndexMap;
 use one_core::common_mapper::{opt_secret_string, secret_string};
 use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectDTO, OpenID4VCICredentialConfigurationData,
+    ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
-    OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINotificationEvent,
-    OpenID4VCINotificationRequestDTO, OpenID4VCIProofRequestDTO, OpenID4VCIProofTypeSupported,
-    OpenID4VCITokenResponseDTO,
+    OpenID4VCINotificationRequestDTO, OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCIProofRequestDTO,
+    OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
 };
 use one_core::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
@@ -263,14 +263,23 @@ pub(crate) struct ProcivisSubjectClaimValueRestDTO {
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIGrants)]
-pub(crate) struct OpenID4VCIGrantsRestDTO {
+pub(crate) enum OpenID4VCIGrantsRestDTO {
     #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
-    pub code: OpenID4VCIGrantRestDTO,
+    PreAuthorizedCode(OpenID4VCIPreAuthorizedGrantRestDTO),
+    #[serde(rename = "authorization_code")]
+    AuthorizationCode(OpenID4VCIAuthorizationCodeGrantRestDTO),
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCIGrant)]
-pub(crate) struct OpenID4VCIGrantRestDTO {
+#[from(OpenID4VCIPreAuthorizedCodeGrant)]
+pub(crate) struct OpenID4VCIPreAuthorizedGrantRestDTO {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIAuthorizationCodeGrant)]
+pub struct OpenID4VCIAuthorizationCodeGrantRestDTO {
+    #[serde(rename = "authorization_code")]
+    pub authorization_code: String,
 }

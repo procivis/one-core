@@ -5,8 +5,9 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::{
-    CredentialConfigurationSupportedResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
-    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO,
+    ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
+    InitiateIssuanceResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use url::Url;
@@ -83,6 +84,15 @@ impl OneCoreBinding {
             .await?
             .into())
     }
+
+    #[uniffi::method]
+    pub async fn continue_issuance(
+        &self,
+        url: String,
+    ) -> Result<ContinueIssuanceResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core.ssi_holder_service.continue_issuance(url).await?.into())
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
@@ -98,6 +108,32 @@ pub enum HandleInvitationResponseBindingEnum {
         interaction_id: String,
         proof_id: String,
     },
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct ContinueIssuanceResponseBindingDTO {
+    pub interaction_id: String,
+    pub credential_ids: Vec<String>,
+    pub credential_configurations_supported:
+        HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
+}
+
+impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
+    fn from(value: ContinueIssuanceResponseDTO) -> Self {
+        Self {
+            interaction_id: value.interaction_id.to_string(),
+            credential_ids: value
+                .credential_ids
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+            credential_configurations_supported: value
+                .credential_configurations_supported
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.into()))
+                .collect(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

@@ -18,7 +18,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::IssuanceProtocolCapabilities;
+use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use super::{
     HandleInvitationOperationsAccess, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
 };
@@ -41,7 +41,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::revocation_list::{
@@ -68,14 +68,16 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     create_credential, extract_offered_claims, get_credential_offer_url,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
+    ContinueIssuanceResponseDTO, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
+    OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO, OpenID4VCIParams,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    OpenID4VCRejectionIdentifierParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    OpenID4VCIProofRequestDTO, OpenID4VCIProofTypeSupported, OpenID4VCITokenRequestDTO,
+    OpenID4VCITokenResponseDTO, OpenID4VCRejectionIdentifierParams, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
@@ -451,13 +453,26 @@ impl OpenID4VCI13 {
 
         let has_sent_tx_code = tx_code.is_some();
 
+        let form = match grants {
+            OpenID4VCIGrants::PreAuthorizedCode(code) => {
+                OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                    pre_authorized_code: code.pre_authorized_code.to_owned(),
+                    tx_code,
+                }
+            }
+            OpenID4VCIGrants::AuthorizationCode(code) => {
+                OpenID4VCITokenRequestDTO::AuthorizationCode {
+                    authorization_code: code.authorization_code.to_owned(),
+                    client_id: code.client_id.to_owned(),
+                    redirect_uri: code.redirect_uri.to_owned(),
+                }
+            }
+        };
+
         let request = self
             .client
             .post(token_endpoint.as_str())
-            .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
-                pre_authorized_code: grants.code.pre_authorized_code.clone(),
-                tx_code,
-            })
+            .form(&form)
             .context("Invalid token_endpoint request")
             .map_err(IssuanceProtocolError::Transport)?;
 
@@ -1473,6 +1488,23 @@ impl IssuanceProtocol for OpenID4VCI13 {
         })
     }
 
+    async fn holder_continue_issuance(
+        &self,
+        continue_issuance_dto: ContinueIssuanceDTO,
+        organisation: Organisation,
+        storage_access: &StorageAccess,
+        handle_invitation_operations: &HandleInvitationOperationsAccess,
+    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+        handle_continue_issuance(
+            continue_issuance_dto,
+            organisation,
+            &*self.client,
+            storage_access,
+            handle_invitation_operations,
+        )
+        .await
+    }
+
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
         let mut features = vec![];
         if self.params.rejection_identifier.is_some() {
@@ -1570,7 +1602,7 @@ async fn handle_credential_invitation(
         })
         .unwrap_or((None, None));
 
-    let tx_code = credential_offer.grants.code.tx_code.clone();
+    let tx_code = credential_offer.grants.tx_code().cloned();
 
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {
@@ -1583,13 +1615,129 @@ async fn handle_credential_invitation(
     let (token_endpoint, issuer_metadata) =
         get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
+    let (interaction_id, credentials, issuer_proof_type_supported) =
+        prepare_issuance_interaction_and_credentials_with_claims(
+            organisation,
+            credential_issuer_endpoint,
+            token_endpoint,
+            issuer_metadata,
+            credential_offer.grants,
+            &credential_offer.credential_configuration_ids,
+            issuer,
+            issuer_certificate,
+            credential_offer.credential_subject.as_ref(),
+            storage_access,
+            handle_invitation_operations,
+        )
+        .await?;
+
+    Ok(InvitationResponseDTO {
+        issuer_proof_type_supported,
+        interaction_id,
+        credentials,
+        tx_code,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_continue_issuance(
+    continue_issuance_dto: ContinueIssuanceDTO,
+    organisation: Organisation,
+    client: &dyn HttpClient,
+    storage_access: &StorageAccess,
+    handle_invitation_operations: &HandleInvitationOperationsAccess,
+) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+    let credential_issuer_endpoint: Url =
+        continue_issuance_dto
+            .credential_issuer
+            .parse()
+            .map_err(|_| {
+                IssuanceProtocolError::Failed(format!(
+                    "Invalid credential issuer url {}",
+                    continue_issuance_dto.credential_issuer
+                ))
+            })?;
+
+    let (token_endpoint, issuer_metadata) =
+        get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
+
+    let scope_to_id: HashMap<&String, &String> = issuer_metadata
+        .credential_configurations_supported
+        .iter()
+        .filter_map(|(id, c)| c.scope.as_ref().map(|s| (s, id)))
+        .collect();
+
+    let scope_credential_config_ids = continue_issuance_dto
+        .scope
+        .into_iter()
+        .map(|s| {
+            scope_to_id
+                .get(&s)
+                .map(|s| s.to_string())
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "Issuance requested scope doesnt exists: {s}"
+                )))
+        })
+        .collect::<Result<Vec<String>, IssuanceProtocolError>>()?;
+
+    let all_credential_configuration_ids = [
+        &scope_credential_config_ids[..],
+        &continue_issuance_dto.credential_configuration_ids[..],
+    ]
+    .concat();
+
+    let (interaction_id, credentials, issuer_proof_type_supported) =
+        prepare_issuance_interaction_and_credentials_with_claims(
+            organisation,
+            credential_issuer_endpoint,
+            token_endpoint,
+            issuer_metadata,
+            OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
+                authorization_code: continue_issuance_dto.authorization_code,
+                client_id: continue_issuance_dto.client_id,
+                redirect_uri: continue_issuance_dto.redirect_uri,
+            }),
+            &all_credential_configuration_ids,
+            None,
+            None,
+            None,
+            storage_access,
+            handle_invitation_operations,
+        )
+        .await?;
+
+    Ok(ContinueIssuanceResponseDTO {
+        interaction_id,
+        credentials,
+        issuer_proof_type_supported,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn prepare_issuance_interaction_and_credentials_with_claims(
+    organisation: Organisation,
+    credential_issuer_endpoint: Url,
+    token_endpoint: String,
+    issuer_metadata: OpenID4VCIIssuerMetadataResponseDTO,
+    grants: OpenID4VCIGrants,
+    configuration_ids: &[String],
+    issuer: Option<Identifier>,
+    issuer_certificate: Option<Certificate>,
+    credential_subject: Option<&ExtendedSubjectDTO>,
+    storage_access: &StorageAccess,
+    handle_invitation_operations: &HandleInvitationOperationsAccess,
+) -> Result<
+    (
+        InteractionId,
+        Vec<Credential>,
+        HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+    ),
+    IssuanceProtocolError,
+> {
     // We only support one credential at the time now
-    let configuration_id = credential_offer
-        .credential_configuration_ids
-        .first()
-        .ok_or_else(|| {
-            IssuanceProtocolError::Failed("Credential offer is missing credentials".to_string())
-        })?;
+    let configuration_id = configuration_ids.first().ok_or_else(|| {
+        IssuanceProtocolError::Failed("Credential offer is missing credentials".to_string())
+    })?;
 
     let credential_config = issuer_metadata
         .credential_configurations_supported
@@ -1608,7 +1756,7 @@ async fn handle_credential_invitation(
         credential_endpoint: issuer_metadata.credential_endpoint.clone(),
         notification_endpoint: issuer_metadata.notification_endpoint.to_owned(),
         token_endpoint: Some(token_endpoint),
-        grants: Some(credential_offer.grants),
+        grants: Some(grants),
         access_token: None,
         access_token_expires_at: None,
         refresh_token: None,
@@ -1642,13 +1790,10 @@ async fn handle_credential_invitation(
             if credential_schema.schema_type.to_string() != schema_data.r#type {
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
-
-            let claims_with_values =
-                build_claim_keys(credential_config, &credential_offer.credential_subject).and_then(
-                    |claim_keys| {
-                        extract_offered_claims(&credential_schema, credential_id, &claim_keys)
-                    },
-                );
+            let claims_with_values = build_claim_keys(credential_config, credential_subject)
+                .and_then(|claim_keys| {
+                    extract_offered_claims(&credential_schema, credential_id, &claim_keys)
+                });
 
             let claims = match claims_with_values {
                 Ok(claims_with_values) => claims_with_values,
@@ -1670,8 +1815,7 @@ async fn handle_credential_invitation(
             (claims, credential_schema)
         }
         None => {
-            let claim_keys =
-                build_claim_keys(credential_config, &credential_offer.credential_subject)?;
+            let claim_keys = build_claim_keys(credential_config, credential_subject)?;
 
             let BuildCredentialSchemaResponse { claims, schema } = handle_invitation_operations
                 .create_new_schema(
@@ -1697,15 +1841,15 @@ async fn handle_credential_invitation(
         issuer_certificate,
     );
 
-    Ok(InvitationResponseDTO {
+    let issuer_proof_type_supported = HashMap::from([(
+        credential.id,
+        credential_config.proof_types_supported.clone(),
+    )]);
+    Ok((
         interaction_id,
-        credentials: vec![credential],
-        tx_code,
-        issuer_proof_type_supported: HashMap::from([(
-            credential_id,
-            credential_config.proof_types_supported.clone(),
-        )]),
-    })
+        vec![credential],
+        issuer_proof_type_supported,
+    ))
 }
 
 async fn resolve_credential_offer(
@@ -1848,7 +1992,7 @@ async fn create_and_store_interaction(
 
 fn build_claim_keys(
     credential_configuration: &OpenID4VCICredentialConfigurationData,
-    credential_subject: &Option<ExtendedSubjectDTO>,
+    credential_subject: Option<&ExtendedSubjectDTO>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialValueDetails>, IssuanceProtocolError> {
     let claim_object = match (
         &credential_configuration.credential_definition,
@@ -1869,7 +2013,6 @@ fn build_claim_keys(
     };
 
     let keys = credential_subject
-        .as_ref()
         .and_then(|cs| cs.keys.clone())
         .unwrap_or_default();
 

@@ -135,6 +135,15 @@ pub enum OpenID4VCITokenRequestDTO {
         pre_authorized_code: String,
         tx_code: Option<String>,
     },
+    #[serde(rename = "authorization_code")]
+    AuthorizationCode {
+        #[serde(rename = "code")]
+        authorization_code: String,
+        #[serde(rename = "client_id")]
+        client_id: String,
+        #[serde(rename = "redirect_uri")]
+        redirect_uri: Option<String>,
+    },
     #[serde(rename = "refresh_token")]
     RefreshToken { refresh_token: String },
 }
@@ -225,6 +234,14 @@ pub(crate) struct InvitationResponseDTO {
     pub interaction_id: InteractionId,
     pub credentials: Vec<Credential>,
     pub tx_code: Option<OpenID4VCITxCode>,
+    pub issuer_proof_type_supported:
+        HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ContinueIssuanceResponseDTO {
+    pub interaction_id: InteractionId,
+    pub credentials: Vec<Credential>,
     pub issuer_proof_type_supported:
         HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
 }
@@ -332,18 +349,42 @@ pub struct ExtendedSubjectClaimsDTO {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct OpenID4VCIGrants {
+pub enum OpenID4VCIGrants {
     #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
-    pub code: OpenID4VCIGrant,
+    PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant),
+    #[serde(rename = "authorization_code")]
+    AuthorizationCode(OpenID4VCIAuthorizationCodeGrant),
+}
+
+impl OpenID4VCIGrants {
+    pub fn tx_code(&self) -> Option<&OpenID4VCITxCode> {
+        match self {
+            OpenID4VCIGrants::PreAuthorizedCode(pre_authorized_code) => {
+                pre_authorized_code.tx_code.as_ref()
+            }
+            OpenID4VCIGrants::AuthorizationCode(_authorization_code) => None,
+        }
+    }
 }
 
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct OpenID4VCIGrant {
+pub struct OpenID4VCIPreAuthorizedCodeGrant {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
     #[serde(default)]
     pub tx_code: Option<OpenID4VCITxCode>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct OpenID4VCIAuthorizationCodeGrant {
+    #[serde(rename = "authorization_code")]
+    pub authorization_code: String,
+    #[serde(rename = "client_id")]
+    pub client_id: String,
+    #[serde(rename = "redirect_uri")]
+    pub redirect_uri: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -641,4 +682,21 @@ pub(crate) struct OpenID4VCRedirectUriParams {
 pub(crate) struct OpenID4VCRejectionIdentifierParams {
     pub did_method: String,
     pub key_algorithm: KeyAlgorithmType,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ContinuationIssuanceDTO {
+    pub organisation_id: OrganisationId,
+    pub protocol: String,
+    pub issuer: String,
+    pub client_id: String,
+    pub redirect_uri: Option<String>,
+    pub scope: Option<Vec<String>>,
+    pub authorization_details: Option<Vec<ContinueIssuanceAuthorizationDetailDTO>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ContinueIssuanceAuthorizationDetailDTO {
+    pub r#type: String,
+    pub credential_configuration_id: String,
 }

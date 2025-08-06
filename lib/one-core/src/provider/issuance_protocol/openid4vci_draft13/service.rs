@@ -14,11 +14,11 @@ use super::mapper::{
 };
 use super::model::{
     ExtendedSubjectDTO, OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
-    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCIProofTypeSupported, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
+    OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCIProofTypeSupported, OpenID4VCITokenRequestDTO,
+    OpenID4VCITokenResponseDTO, Timestamp,
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::CoreConfig;
@@ -289,12 +289,10 @@ pub(crate) fn create_credential_offer(
         issuer_did,
         issuer_certificate,
         credential_configuration_ids: vec![credential_schema_id.to_string()],
-        grants: OpenID4VCIGrants {
-            code: OpenID4VCIGrant {
-                pre_authorized_code: pre_authorized_code.to_owned(),
-                tx_code: None,
-            },
-        },
+        grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
+            pre_authorized_code: pre_authorized_code.to_owned(),
+            tx_code: None,
+        }),
         credential_subject: Some(credential_subject),
     })
 }
@@ -351,6 +349,11 @@ pub(crate) fn oidc_issuer_create_token(
                 )),
                 c_nonce: None,
             }
+        }
+        OpenID4VCITokenRequestDTO::AuthorizationCode { .. } => {
+            return Err(OpenIDIssuanceError::OpenID4VCI(
+                OpenID4VCIError::InvalidGrant,
+            ));
         }
     })
 }

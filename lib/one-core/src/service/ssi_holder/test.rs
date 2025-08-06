@@ -36,7 +36,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -74,7 +74,7 @@ use crate::service::ssi_holder::dto::{
 };
 use crate::service::test_utilities::{
     dummy_blob, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
-    generic_config, generic_formatter_capabilities,
+    generic_config, generic_formatter_capabilities, get_dummy_date,
 };
 
 #[tokio::test]
@@ -1351,6 +1351,89 @@ async fn test_initiate_issuance() {
         result.url,
         "https://authorize.com/authorize?client_id=clientId&state=48db4654-01c4-4a43-9df4-300f1f425c40&redirect_uri=http%3A%2F%2Fredirect.uri&scope=scope1+scope2&authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"
     );
+}
+
+#[tokio::test]
+async fn test_continue_issuance() {
+    // given
+    let organisation = dummy_organisation(None);
+    let credential = dummy_credential();
+    let credential_id = credential.id;
+    let interaction_id = Uuid::new_v4();
+
+    let issuance = InitiateIssuanceRequestDTO {
+        organisation_id: organisation.id,
+        protocol: "protocol".to_string(),
+        issuer: "issuer".to_string(),
+        client_id: "client_id".to_string(),
+        redirect_uri: None,
+        scope: Some(vec!["scope1".to_string(), "scope2".to_string()]),
+        authorization_details: None,
+    };
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .return_once(move |_, _| {
+            Ok(Some(Interaction {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                host: Some("http://test.test/".parse().unwrap()),
+                data: Some(serde_json::to_vec(&issuance).unwrap()),
+                organisation: Some(organisation.clone()),
+            }))
+        });
+
+    let mut issuance_protocol = MockIssuanceProtocol::new();
+    issuance_protocol
+        .expect_holder_continue_issuance()
+        .once()
+        .returning(move |_, _, _, _| {
+            Ok(ContinueIssuanceResponseDTO {
+                interaction_id,
+                credentials: vec![credential.clone()],
+                issuer_proof_type_supported: Default::default(),
+            })
+        });
+
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
+
+    let issuance_protocol = Arc::new(issuance_protocol);
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .returning(move |_| Some(issuance_protocol.clone()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_supported_verification_jose_alg_ids()
+        .return_once(Vec::new);
+
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_create_credential()
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
+    let service = SSIHolderService {
+        interaction_repository: Arc::new(interaction_repository),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
+        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        credential_repository: Arc::new(credential_repository),
+        ..mock_ssi_holder_service()
+    };
+
+    // when
+    let response = service
+        .continue_issuance(format!(
+            "https://localhost:3000/some_path?state={interaction_id}&authorization_code=test_code"
+        ))
+        .await
+        .unwrap();
+
+    // then
+    assert_eq!(response.interaction_id, interaction_id);
+    assert_eq!(response.credential_ids, vec![credential_id]);
 }
 
 fn mock_ssi_holder_service() -> SSIHolderService {

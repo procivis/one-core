@@ -5,9 +5,10 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use one_core::service::proof::dto::ProposeProofResponseDTO;
 use one_core::service::ssi_holder::dto::{
-    CredentialConfigurationSupportedResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
-    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO,
-    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+    ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
+    InitiateIssuanceResponseDTO, PresentationSubmitCredentialRequestDTO,
+    PresentationSubmitRequestDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
@@ -42,6 +43,18 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     #[schema(value_type = Object)]
     pub credential_configurations_supported:
         Option<HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(ContinueIssuanceResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ContinueIssuanceResponseRestDTO {
+    pub interaction_id: Uuid,
+    pub credential_ids: Vec<CredentialId>,
+    #[schema(value_type = Object)]
+    #[from(with_fn = convert_inner)]
+    pub credential_configurations_supported:
+        HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>,
 }
 
 #[options_not_nullable]
@@ -199,5 +212,12 @@ pub(crate) struct InitiateIssuanceAuthorizationDetailRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(InitiateIssuanceResponseDTO)]
 pub(crate) struct InitiateIssuanceResponseRestDTO {
+    pub url: String,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(InitiateIssuanceResponseDTO)]
+pub(crate) struct ContinueIssuanceRequestRestDTO {
     pub url: String,
 }

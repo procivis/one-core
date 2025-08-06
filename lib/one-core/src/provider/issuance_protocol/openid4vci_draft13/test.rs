@@ -38,12 +38,14 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     extract_offered_claims, get_parent_claim_paths,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
-    OpenID4VCIParams, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
+    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrants, OpenID4VCIParams,
+    OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCRedirectUriParams,
+    OpenID4VCRejectionIdentifierParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
@@ -578,12 +580,12 @@ async fn test_holder_accept_credential_success() {
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            grants: Some(OpenID4VCIGrants {
-                code: OpenID4VCIGrant {
+            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+                OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
                 },
-            }),
+            )),
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
@@ -775,12 +777,12 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             notification_endpoint: None,
-            grants: Some(OpenID4VCIGrants {
-                code: OpenID4VCIGrant {
+            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+                OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
                 },
-            }),
+            )),
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
@@ -982,12 +984,12 @@ async fn test_holder_accept_expired_credential_fails() {
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            grants: Some(OpenID4VCIGrants {
-                code: OpenID4VCIGrant {
+            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+                OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
                 },
-            }),
+            )),
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
@@ -1166,12 +1168,12 @@ async fn test_holder_reject_credential() {
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            grants: Some(OpenID4VCIGrants {
-                code: OpenID4VCIGrant {
+            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+                OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
                 },
-            }),
+            )),
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
@@ -1506,6 +1508,174 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     } else {
         assert!(credentials[0].issuer_identifier.is_none());
     }
+}
+
+#[tokio::test]
+async fn test_continue_issuance_no_openid_configuration_and_scope_success() {
+    inner_continue_issuance_test(false, true, false).await;
+}
+
+#[tokio::test]
+async fn test_continue_issuance_with_openid_configuration_and_credential_configuration_ids_success()
+{
+    inner_continue_issuance_test(true, false, true).await;
+}
+
+#[tokio::test]
+async fn test_continue_issuance_with_openid_configuration_and_scope_and_credential_configuration_ids_success()
+ {
+    inner_continue_issuance_test(true, true, true).await;
+}
+
+async fn inner_continue_issuance_test(
+    openid_configuration_enabled: bool,
+    with_scope: bool,
+    with_credential_configuration_ids: bool,
+) {
+    let mut storage_proxy = MockStorageProxy::default();
+    let credential = generic_credential_did();
+
+    let mock_server = MockServer::start().await;
+    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
+    let credential_schema_id = credential.schema.clone().unwrap().id;
+    let credential_issuer = format!("{issuer_url}ssi/openid4vci/draft-13/{credential_schema_id}");
+
+    if openid_configuration_enabled {
+        let token_endpoint = format!("{credential_issuer}/token");
+        Mock::given(method(Method::GET))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+                {
+                    "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                    "grant_types_supported": [
+                        "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                    ],
+                    "id_token_signing_alg_values_supported": [],
+                    "issuer": credential_issuer,
+                    "jwks_uri": format!("{credential_issuer}/jwks"),
+                    "response_types_supported": [
+                        "token"
+                    ],
+                    "subject_types_supported": [
+                        "public"
+                    ],
+                    "token_endpoint": token_endpoint
+                }
+            )))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+    } else {
+        Mock::given(method(Method::GET))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            )))
+            .respond_with(ResponseTemplate::new(404))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+    }
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported": {
+                    credential_schema_id.to_string(): {
+                        "credential_definition": {
+                            "type": [
+                                "VerifiableCredential"
+                            ],
+                            "credentialSubject" : {
+                                "address": {
+                                    "value_type": "STRING",
+                                }
+                            }
+                        },
+                        "format": "vc+sd-jwt",
+                        "scope": "testScope",
+                    }
+              }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    storage_proxy
+        .expect_create_interaction()
+        .times(1)
+        .returning(|_| Ok(Uuid::new_v4()));
+    storage_proxy
+        .expect_get_schema()
+        .times(1)
+        .returning(|_, _, _| Ok(None));
+
+    let mut operations = MockHandleInvitationOperations::default();
+    let credential_clone = credential.clone();
+    operations
+        .expect_find_schema_data()
+        .once()
+        .returning(move |_, _| {
+            Ok(BasicSchemaData {
+                id: credential_schema_id.to_string(),
+                r#type: "SD_JWT_VC".to_string(),
+                external_schema: false,
+                offer_id: credential_clone.id.to_string(),
+            })
+        });
+    operations
+        .expect_create_new_schema()
+        .once()
+        .returning(move |_, _, _, _, _, _| {
+            Ok(BuildCredentialSchemaResponse {
+                claims: credential.claims.clone().unwrap(),
+                schema: credential.schema.clone().unwrap(),
+            })
+        });
+
+    let protocol = setup_protocol(Default::default());
+
+    // when
+
+    let scope = if with_scope {
+        vec!["testScope".to_string()]
+    } else {
+        Vec::new()
+    };
+
+    let credential_configuration_ids = if with_credential_configuration_ids {
+        vec![credential_schema_id.to_string()]
+    } else {
+        Vec::new()
+    };
+
+    let result = protocol
+        .holder_continue_issuance(
+            ContinueIssuanceDTO {
+                credential_issuer,
+                authorization_code: "authorization_code".to_string(),
+                client_id: "testClientId".to_string(),
+                redirect_uri: None,
+                scope,
+                credential_configuration_ids,
+            },
+            dummy_organisation(None),
+            &storage_proxy,
+            &operations,
+        )
+        .await
+        .unwrap();
+
+    let credentials = result.credentials;
+
+    assert_eq!(credentials.len(), 1);
+    assert!(credentials[0].issuer_identifier.is_none());
 }
 
 #[test]

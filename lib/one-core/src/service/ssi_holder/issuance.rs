@@ -8,7 +8,10 @@ use url::Url;
 use uuid::Uuid;
 
 use super::SSIHolderService;
-use super::dto::{CredentialConfigurationSupportedResponseDTO, HandleInvitationResultDTO};
+use super::dto::{
+    ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
+    HandleInvitationResultDTO,
+};
 use crate::common_mapper::value_to_model_claims;
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
@@ -27,14 +30,17 @@ use crate::model::interaction::{Interaction, InteractionId, InteractionRelations
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::issuance_protocol::dto::Features;
+use crate::provider::issuance_protocol;
+use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     InvitationResponseDTO, OpenID4VCIProofTypeSupported, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::{IssuanceProtocol, serialize_interaction_data};
+use crate::provider::issuance_protocol::{
+    IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
+};
 use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -47,6 +53,9 @@ use crate::service::ssi_holder::validator::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_credential;
+
+const STATE: &str = "state";
+const AUTHORIZATION_CODE: &str = "authorization_code";
 
 impl SSIHolderService {
     pub async fn accept_credential(
@@ -682,5 +691,147 @@ impl SSIHolderService {
         Ok(InitiateIssuanceResponseDTO {
             url: authorization_url.to_string(),
         })
+    }
+
+    pub async fn continue_issuance(
+        &self,
+        url: impl AsRef<str>,
+    ) -> Result<ContinueIssuanceResponseDTO, ServiceError> {
+        let url = Url::parse(url.as_ref()).map_err(|error| {
+            IssuanceProtocolError::InvalidRequest(format!(
+                "Continuation URL has invalid format: {error}"
+            ))
+        })?;
+
+        let (_, state) = url.query_pairs().find(|(key, _)| key == STATE).ok_or(
+            IssuanceProtocolError::InvalidRequest(
+                "Continuation URL state parameter not specified".to_string(),
+            ),
+        )?;
+
+        let (_, authorization_code) = url
+            .query_pairs()
+            .find(|(key, _)| key == AUTHORIZATION_CODE)
+            .ok_or(IssuanceProtocolError::InvalidRequest(
+                "Continuation URL authorization_code parameter not specified".to_string(),
+            ))?;
+
+        let interaction_id = state.as_ref().try_into().map_err(|_| {
+            IssuanceProtocolError::InvalidRequest(
+                "Continuation URL state parameter has invalid format".to_string(),
+            )
+        })?;
+
+        let interaction = self
+            .interaction_repository
+            .get_interaction(
+                &interaction_id,
+                &InteractionRelations {
+                    organisation: Some(Default::default()),
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::Interaction(interaction_id))?;
+
+        let issuance: InitiateIssuanceRequestDTO =
+            deserialize_interaction_data(interaction.data.as_ref())?;
+
+        let organisation = interaction
+            .organisation
+            .ok_or(IssuanceProtocolError::Failed(
+                "Organisation must be specified for credential issuance".to_string(),
+            ))?;
+
+        if let (None, None) = (
+            issuance.scope.as_ref(),
+            issuance.authorization_details.as_ref(),
+        ) {
+            return Err(IssuanceProtocolError::Failed("Either `scope` or `authorization_details` has to be specified for credential issuance".to_string()).into());
+        }
+
+        let storage_access = StorageProxyImpl::new(
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+            self.did_repository.clone(),
+            self.certificate_repository.clone(),
+            self.certificate_validator.clone(),
+            self.key_repository.clone(),
+            self.identifier_repository.clone(),
+            self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
+        );
+
+        let handle_operations = HandleInvitationOperationsImpl::new(
+            organisation.clone(),
+            self.credential_schema_repository.clone(),
+            self.vct_type_metadata_cache.clone(),
+            self.client.clone(),
+        );
+
+        let issuance_protocol::openid4vci_draft13::model::ContinueIssuanceResponseDTO {
+            credentials,
+            interaction_id,
+            mut issuer_proof_type_supported,
+        } = self
+            .issuance_protocol_provider
+            .get_protocol(&issuance.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                issuance.protocol.clone(),
+            ))?
+            .holder_continue_issuance(
+                ContinueIssuanceDTO {
+                    credential_issuer: issuance.issuer,
+                    authorization_code: authorization_code.to_string(),
+                    client_id: issuance.client_id,
+                    redirect_uri: issuance.redirect_uri,
+                    scope: issuance.scope.unwrap_or_default(),
+                    credential_configuration_ids: issuance
+                        .authorization_details
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|d| d.credential_configuration_id)
+                        .collect(),
+                },
+                organisation,
+                &storage_access,
+                &handle_operations,
+            )
+            .await?;
+
+        let mut holder_proof_types_supported = self
+            .key_algorithm_provider
+            .supported_verification_jose_alg_ids();
+        holder_proof_types_supported.sort();
+
+        let result = ContinueIssuanceResponseDTO {
+            interaction_id,
+            credential_ids: credentials.iter().map(|c| c.id).collect(),
+            credential_configurations_supported: credentials
+                .iter()
+                .map(|c| {
+                    (
+                        c.id,
+                        CredentialConfigurationSupportedResponseDTO {
+                            proof_types_supported: Some(map_proof_types_supported(
+                                self.resolve_proof_types_supported(
+                                    issuer_proof_type_supported.remove(&c.id).flatten(),
+                                    &holder_proof_types_supported,
+                                ),
+                            )),
+                        },
+                    )
+                })
+                .collect(),
+        };
+
+        for mut credential in credentials {
+            credential.protocol = issuance.protocol.to_owned();
+            self.credential_repository
+                .create_credential(credential)
+                .await?;
+        }
+
+        Ok(result)
     }
 }
