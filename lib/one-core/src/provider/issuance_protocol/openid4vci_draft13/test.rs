@@ -558,6 +558,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
         storage_proxy,
         credential,
         Some("did:example:123".to_string()),
+        true,
     )
     .await;
 }
@@ -1321,6 +1322,18 @@ async fn test_handle_invitation_credential_by_ref_without_did_success() {
         MockStorageProxy::default(),
         generic_credential_did(),
         None,
+        true,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_handle_invitation_credential_no_openid_configuration_success() {
+    inner_test_handle_invitation_credential_by_ref_success(
+        MockStorageProxy::default(),
+        generic_credential_did(),
+        None,
+        false,
     )
     .await;
 }
@@ -1329,6 +1342,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     mut storage_proxy: MockStorageProxy,
     credential: Credential,
     issuer_did: Option<String>,
+    openid_configuration_enabled: bool,
 ) {
     let mock_server = MockServer::start().await;
     let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
@@ -1367,32 +1381,43 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .expect(1)
         .mount(&mock_server)
         .await;
-    let token_endpoint = format!("{credential_issuer}/token");
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "authorization_endpoint": format!("{credential_issuer}/authorize"),
-                "grant_types_supported": [
-                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-                ],
-                "id_token_signing_alg_values_supported": [],
-                "issuer": credential_issuer,
-                "jwks_uri": format!("{credential_issuer}/jwks"),
-                "response_types_supported": [
-                    "token"
-                ],
-                "subject_types_supported": [
-                    "public"
-                ],
-                "token_endpoint": token_endpoint
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+    if openid_configuration_enabled {
+        let token_endpoint = format!("{credential_issuer}/token");
+        Mock::given(method(Method::GET))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+                {
+                    "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                    "grant_types_supported": [
+                        "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                    ],
+                    "id_token_signing_alg_values_supported": [],
+                    "issuer": credential_issuer,
+                    "jwks_uri": format!("{credential_issuer}/jwks"),
+                    "response_types_supported": [
+                        "token"
+                    ],
+                    "subject_types_supported": [
+                        "public"
+                    ],
+                    "token_endpoint": token_endpoint
+                }
+            )))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+    } else {
+        Mock::given(method(Method::GET))
+            .and(path(format!(
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            )))
+            .respond_with(ResponseTemplate::new(404))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+    }
     Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"

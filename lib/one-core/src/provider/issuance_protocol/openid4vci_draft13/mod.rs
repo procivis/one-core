@@ -1580,7 +1580,7 @@ async fn handle_credential_invitation(
             ))
         })?;
 
-    let (oicd_discovery, issuer_metadata) =
+    let (token_endpoint, issuer_metadata) =
         get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
     // We only support one credential at the time now
@@ -1607,7 +1607,7 @@ async fn handle_credential_invitation(
         issuer_url: issuer_metadata.credential_issuer.clone(),
         credential_endpoint: issuer_metadata.credential_endpoint.clone(),
         notification_endpoint: issuer_metadata.notification_endpoint.to_owned(),
-        token_endpoint: Some(oicd_discovery.token_endpoint),
+        token_endpoint: Some(token_endpoint),
         grants: Some(credential_offer.grants),
         access_token: None,
         access_token_expires_at: None,
@@ -1757,13 +1757,7 @@ async fn resolve_credential_offer(
 async fn get_discovery_and_issuer_metadata(
     client: &dyn HttpClient,
     credential_issuer_endpoint: &Url,
-) -> Result<
-    (
-        OpenID4VCIDiscoveryResponseDTO,
-        OpenID4VCIIssuerMetadataResponseDTO,
-    ),
-    IssuanceProtocolError,
-> {
+) -> Result<(String, OpenID4VCIIssuerMetadataResponseDTO), IssuanceProtocolError> {
     async fn fetch<T: DeserializeOwned>(
         client: &dyn HttpClient,
         endpoint: String,
@@ -1796,12 +1790,37 @@ async fn get_discovery_and_issuer_metadata(
         Ok(openid_configuration_url.to_string())
     };
 
-    let oicd_discovery = fetch(client, append_url_path(".well-known/openid-configuration")?);
+    let token_endpoint_future = async {
+        let url = append_url_path(".well-known/openid-configuration")?;
+        let response = client
+            .get(&url)
+            .send()
+            .await
+            .context("send error")
+            .map_err(IssuanceProtocolError::Transport)?;
+
+        if response.status.0 == 404 {
+            // Fallback for https://datatracker.ietf.org/doc/html/rfc8414#section-3,
+            // since there is no specification where to obtain the token endpoint
+            // if the issuer is not providing .well-known/openid-configuration
+            Ok(format!("{credential_issuer_endpoint}/token"))
+        } else {
+            let oidc_discovery: OpenID4VCIDiscoveryResponseDTO = response
+                .error_for_status()
+                .context("status error")
+                .map_err(IssuanceProtocolError::Transport)?
+                .json()
+                .context("parsing error")
+                .map_err(IssuanceProtocolError::Transport)?;
+            Ok(oidc_discovery.token_endpoint)
+        }
+    };
+
     let issuer_metadata = fetch(
         client,
         append_url_path(".well-known/openid-credential-issuer")?,
     );
-    tokio::try_join!(oicd_discovery, issuer_metadata)
+    tokio::try_join!(token_endpoint_future, issuer_metadata)
 }
 
 async fn create_and_store_interaction(
