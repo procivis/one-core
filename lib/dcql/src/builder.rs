@@ -241,4 +241,35 @@ mod tests {
         assert_eq!(claim.required, Some(true));
         assert_eq!(claim.intent_to_retain, Some(false));
     }
+
+    #[test]
+    fn test_trusted_authorities_builder() {
+        use crate::TrustedAuthority;
+
+        let credential = CredentialQuery::jwt_vc(vec![vec!["IDCredential".to_string()]])
+            .id("with_ta")
+            .trusted_authorities(vec![
+                TrustedAuthority::EtsiTl {
+                    values: vec!["https://lotl.example.com".to_string()],
+                },
+                TrustedAuthority::OpenidFederation {
+                    values: vec!["https://trustanchor.example.com".to_string()],
+                },
+                TrustedAuthority::AuthorityKeyId {
+                    values: vec!["s9tIpPmhxdiuNkHMEWNpYim8S8Y".to_string()],
+                },
+                TrustedAuthority::Custom {
+                    r#type: "custom".to_string(),
+                    values: vec!["some-id".to_string()],
+                },
+            ])
+            .build();
+
+        let ta = credential.trusted_authorities.expect("present");
+        assert_eq!(ta.len(), 4);
+        assert!(matches!(ta[0], TrustedAuthority::EtsiTl { .. }));
+        assert!(matches!(ta[1], TrustedAuthority::OpenidFederation { .. }));
+        assert!(matches!(ta[2], TrustedAuthority::AuthorityKeyId { .. }));
+        assert!(matches!(ta[3], TrustedAuthority::Custom { .. }));
+    }
 }

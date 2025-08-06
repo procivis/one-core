@@ -47,6 +47,9 @@ pub struct CredentialQuery {
     pub claims: Option<Vec<ClaimQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claim_sets: Option<Vec<Vec<ClaimQueryId>>>,
+    /// Trusted authorities to be considered when evaluating issuer trust.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trusted_authorities: Option<Vec<TrustedAuthority>>,
 }
 
 /// Format-specific metadata for credential queries
@@ -111,6 +114,25 @@ pub enum PathSegment {
     ArrayIndex(usize),
     /// Select all elements of an array
     ArrayAll,
+}
+
+/// Trusted authorities as defined in DCQL section 6.1.1.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TrustedAuthority {
+    /// ETSI Trusted List – values contain one or more Trusted List identifiers
+    EtsiTl { values: Vec<String> },
+
+    /// OpenID Federation – values contain one or more entity identifiers
+    OpenidFederation { values: Vec<String> },
+
+    /// AuthorityKeyIdentifier base64url values
+    #[serde(rename = "aki")]
+    AuthorityKeyId { values: Vec<String> },
+
+    /// Unknown / custom authority type, preserving original type string and values.
+    #[serde(untagged)]
+    Custom { r#type: String, values: Vec<String> },
 }
 
 /// Possible claim value to match credentials against.
@@ -597,6 +619,71 @@ mod tests {
 
         // Verify optional fields are None
         assert!(credential.claim_sets.is_none());
+    }
+
+    #[test]
+    fn test_trusted_authorities_parsing() {
+        let json = json!({
+            "credentials": [
+                {
+                    "id": "ta_test",
+                    "format": "jwt_vc_json",
+                    "meta": {
+                        "type_values": [["IDCredential"]]
+                    },
+                    "trusted_authorities": [
+                        {
+                          "type": "openid_federation",
+                          "values": ["https://trustanchor.example.com"]
+                        },
+                        {
+                          "type": "etsi_tl",
+                          "values": ["https://lotl.example.com"]
+                        }                        ,
+                        {
+                          "type": "aki",
+                          "values": ["s9tIpPmhxdiuNkHMEWNpYim8S8Y"]
+                        },
+                        {
+                          "type": "custom",
+                          "values": ["some-id"]
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let query: DcqlQuery = serde_json::from_value(json).expect("should parse");
+
+        let ta = &query.credentials[0]
+            .trusted_authorities
+            .as_ref()
+            .expect("present");
+
+        let ta0 = &ta[0];
+        let TrustedAuthority::OpenidFederation { values } = ta0 else {
+            panic!("expected OpenidFederation");
+        };
+        assert_eq!(values, &vec!["https://trustanchor.example.com".to_string()]);
+
+        let ta1 = &ta[1];
+        let TrustedAuthority::EtsiTl { values } = ta1 else {
+            panic!("expected EtsiTl");
+        };
+        assert_eq!(values, &vec!["https://lotl.example.com".to_string()]);
+
+        let ta2 = &ta[2];
+        let TrustedAuthority::AuthorityKeyId { values } = ta2 else {
+            panic!("expected AuthorityKeyId");
+        };
+        assert_eq!(values, &vec!["s9tIpPmhxdiuNkHMEWNpYim8S8Y".to_string()]);
+
+        let ta3 = &ta[3];
+        let TrustedAuthority::Custom { r#type, values } = ta3 else {
+            panic!("expected Custom");
+        };
+        assert_eq!(r#type, "custom");
+        assert_eq!(values, &vec!["some-id".to_string()]);
     }
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#appendix-B.1.3.1.4
