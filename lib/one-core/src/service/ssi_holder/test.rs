@@ -68,9 +68,9 @@ use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
-    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
-    OpenIDAuthorizationServerMetadata, PresentationSubmitCredentialRequestDTO,
-    PresentationSubmitRequestDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO, OAuthCodeChallengeMethod,
+    OpenIDAuthorizationCodeFlowInteractionData, OpenIDAuthorizationServerMetadata,
+    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use crate::service::test_utilities::{
     dummy_blob, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
@@ -1320,11 +1320,16 @@ async fn test_initiate_issuance() {
     };
 
     let mock_server = MockServer::start().await;
+
+    let authorization_endpoint = "https://authorize.com/authorize";
+    let issuer = mock_server.uri();
     Mock::given(method(Method::GET))
         .and(path("/.well-known/oauth-authorization-server"))
         .respond_with(
             ResponseTemplate::new(200).set_body_json(OpenIDAuthorizationServerMetadata {
-                authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                issuer: issuer.parse().unwrap(),
+                authorization_endpoint: Url::parse(authorization_endpoint).unwrap(),
+                code_challenge_methods_supported: vec![],
             }),
         )
         .expect(1)
@@ -1335,7 +1340,7 @@ async fn test_initiate_issuance() {
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: Uuid::new_v4().into(),
             protocol: "OPENID4VCI_DRAFT13".to_string(),
-            issuer: mock_server.uri(),
+            issuer,
             client_id: "clientId".to_string(),
             redirect_uri: Some("http://redirect.uri".to_string()),
             scope: Some(vec!["scope1".to_string(), "scope2".to_string()]),
@@ -1349,7 +1354,7 @@ async fn test_initiate_issuance() {
 
     assert_eq!(
         result.url,
-        "https://authorize.com/authorize?client_id=clientId&state=48db4654-01c4-4a43-9df4-300f1f425c40&redirect_uri=http%3A%2F%2Fredirect.uri&scope=scope1+scope2&authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"
+        "https://authorize.com/authorize?response_type=code&client_id=clientId&state=48db4654-01c4-4a43-9df4-300f1f425c40&redirect_uri=http%3A%2F%2Fredirect.uri&scope=scope1+scope2&authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"
     );
 }
 
@@ -1361,14 +1366,17 @@ async fn test_continue_issuance() {
     let credential_id = credential.id;
     let interaction_id = Uuid::new_v4();
 
-    let issuance = InitiateIssuanceRequestDTO {
-        organisation_id: organisation.id,
-        protocol: "protocol".to_string(),
-        issuer: "issuer".to_string(),
-        client_id: "client_id".to_string(),
-        redirect_uri: None,
-        scope: Some(vec!["scope1".to_string(), "scope2".to_string()]),
-        authorization_details: None,
+    let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
+        request: InitiateIssuanceRequestDTO {
+            organisation_id: organisation.id,
+            protocol: "protocol".to_string(),
+            issuer: "issuer".to_string(),
+            client_id: "client_id".to_string(),
+            redirect_uri: None,
+            scope: Some(vec!["scope1".to_string(), "scope2".to_string()]),
+            authorization_details: None,
+        },
+        code_verifier: None,
     };
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -1380,7 +1388,7 @@ async fn test_continue_issuance() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 host: Some("http://test.test/".parse().unwrap()),
-                data: Some(serde_json::to_vec(&issuance).unwrap()),
+                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
                 organisation: Some(organisation.clone()),
             }))
         });
@@ -1434,6 +1442,64 @@ async fn test_continue_issuance() {
     // then
     assert_eq!(response.interaction_id, interaction_id);
     assert_eq!(response.credential_ids, vec![credential_id]);
+}
+
+#[tokio::test]
+async fn test_initiate_issuance_pkce() {
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .return_once(|_, _| Ok(Some(dummy_organisation(None))));
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .withf(|request| {
+            let data: OpenIDAuthorizationCodeFlowInteractionData =
+                serde_json::from_slice(request.data.as_ref().unwrap()).unwrap();
+
+            data.code_verifier.is_some()
+        })
+        .return_once(|_| Ok(Uuid::new_v4()));
+
+    let service = SSIHolderService {
+        organisation_repository: Arc::new(organisation_repository),
+        interaction_repository: Arc::new(interaction_repository),
+        ..mock_ssi_holder_service()
+    };
+
+    let mock_server = MockServer::start().await;
+
+    let issuer = mock_server.uri();
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/oauth-authorization-server"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(OpenIDAuthorizationServerMetadata {
+                issuer: issuer.parse().unwrap(),
+                authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
+            }),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let result = service
+        .initiate_issuance(InitiateIssuanceRequestDTO {
+            organisation_id: Uuid::new_v4().into(),
+            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            issuer,
+            client_id: "clientId".to_string(),
+            redirect_uri: Some("http://redirect.uri".to_string()),
+            scope: Some(vec!["scope".to_string()]),
+            authorization_details: None,
+        })
+        .await
+        .unwrap();
+
+    assert!(result.url.contains("code_challenge="));
+    assert!(result.url.contains("code_challenge_method=S256"));
 }
 
 fn mock_ssi_holder_service() -> SSIHolderService {

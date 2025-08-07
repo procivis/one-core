@@ -66,4 +66,5 @@ pub(crate) struct ContinueIssuanceDTO {
     pub redirect_uri: Option<String>,
     pub scope: Vec<String>,
     pub credential_configuration_ids: Vec<String>,
+    pub code_verifier: Option<String>,
 }

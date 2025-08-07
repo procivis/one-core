@@ -465,6 +465,7 @@ impl OpenID4VCI13 {
                     authorization_code: code.authorization_code.to_owned(),
                     client_id: code.client_id.to_owned(),
                     redirect_uri: code.redirect_uri.to_owned(),
+                    code_verifier: code.code_verifier.to_owned(),
                 }
             }
         };
@@ -1696,6 +1697,7 @@ async fn handle_continue_issuance(
                 authorization_code: continue_issuance_dto.authorization_code,
                 client_id: continue_issuance_dto.client_id,
                 redirect_uri: continue_issuance_dto.redirect_uri,
+                code_verifier: continue_issuance_dto.code_verifier,
             }),
             &all_credential_configuration_ids,
             None,

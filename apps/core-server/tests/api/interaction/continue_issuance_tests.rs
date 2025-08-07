@@ -1,6 +1,5 @@
 use axum::http::Method;
 use one_core::model::credential_schema::WalletStorageTypeEnum;
-use one_core::service::ssi_holder::dto::InitiateIssuanceRequestDTO;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -25,15 +24,15 @@ async fn test_continue_issuance_endpoint() {
         mock_server.uri()
     );
 
-    let interaction_body = InitiateIssuanceRequestDTO {
-        organisation_id: organisation.id,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
-        issuer: credential_issuer.clone(),
-        client_id: "clientId".to_string(),
-        redirect_uri: None,
-        scope: Some(vec!["scope1".to_string()]),
-        authorization_details: None,
-    };
+    let interaction_body = json!({
+        "request": {
+            "organisation_id": organisation.id,
+            "protocol": "OPENID4VCI_DRAFT13",
+            "issuer": credential_issuer,
+            "client_id": "clientId",
+            "scope": ["scope1"],
+        }
+    });
 
     let interaction_body = serde_json::to_vec(&interaction_body).unwrap();
 

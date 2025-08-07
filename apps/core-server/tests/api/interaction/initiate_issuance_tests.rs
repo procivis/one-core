@@ -11,11 +11,14 @@ async fn test_initiate_issuance_endpoint() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
+    let authorization_endpoint = "https://authorization.com/authorize";
+    let issuer = mock_server.uri();
     Mock::given(method(Method::GET))
         .and(path("/.well-known/oauth-authorization-server"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                "authorization_endpoint": "https://authorization.com/authorize",
+                "issuer": issuer,
+                "authorization_endpoint": authorization_endpoint,
             }
         )))
         .expect(1)
@@ -30,7 +33,7 @@ async fn test_initiate_issuance_endpoint() {
             organisation.id,
             "OPENID4VCI_DRAFT13",
             "clientId",
-            mock_server.uri(),
+            issuer,
             vec!["scope".to_string()],
         )
         .await;
@@ -43,6 +46,6 @@ async fn test_initiate_issuance_endpoint() {
         resp["url"]
             .as_str()
             .unwrap()
-            .starts_with("https://authorization.com/authorize")
+            .starts_with(authorization_endpoint)
     );
 }

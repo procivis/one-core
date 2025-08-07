@@ -129,21 +129,26 @@ pub struct OpenID4VCITokenResponseDTO {
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "grant_type")]
 pub enum OpenID4VCITokenRequestDTO {
+    /// [OpenID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1)
     #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
     PreAuthorizedCode {
         #[serde(rename = "pre-authorized_code")]
         pre_authorized_code: String,
         tx_code: Option<String>,
     },
+
+    /// [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3)
     #[serde(rename = "authorization_code")]
     AuthorizationCode {
         #[serde(rename = "code")]
         authorization_code: String,
-        #[serde(rename = "client_id")]
         client_id: String,
-        #[serde(rename = "redirect_uri")]
         redirect_uri: Option<String>,
+
+        /// [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636#section-4.5)
+        code_verifier: Option<String>,
     },
+
     #[serde(rename = "refresh_token")]
     RefreshToken { refresh_token: String },
 }
@@ -379,12 +384,10 @@ pub struct OpenID4VCIPreAuthorizedCodeGrant {
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCIAuthorizationCodeGrant {
-    #[serde(rename = "authorization_code")]
     pub authorization_code: String,
-    #[serde(rename = "client_id")]
     pub client_id: String,
-    #[serde(rename = "redirect_uri")]
     pub redirect_uri: Option<String>,
+    pub code_verifier: Option<String>,
 }
 
 #[skip_serializing_none]

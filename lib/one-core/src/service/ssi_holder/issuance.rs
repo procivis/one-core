@@ -2,6 +2,9 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::utilities::generate_alphanumeric;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
@@ -46,7 +49,8 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::ssi_holder::dto::{
-    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO, OpenIDAuthorizationServerMetadata,
+    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO, OAuthCodeChallengeMethod,
+    OpenIDAuthorizationCodeFlowInteractionData, OpenIDAuthorizationServerMetadata,
 };
 use crate::service::ssi_holder::validator::{
     validate_holder_capabilities, validate_initiate_issuance_request,
@@ -626,7 +630,7 @@ impl SSIHolderService {
             })
             .collect();
 
-        let mut authorization_server_metadata_endpoint = issuer;
+        let mut authorization_server_metadata_endpoint = issuer.clone();
         {
             let mut segments = authorization_server_metadata_endpoint
                 .path_segments_mut()
@@ -652,8 +656,42 @@ impl SSIHolderService {
             .json()
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
+        if authorization_server_metadata.issuer != issuer {
+            return Err(IssuanceProtocolError::Failed(
+                "Issuer mismatch between request and authorization server metadata".to_string(),
+            )
+            .into());
+        }
+
+        // optional support for PKCE
+        let (code_verifier, code_challenge, code_challenge_method) =
+            if authorization_server_metadata
+                .code_challenge_methods_supported
+                .contains(&OAuthCodeChallengeMethod::S256)
+            {
+                // SHA-256 result has 32 bytes. 44 of (completely random) alphanumeric characters should contain
+                // a similar amount of entropy (around 32-33 bytes). So it does not really make sense to generate
+                // more as the hash cannot contain more entropy.
+                let code_verifier = generate_alphanumeric(44);
+                let code_challenge = SHA256
+                    .hash_base64_url(code_verifier.as_bytes())
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                (
+                    Some(code_verifier),
+                    Some(code_challenge),
+                    Some(OAuthCodeChallengeMethod::S256),
+                )
+            } else {
+                (None, None, None)
+            };
+
+        let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
+            request: request.to_owned(),
+            code_verifier,
+        };
+
         // store request parameters inside interaction
-        let data = serialize_interaction_data(&request)?;
+        let data = serialize_interaction_data(&interaction_data)?;
 
         let now = OffsetDateTime::now_utc();
         let interaction_id = self
@@ -669,9 +707,12 @@ impl SSIHolderService {
             .await?;
 
         // construct authorization URL by adding all necessary query parameters
-        let mut authorization_url = authorization_server_metadata.authorization_endpoint;
+        let mut authorization_request_url = authorization_server_metadata.authorization_endpoint;
         {
-            let mut query = authorization_url.query_pairs_mut();
+            let mut query = authorization_request_url.query_pairs_mut();
+
+            // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1
+            query.append_pair("response_type", "code");
             query.append_pair("client_id", &request.client_id);
             query.append_pair("state", &interaction_id.to_string());
             if let Some(redirect_uri) = &request.redirect_uri {
@@ -680,16 +721,26 @@ impl SSIHolderService {
             if let Some(scope) = &request.scope {
                 query.append_pair("scope", &scope.join(" "));
             }
+
+            // https://datatracker.ietf.org/doc/html/rfc9396#section-2
             if let Some(authorization_details) = &request.authorization_details {
                 query.append_pair(
                     "authorization_details",
                     &serde_json::json!(authorization_details).to_string(),
                 );
             }
+
+            // PKCE https://datatracker.ietf.org/doc/html/rfc7636#section-4.3
+            if let (Some(code_challenge), Some(code_challenge_method)) =
+                (code_challenge, code_challenge_method)
+            {
+                query.append_pair("code_challenge", &code_challenge);
+                query.append_pair("code_challenge_method", &code_challenge_method.to_string());
+            }
         }
 
         Ok(InitiateIssuanceResponseDTO {
-            url: authorization_url.to_string(),
+            url: authorization_request_url.to_string(),
         })
     }
 
@@ -733,7 +784,7 @@ impl SSIHolderService {
             .await?
             .ok_or(EntityNotFoundError::Interaction(interaction_id))?;
 
-        let issuance: InitiateIssuanceRequestDTO =
+        let issuance: OpenIDAuthorizationCodeFlowInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
         let organisation = interaction
@@ -743,8 +794,8 @@ impl SSIHolderService {
             ))?;
 
         if let (None, None) = (
-            issuance.scope.as_ref(),
-            issuance.authorization_details.as_ref(),
+            issuance.request.scope.as_ref(),
+            issuance.request.authorization_details.as_ref(),
         ) {
             return Err(IssuanceProtocolError::Failed("Either `scope` or `authorization_details` has to be specified for credential issuance".to_string()).into());
         }
@@ -775,23 +826,25 @@ impl SSIHolderService {
             mut issuer_proof_type_supported,
         } = self
             .issuance_protocol_provider
-            .get_protocol(&issuance.protocol)
+            .get_protocol(&issuance.request.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
-                issuance.protocol.clone(),
+                issuance.request.protocol.clone(),
             ))?
             .holder_continue_issuance(
                 ContinueIssuanceDTO {
-                    credential_issuer: issuance.issuer,
+                    credential_issuer: issuance.request.issuer,
                     authorization_code: authorization_code.to_string(),
-                    client_id: issuance.client_id,
-                    redirect_uri: issuance.redirect_uri,
-                    scope: issuance.scope.unwrap_or_default(),
+                    client_id: issuance.request.client_id,
+                    redirect_uri: issuance.request.redirect_uri,
+                    scope: issuance.request.scope.unwrap_or_default(),
                     credential_configuration_ids: issuance
+                        .request
                         .authorization_details
                         .unwrap_or_default()
                         .into_iter()
                         .map(|d| d.credential_configuration_id)
                         .collect(),
+                    code_verifier: issuance.code_verifier,
                 },
                 organisation,
                 &storage_access,
@@ -826,7 +879,7 @@ impl SSIHolderService {
         };
 
         for mut credential in credentials {
-            credential.protocol = issuance.protocol.to_owned();
+            credential.protocol = issuance.request.protocol.to_owned();
             self.credential_repository
                 .create_credential(credential)
                 .await?;

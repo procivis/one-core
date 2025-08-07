@@ -1664,6 +1664,7 @@ async fn inner_continue_issuance_test(
                 redirect_uri: None,
                 scope,
                 credential_configuration_ids,
+                code_verifier: None,
             },
             dummy_organisation(None),
             &storage_proxy,
