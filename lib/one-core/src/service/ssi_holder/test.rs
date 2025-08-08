@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::eq;
+use regex::Regex;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -68,14 +68,15 @@ use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
-    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO, OAuthCodeChallengeMethod,
-    OpenIDAuthorizationCodeFlowInteractionData, OpenIDAuthorizationServerMetadata,
-    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
+    OpenIDAuthorizationCodeFlowInteractionData, PresentationSubmitCredentialRequestDTO,
+    PresentationSubmitRequestDTO,
 };
 use crate::service::test_utilities::{
     dummy_blob, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
     generic_config, generic_formatter_capabilities, get_dummy_date,
 };
+use crate::util::oauth_client::{OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod};
 
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested()
@@ -1311,7 +1312,7 @@ async fn test_initiate_issuance() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_create_interaction()
-        .return_once(|_| Ok(Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap()));
+        .return_once(|i| Ok(i.id));
 
     let service = SSIHolderService {
         organisation_repository: Arc::new(organisation_repository),
@@ -1326,9 +1327,10 @@ async fn test_initiate_issuance() {
     Mock::given(method(Method::GET))
         .and(path("/.well-known/oauth-authorization-server"))
         .respond_with(
-            ResponseTemplate::new(200).set_body_json(OpenIDAuthorizationServerMetadata {
+            ResponseTemplate::new(200).set_body_json(OAuthAuthorizationServerMetadata {
                 issuer: issuer.parse().unwrap(),
                 authorization_endpoint: Url::parse(authorization_endpoint).unwrap(),
+                pushed_authorization_request_endpoint: None,
                 code_challenge_methods_supported: vec![],
             }),
         )
@@ -1352,10 +1354,21 @@ async fn test_initiate_issuance() {
         .await
         .unwrap();
 
-    assert_eq!(
-        result.url,
-        "https://authorize.com/authorize?response_type=code&client_id=clientId&state=48db4654-01c4-4a43-9df4-300f1f425c40&redirect_uri=http%3A%2F%2Fredirect.uri&scope=scope1+scope2&authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"
+    assert!(result.url.contains("https://authorize.com/"));
+    assert!(result.url.contains("response_type=code"));
+    assert!(result.url.contains("client_id=clientId"));
+    assert!(
+        Regex::new(".*state=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*")
+            .unwrap()
+            .is_match(&result.url)
     );
+    assert!(
+        result
+            .url
+            .contains("redirect_uri=http%3A%2F%2Fredirect.uri")
+    );
+    assert!(result.url.contains("scope=scope1+scope2"));
+    assert!(result.url.contains("authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"));
 }
 
 #[tokio::test]
@@ -1475,9 +1488,10 @@ async fn test_initiate_issuance_pkce() {
     Mock::given(method(Method::GET))
         .and(path("/.well-known/oauth-authorization-server"))
         .respond_with(
-            ResponseTemplate::new(200).set_body_json(OpenIDAuthorizationServerMetadata {
+            ResponseTemplate::new(200).set_body_json(OAuthAuthorizationServerMetadata {
                 issuer: issuer.parse().unwrap(),
                 authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                pushed_authorization_request_endpoint: None,
                 code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
             }),
         )

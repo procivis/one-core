@@ -15,5 +15,6 @@ pub mod cose;
 pub mod identifier;
 pub mod jwt;
 pub mod mdoc;
+pub mod oauth_client;
 #[cfg(test)]
 pub mod test_utilities;

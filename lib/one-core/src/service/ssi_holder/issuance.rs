@@ -2,9 +2,6 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use one_crypto::Hasher;
-use one_crypto::hasher::sha256::SHA256;
-use one_crypto::utilities::generate_alphanumeric;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
@@ -49,14 +46,15 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::ssi_holder::dto::{
-    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO, OAuthCodeChallengeMethod,
-    OpenIDAuthorizationCodeFlowInteractionData, OpenIDAuthorizationServerMetadata,
+    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO,
+    OpenIDAuthorizationCodeFlowInteractionData,
 };
 use crate::service::ssi_holder::validator::{
     validate_holder_capabilities, validate_initiate_issuance_request,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_credential;
+use crate::util::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 
 const STATE: &str = "state";
 const AUTHORIZATION_CODE: &str = "authorization_code";
@@ -614,90 +612,37 @@ impl SSIHolderService {
         let issuer = Url::parse(&request.issuer)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        // obtain OAuth 2.0 Authorization server metadata (https://datatracker.ietf.org/doc/html/rfc8414#section-3)
-        // prepend `.well-known/oauth-authorization-server` to path to construct provider metadata endpoint
-        let original_path_segments: Vec<_> = issuer
-            .path_segments()
-            .ok_or(IssuanceProtocolError::Failed(
-                "invalid issuer URL".to_string(),
-            ))?
-            .filter_map(|segment| {
-                if segment.is_empty() {
-                    None
-                } else {
-                    Some(segment.to_string())
-                }
-            })
-            .collect();
-
-        let mut authorization_server_metadata_endpoint = issuer.clone();
-        {
-            let mut segments = authorization_server_metadata_endpoint
-                .path_segments_mut()
-                .map_err(|_| IssuanceProtocolError::Failed("invalid issuer URL".to_string()))?;
-
-            segments
-                .clear()
-                .push(".well-known")
-                .push("oauth-authorization-server");
-            if !original_path_segments.is_empty() {
-                segments.extend(&original_path_segments);
-            }
-        }
-
-        let authorization_server_metadata: OpenIDAuthorizationServerMetadata = self
+        let interaction_id = Uuid::new_v4();
+        let authorization_response = self
             .client
-            .get(authorization_server_metadata_endpoint.as_str())
-            .send()
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            .json()
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        if authorization_server_metadata.issuer != issuer {
-            return Err(IssuanceProtocolError::Failed(
-                "Issuer mismatch between request and authorization server metadata".to_string(),
+            .oauth_client()
+            .initiate_authorization_code_flow(
+                issuer,
+                OAuthAuthorizationRequest::new(
+                    request.client_id.clone(),
+                    request.scope.as_ref().map(|s| s.join(" ")),
+                    Some(interaction_id.to_string()),
+                    request.redirect_uri.clone(),
+                    request
+                        .authorization_details
+                        .as_ref()
+                        .map(|ad| serde_json::json!(ad).to_string()),
+                ),
             )
-            .into());
-        }
-
-        // optional support for PKCE
-        let (code_verifier, code_challenge, code_challenge_method) =
-            if authorization_server_metadata
-                .code_challenge_methods_supported
-                .contains(&OAuthCodeChallengeMethod::S256)
-            {
-                // SHA-256 result has 32 bytes. 44 of (completely random) alphanumeric characters should contain
-                // a similar amount of entropy (around 32-33 bytes). So it does not really make sense to generate
-                // more as the hash cannot contain more entropy.
-                let code_verifier = generate_alphanumeric(44);
-                let code_challenge = SHA256
-                    .hash_base64_url(code_verifier.as_bytes())
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-                (
-                    Some(code_verifier),
-                    Some(code_challenge),
-                    Some(OAuthCodeChallengeMethod::S256),
-                )
-            } else {
-                (None, None, None)
-            };
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(format!("OAuth request failed: {e:?}")))?;
 
         let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
-            request: request.to_owned(),
-            code_verifier,
+            request,
+            code_verifier: authorization_response.code_verifier,
         };
-
         // store request parameters inside interaction
         let data = serialize_interaction_data(&interaction_data)?;
 
         let now = OffsetDateTime::now_utc();
-        let interaction_id = self
-            .interaction_repository
+        self.interaction_repository
             .create_interaction(Interaction {
-                id: Uuid::new_v4(),
+                id: interaction_id,
                 created_date: now,
                 last_modified: now,
                 host: None,
@@ -706,41 +651,8 @@ impl SSIHolderService {
             })
             .await?;
 
-        // construct authorization URL by adding all necessary query parameters
-        let mut authorization_request_url = authorization_server_metadata.authorization_endpoint;
-        {
-            let mut query = authorization_request_url.query_pairs_mut();
-
-            // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1
-            query.append_pair("response_type", "code");
-            query.append_pair("client_id", &request.client_id);
-            query.append_pair("state", &interaction_id.to_string());
-            if let Some(redirect_uri) = &request.redirect_uri {
-                query.append_pair("redirect_uri", redirect_uri);
-            }
-            if let Some(scope) = &request.scope {
-                query.append_pair("scope", &scope.join(" "));
-            }
-
-            // https://datatracker.ietf.org/doc/html/rfc9396#section-2
-            if let Some(authorization_details) = &request.authorization_details {
-                query.append_pair(
-                    "authorization_details",
-                    &serde_json::json!(authorization_details).to_string(),
-                );
-            }
-
-            // PKCE https://datatracker.ietf.org/doc/html/rfc7636#section-4.3
-            if let (Some(code_challenge), Some(code_challenge_method)) =
-                (code_challenge, code_challenge_method)
-            {
-                query.append_pair("code_challenge", &code_challenge);
-                query.append_pair("code_challenge_method", &code_challenge_method.to_string());
-            }
-        }
-
         Ok(InitiateIssuanceResponseDTO {
-            url: authorization_request_url.to_string(),
+            url: authorization_response.url.to_string(),
         })
     }
 

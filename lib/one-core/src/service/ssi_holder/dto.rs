@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
-use strum::Display;
-use url::Url;
 
 use crate::model::interaction::InteractionId;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -73,31 +71,6 @@ pub struct InitiateIssuanceAuthorizationDetailDTO {
 #[derive(Clone, Debug)]
 pub struct InitiateIssuanceResponseDTO {
     pub url: String,
-}
-
-/// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>
-///
-/// [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414#section-2)
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct OpenIDAuthorizationServerMetadata {
-    pub issuer: Url,
-    pub authorization_endpoint: Url,
-
-    #[serde(default)]
-    pub code_challenge_methods_supported: Vec<OAuthCodeChallengeMethod>,
-}
-
-/// [IANA registry](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#pkce-code-challenge-method)
-///
-/// [RFC7636](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.2)
-#[derive(Clone, Copy, Debug, Display, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum OAuthCodeChallengeMethod {
-    #[serde(rename = "plain")]
-    #[strum(serialize = "plain")]
-    Plain,
-    #[serde(rename = "S256")]
-    #[strum(serialize = "S256")]
-    S256,
 }
 
 /// Interaction data stored on holder side for the OpenID Authorization code flow
