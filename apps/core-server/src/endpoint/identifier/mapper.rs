@@ -1,6 +1,7 @@
 use one_core::model::identifier::IdentifierFilterValue;
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 use one_dto_mapper::convert_inner;
 
@@ -46,6 +47,32 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             .map(|key_roles| IdentifierFilterValue::KeyRoles(convert_inner(key_roles)));
         let key_storages = value.key_storages.map(IdentifierFilterValue::KeyStorages);
 
+        let created_date_after = value.created_date_after.map(|date| {
+            IdentifierFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            IdentifierFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            IdentifierFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            IdentifierFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
         organisation_id
             & name
             & ids
@@ -56,5 +83,9 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             & key_algorithms
             & key_roles
             & key_storages
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
     }
 }

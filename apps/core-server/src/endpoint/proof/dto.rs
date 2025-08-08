@@ -21,6 +21,7 @@ use shared_types::{
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
@@ -172,6 +173,47 @@ pub(crate) struct ProofsFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
+
+    /// Return only proof requests which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only proof requests which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only proof requests which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only proof requests which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
+    /// Return only proof requests which were requested after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub requested_date_after: Option<OffsetDateTime>,
+    /// Return only proof requests which were requested before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub requested_date_before: Option<OffsetDateTime>,
+    /// Return only proof requests which were completed after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub completed_date_after: Option<OffsetDateTime>,
+    /// Return only proof requests which were completed before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub completed_date_before: Option<OffsetDateTime>,
 }
 
 pub(crate) type GetProofQuery =
@@ -185,28 +227,28 @@ pub(crate) struct ProofListItemResponseRestDTO {
     pub id: ProofId,
 
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
 
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
     /// When proof request state changed from `PENDING` to `REQUESTED`.
     /// Not supported in all exchange protocols.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
     /// Time at which the data shared by the holder for this proof request will be deleted.
     /// Determined by the `expireDuration` parameter of the proof schema.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
     /// When holder submitted valid proof.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
     #[from(with_fn = convert_inner)]
@@ -266,7 +308,7 @@ pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub inapplicable_credentials: Vec<String>,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     validity_credential_nbf: Option<OffsetDateTime>,
 }
 
@@ -313,27 +355,27 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
     #[try_from(with_fn = convert_inner, infallible)]
@@ -371,7 +413,7 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub claims_removed_at: Option<OffsetDateTime>,
 
     #[try_from(with_fn = convert_inner, infallible)]

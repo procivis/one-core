@@ -7,8 +7,8 @@ use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialFilterValue;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::SimpleExpr;
 use sea_orm::sea_query::query::IntoCondition;
+use sea_orm::sea_query::{ExprTrait, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use shared_types::{BlobId, CertificateId, IdentifierId, KeyId};
 
@@ -62,6 +62,20 @@ impl IntoFilterCondition for CredentialFilterValue {
             }
             Self::Profile(string_match) => {
                 get_string_match_condition(credential::Column::Profile, string_match)
+            }
+            Self::CreatedDate(value) => {
+                get_comparison_condition(credential::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(credential::Column::LastModified, value)
+            }
+            Self::IssuanceDate(value) => {
+                get_comparison_condition(credential::Column::IssuanceDate, value)
+            }
+            Self::RevocationDate(value) => {
+                get_comparison_condition(credential::Column::LastModified, value)
+                    .and(credential::Column::State.eq(credential::CredentialState::Revoked))
+                    .into_condition()
             }
         }
     }

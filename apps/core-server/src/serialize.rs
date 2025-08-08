@@ -1,10 +1,13 @@
 use serde::{Serialize, Serializer};
 use time::OffsetDateTime;
+use time::macros::offset;
 
+#[allow(clippy::disallowed_macros)]
 pub fn front_time<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
+    debug_assert_eq!(dt.offset(), offset!(UTC));
     let formatted = format!(
         "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
         dt.year(),

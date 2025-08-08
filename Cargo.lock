@@ -1186,6 +1186,7 @@ dependencies = [
  "serde_json",
  "serde_json_path",
  "serde_qs",
+ "serde_urlencoded",
  "serde_with",
  "shadow-rs",
  "shared-types",

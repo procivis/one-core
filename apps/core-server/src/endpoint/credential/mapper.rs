@@ -1,5 +1,6 @@
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 use one_core::service::credential::dto::CredentialFilterValue;
 use one_core::service::error::{BusinessLogicError, ServiceError};
@@ -86,6 +87,71 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             CredentialFilterValue::State(values.into_iter().map(|status| status.into()).collect())
         });
 
-        Ok(search_filters & name & role & credential_ids & states & profile)
+        let created_date_after = value.created_date_after.map(|date| {
+            CredentialFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            CredentialFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            CredentialFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            CredentialFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let issuance_date_after = value.issuance_date_after.map(|date| {
+            CredentialFilterValue::IssuanceDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let issuance_date_before = value.issuance_date_before.map(|date| {
+            CredentialFilterValue::IssuanceDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let revocation_date_after = value.revocation_date_after.map(|date| {
+            CredentialFilterValue::RevocationDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let revocation_date_before = value.revocation_date_before.map(|date| {
+            CredentialFilterValue::RevocationDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        Ok(search_filters
+            & name
+            & role
+            & credential_ids
+            & states
+            & profile
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
+            & issuance_date_after
+            & issuance_date_before
+            & revocation_date_after
+            & revocation_date_before)
     }
 }

@@ -1,4 +1,6 @@
-use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterCondition, StringMatch, StringMatchType, ValueComparison,
+};
 use one_core::service::trust_anchor::dto::TrustAnchorFilterValue;
 
 use super::dto::{ExactTrustAnchorFilterColumnRestEnum, TrustAnchorsFilterQueryParamsRest};
@@ -30,6 +32,38 @@ impl From<TrustAnchorsFilterQueryParamsRest> for ListFilterCondition<TrustAnchor
             })
         });
 
-        ListFilterCondition::<TrustAnchorFilterValue>::from(name) & is_publisher & r#type
+        let created_date_after = value.created_date_after.map(|date| {
+            TrustAnchorFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            TrustAnchorFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            TrustAnchorFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            TrustAnchorFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        ListFilterCondition::<TrustAnchorFilterValue>::from(name)
+            & is_publisher
+            & r#type
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
     }
 }

@@ -9,7 +9,8 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, Set};
 
 use crate::entity::{credential_schema, proof_input_schema, proof_schema};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl From<proof_schema::Model> for ProofSchema {
@@ -65,6 +66,12 @@ impl IntoFilterCondition for ProofSchemaFilterValue {
                         .to_owned(),
                 )
                 .into_condition(),
+            Self::CreatedDate(value) => {
+                get_comparison_condition(proof_schema::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(proof_schema::Column::LastModified, value)
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
 use crate::config;
+use crate::model::list_filter::ValueComparison;
 use crate::service::error::ServiceError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -122,6 +123,8 @@ pub enum IdentifierFilterValue {
     KeyRoles(Vec<KeyRole>),
     KeyStorages(Vec<String>),
     KeyIds(Vec<KeyId>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for IdentifierFilterValue {}

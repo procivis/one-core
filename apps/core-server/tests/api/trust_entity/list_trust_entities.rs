@@ -4,7 +4,9 @@ use one_core::model::trust_entity::{
     TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType,
 };
 use serde_json::Value;
+use shared_types::TrustEntityId;
 use similar_asserts::assert_eq;
+use time::Duration;
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::api_clients::trust_entity::ListFilters;
@@ -650,6 +652,77 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
     assert!(values.iter().all(|entity| {
         [entity2.id.to_string().as_str()].contains(&entity["id"].as_str().unwrap())
     }));
+}
+
+#[tokio::test]
+async fn test_list_trust_entities_filter_date() {
+    let (context, _, did, ..) = TestContext::new_with_did(None).await;
+
+    let ta = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams {
+            name: "name1".to_string(),
+            ..Default::default()
+        })
+        .await;
+
+    let entity = context
+        .db
+        .trust_entities
+        .create(
+            "e1",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
+        )
+        .await;
+
+    let pivot_time = entity.created_date;
+
+    // matching
+    let resp = context
+        .api
+        .trust_entities
+        .list(
+            0,
+            ListFilters {
+                created_date_after: Some(pivot_time - Duration::seconds(20)),
+                created_date_before: Some(pivot_time + Duration::seconds(20)),
+                last_modified_after: Some(pivot_time - Duration::seconds(20)),
+                last_modified_before: Some(pivot_time + Duration::seconds(20)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["totalItems"], 1);
+    let values = body["values"].as_array().unwrap();
+    let entity_id: TrustEntityId = values[0]["id"].parse();
+    assert_eq!(entity.id, entity_id);
+
+    // not matching
+    let resp = context
+        .api
+        .trust_entities
+        .list(
+            0,
+            ListFilters {
+                created_date_after: Some(pivot_time + Duration::seconds(20)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["totalItems"], 0);
 }
 
 fn compare_entity(result: &Value, entity: &TrustEntity, trust_anchor: &TrustAnchor) {

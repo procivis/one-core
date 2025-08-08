@@ -11,6 +11,7 @@ use super::list_query::ListQuery;
 use super::organisation::Organisation;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::common::GetListResponse;
+use crate::model::list_filter::ValueComparison;
 use crate::model::organisation::OrganisationRelations;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -61,6 +62,8 @@ pub enum KeyFilterValue {
     Ids(Vec<KeyId>),
     Remote(bool),
     RawPublicKey(Vec<u8>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
 }
 
 impl KeyFilterValue {

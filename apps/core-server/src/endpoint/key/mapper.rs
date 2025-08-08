@@ -1,6 +1,7 @@
 use one_core::model::key::KeyFilterValue;
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 
 use super::dto::KeyFilterQueryParamsRest;
@@ -31,6 +32,41 @@ impl From<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
         let ids = value.ids.map(KeyFilterValue::Ids);
         let remote = value.is_remote.map(KeyFilterValue::remote);
 
-        organisation_id & name & key_algorithms & key_storages & ids & remote
+        let created_date_after = value.created_date_after.map(|date| {
+            KeyFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            KeyFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            KeyFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            KeyFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        organisation_id
+            & name
+            & key_algorithms
+            & key_storages
+            & ids
+            & remote
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
     }
 }

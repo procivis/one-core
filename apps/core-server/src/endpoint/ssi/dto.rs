@@ -260,10 +260,10 @@ pub(crate) struct JsonLDInlineEntityRestDTO {
 pub(crate) struct GetTrustAnchorResponseRestDTO {
     pub id: TrustAnchorId,
     pub name: String,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     #[from(with_fn = convert_inner)]
@@ -278,10 +278,10 @@ pub(crate) struct GetSsiTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
     pub name: String,
 
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
 

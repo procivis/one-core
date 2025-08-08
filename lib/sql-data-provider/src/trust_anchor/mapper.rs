@@ -6,7 +6,8 @@ use sea_orm::{IntoSimpleExpr, Set};
 
 use crate::entity::trust_anchor::{self};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl From<TrustAnchor> for trust_anchor::ActiveModel {
@@ -61,6 +62,12 @@ impl IntoFilterCondition for TrustAnchorFilterValue {
             }
             Self::Type(string_match) => {
                 get_string_match_condition(trust_anchor::Column::Type, string_match)
+            }
+            Self::CreatedDate(value) => {
+                get_comparison_condition(trust_anchor::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(trust_anchor::Column::LastModified, value)
             }
         }
     }

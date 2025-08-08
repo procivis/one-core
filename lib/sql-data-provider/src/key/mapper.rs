@@ -7,8 +7,8 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
 use crate::entity;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_nullability_condition,
-    get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_nullability_condition, get_string_match_condition,
 };
 
 pub(super) fn from_model_and_relations(
@@ -60,6 +60,12 @@ impl IntoFilterCondition for KeyFilterValue {
             }
             Self::RawPublicKey(raw_public_key) => {
                 get_equals_condition(entity::key::Column::PublicKey, raw_public_key)
+            }
+            Self::CreatedDate(value) => {
+                get_comparison_condition(entity::key::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(entity::key::Column::LastModified, value)
             }
         }
     }

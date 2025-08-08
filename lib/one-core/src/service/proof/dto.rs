@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::interaction::InteractionId;
-use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
@@ -124,6 +124,10 @@ pub enum ProofFilterValue {
     ProofSchemaIds(Vec<ProofSchemaId>),
     Profile(StringMatch),
     ValidForDeletion,
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
+    RequestedDate(ValueComparison<OffsetDateTime>),
+    CompletedDate(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for ProofFilterValue {}

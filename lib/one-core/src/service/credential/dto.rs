@@ -184,6 +184,10 @@ pub enum CredentialFilterValue {
     State(Vec<crate::model::credential::CredentialStateEnum>),
     SuspendEndDate(ValueComparison<OffsetDateTime>),
     Profile(StringMatch),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
+    IssuanceDate(ValueComparison<OffsetDateTime>),
+    RevocationDate(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for CredentialFilterValue {}

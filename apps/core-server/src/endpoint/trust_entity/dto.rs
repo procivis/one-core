@@ -13,6 +13,7 @@ use shared_types::{
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::{CertificateStateRest, CertificateX509ExtensionRestDTO};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
@@ -86,10 +87,10 @@ pub(crate) struct GetTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
     pub organisation_id: Option<OrganisationId>,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub logo: Option<String>,
@@ -128,10 +129,10 @@ pub(crate) struct TrustEntityCertificateResponseRestDTO {
     pub common_name: Option<String>,
     pub serial_number: String,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub not_before: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub not_after: OffsetDateTime,
     pub issuer: String,
     pub subject: String,
@@ -148,10 +149,10 @@ pub(crate) struct GetRemoteTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
     pub organisation_id: Option<OrganisationId>,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub logo: Option<String>,
@@ -203,6 +204,27 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
     pub organisation_id: Option<OrganisationId>,
+
+    /// Return only entities which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only entities which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only entities which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only entities which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 #[options_not_nullable]
@@ -214,10 +236,10 @@ pub(crate) struct ListTrustEntitiesResponseItemRestDTO {
     pub name: String,
 
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
     pub logo: Option<String>,

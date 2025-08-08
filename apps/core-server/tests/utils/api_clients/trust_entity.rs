@@ -5,8 +5,10 @@ use one_core::model::identifier::Identifier;
 use one_core::model::trust_anchor::TrustAnchor;
 use serde_json::json;
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
+use time::OffsetDateTime;
 
 use super::{HttpClient, Response};
+use crate::utils::serialization::query_time_urlencoded;
 
 pub struct TrustEntitiesApi {
     client: HttpClient,
@@ -21,6 +23,11 @@ pub struct ListFilters {
     pub r#type: Option<Vec<TrustEntityTypeRest>>,
     pub entity_key: Option<String>,
     pub organisation_id: Option<OrganisationId>,
+
+    pub created_date_after: Option<OffsetDateTime>,
+    pub created_date_before: Option<OffsetDateTime>,
+    pub last_modified_after: Option<OffsetDateTime>,
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 impl TrustEntitiesApi {
@@ -112,6 +119,10 @@ impl TrustEntitiesApi {
             r#type,
             entity_key,
             organisation_id,
+            created_date_after,
+            created_date_before,
+            last_modified_after,
+            last_modified_before,
         } = filters;
 
         let mut url = format!("/api/trust-entity/v1?pageSize=20&page={page}");
@@ -155,6 +166,19 @@ impl TrustEntitiesApi {
 
         if let Some(organisation_id) = organisation_id {
             url += &format!("&organisationId={organisation_id}")
+        }
+
+        if let Some(date) = created_date_after {
+            url += &format!("&{}", query_time_urlencoded("createdDateAfter", date));
+        }
+        if let Some(date) = created_date_before {
+            url += &format!("&{}", query_time_urlencoded("createdDateBefore", date));
+        }
+        if let Some(date) = last_modified_after {
+            url += &format!("&{}", query_time_urlencoded("lastModifiedAfter", date));
+        }
+        if let Some(date) = last_modified_before {
+            url += &format!("&{}", query_time_urlencoded("lastModifiedBefore", date));
         }
 
         self.client.get(&url).await

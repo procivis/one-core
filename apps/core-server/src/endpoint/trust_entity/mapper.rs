@@ -1,4 +1,6 @@
-use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterCondition, StringMatch, StringMatchType, ValueComparison,
+};
 use one_core::model::trust_entity::TrustEntityType;
 use one_core::service::error::ServiceError;
 use one_core::service::trust_entity::dto::{CreateTrustEntityRequestDTO, TrustEntityFilterValue};
@@ -45,6 +47,32 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
 
         let entity_key = value.entity_key.map(TrustEntityFilterValue::EntityKey);
 
+        let created_date_after = value.created_date_after.map(|date| {
+            TrustEntityFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            TrustEntityFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            TrustEntityFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            TrustEntityFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
         ListFilterCondition::<TrustEntityFilterValue>::from(did_id)
             & trust_anchor_id
             & name
@@ -52,6 +80,10 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
             & organisation_id
             & types
             & entity_key
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
     }
 }
 

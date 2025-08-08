@@ -1,7 +1,11 @@
 use serde_json::Value;
+use shared_types::ProofSchemaId;
 use similar_asserts::assert_eq;
+use time::Duration;
 
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::field_match::FieldHelpers;
+use crate::utils::serialization::query_time_urlencoded;
 use crate::utils::server::run_server;
 use crate::{fixtures, utils};
 
@@ -66,4 +70,91 @@ async fn test_list_proof_schema_success() {
     assert_eq!(resp["totalItems"].as_i64().unwrap(), 14);
     assert_eq!(resp["totalPages"].as_i64().unwrap(), 2);
     assert_eq!(resp["values"].as_array().unwrap().len(), 8);
+}
+
+#[tokio::test]
+async fn test_list_proof_schema_filter_by_date() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url, None);
+    let db_conn = fixtures::create_db(&config).await;
+
+    let organisation = fixtures::create_organisation(&db_conn).await;
+
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let schema = fixtures::create_proof_schema(
+        &db_conn,
+        "test",
+        &organisation,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
+    )
+    .await;
+
+    let _handle = run_server(listener, config, &db_conn).await;
+
+    let pivot_date = schema.created_date;
+
+    // matching
+    let url = format!(
+        "{base_url}/api/proof-schema/v1?page={}&pageSize={}&organisationId={}&{}&{}&{}&{}",
+        0,
+        8,
+        organisation.id,
+        query_time_urlencoded("createdDateAfter", pivot_date - Duration::seconds(20)),
+        query_time_urlencoded("createdDateBefore", pivot_date + Duration::seconds(20)),
+        query_time_urlencoded("lastModifiedAfter", pivot_date - Duration::seconds(20)),
+        query_time_urlencoded("lastModifiedBefore", pivot_date + Duration::seconds(20))
+    );
+    let resp = utils::client()
+        .get(url)
+        .bearer_auth("test")
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), 200);
+    let resp: Value = resp.json().await.unwrap();
+    assert_eq!(resp["totalItems"].as_i64().unwrap(), 1);
+    let values = resp["values"].as_array().unwrap();
+    let proof_schema_id: ProofSchemaId = values[0]["id"].parse();
+    assert_eq!(schema.id, proof_schema_id);
+
+    // not matching
+    let url = format!(
+        "{base_url}/api/proof-schema/v1?page={}&pageSize={}&organisationId={}&{}",
+        0,
+        8,
+        organisation.id,
+        query_time_urlencoded("createdDateAfter", pivot_date + Duration::seconds(20)),
+    );
+    let resp = utils::client()
+        .get(url)
+        .bearer_auth("test")
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), 200);
+    let resp: Value = resp.json().await.unwrap();
+    assert_eq!(resp["totalItems"].as_i64().unwrap(), 0);
 }

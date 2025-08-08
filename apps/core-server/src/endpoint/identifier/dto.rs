@@ -21,6 +21,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
@@ -73,10 +74,10 @@ pub(crate) struct CreateCertificateRequestRestDTO {
 pub(crate) struct GetIdentifierListItemResponseRestDTO {
     pub id: IdentifierId,
     pub name: String,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     pub state: IdentifierStateRest,
@@ -97,11 +98,11 @@ pub(crate) struct GetIdentifierResponseRestDTO {
     #[try_from(infallible)]
     pub name: String,
     #[try_from(infallible)]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     #[try_from(with_fn = "try_convert_inner")]
@@ -187,6 +188,27 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactIdentifierFilterColumnRestEnum>>,
     pub organisation_id: OrganisationId,
+
+    /// Return only identifiers which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only identifiers which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only identifiers which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only identifiers which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]

@@ -5,6 +5,7 @@ use one_core::model::identifier::IdentifierType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use shared_types::ProofId;
 use similar_asserts::assert_eq;
+use time::Duration;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams, create_organisation};
 use crate::utils::api_clients::proofs::ProofFilters;
@@ -1248,4 +1249,195 @@ async fn test_list_proof_with_profile() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     assert_eq!(resp["totalItems"], 0);
+}
+
+#[tokio::test]
+async fn test_list_proofs_by_date() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let verifier_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let completed_proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Accepted,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            None,
+        )
+        .await;
+
+    let requested_proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            None,
+        )
+        .await;
+
+    let _created_proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            None,
+        )
+        .await;
+
+    let pivot_date = completed_proof.created_date;
+
+    // match all
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                created_date_after: Some(pivot_date - Duration::seconds(20)),
+                created_date_before: Some(pivot_date + Duration::seconds(20)),
+                last_modified_after: Some(pivot_date - Duration::seconds(20)),
+                last_modified_before: Some(pivot_date + Duration::seconds(20)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["totalItems"], 3);
+
+    // match only completed
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                completed_date_after: Some(pivot_date - Duration::seconds(20)),
+                completed_date_before: Some(pivot_date + Duration::seconds(20)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["values"][0]["id"], completed_proof.id.to_string());
+
+    // match requested
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                requested_date_after: Some(pivot_date - Duration::seconds(20)),
+                requested_date_before: Some(pivot_date + Duration::seconds(20)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["totalItems"], 2);
+    let result_proofs: HashSet<ProofId> = resp["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["id"].parse())
+        .collect();
+    assert_eq!(
+        HashSet::from([completed_proof.id, requested_proof.id]),
+        result_proofs
+    );
 }

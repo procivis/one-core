@@ -8,8 +8,8 @@ use time::OffsetDateTime;
 use crate::entity::identifier::ActiveModel;
 use crate::entity::{self, certificate, did, identifier, key, key_did};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, get_equals_condition,
-    get_string_match_condition,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 
 impl From<Identifier> for ActiveModel {
@@ -74,11 +74,11 @@ impl IntoSortingColumn for SortableIdentifierColumn {
 impl IntoFilterCondition for IdentifierFilterValue {
     fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
-            IdentifierFilterValue::Ids(ids) => identifier::Column::Id.is_in(ids).into_condition(),
-            IdentifierFilterValue::Name(string_match) => {
+            Self::Ids(ids) => identifier::Column::Id.is_in(ids).into_condition(),
+            Self::Name(string_match) => {
                 get_string_match_condition(identifier::Column::Name, string_match)
             }
-            IdentifierFilterValue::Types(types) => identifier::Column::Type
+            Self::Types(types) => identifier::Column::Type
                 .is_in(
                     types
                         .into_iter()
@@ -86,21 +86,21 @@ impl IntoFilterCondition for IdentifierFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
-            IdentifierFilterValue::State(state) => get_equals_condition(
+            Self::State(state) => get_equals_condition(
                 identifier::Column::State,
                 identifier::IdentifierState::from(state),
             ),
-            IdentifierFilterValue::OrganisationId(organisation_id) => {
+            Self::OrganisationId(organisation_id) => {
                 get_equals_condition(identifier::Column::OrganisationId, organisation_id)
             }
-            IdentifierFilterValue::DidMethods(did_methods) => entity::did::Column::Method
+            Self::DidMethods(did_methods) => entity::did::Column::Method
                 .is_in(did_methods)
                 .or(identifier::Column::Type.ne(identifier::IdentifierType::Did))
                 .into_condition(),
-            IdentifierFilterValue::IsRemote(is_remote) => {
+            Self::IsRemote(is_remote) => {
                 get_equals_condition(identifier::Column::IsRemote, is_remote)
             }
-            IdentifierFilterValue::KeyAlgorithms(key_algorithms) => key::Column::KeyType
+            Self::KeyAlgorithms(key_algorithms) => key::Column::KeyType
                 .is_in(&key_algorithms)
                 .or(ColumnRef::TableColumn(
                     Alias::new("did_key").into_iden(),
@@ -113,7 +113,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 )
                 .is_in(key_algorithms))
                 .into_condition(),
-            IdentifierFilterValue::KeyRoles(key_roles) => key_did::Column::Role
+            Self::KeyRoles(key_roles) => key_did::Column::Role
                 .is_in(
                     key_roles
                         .into_iter()
@@ -122,7 +122,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 )
                 .or(identifier::Column::Type.ne(identifier::IdentifierType::Did))
                 .into_condition(),
-            IdentifierFilterValue::KeyStorages(key_storages) => key::Column::StorageType
+            Self::KeyStorages(key_storages) => key::Column::StorageType
                 .is_in(&key_storages)
                 .or(ColumnRef::TableColumn(
                     Alias::new("did_key").into_iden(),
@@ -135,7 +135,7 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 )
                 .is_in(key_storages))
                 .into_condition(),
-            IdentifierFilterValue::KeyIds(key_ids) => key::Column::Id
+            Self::KeyIds(key_ids) => key::Column::Id
                 .is_in(&key_ids)
                 .or(ColumnRef::TableColumn(
                     Alias::new("did_key").into_iden(),
@@ -148,6 +148,12 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 )
                 .is_in(key_ids))
                 .into_condition(),
+            Self::CreatedDate(value) => {
+                get_comparison_condition(identifier::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(identifier::Column::LastModified, value)
+            }
         }
     }
 }

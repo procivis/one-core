@@ -15,6 +15,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
@@ -85,11 +86,11 @@ pub(crate) struct ImportProofSchemaRequestRestDTO {
 pub(crate) struct ImportProofSchemaRestDTO {
     #[try_into(infallible)]
     pub id: ProofSchemaId,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     #[try_into(infallible)]
     pub created_date: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
@@ -141,11 +142,11 @@ pub(crate) struct ImportProofSchemaClaimSchemaRestDTO {
 pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[try_into(infallible)]
     pub id: Uuid,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     #[try_into(infallible)]
     pub created_date: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
@@ -199,6 +200,27 @@ pub(crate) struct ProofSchemasFilterQueryParamsRest {
     /// Return only proof schemas which use only the specified credential formats.
     #[param(rename = "formats[]", inline, nullable = false)]
     pub formats: Option<Vec<String>>,
+
+    /// Return only proof schemas which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only proof schemas which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only proof schemas which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only proof schemas which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 #[options_not_nullable]
@@ -208,13 +230,13 @@ pub(crate) struct ProofSchemasFilterQueryParamsRest {
 pub(crate) struct GetProofSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     /// The duration of storage of received proofs, in seconds. After the defined duration, the received proof and its data are deleted from the system.
@@ -230,10 +252,10 @@ pub(crate) struct GetProofSchemaListItemResponseRestDTO {
 pub(crate) struct GetProofSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,

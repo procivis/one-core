@@ -4,7 +4,7 @@ use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
@@ -74,6 +74,8 @@ pub enum TrustAnchorFilterValue {
     Name(StringMatch),
     IsPublisher(bool),
     Type(StringMatch),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
 }
 
 impl TrustAnchorFilterValue {

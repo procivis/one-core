@@ -3,9 +3,11 @@ use std::fmt::Display;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use serde_json::json;
 use shared_types::{CertificateId, CredentialId, DidId, IdentifierId, KeyId};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
+use crate::utils::serialization::query_time_urlencoded;
 
 pub struct CredentialsApi {
     client: HttpClient,
@@ -17,6 +19,15 @@ pub struct Filters {
     pub search_text: Option<String>,
     pub search_type: Option<Vec<String>>,
     pub profile: Option<String>,
+
+    pub created_date_after: Option<OffsetDateTime>,
+    pub created_date_before: Option<OffsetDateTime>,
+    pub last_modified_after: Option<OffsetDateTime>,
+    pub last_modified_before: Option<OffsetDateTime>,
+    pub issuance_date_after: Option<OffsetDateTime>,
+    pub issuance_date_before: Option<OffsetDateTime>,
+    pub revocation_date_after: Option<OffsetDateTime>,
+    pub revocation_date_before: Option<OffsetDateTime>,
 }
 
 impl CredentialsApi {
@@ -88,6 +99,31 @@ impl CredentialsApi {
                 .fold(String::new(), |url, search_type| {
                     url + &format!("&searchType[]={search_type}")
                 });
+
+            if let Some(date) = filters.created_date_after {
+                url += &format!("&{}", query_time_urlencoded("createdDateAfter", date));
+            }
+            if let Some(date) = filters.created_date_before {
+                url += &format!("&{}", query_time_urlencoded("createdDateBefore", date));
+            }
+            if let Some(date) = filters.last_modified_after {
+                url += &format!("&{}", query_time_urlencoded("lastModifiedAfter", date));
+            }
+            if let Some(date) = filters.last_modified_before {
+                url += &format!("&{}", query_time_urlencoded("lastModifiedBefore", date));
+            }
+            if let Some(date) = filters.issuance_date_after {
+                url += &format!("&{}", query_time_urlencoded("issuanceDateAfter", date));
+            }
+            if let Some(date) = filters.issuance_date_before {
+                url += &format!("&{}", query_time_urlencoded("issuanceDateBefore", date));
+            }
+            if let Some(date) = filters.revocation_date_after {
+                url += &format!("&{}", query_time_urlencoded("revocationDateAfter", date));
+            }
+            if let Some(date) = filters.revocation_date_before {
+                url += &format!("&{}", query_time_urlencoded("revocationDateBefore", date));
+            }
         }
         if let Some(ids) = ids {
             for id in ids {

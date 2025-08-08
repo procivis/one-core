@@ -21,11 +21,11 @@ pub(crate) struct CertificateResponseRestDTO {
     #[try_from(infallible)]
     pub id: CertificateId,
     #[try_from(infallible)]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     #[try_from(infallible)]
@@ -58,10 +58,10 @@ pub(crate) enum CertificateStateRest {
 #[from(CertificateX509AttributesDTO)]
 pub(crate) struct CertificateX509AttributesRestDTO {
     pub serial_number: String,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub not_before: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub not_after: OffsetDateTime,
     pub issuer: String,

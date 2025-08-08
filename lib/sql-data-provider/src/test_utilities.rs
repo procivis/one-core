@@ -31,7 +31,7 @@ use crate::entity::{
 use crate::{DataLayer, db_conn};
 
 pub fn get_dummy_date() -> OffsetDateTime {
-    datetime!(2005-04-02 21:37 +1)
+    datetime!(2005-04-02 21:37 UTC)
 }
 
 #[allow(clippy::too_many_arguments)]

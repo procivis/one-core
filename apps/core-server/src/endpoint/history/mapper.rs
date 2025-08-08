@@ -20,13 +20,13 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         let actions = value
             .actions
             .map(|values| HistoryFilterValue::Actions(convert_inner(values)));
-        let created_date_from = value.created_date_from.map(|date| {
+        let created_date_after = value.created_date_after.map(|date| {
             HistoryFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::GreaterThanOrEqual,
                 value: date,
             })
         });
-        let created_date_to = value.created_date_to.map(|date| {
+        let created_date_before = value.created_date_before.map(|date| {
             HistoryFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::LessThanOrEqual,
                 value: date,
@@ -48,8 +48,8 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             & entity_types
             & entity_id
             & actions
-            & created_date_from
-            & created_date_to
+            & created_date_after
+            & created_date_before
             & identifier_id
             & credential_id
             & credential_schema_id

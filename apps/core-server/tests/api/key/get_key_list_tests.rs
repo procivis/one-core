@@ -1,6 +1,7 @@
 use reqwest::StatusCode;
 use shared_types::KeyId;
 use similar_asserts::assert_eq;
+use time::{Duration, OffsetDateTime};
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::api_clients::keys::KeyFilters;
@@ -61,6 +62,10 @@ async fn test_get_keys_ok() {
             key_storages: None,
             ids: None,
             is_remote: None,
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
         })
         .await;
 
@@ -119,6 +124,10 @@ async fn test_get_keys_filter_by_key_type() {
             key_storages: None,
             ids: None,
             is_remote: None,
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
         })
         .await;
 
@@ -175,6 +184,10 @@ async fn test_get_keys_filter_by_key_storage() {
             key_storages: Some(vec!["INTERNAL".to_string()]),
             ids: None,
             is_remote: None,
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
         })
         .await;
 
@@ -231,6 +244,10 @@ async fn test_get_keys_filter_by_is_remote() {
             key_storages: None,
             ids: None,
             is_remote: Some(true),
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
         })
         .await;
 
@@ -258,6 +275,10 @@ async fn test_get_keys_filter_by_is_remote() {
             key_storages: None,
             ids: None,
             is_remote: Some(false),
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
         })
         .await;
 
@@ -271,4 +292,119 @@ async fn test_get_keys_filter_by_is_remote() {
     let key_id: KeyId = values[0]["id"].parse();
     assert_eq!(key2.id, key_id);
     assert_eq!(false, values[0]["isRemote"]);
+}
+
+#[tokio::test]
+async fn test_get_keys_filter_by_date() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let time_1 = OffsetDateTime::now_utc() - Duration::hours(2);
+    let time_2 = OffsetDateTime::now_utc() - Duration::hours(1);
+    let time_3 = OffsetDateTime::now_utc();
+
+    let key_time_1 = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                created_date: Some(time_1),
+                last_modified: Some(time_1),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let key_time_2 = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                created_date: Some(time_2),
+                last_modified: Some(time_2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // time 1
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_types: None,
+            key_storages: None,
+            ids: None,
+            is_remote: None,
+            created_date_after: Some(time_1 - Duration::seconds(20)),
+            created_date_before: Some(time_1 + Duration::seconds(20)),
+            last_modified_after: Some(time_1 - Duration::seconds(20)),
+            last_modified_before: Some(time_1 + Duration::seconds(20)),
+        })
+        .await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(1, values.len());
+    let key_id: KeyId = values[0]["id"].parse();
+    assert_eq!(key_time_1.id, key_id);
+
+    // time 2
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_types: None,
+            key_storages: None,
+            ids: None,
+            is_remote: None,
+            created_date_after: Some(time_2 - Duration::seconds(20)),
+            created_date_before: Some(time_2 + Duration::seconds(20)),
+            last_modified_after: Some(time_2 - Duration::seconds(20)),
+            last_modified_before: Some(time_2 + Duration::seconds(20)),
+        })
+        .await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(1, values.len());
+    let key_id: KeyId = values[0]["id"].parse();
+    assert_eq!(key_time_2.id, key_id);
+
+    // time 3
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_types: None,
+            key_storages: None,
+            ids: None,
+            is_remote: None,
+            created_date_after: Some(time_3 - Duration::seconds(20)),
+            created_date_before: Some(time_3 + Duration::seconds(20)),
+            last_modified_after: Some(time_3 - Duration::seconds(20)),
+            last_modified_before: Some(time_3 + Duration::seconds(20)),
+        })
+        .await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(0, values.len());
 }

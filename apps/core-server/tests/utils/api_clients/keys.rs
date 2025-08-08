@@ -1,8 +1,10 @@
 use serde_json::{Value, json};
 use shared_types::{KeyId, OrganisationId};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
+use crate::utils::serialization::query_time_urlencoded;
 
 #[derive(Debug, Clone)]
 pub struct KeyFilters {
@@ -14,6 +16,11 @@ pub struct KeyFilters {
     pub key_storages: Option<Vec<String>>,
     pub ids: Option<Vec<KeyId>>,
     pub is_remote: Option<bool>,
+
+    pub created_date_after: Option<OffsetDateTime>,
+    pub created_date_before: Option<OffsetDateTime>,
+    pub last_modified_after: Option<OffsetDateTime>,
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 pub struct KeysApi {
@@ -78,6 +85,10 @@ impl KeysApi {
             key_storages,
             ids,
             is_remote,
+            created_date_after,
+            created_date_before,
+            last_modified_after,
+            last_modified_before,
         }: KeyFilters,
     ) -> Response {
         let mut url = format!(
@@ -106,6 +117,19 @@ impl KeysApi {
             .into_iter()
             .flatten()
             .fold(url, |url, v| url + &format!("&ids[]={v}"));
+
+        if let Some(date) = created_date_after {
+            url += &format!("&{}", query_time_urlencoded("createdDateAfter", date));
+        }
+        if let Some(date) = created_date_before {
+            url += &format!("&{}", query_time_urlencoded("createdDateBefore", date));
+        }
+        if let Some(date) = last_modified_after {
+            url += &format!("&{}", query_time_urlencoded("lastModifiedAfter", date));
+        }
+        if let Some(date) = last_modified_before {
+            url += &format!("&{}", query_time_urlencoded("lastModifiedBefore", date));
+        }
 
         self.client.get(&url).await
     }

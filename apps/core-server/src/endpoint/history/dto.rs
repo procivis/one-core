@@ -28,7 +28,7 @@ pub(crate) type GetHistoryQuery =
 pub(crate) struct HistoryResponseRestDTO {
     pub id: HistoryId,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     pub action: HistoryAction,
     pub name: String,
@@ -47,7 +47,7 @@ pub(crate) struct HistoryResponseDetailRestDTO {
     #[try_from(infallible)]
     pub id: HistoryId,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[try_from(infallible)]
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
@@ -179,13 +179,13 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// Return only events which occurred after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(value_type = String)]
-    pub created_date_from: Option<OffsetDateTime>,
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
     /// Return only events which occurred before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(value_type = String)]
-    pub created_date_to: Option<OffsetDateTime>,
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
     /// Return only events associated with the provided Identifier UUID.
     #[param(nullable = false)]
     pub identifier_id: Option<IdentifierId>,

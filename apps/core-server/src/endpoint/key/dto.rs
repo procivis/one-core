@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ExactColumn, ListQueryParamsRest};
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
@@ -50,11 +51,11 @@ pub(crate) struct KeyResponseRestDTO {
     pub id: Uuid,
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     #[try_from(infallible)]
     pub organisation_id: Uuid,
@@ -78,11 +79,11 @@ pub(crate) struct KeyListItemResponseRestDTO {
     pub id: Uuid,
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     #[try_from(infallible)]
     pub name: String,
@@ -130,6 +131,26 @@ pub(crate) struct KeyFilterQueryParamsRest {
     /// Return only keys being a remote.
     #[param(inline, nullable = false)]
     pub is_remote: Option<Boolean>,
+    /// Return only keys which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only keys which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only keys which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only keys which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 pub(crate) type GetKeyQuery =

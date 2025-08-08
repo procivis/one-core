@@ -14,7 +14,8 @@ use shared_types::CredentialSchemaId;
 
 use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {
@@ -46,6 +47,12 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             Self::CredentialSchemaIds(ids) => credential_schema::Column::Id
                 .is_in(ids.iter())
                 .into_condition(),
+            Self::CreatedDate(value) => {
+                get_comparison_condition(credential_schema::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(credential_schema::Column::LastModified, value)
+            }
         }
     }
 }

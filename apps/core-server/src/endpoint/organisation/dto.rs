@@ -45,12 +45,12 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     pub id: Uuid,
     pub name: String,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deactivated_at: Option<OffsetDateTime>,
 }

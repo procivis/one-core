@@ -4,8 +4,10 @@ use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use shared_types::{IdentifierId, ProofId, ProofSchemaId};
+use time::OffsetDateTime;
 
 use super::{HttpClient, Response};
+use crate::utils::serialization::query_time_urlencoded;
 
 pub struct ProofsApi {
     client: HttpClient,
@@ -19,6 +21,15 @@ pub struct ProofFilters<'a> {
     pub proof_schema_ids: Option<&'a [ProofSchemaId]>,
     pub ids: Option<&'a [ProofId]>,
     pub profile: Option<&'a str>,
+
+    pub created_date_after: Option<OffsetDateTime>,
+    pub created_date_before: Option<OffsetDateTime>,
+    pub last_modified_after: Option<OffsetDateTime>,
+    pub last_modified_before: Option<OffsetDateTime>,
+    pub requested_date_after: Option<OffsetDateTime>,
+    pub requested_date_before: Option<OffsetDateTime>,
+    pub completed_date_after: Option<OffsetDateTime>,
+    pub completed_date_before: Option<OffsetDateTime>,
 }
 
 impl ProofsApi {
@@ -122,6 +133,31 @@ impl ProofsApi {
 
         if let Some(profile) = filters.profile {
             url += &format!("&profile={profile}");
+        }
+
+        if let Some(date) = filters.created_date_after {
+            url += &format!("&{}", query_time_urlencoded("createdDateAfter", date));
+        }
+        if let Some(date) = filters.created_date_before {
+            url += &format!("&{}", query_time_urlencoded("createdDateBefore", date));
+        }
+        if let Some(date) = filters.last_modified_after {
+            url += &format!("&{}", query_time_urlencoded("lastModifiedAfter", date));
+        }
+        if let Some(date) = filters.last_modified_before {
+            url += &format!("&{}", query_time_urlencoded("lastModifiedBefore", date));
+        }
+        if let Some(date) = filters.requested_date_after {
+            url += &format!("&{}", query_time_urlencoded("requestedDateAfter", date));
+        }
+        if let Some(date) = filters.requested_date_before {
+            url += &format!("&{}", query_time_urlencoded("requestedDateBefore", date));
+        }
+        if let Some(date) = filters.completed_date_after {
+            url += &format!("&{}", query_time_urlencoded("completedDateAfter", date));
+        }
+        if let Some(date) = filters.completed_date_before {
+            url += &format!("&{}", query_time_urlencoded("completedDateBefore", date));
         }
 
         self.client.get(&url).await

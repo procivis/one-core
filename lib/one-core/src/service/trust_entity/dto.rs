@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 
 use crate::model::certificate::CertificateState;
 use crate::model::common::GetListResponse;
-use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
@@ -233,6 +233,8 @@ pub enum TrustEntityFilterValue {
     OrganisationId(OrganisationId),
     EntityKey(TrustEntityKey),
     Type(Vec<TrustEntityType>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for TrustEntityFilterValue {}

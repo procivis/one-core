@@ -7,7 +7,7 @@ use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };
-use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
 use crate::service::credential::dto::CredentialSchemaType;
@@ -23,6 +23,8 @@ pub enum ProofSchemaFilterValue {
     OrganisationId(OrganisationId),
     ProofSchemaIds(Vec<ProofSchemaId>),
     Formats(Vec<String>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for ProofSchemaFilterValue {}

@@ -14,7 +14,7 @@ use crate::common::calculate_pages_count;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{identifier, interaction, proof, proof_claim, proof_schema};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
 };
 
 impl IntoSortingColumn for SortableProofColumn {
@@ -80,6 +80,16 @@ impl IntoFilterCondition for ProofFilterValue {
             Self::ValidForDeletion => proof_schema::Column::ExpireDuration.gt(0).into_condition(),
             Self::Profile(string_match) => {
                 get_string_match_condition(proof::Column::Profile, string_match)
+            }
+            Self::CreatedDate(value) => get_comparison_condition(proof::Column::CreatedDate, value),
+            Self::LastModified(value) => {
+                get_comparison_condition(proof::Column::LastModified, value)
+            }
+            Self::RequestedDate(value) => {
+                get_comparison_condition(proof::Column::RequestedDate, value)
+            }
+            Self::CompletedDate(value) => {
+                get_comparison_condition(proof::Column::CompletedDate, value)
             }
         }
     }

@@ -13,6 +13,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
 use crate::serialize::{front_time, front_time_option};
 
@@ -24,13 +25,13 @@ use crate::serialize::{front_time, front_time_option};
 pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: String,
@@ -106,10 +107,10 @@ impl utoipa::ToSchema for CredentialSchemaType {}
 pub(crate) struct CredentialSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: String,
@@ -139,10 +140,10 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
 pub(crate) struct CredentialClaimSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: String,
@@ -180,6 +181,27 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     /// Return only credential schemas which use one of the specified credential formats.
     #[param(rename = "formats[]", inline, nullable = false)]
     pub formats: Option<Vec<String>>,
+
+    /// Return only credential schemas which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only credential schemas which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only credential schemas which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only credential schemas which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -410,11 +432,11 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[try_into(infallible)]
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[try_into(infallible)]
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
     #[try_into(infallible)]
@@ -456,10 +478,10 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
 pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: String,

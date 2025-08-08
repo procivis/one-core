@@ -12,7 +12,7 @@ use crate::model::credential_schema::{
     CredentialFormat, CredentialSchema, LayoutType, RevocationMethod,
     SortableCredentialSchemaColumn, WalletStorageTypeEnum,
 };
-use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
 use crate::service::credential::dto::CredentialSchemaType;
@@ -99,6 +99,8 @@ pub enum CredentialSchemaFilterValue {
     SchemaId(StringMatch),
     Formats(Vec<String>),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for CredentialSchemaFilterValue {}

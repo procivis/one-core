@@ -11,7 +11,8 @@ use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
 use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole, TrustEntityType};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_string_match_condition,
 };
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
@@ -145,6 +146,12 @@ impl IntoFilterCondition for TrustEntityFilterValue {
                 get_equals_condition(trust_entity::Column::EntityKey, entity_key)
             }
             Self::DidId(id) => get_equals_condition(did::Column::Id, id),
+            Self::CreatedDate(value) => {
+                get_comparison_condition(trust_entity::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(trust_entity::Column::LastModified, value)
+            }
         }
     }
 }

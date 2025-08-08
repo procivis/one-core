@@ -34,24 +34,24 @@ use crate::serialize::{front_time, front_time_option};
 pub(crate) struct CredentialListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseRestDTO,
     #[from(with_fn = convert_inner)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
     pub role: CredentialRoleRestEnum,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub protocol: String,
     /// Profile associated with this credential
@@ -64,13 +64,13 @@ pub(crate) struct CredentialListItemResponseRestDTO {
 #[from(MdocMsoValidityResponseDTO)]
 pub(crate) struct MdocMsoValidityResponseRestDTO {
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub expiration: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub next_update: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_update: OffsetDateTime,
 }
 
@@ -84,17 +84,17 @@ pub(crate) struct GetCredentialResponseRestDTO {
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
@@ -102,7 +102,7 @@ pub(crate) struct GetCredentialResponseRestDTO {
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
     #[try_from(infallible)]
@@ -131,12 +131,12 @@ pub(crate) struct GetCredentialResponseRestDTO {
     /// When the current LVVC was issued.
     #[try_from(with_fn = convert_inner, infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
 
     #[try_from(with_fn = convert_inner, infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
 
     #[try_from(with_fn = convert_inner, infallible)]
@@ -172,13 +172,13 @@ pub(crate) enum CredentialRoleRestEnum {
 pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: String,
@@ -273,6 +273,47 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     /// choose one or more `searchType`s and pass a `searchText`.
     #[param(rename = "searchType[]", inline, nullable = false)]
     pub search_type: Option<Vec<SearchType>>,
+
+    /// Return only credentials which were created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only credentials which were created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only credentials which were last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only credentials which were last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
+    /// Return only credentials which were issued after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub issuance_date_after: Option<OffsetDateTime>,
+    /// Return only credentials which were issued before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub issuance_date_before: Option<OffsetDateTime>,
+    /// Return only credentials which were revoked after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub revocation_date_after: Option<OffsetDateTime>,
+    /// Return only credentials which were revoked before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub revocation_date_before: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -365,13 +406,13 @@ pub(crate) struct CredentialRevocationCheckRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into, IntoParams)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(SuspendCredentialRequestDTO)]
 pub(crate) struct SuspendCredentialRequestRestDTO {
-    /// Specify the time when the credential will reactivate, or pass `{}` for an indefinite suspension.
+    /// Specify the time when the credential will reactivate, or omit for an indefinite suspension.
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 

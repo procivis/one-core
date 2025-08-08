@@ -4,6 +4,7 @@ use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
+use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
@@ -886,4 +887,132 @@ async fn test_get_list_credential_filter_by_profile() {
     assert_eq!(credentials["totalItems"], 0);
     assert_eq!(credentials["totalPages"], 0);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn test_get_list_credential_filter_by_date() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let accepted_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    let _pending_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    let revoked_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Revoked,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    let pivot_date = accepted_credential.created_date;
+
+    // matches all credentials
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(Filters {
+                created_date_after: Some(pivot_date - Duration::seconds(20)),
+                created_date_before: Some(pivot_date + Duration::seconds(20)),
+                last_modified_after: Some(pivot_date - Duration::seconds(20)),
+                last_modified_before: Some(pivot_date + Duration::seconds(20)),
+                ..Default::default()
+            }),
+            None,
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+    assert_eq!(credentials["totalItems"], 3);
+
+    // matches only issued
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(Filters {
+                issuance_date_after: Some(pivot_date - Duration::seconds(20)),
+                issuance_date_before: Some(pivot_date + Duration::seconds(20)),
+                ..Default::default()
+            }),
+            None,
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+    assert_eq!(credentials["totalItems"], 1);
+    assert_eq!(
+        credentials["values"][0]["id"],
+        accepted_credential.id.to_string()
+    );
+
+    // matches only revoked
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(Filters {
+                revocation_date_after: Some(pivot_date - Duration::seconds(20)),
+                revocation_date_before: Some(pivot_date + Duration::seconds(20)),
+                ..Default::default()
+            }),
+            None,
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+    assert_eq!(credentials["totalItems"], 1);
+    assert_eq!(
+        credentials["values"][0]["id"],
+        revoked_credential.id.to_string()
+    );
 }
