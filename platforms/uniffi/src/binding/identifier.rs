@@ -5,7 +5,9 @@ use one_core::model::identifier::{
     IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
     SortableIdentifierColumn,
 };
-use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterValue, StringMatch, StringMatchType, ValueComparison,
+};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::certificate::dto::{
     CertificateResponseDTO, CertificateX509AttributesDTO, CertificateX509ExtensionDTO,
@@ -25,6 +27,7 @@ use one_dto_mapper::{
 use super::common::SortDirection;
 use super::did::{DidTypeBindingEnum, KeyRoleBindingEnum};
 use crate::OneCoreBinding;
+use crate::binding::mapper::deserialize_timestamp;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
 
@@ -92,6 +95,44 @@ impl OneCoreBinding {
 
             let key_storages = query.key_storages.map(IdentifierFilterValue::KeyStorages);
 
+            let created_date_after = query
+                .created_date_after
+                .map(|date| {
+                    Ok::<_, BindingError>(IdentifierFilterValue::CreatedDate(ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+            let created_date_before = query
+                .created_date_before
+                .map(|date| {
+                    Ok::<_, BindingError>(IdentifierFilterValue::CreatedDate(ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+
+            let last_modified_after = query
+                .last_modified_after
+                .map(|date| {
+                    Ok::<_, BindingError>(IdentifierFilterValue::LastModified(ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+            let last_modified_before = query
+                .last_modified_before
+                .map(|date| {
+                    Ok::<_, BindingError>(IdentifierFilterValue::LastModified(ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+
             organisation
                 & name
                 & types
@@ -101,6 +142,10 @@ impl OneCoreBinding {
                 & key_algorithms
                 & key_roles
                 & key_storages
+                & created_date_after
+                & created_date_before
+                & last_modified_after
+                & last_modified_before
         };
 
         let sorting = query.sort.map(|sort| ListSorting {
@@ -326,6 +371,11 @@ pub struct IdentifierListQueryBindingDTO {
     pub key_algorithms: Option<Vec<String>>,
     pub key_roles: Option<Vec<KeyRoleBindingEnum>>,
     pub key_storages: Option<Vec<String>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]

@@ -1,17 +1,17 @@
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistoryFilterValue, HistoryListQuery, HistorySearchEnum,
 };
-use one_core::model::list_filter::{ComparisonType, ListFilterCondition, ValueComparison};
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
+};
 use one_core::model::list_query::ListPagination;
-use one_core::service::error::ServiceError;
 use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 
 use super::backup::UnexportableEntitiesBindingDTO;
 use crate::OneCoreBinding;
+use crate::binding::mapper::deserialize_timestamp;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
@@ -39,74 +39,60 @@ impl OneCoreBinding {
 
         let organisation_id = into_id(&query.organisation_id)?;
 
-        let mut conditions = vec![ListFilterCondition::Value(
-            HistoryFilterValue::OrganisationId(organisation_id),
-        )];
+        let mut conditions = vec![HistoryFilterValue::OrganisationId(organisation_id).condition()];
 
         if let Some(value) = query.entity_id {
-            conditions.push(ListFilterCondition::Value(HistoryFilterValue::EntityId(
-                into_id(&value)?,
-            )));
+            conditions.push(HistoryFilterValue::EntityId(into_id(&value)?).condition());
         }
         if let Some(value) = query.entity_types {
-            conditions.push(ListFilterCondition::Value(HistoryFilterValue::EntityTypes(
-                value
-                    .into_iter()
-                    .map(|entity_type| entity_type.into())
-                    .collect(),
-            )));
+            conditions.push(
+                HistoryFilterValue::EntityTypes(
+                    value
+                        .into_iter()
+                        .map(|entity_type| entity_type.into())
+                        .collect(),
+                )
+                .condition(),
+            );
         }
         if let Some(values) = query.actions {
-            conditions.push(ListFilterCondition::Value(HistoryFilterValue::Actions(
-                convert_inner(values),
-            )));
+            conditions.push(HistoryFilterValue::Actions(convert_inner(values)).condition());
         }
         if let Some(value) = query.identifier_id {
-            conditions.push(ListFilterCondition::Value(
-                HistoryFilterValue::IdentifierId(into_id(&value)?),
-            ));
+            conditions.push(HistoryFilterValue::IdentifierId(into_id(&value)?).condition());
         }
-        if let Some(value) = query.created_date_from {
-            let created_date_from = deserialize_timestamp(&value)
-                .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
-            conditions.push(ListFilterCondition::Value(HistoryFilterValue::CreatedDate(
-                ValueComparison {
+        if let Some(value) = query.created_date_after {
+            conditions.push(
+                HistoryFilterValue::CreatedDate(ValueComparison {
                     comparison: ComparisonType::GreaterThanOrEqual,
-                    value: created_date_from,
-                },
-            )));
+                    value: deserialize_timestamp(&value)?,
+                })
+                .condition(),
+            );
         }
-        if let Some(value) = query.created_date_to {
-            let created_date_to = deserialize_timestamp(&value)
-                .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
-            conditions.push(ListFilterCondition::Value(HistoryFilterValue::CreatedDate(
-                ValueComparison {
+        if let Some(value) = query.created_date_before {
+            conditions.push(
+                HistoryFilterValue::CreatedDate(ValueComparison {
                     comparison: ComparisonType::LessThanOrEqual,
-                    value: created_date_to,
-                },
-            )));
+                    value: deserialize_timestamp(&value)?,
+                })
+                .condition(),
+            );
         }
         if let Some(value) = query.credential_id {
-            conditions.push(ListFilterCondition::Value(
-                HistoryFilterValue::CredentialId(into_id(&value)?),
-            ));
+            conditions.push(HistoryFilterValue::CredentialId(into_id(&value)?).condition());
         }
         if let Some(value) = query.credential_schema_id {
-            conditions.push(ListFilterCondition::Value(
-                HistoryFilterValue::CredentialSchemaId(into_id(&value)?),
-            ));
+            conditions.push(HistoryFilterValue::CredentialSchemaId(into_id(&value)?).condition());
         }
 
         if let Some(value) = query.search {
-            conditions.push(ListFilterCondition::Value(search_query_to_filter_value(
-                value,
-            )));
+            conditions.push(search_query_to_filter_value(value).condition());
         }
 
         if let Some(proof_schema_id) = query.proof_schema_id {
-            conditions.push(ListFilterCondition::Value(
-                HistoryFilterValue::ProofSchemaId(into_id(&proof_schema_id)?),
-            ));
+            conditions
+                .push(HistoryFilterValue::ProofSchemaId(into_id(&proof_schema_id)?).condition());
         }
 
         Ok(core
@@ -210,8 +196,8 @@ pub struct HistoryListQueryBindingDTO {
     pub entity_id: Option<String>,
     pub entity_types: Option<Vec<HistoryEntityTypeBindingEnum>>,
     pub actions: Option<Vec<HistoryActionBindingEnum>>,
-    pub created_date_from: Option<String>,
-    pub created_date_to: Option<String>,
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
     pub identifier_id: Option<String>,
     pub credential_id: Option<String>,
     pub credential_schema_id: Option<String>,
@@ -245,10 +231,6 @@ pub enum HistorySearchEnumBindingEnum {
 pub struct HistorySearchBindingDTO {
     pub text: String,
     pub r#type: Option<HistorySearchEnumBindingEnum>,
-}
-
-fn deserialize_timestamp(value: &str) -> Result<OffsetDateTime, time::error::Parse> {
-    OffsetDateTime::parse(value, &Rfc3339)
 }
 
 fn search_query_to_filter_value(value: HistorySearchBindingDTO) -> HistoryFilterValue {

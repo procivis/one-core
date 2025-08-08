@@ -116,6 +116,11 @@ pub struct ListTrustAnchorsFiltersBindings {
     pub r#type: Option<String>,
 
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnBindings>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

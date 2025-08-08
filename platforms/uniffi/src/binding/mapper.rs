@@ -1,5 +1,6 @@
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::GetProofSchemaQuery;
@@ -406,8 +407,51 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
             })
         });
 
-        let filtering =
-            ListFilterCondition::<TrustAnchorFilterValue>::from(name) & is_publisher & r#type;
+        let created_date_after = value
+            .created_date_after
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustAnchorFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let created_date_before = value
+            .created_date_before
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustAnchorFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let last_modified_after = value
+            .last_modified_after
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustAnchorFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let last_modified_before = value
+            .last_modified_before
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustAnchorFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let filtering = ListFilterCondition::<TrustAnchorFilterValue>::from(name)
+            & is_publisher
+            & r#type
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before;
 
         Ok(Self {
             pagination: Some(ListPagination {
@@ -468,12 +512,54 @@ impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
             .entity_key
             .map(|k| TrustEntityFilterValue::EntityKey(TrustEntityKey::from(k)));
 
+        let created_date_after = value
+            .created_date_after
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustEntityFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let created_date_before = value
+            .created_date_before
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustEntityFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let last_modified_after = value
+            .last_modified_after
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustEntityFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let last_modified_before = value
+            .last_modified_before
+            .map(|date| {
+                Ok::<_, ServiceError>(TrustEntityFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
         let filtering = ListFilterCondition::<TrustEntityFilterValue>::from(name)
             & role
             & trust_anchor
             & organisation_id
             & types
-            & entity_key;
+            & entity_key
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before;
 
         Ok(Self {
             pagination: Some(ListPagination {
@@ -517,7 +603,52 @@ impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQuery {
 
         let formats = value.formats.map(ProofSchemaFilterValue::Formats);
 
-        let filtering = organisation_id & name & proof_schema_ids & formats;
+        let created_date_after = value
+            .created_date_after
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofSchemaFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let created_date_before = value
+            .created_date_before
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofSchemaFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let last_modified_after = value
+            .last_modified_after
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofSchemaFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let last_modified_before = value
+            .last_modified_before
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofSchemaFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let filtering = organisation_id
+            & name
+            & proof_schema_ids
+            & formats
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before;
 
         Ok(Self {
             pagination: Some(ListPagination {
@@ -580,13 +711,97 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
             })
         });
 
+        let created_date_after = value
+            .created_date_after
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let created_date_before = value
+            .created_date_before
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let last_modified_after = value
+            .last_modified_after
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let last_modified_before = value
+            .last_modified_before
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let requested_date_after = value
+            .requested_date_after
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::RequestedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let requested_date_before = value
+            .requested_date_before
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::RequestedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
+        let completed_date_after = value
+            .completed_date_after
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::CompletedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+        let completed_date_before = value
+            .completed_date_before
+            .map(|date| {
+                Ok::<_, ServiceError>(ProofFilterValue::CompletedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&date)?,
+                }))
+            })
+            .transpose()?;
+
         let filtering = organisation_id
             & name
             & proof_states
             & proof_roles
             & proof_schema_ids
             & proof_ids
-            & profile;
+            & profile
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
+            & requested_date_after
+            & requested_date_before
+            & completed_date_after
+            & completed_date_before;
 
         Ok({
             Self {
@@ -687,11 +902,16 @@ impl TryFrom<OptionalString> for Option<TrustListLogo> {
     }
 }
 
-pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
+pub(crate) fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
     value.as_ref().map(TimestampFormat::format_timestamp)
 }
 
-pub fn optional_identifier_id_string(
+pub(crate) fn deserialize_timestamp(value: &str) -> Result<OffsetDateTime, ServiceError> {
+    OffsetDateTime::parse(value, &time::format_description::well_known::Rfc3339)
+        .map_err(|e| ServiceError::ValidationError(e.to_string()))
+}
+
+pub(crate) fn optional_identifier_id_string(
     value: Option<GetIdentifierListItemResponseDTO>,
 ) -> Option<String> {
     value.map(|inner| inner.id.to_string())

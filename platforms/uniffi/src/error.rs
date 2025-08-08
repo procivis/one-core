@@ -43,7 +43,7 @@ pub struct Cause {
 }
 
 impl Cause {
-    pub fn with_message_from_error(error: &impl std::error::Error) -> Cause {
+    pub(crate) fn with_message_from_error(error: &impl std::error::Error) -> Cause {
         Cause {
             message: error.to_string(),
         }
@@ -63,7 +63,8 @@ impl<T: Into<ErrorResponseBindingDTO>> From<T> for BindingError {
 }
 
 impl ErrorResponseBindingDTO {
-    pub fn hide_cause(mut self, hide: bool) -> ErrorResponseBindingDTO {
+    #[allow(dead_code)]
+    pub(crate) fn hide_cause(mut self, hide: bool) -> ErrorResponseBindingDTO {
         if hide {
             self.cause = None;
         }

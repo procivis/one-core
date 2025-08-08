@@ -319,6 +319,11 @@ pub struct ListProofSchemasFiltersBindingDTO {
     pub exact: Option<Vec<ProofSchemaListQueryExactColumnBinding>>,
     pub ids: Option<Vec<String>>,
     pub formats: Option<Vec<String>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]

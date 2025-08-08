@@ -1,7 +1,8 @@
 use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::{
@@ -15,6 +16,7 @@ use super::common::SortDirection;
 use super::credential_schema::CredentialSchemaBindingDTO;
 use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCoreBinding;
+use crate::binding::mapper::deserialize_timestamp;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
@@ -129,7 +131,96 @@ impl OneCoreBinding {
                 )
             });
 
-            search_filters & name & role & ids & states & profile
+            let created_date_after = query
+                .created_date_after
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::CreatedDate(ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+            let created_date_before = query
+                .created_date_before
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::CreatedDate(ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+
+            let last_modified_after = query
+                .last_modified_after
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::LastModified(ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+            let last_modified_before = query
+                .last_modified_before
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::LastModified(ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+
+            let issuance_date_after = query
+                .issuance_date_after
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::IssuanceDate(ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+            let issuance_date_before = query
+                .issuance_date_before
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::IssuanceDate(ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+
+            let revocation_date_after = query
+                .revocation_date_after
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::RevocationDate(ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+            let revocation_date_before = query
+                .revocation_date_before
+                .map(|date| {
+                    Ok::<_, ServiceError>(CredentialFilterValue::RevocationDate(ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: deserialize_timestamp(&date)?,
+                    }))
+                })
+                .transpose()?;
+
+            search_filters
+                & name
+                & role
+                & ids
+                & states
+                & profile
+                & created_date_after
+                & created_date_before
+                & last_modified_after
+                & last_modified_before
+                & issuance_date_after
+                & issuance_date_before
+                & revocation_date_after
+                & revocation_date_before
         };
 
         Ok(core
@@ -221,6 +312,15 @@ pub struct CredentialListQueryBindingDTO {
     pub ids: Option<Vec<String>>,
     pub status: Option<Vec<CredentialStateBindingEnum>>,
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
+    pub issuance_date_after: Option<String>,
+    pub issuance_date_before: Option<String>,
+    pub revocation_date_after: Option<String>,
+    pub revocation_date_before: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]

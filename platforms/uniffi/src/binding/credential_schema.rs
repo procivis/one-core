@@ -2,7 +2,8 @@ use one_core::model::credential_schema::{
     LayoutType, SortableCredentialSchemaColumn, WalletStorageTypeEnum,
 };
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential_schema::dto::{
@@ -21,6 +22,7 @@ use shared_types::CredentialSchemaId;
 
 use super::OneCoreBinding;
 use super::common::SortDirection;
+use crate::binding::mapper::deserialize_timestamp;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
@@ -94,6 +96,43 @@ impl OneCoreBinding {
         if let Some(ids) = query.ids {
             let ids = ids.iter().map(into_id).collect::<Result<_, _>>()?;
             conditions.push(CredentialSchemaFilterValue::CredentialSchemaIds(ids).condition());
+        }
+
+        if let Some(value) = query.created_date_after {
+            conditions.push(
+                CredentialSchemaFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&value)?,
+                })
+                .condition(),
+            );
+        }
+        if let Some(value) = query.created_date_before {
+            conditions.push(
+                CredentialSchemaFilterValue::CreatedDate(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&value)?,
+                })
+                .condition(),
+            );
+        }
+        if let Some(value) = query.last_modified_after {
+            conditions.push(
+                CredentialSchemaFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: deserialize_timestamp(&value)?,
+                })
+                .condition(),
+            );
+        }
+        if let Some(value) = query.last_modified_before {
+            conditions.push(
+                CredentialSchemaFilterValue::LastModified(ValueComparison {
+                    comparison: ComparisonType::LessThanOrEqual,
+                    value: deserialize_timestamp(&value)?,
+                })
+                .condition(),
+            );
         }
 
         let core = self.use_core().await?;
@@ -221,6 +260,11 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
     pub schema_id: Option<String>,
     pub formats: Option<Vec<String>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, uniffi::Enum)]

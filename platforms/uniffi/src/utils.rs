@@ -19,24 +19,24 @@ impl TimestampFormat for OffsetDateTime {
     }
 }
 
-pub fn format_timestamp_opt(datetime: Option<OffsetDateTime>) -> Option<String> {
+pub(crate) fn format_timestamp_opt(datetime: Option<OffsetDateTime>) -> Option<String> {
     datetime.as_ref().map(OffsetDateTime::format_timestamp)
 }
 
-pub fn from_id_opt<T: Into<Uuid>>(input: Option<T>) -> Option<String> {
+pub(crate) fn from_id_opt<T: Into<Uuid>>(input: Option<T>) -> Option<String> {
     input.map(|f| f.into().to_string())
 }
 
-pub fn into_id<T: From<Uuid>>(input: impl AsRef<str>) -> Result<T, ServiceError> {
+pub(crate) fn into_id<T: From<Uuid>>(input: impl AsRef<str>) -> Result<T, ServiceError> {
     Uuid::parse_str(input.as_ref())
         .map_err(Into::into)
         .map(Into::into)
 }
 
-pub fn into_id_opt<T: From<Uuid>>(input: Option<String>) -> Result<Option<T>, ServiceError> {
+pub(crate) fn into_id_opt<T: From<Uuid>>(input: Option<String>) -> Result<Option<T>, ServiceError> {
     input.as_deref().map(into_id::<T>).transpose()
 }
 
-pub fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
+pub(crate) fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
     OffsetDateTime::parse(input, &Rfc3339).map_err(|e| ServiceError::MappingError(e.to_string()))
 }

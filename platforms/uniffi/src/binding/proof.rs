@@ -221,6 +221,15 @@ pub struct ProofListQueryBindingDTO {
     pub proof_roles: Option<Vec<ProofRoleBindingEnum>>,
     pub proof_schema_ids: Option<Vec<String>>,
     pub exact: Option<Vec<ProofListQueryExactColumnBindingEnum>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
+    pub requested_date_after: Option<String>,
+    pub requested_date_before: Option<String>,
+    pub completed_date_after: Option<String>,
+    pub completed_date_before: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

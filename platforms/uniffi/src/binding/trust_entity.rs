@@ -164,11 +164,15 @@ pub struct ListTrustEntitiesFiltersBindings {
     pub trust_anchor: Option<String>,
     pub did_id: Option<String>,
     pub organisation_id: Option<String>,
-
     pub r#type: Option<Vec<TrustEntityTypeBindingEnum>>,
     pub entity_key: Option<String>,
 
     pub exact: Option<Vec<ExactTrustEntityFilterColumnBindings>>,
+
+    pub created_date_after: Option<String>,
+    pub created_date_before: Option<String>,
+    pub last_modified_after: Option<String>,
+    pub last_modified_before: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
