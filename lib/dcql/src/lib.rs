@@ -39,10 +39,6 @@ pub struct CredentialSet {
 pub struct CredentialQueryId(String);
 
 /// Credential query structure
-///
-/// The following fields defined in the specification are not supported
-/// - trusted_authorities
-/// - require_cryptographic_holder_binding
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 #[builder(start_fn(vis = ""))]
 pub struct CredentialQuery {
@@ -61,6 +57,12 @@ pub struct CredentialQuery {
     #[builder(default = false, setters(vis = "", name = "set_multiple_internal"))]
     #[serde(default)]
     pub multiple: bool,
+    #[builder(
+        default = true,
+        setters(vis = "", name = "set_require_cryptographic_holder_binding_internal")
+    )]
+    #[serde(default = "default_true")]
+    pub require_cryptographic_holder_binding: bool,
 }
 
 fn default_true() -> bool {
@@ -920,5 +922,63 @@ mod tests {
             let result = serde_json::from_value::<DcqlQuery>(json);
             assert!(result.is_err());
         }
+    }
+    #[test]
+    fn test_dcql_require_cryptographic_holder_binding_builder() {
+        let holder_binding_query_default = json!({
+            "credentials": [
+                {
+                    "id": "my_credential",
+                    "format": "mso_mdoc",
+                    "meta": {
+                        "doctype_value": "org.iso.7367.1.mVRC"
+                    }
+                }
+            ]
+        });
+
+        let holder_binding_query_false = json!({
+            "credentials": [
+                {
+                    "id": "my_credential",
+                    "format": "mso_mdoc",
+                    "meta": {
+                        "doctype_value": "org.iso.7367.1.mVRC"
+                    },
+                    "require_cryptographic_holder_binding": false
+                }
+            ]
+        });
+
+        let holder_binding_query_true = json!({
+            "credentials": [
+                {
+                    "id": "my_credential",
+                    "format": "mso_mdoc",
+                    "meta": {
+                        "doctype_value": "org.iso.7367.1.mVRC"
+                    },
+                    "require_cryptographic_holder_binding": true
+                }
+            ]
+        });
+
+        let query: DcqlQuery = serde_json::from_value(holder_binding_query_default).unwrap();
+        assert_eq!(
+            query.credentials[0].require_cryptographic_holder_binding,
+            true
+        );
+
+        let query: DcqlQuery = serde_json::from_value(holder_binding_query_false).unwrap();
+        assert_eq!(
+            query.credentials[0].require_cryptographic_holder_binding,
+            false
+        );
+
+        let query: DcqlQuery = serde_json::from_value(holder_binding_query_true).unwrap();
+        assert_eq!(
+            query.credentials[0].require_cryptographic_holder_binding,
+            true
+        );
     }
 }

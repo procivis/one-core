@@ -200,6 +200,7 @@ async fn test_share_proof_dcql_jwt_success() {
                 "format": "jwt_vc_json",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "type_values": [
                         [
@@ -339,6 +340,7 @@ async fn test_share_proof_dcql_mdoc_success() {
                 "format": "mso_mdoc",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "doctype_value": "org.iso.18013.5.1.mDL"
                 }
@@ -442,6 +444,7 @@ async fn test_share_proof_dcql_jsonld_success() {
                 "format": "ldp_vc",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "type_values": [
                         [
@@ -550,6 +553,7 @@ async fn test_share_proof_dcql_jsonld_bbs_success() {
                 "format": "ldp_vc",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "type_values": [
                         [
@@ -658,6 +662,7 @@ async fn test_share_proof_dcql_sd_jwt_success() {
                 "format": "vc+sd-jwt",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "type_values": [
                         [
@@ -766,6 +771,7 @@ async fn test_share_proof_dcql_sd_jwt_vc_success() {
                 "format": "dc+sd-jwt",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "vct_values": [credential_schema.schema_id.clone()]
                 }
@@ -856,6 +862,7 @@ async fn test_share_proof_dcql_nested_object_with_array_success() {
                 "format": "jwt_vc_json",
                 "id": credential_schema.id,
                 "multiple": false,
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "type_values": [
                         [

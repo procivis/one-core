@@ -51,6 +51,7 @@ async fn test_direct_post_draft25_with_dcql_query() {
         "credentials": [{
             "id": credential_schema.id.to_string(),
             "format": "jwt_vc_json",
+            "require_cryptographic_holder_binding": true,
             "meta": {
                 "type_values": [[
                     "https://www.w3.org/2018/credentials#VerifiableCredential",
@@ -208,6 +209,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         "credentials": [{
             "id": credential_schema.id.to_string(),
             "format": "jwt_vc_json",
+            "require_cryptographic_holder_binding": true,
             "meta": {
                 "type_values": [[
                     "https://www.w3.org/2018/credentials#VerifiableCredential",

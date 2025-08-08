@@ -48,6 +48,18 @@ where
     }
 }
 
+impl<S: credential_query_builder::State> CredentialQueryBuilder<S>
+where
+    S::RequireCryptographicHolderBinding: credential_query_builder::IsUnset,
+{
+    pub fn without_holder_binding(
+        self,
+    ) -> CredentialQueryBuilder<credential_query_builder::SetRequireCryptographicHolderBinding<S>>
+    {
+        self.set_require_cryptographic_holder_binding_internal(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
@@ -283,5 +295,24 @@ mod tests {
         assert!(matches!(ta[1], TrustedAuthority::OpenidFederation { .. }));
         assert!(matches!(ta[2], TrustedAuthority::AuthorityKeyId { .. }));
         assert!(matches!(ta[3], TrustedAuthority::Custom { .. }));
+    }
+
+    #[test]
+    fn test_withoug_holder_binding_builder() {
+        let credential = CredentialQuery::jwt_vc(vec![vec!["IDCredential".to_string()]])
+            .id("no_chb")
+            .without_holder_binding()
+            .build();
+
+        assert_eq!(credential.require_cryptographic_holder_binding, false);
+    }
+
+    #[test]
+    fn test_withoug_holder_binding_builder_default() {
+        let credential = CredentialQuery::jwt_vc(vec![vec!["IDCredential".to_string()]])
+            .id("no_chb")
+            .build();
+
+        assert_eq!(credential.require_cryptographic_holder_binding, true);
     }
 }

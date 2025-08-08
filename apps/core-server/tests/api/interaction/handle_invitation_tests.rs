@@ -1222,6 +1222,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
             {
                 "id": "my_credential",
                 "format": "dc+sd-jwt",
+                "require_cryptographic_holder_binding": true,
                 "meta": {
                     "vct_values": [
                         "https://credentials.example.com/identity_credential"
