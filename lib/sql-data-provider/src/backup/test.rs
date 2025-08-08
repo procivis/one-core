@@ -111,7 +111,7 @@ async fn insert_credential_to_database(
             Uuid::new_v4().into(),
             claim_schema_id,
             credential_id,
-            vec![255],
+            Some(vec![255]),
             "name".to_owned(),
         )],
     )

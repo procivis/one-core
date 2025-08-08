@@ -806,7 +806,7 @@ fn dummy_credential() -> Credential {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            value: "claim value".to_string(),
+            value: Some("claim value".to_string()),
             path: "key".to_string(),
             schema: Some(ClaimSchema {
                 id: claim_schema_id,

@@ -8,8 +8,7 @@ use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
 use shared_types::{
-    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId,
-    ProofSchemaId,
+    ClaimId, CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -198,11 +197,11 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .unwrap();
 
     let claim_value = "claim_value";
-    let claims: Vec<(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>, String)> = vec![(
+    let claims = vec![(
         Uuid::new_v4().into(),
         new_claim_schemas[0].id,
         credential.id,
-        claim_value.as_bytes().to_vec(),
+        Some(claim_value.as_bytes().to_vec()),
         new_claim_schemas[0].key.to_string(),
     )];
     insert_many_claims_to_database(&db, claims.as_slice())

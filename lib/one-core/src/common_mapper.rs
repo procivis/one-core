@@ -463,7 +463,7 @@ pub(crate) fn value_to_model_claims(
                 credential_id,
                 created_date: now,
                 last_modified: now,
-                value,
+                value: Some(value),
                 path: path.to_owned(),
                 schema: Some(claim_schema.to_owned()),
             });
@@ -975,7 +975,7 @@ mod tests {
         let claims = credential.claims.unwrap();
         assert_eq!(claims.len(), 1);
         assert_eq!(claims[0].schema.as_ref().unwrap(), &element_claim_schema);
-        assert_eq!(claims[0].value, "Test");
+        assert_eq!(claims[0].value, Some("Test".to_string()));
         assert_eq!(credential.issuance_date, Some(issuance_date));
     }
 }

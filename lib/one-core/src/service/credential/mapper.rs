@@ -231,15 +231,22 @@ fn claim_to_dto(
     claim_schema: &CredentialSchemaClaim,
     config: &CoreConfig,
 ) -> Result<DetailCredentialClaimResponseDTO, ServiceError> {
+    let claim_value = claim
+        .value
+        .as_ref()
+        .ok_or(ServiceError::MappingError(format!(
+            "Missing value on leaf claim: {}",
+            claim.id
+        )))?;
     let value = match config
         .datatype
         .get_fields(&claim_schema.schema.data_type)?
         .r#type
     {
         DatatypeType::Number => {
-            if let Ok(number) = claim.value.parse::<i64>() {
+            if let Ok(number) = claim_value.parse::<i64>() {
                 DetailCredentialClaimValueResponseDTO::Integer(number)
-            } else if let Ok(float) = claim.value.parse::<f64>() {
+            } else if let Ok(float) = claim_value.parse::<f64>() {
                 DetailCredentialClaimValueResponseDTO::Float(float)
             } else {
                 // Fallback to empty string
@@ -247,14 +254,14 @@ fn claim_to_dto(
             }
         }
         DatatypeType::Boolean => {
-            if let Ok(bool) = claim.value.parse::<bool>() {
+            if let Ok(bool) = claim_value.parse::<bool>() {
                 DetailCredentialClaimValueResponseDTO::Boolean(bool)
             } else {
                 // Fallback to empty string
                 DetailCredentialClaimValueResponseDTO::String(String::new())
             }
         }
-        _ => DetailCredentialClaimValueResponseDTO::String(claim.value.to_owned()),
+        _ => DetailCredentialClaimValueResponseDTO::String(claim_value.to_owned()),
     };
 
     Ok(DetailCredentialClaimResponseDTO {
@@ -366,7 +373,7 @@ pub(super) fn claims_from_create_request(
                 credential_id,
                 created_date: now,
                 last_modified: now,
-                value: claim.value,
+                value: Some(claim.value),
                 path: claim.path,
                 schema: Some(schema.schema.clone()),
             })

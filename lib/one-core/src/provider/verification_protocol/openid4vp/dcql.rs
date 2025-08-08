@@ -390,7 +390,11 @@ fn matching_claim_path(
         .collect::<Vec<_>>();
     if claims.iter().any(|claim| {
         claim.path.starts_with(&path_prefix)
-            && (values_filter.is_empty() || values_filter.contains(&claim.value))
+            && (values_filter.is_empty()
+                || claim
+                    .value
+                    .as_ref()
+                    .is_some_and(|value| values_filter.contains(value)))
     }) {
         Some(path_prefix)
     } else {

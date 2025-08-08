@@ -268,7 +268,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             credential_id,
             created_date: now,
             last_modified: now,
-            value: "123".to_string(),
+            value: Some("123".to_string()),
             path: claim_schema.key.to_owned(),
             schema: Some(claim_schema.clone()),
         }]),
@@ -2018,14 +2018,8 @@ fn test_extract_offered_claims_success_missing_optional_object() {
         .map(|v| (v.path, v.value))
         .collect::<HashMap<_, _>>();
 
-    assert_eq!(
-        *claim_keys["First Name"].value.as_ref().unwrap(),
-        result["First Name"]
-    );
-    assert_eq!(
-        *claim_keys["Last Name"].value.as_ref().unwrap(),
-        result["Last Name"]
-    );
+    assert_eq!(claim_keys["First Name"].value, result["First Name"]);
+    assert_eq!(claim_keys["Last Name"].value, result["Last Name"]);
 }
 
 #[test]
@@ -2142,10 +2136,7 @@ fn test_extract_offered_claims_success_object_array() {
     assert_eq!(10, result.len());
 
     for claim in result {
-        assert_eq!(
-            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
-            claim.value
-        )
+        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
     }
 }
 
@@ -2188,10 +2179,7 @@ fn test_extract_offered_claims_success_optional_array_missing() {
     assert_eq!(4, result.len());
 
     for claim in result {
-        assert_eq!(
-            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
-            claim.value
-        )
+        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
     }
 }
 
@@ -2313,10 +2301,7 @@ fn test_extract_offered_claims_opt_object_opt_obj_present() {
     assert_eq!(2, result.len());
 
     for claim in result {
-        assert_eq!(
-            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
-            claim.value
-        )
+        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
     }
 }
 
@@ -2336,10 +2321,7 @@ fn test_extract_offered_claims_opt_object_opt_obj_missing() {
     assert_eq!(1, result.len());
 
     for claim in result {
-        assert_eq!(
-            *claim_keys[claim.path.as_str()].value.as_ref().unwrap(),
-            claim.value
-        )
+        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
     }
 }
 

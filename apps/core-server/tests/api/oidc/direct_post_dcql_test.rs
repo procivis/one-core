@@ -186,7 +186,9 @@ async fn test_direct_post_draft25_with_dcql_query() {
             .all(|required_claim| claims
                 .iter()
                 // Values are just keys uppercase
-                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+                .any(
+                    |db_claim| db_claim.claim.value == Some(required_claim.1.to_ascii_uppercase())
+                ))
     );
 
     let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;

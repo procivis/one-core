@@ -660,7 +660,7 @@ pub async fn create_credential(
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            value: "test".to_string(),
+            value: Some("test".to_string()),
             schema: Some(claim_schema.schema.to_owned()),
             path: claim_schema.schema.key.clone(),
         })

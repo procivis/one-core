@@ -209,7 +209,9 @@ async fn test_direct_post_one_credential_correct() {
             .all(|required_claim| claims
                 .iter()
                 // Values are just keys uppercase
-                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+                .any(
+                    |db_claim| db_claim.claim.value == Some(required_claim.1.to_ascii_uppercase())
+                ))
     );
 
     let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;
@@ -663,7 +665,7 @@ async fn test_direct_post_multiple_presentations() {
         .claims
         .unwrap()
         .into_iter()
-        .map(|c| c.claim.value)
+        .map(|c| c.claim.value.unwrap())
         .collect();
 
     assert_eq!(expected_claims, claims);
@@ -998,7 +1000,9 @@ async fn test_direct_post_draft25() {
             .all(|required_claim| claims
                 .iter()
                 // Values are just keys uppercase
-                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+                .any(
+                    |db_claim| db_claim.claim.value == Some(required_claim.1.to_ascii_uppercase())
+                ))
     );
 }
 
@@ -1164,7 +1168,9 @@ async fn test_direct_post_with_profile_verification() {
             .all(|required_claim| claims
                 .iter()
                 // Values are just keys uppercase
-                .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase()))
+                .any(
+                    |db_claim| db_claim.claim.value == Some(required_claim.1.to_ascii_uppercase())
+                ))
     );
 
     assert_eq!(proof.profile, Some(test_profile.to_string()));

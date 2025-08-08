@@ -732,7 +732,7 @@ pub(crate) fn credentials_format(
                         claim.path.clone(),
                         OpenID4VCICredentialValueDetails {
                             value: match claims_with_values {
-                                true => Some(claim.value.clone()),
+                                true => claim.value.clone(),
                                 false => None,
                             },
                             value_type: schema.data_type.clone(),

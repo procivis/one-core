@@ -12,7 +12,7 @@ pub struct Claim {
     pub credential_id: CredentialId, // cannot be a relation, because credential defines a reverse relation already
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub value: String,
+    pub value: Option<String>,
     pub path: String,
 
     // Relations

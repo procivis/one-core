@@ -4,6 +4,7 @@ use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::{DatabaseConnection, EntityTrait, PaginatorTrait, Select};
 use serde::de::{Deserialize, Deserializer, Error, Unexpected};
+use serde_json::Value;
 
 use crate::mapper::to_data_layer_error;
 
@@ -26,6 +27,17 @@ where
             Unexpected::Unsigned(other as u64),
             &"zero or one",
         )),
+    }
+}
+
+pub(super) fn opt_hex<'de, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    match value.iter().flat_map(Value::as_str).next() {
+        None => Ok(None),
+        Some(hex) => hex::decode(hex).map_err(Error::custom).map(Some),
     }
 }
 

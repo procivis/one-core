@@ -36,6 +36,7 @@ use one_core::repository::revocation_list_repository::{
     MockRevocationListRepository, RevocationListRepository,
 };
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
+use one_dto_mapper::convert_inner;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
@@ -316,7 +317,7 @@ async fn test_create_credential_success() {
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            value: "value1".to_string(),
+            value: Some("value1".to_string()),
             path: claim_schema.key.to_string(),
             schema: Some(claim_schema.clone()),
         },
@@ -325,7 +326,7 @@ async fn test_create_credential_success() {
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            value: "value2".to_string(),
+            value: Some("value2".to_string()),
             path: claim_schema.key.to_string(),
             schema: Some(claim_schema),
         },
@@ -468,7 +469,7 @@ async fn test_create_credential_already_exists() {
         credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        value: "value1".to_string(),
+        value: Some("value1".to_string()),
         path: claim_schema.key.to_owned(),
         schema: Some(claim_schema),
     }];
@@ -816,7 +817,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        value: "test_value".to_string(),
+        value: Some("test_value".to_string()),
         path: claim_schema.key.to_owned(),
         schema: Some(claim_schema),
     }];
@@ -828,7 +829,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
                 id: Set(claim.id.into()),
                 credential_id: Set(credential_id),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
-                value: Set(claim.value.to_owned().into()),
+                value: Set(convert_inner(claim.value.to_owned())),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
                 path: Set(claim.path.to_string()),
@@ -919,7 +920,7 @@ async fn test_get_credential_success() {
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            value: "value1".to_string(),
+            value: Some("value1".to_string()),
             path: claim_schema1.key.to_owned(),
             schema: Some(claim_schema1),
         },
@@ -928,7 +929,7 @@ async fn test_get_credential_success() {
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            value: "value2".to_string(),
+            value: Some("value2".to_string()),
             path: claim_schema2.key.to_owned(),
             schema: Some(claim_schema2),
         },
@@ -942,7 +943,7 @@ async fn test_get_credential_success() {
                 id: Set(claim.id.into()),
                 credential_id: Set(credential_id),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
-                value: Set(claim.value.to_owned().into()),
+                value: Set(convert_inner(claim.value.to_owned())),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
                 path: Set(claim.path.to_string()),
@@ -1213,7 +1214,7 @@ async fn test_get_credential_by_claim_id_success() {
         credential_id: credential.id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        value: "value1".to_string(),
+        value: Some("value1".to_string()),
         path: claim_schema.key.clone(),
         schema: Some(claim_schema.clone()),
     };
@@ -1222,7 +1223,7 @@ async fn test_get_credential_by_claim_id_success() {
         id: Set(claim.id.into()),
         credential_id: Set(credential.id),
         claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
-        value: Set(claim.value.as_bytes().to_owned()),
+        value: Set(convert_inner(claim.value.to_owned())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         path: Set(claim.path),

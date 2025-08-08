@@ -140,7 +140,7 @@ async fn test_create_claim_list_success() {
                 .map(|schema| Claim {
                     id: ClaimId::new_v4(),
                     credential_id,
-                    value: "value".to_string(),
+                    value: Some("value".to_string()),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
@@ -178,7 +178,7 @@ async fn test_delete_claims_for_credential() {
                 .map(|schema| Claim {
                     id: ClaimId::new_v4(),
                     credential_id,
-                    value: "value".to_string(),
+                    value: Some("value".to_string()),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
@@ -237,7 +237,7 @@ async fn test_delete_claims_for_credentials() {
                 .map(|schema| Claim {
                     id: ClaimId::new_v4(),
                     credential_id,
-                    value: "value".to_string(),
+                    value: Some("value".to_string()),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
@@ -255,7 +255,7 @@ async fn test_delete_claims_for_credentials() {
                 .map(|schema| Claim {
                     id: ClaimId::new_v4(),
                     credential_id: credential_id_2,
-                    value: "value".to_string(),
+                    value: Some("value".to_string()),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
@@ -293,7 +293,7 @@ async fn test_create_claim_list_missing_schema() {
         .create_claim_list(vec![Claim {
             id: ClaimId::new_v4(),
             credential_id,
-            value: "value".to_string(),
+            value: Some("value".to_string()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             path: String::default(),
@@ -317,7 +317,7 @@ async fn test_get_claim_list() {
         .map(|schema| Claim {
             id: ClaimId::new_v4(),
             credential_id,
-            value: "value".to_string(),
+            value: Some("value".to_string()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             path: schema.key.to_owned(),
@@ -394,7 +394,7 @@ async fn test_get_claim_list_with_relation() {
         .map(|schema| Claim {
             id: ClaimId::new_v4(),
             credential_id,
-            value: "value".to_string(),
+            value: Some("value".to_string()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             path: schema.key.to_owned(),

@@ -237,7 +237,7 @@ fn mdoc_credential() -> Credential {
         credential_id: credential.id.to_owned(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        value: "john".to_string(),
+        value: Some("john".to_string()),
         path: new_claim_schemas[1].key.clone(),
         schema: Some(new_claim_schemas[1].to_owned()),
     }];
@@ -379,7 +379,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
         credential_id: credential.id.to_owned(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        value: "john".to_string(),
+        value: Some("john".to_string()),
         path: new_claim_schemas[1].key.clone(),
         schema: Some(new_claim_schemas[1].to_owned()),
     }];
@@ -444,7 +444,7 @@ fn dummy_credential() -> Credential {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            value: "claim value".to_string(),
+            value: Some("claim value".to_string()),
             path: "key".to_string(),
             schema: Some(ClaimSchema {
                 id: claim_schema_id,

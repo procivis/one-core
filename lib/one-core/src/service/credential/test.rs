@@ -169,7 +169,7 @@ fn generic_credential() -> Credential {
             credential_id,
             created_date: now,
             last_modified: now,
-            value: "123".to_string(),
+            value: Some("123".to_string()),
             path: claim_schema.key.clone(),
             schema: Some(claim_schema.clone()),
         }]),
@@ -810,7 +810,10 @@ async fn test_create_credential_based_on_issuer_did_success() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -910,7 +913,10 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -989,7 +995,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: claims[0].schema.as_ref().unwrap().id.to_owned(),
-                value: claims[0].value.to_owned(),
+                value: claims[0].value.to_owned().unwrap(),
                 path: claims[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -1097,7 +1103,10 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -1205,7 +1214,10 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2139,7 +2151,10 @@ async fn test_create_credential_key_with_issuer_key() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2294,7 +2309,10 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2416,7 +2434,10 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2530,7 +2551,10 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2655,7 +2679,10 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2780,7 +2807,10 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2878,7 +2908,10 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
@@ -2981,7 +3014,10 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
                     .unwrap()
                     .id
                     .to_owned(),
-                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
                 path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: Some("invalid://domain.com".to_string()),
@@ -3755,7 +3791,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         credential_id: credential.id,
         created_date: now,
         last_modified: now,
-        value: "123".to_string(),
+        value: Some("123".to_string()),
         path: location_x_claim_schema.key.clone(),
         schema: Some(location_x_claim_schema.clone()),
     }];
@@ -3811,7 +3847,7 @@ fn generate_claim(
         credential_id,
         created_date: now,
         last_modified: now,
-        value: value.to_string(),
+        value: Some(value.to_string()),
         path: path.to_string(),
         schema: Some(claim_schema.to_owned()),
     }
@@ -5277,7 +5313,7 @@ async fn test_create_credential_array(
                 .iter()
                 .map(|claim| CredentialRequestClaimDTO {
                     claim_schema_id: claim.schema.to_owned().unwrap().id,
-                    value: claim.value.to_owned(),
+                    value: claim.value.to_owned().unwrap(),
                     path: claim.path.to_owned(),
                 })
                 .collect(),

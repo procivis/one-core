@@ -306,13 +306,33 @@ pub(super) async fn get_verifier_proof_detail(
                     parent_proof_claims.push(ProofClaimDTO {
                         schema: input_claim_schema.into(),
                         path: proof_claim.claim.path.clone(),
-                        value: Some(ProofClaimValueDTO::Value(proof_claim.claim.value.clone())),
+                        value: Some(ProofClaimValueDTO::Value(
+                            proof_claim
+                                .claim
+                                .value
+                                .as_ref()
+                                .ok_or(ServiceError::MappingError(format!(
+                                    "Expected proof claim {} to have value",
+                                    proof_claim.claim.id
+                                )))?
+                                .clone(),
+                        )),
                     });
                 }
                 None => proof_input_claims.push(ProofClaimDTO {
                     schema: input_claim_schema.into(),
                     path: proof_claim.claim.path.clone(),
-                    value: Some(ProofClaimValueDTO::Value(proof_claim.claim.value.clone())),
+                    value: Some(ProofClaimValueDTO::Value(
+                        proof_claim
+                            .claim
+                            .value
+                            .as_ref()
+                            .ok_or(ServiceError::MappingError(format!(
+                                "Expected proof claim {} to have value",
+                                proof_claim.claim.id
+                            )))?
+                            .clone(),
+                    )),
                 }),
             };
 
@@ -577,9 +597,11 @@ pub(super) async fn get_holder_proof_detail(
                 claims: vec![],
                 array: claim_schema.array,
             },
-            value: Some(ProofClaimValueDTO::Value(
-                proof_claim.claim.value.to_string(),
-            )),
+            value: proof_claim
+                .claim
+                .value
+                .as_ref()
+                .map(|value| ProofClaimValueDTO::Value(value.to_string())),
             path: proof_claim.claim.path.to_string(),
         };
 

@@ -60,7 +60,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                value: "value".into(),
+                value: Some("value".to_string()),
                 path: "key".into(),
                 schema: Some(ClaimSchema {
                     id: claim_schema_id,

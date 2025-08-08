@@ -3,6 +3,8 @@ use serde::Deserialize;
 use shared_types::{ClaimId, ClaimSchemaId, CredentialId};
 use time::OffsetDateTime;
 
+use crate::common::opt_hex;
+
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize)]
 #[sea_orm(table_name = "claim")]
 pub struct Model {
@@ -12,9 +14,9 @@ pub struct Model {
     pub claim_schema_id: ClaimSchemaId,
     pub credential_id: CredentialId,
 
-    #[serde(with = "hex::serde")]
+    #[serde(deserialize_with = "opt_hex")]
     #[sea_orm(column_type = "Blob")]
-    pub value: Vec<u8>,
+    pub value: Option<Vec<u8>>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]

@@ -264,7 +264,7 @@ pub(super) fn create_claims_from_credential_definition(
                 credential_id,
                 created_date: now,
                 last_modified: now,
-                value,
+                value: Some(value),
                 path: new_schema_claim.schema.key.to_owned(),
                 schema: Some(new_schema_claim.schema.to_owned()),
             };
@@ -592,7 +592,7 @@ fn visit_nested_field_field(
                     credential_id,
                     created_date: now,
                     last_modified: now,
-                    value,
+                    value: Some(value),
                     path: key.clone(),
                     schema: Some(claim.schema.clone()),
                 });

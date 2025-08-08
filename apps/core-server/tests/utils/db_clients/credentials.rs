@@ -75,7 +75,7 @@ impl CredentialsDB {
                         credential_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
-                        value: new_claim.2.to_owned(),
+                        value: Some(new_claim.2.to_owned()),
                         path: new_claim.1.to_owned(),
                         schema: Some(claim_schema.schema.to_owned()),
                     }
@@ -92,13 +92,13 @@ impl CredentialsDB {
                     credential_id,
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
-                    value: if params.random_claims {
+                    value: Some(if params.random_claims {
                         format!("test:{}", Uuid::new_v4())
                     } else if claim_schema.schema.data_type != "BOOLEAN" {
                         "test".to_string()
                     } else {
                         "true".to_string()
-                    },
+                    }),
                     path: claim_schema.schema.key.clone(),
                     schema: Some(claim_schema.schema.to_owned()),
                 })

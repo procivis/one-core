@@ -286,7 +286,7 @@ fn generic_credential() -> Credential {
             credential_id,
             created_date: now,
             last_modified: now,
-            value: "123".to_string(),
+            value: Some("123".to_string()),
             path: claim_schema.key.clone(),
             schema: Some(claim_schema.clone()),
         }]),

@@ -3,8 +3,8 @@ use std::path::Path;
 
 use anyhow::Context;
 use one_core::repository::error::DataLayerError;
-use sea_orm::sea_query::{Func, QueryStatementBuilder, SimpleExpr};
-use sea_orm::{ColumnTrait, Database, DatabaseConnection, Iden};
+use sea_orm::sea_query::{Expr, Func, QueryStatementBuilder, SimpleExpr};
+use sea_orm::{ColumnTrait, Database, DatabaseConnection, Iden, Value};
 
 use crate::list_query_generic::Hex;
 
@@ -46,9 +46,14 @@ pub fn json_object_columns<T: Iden + ColumnTrait>(
         .into_iter()
         .fold(Func::cust(JsonObject), |state, column| {
             match column.def().get_column_type() {
-                sea_orm::ColumnType::Blob => state
-                    .arg(column.to_string())
-                    .arg(Func::cust(Hex).arg(column.into_expr())),
+                sea_orm::ColumnType::Blob => state.arg(column.to_string()).arg(
+                    // Case statement required because hex(null) is not null but empty string
+                    Expr::case(
+                        column.into_expr().is_not_null(),
+                        Func::cust(Hex).arg(column.into_expr()),
+                    )
+                    .finally(Value::String(None)), // null
+                ),
                 _ => state.arg(column.to_string()).arg(column.into_expr()),
             }
         })

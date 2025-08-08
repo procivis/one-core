@@ -734,7 +734,7 @@ async fn test_submit_proof_repeating_claims() {
                     credential_id,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    value: "claim value".to_string(),
+                    value: Some("claim value".to_string()),
                     path: "claim1".to_string(),
                     schema: Some(ClaimSchema {
                         id: claim_id.into(),

@@ -364,7 +364,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: OffsetDateTime::now_utc(),
             schema: Some(claim_schemas["org.iso.18013.5.1.mDL/name"].schema.clone()),
             path: "org.iso.18013.5.1.mDL/name".to_string(),
-            value: "John".to_string(),
+            value: Some("John".to_string()),
         },
         Claim {
             id: Uuid::new_v4(),
@@ -373,7 +373,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: OffsetDateTime::now_utc(),
             schema: Some(claim_schemas["org.iso.18013.5.1.mDL/age"].schema.clone()),
             path: "org.iso.18013.5.1.mDL/age".to_string(),
-            value: "55".to_string(),
+            value: Some("55".to_string()),
         },
         Claim {
             id: Uuid::new_v4(),
@@ -386,7 +386,7 @@ async fn test_get_presentation_definition_ok() {
                     .clone(),
             ),
             path: "org.iso.18013.5.1.mDL/country".to_string(),
-            value: "Germany".to_string(),
+            value: Some("Germany".to_string()),
         },
         Claim {
             id: Uuid::new_v4(),
@@ -399,7 +399,7 @@ async fn test_get_presentation_definition_ok() {
                     .clone(),
             ),
             path: "org.iso.18013.5.1.mDL/country_code".to_string(),
-            value: "DE".to_string(),
+            value: Some("DE".to_string()),
         },
         Claim {
             id: Uuid::new_v4(),
@@ -412,7 +412,7 @@ async fn test_get_presentation_definition_ok() {
                     .clone(),
             ),
             path: "org.iso.18013.5.1.mDL/info/code".to_string(),
-            value: "ABCDEFG".to_string(),
+            value: Some("ABCDEFG".to_string()),
         },
     ];
 

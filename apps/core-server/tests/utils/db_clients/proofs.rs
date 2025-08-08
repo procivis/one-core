@@ -106,7 +106,7 @@ impl ProofsDB {
                     credential_id: Uuid::default().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
-                    value: "test".to_string(),
+                    value: Some("test".to_string()),
                     path: "test".to_string(),
                     schema: None,
                 },

@@ -119,7 +119,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
             .as_ref()
             .unwrap()
             .iter()
-            .any(|c| c.claim.value == "test")
+            .any(|c| c.claim.value == Some("test".to_string()))
     );
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
@@ -239,7 +239,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
             .as_ref()
             .unwrap()
             .iter()
-            .any(|c| c.claim.value == "test")
+            .any(|c| c.claim.value == Some("test".to_string()))
     );
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
@@ -859,7 +859,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
             .as_ref()
             .unwrap()
             .iter()
-            .any(|c| c.claim.value == "test")
+            .any(|c| c.claim.value == Some("test".to_string()))
     );
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,

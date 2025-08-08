@@ -136,9 +136,16 @@ pub async fn insert_credential_schema_to_database(
     Ok(schema.id)
 }
 
+pub type ClaimList<'a> = &'a [(
+    ClaimId,
+    ClaimSchemaId,
+    CredentialId,
+    Option<Vec<u8>>,
+    String,
+)];
 pub async fn insert_many_claims_to_database(
     database: &DatabaseConnection,
-    claims: &[(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>, String)],
+    claims: ClaimList<'_>,
 ) -> Result<(), DbErr> {
     let models =
         claims.iter().map(

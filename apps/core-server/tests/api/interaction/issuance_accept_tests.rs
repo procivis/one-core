@@ -1900,7 +1900,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
 
     let claim = claims.iter().find(|claim| claim.path == "string").unwrap();
 
-    assert_eq!(claim.value, "string");
+    assert_eq!(claim.value, Some("string".to_string()));
     assert_eq!(claim.schema.as_ref().unwrap().key, "string");
 }
 
@@ -2155,28 +2155,28 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .iter()
         .find(|claim| claim.path == "first name")
         .unwrap();
-    assert_eq!(claim.value, "John");
+    assert_eq!(claim.value, Some("John".to_string()));
     assert_eq!(claim.schema.as_ref().unwrap().key, "first name");
 
     let claim = claims
         .iter()
         .find(|claim| claim.path == "last name")
         .unwrap();
-    assert_eq!(claim.value, "Doe");
+    assert_eq!(claim.value, Some("Doe".to_string()));
     assert_eq!(claim.schema.as_ref().unwrap().key, "last name");
 
     let claim = claims
         .iter()
         .find(|claim| claim.path == "address/postal code")
         .unwrap();
-    assert_eq!(claim.value, "1234");
+    assert_eq!(claim.value, Some("1234".to_string()));
     assert_eq!(claim.schema.as_ref().unwrap().key, "address/postal code");
 
     let claim = claims
         .iter()
         .find(|claim| claim.path == "address/street")
         .unwrap();
-    assert_eq!(claim.value, "Via Torino");
+    assert_eq!(claim.value, Some("Via Torino".to_string()));
     assert_eq!(claim.schema.as_ref().unwrap().key, "address/street");
 }
 
