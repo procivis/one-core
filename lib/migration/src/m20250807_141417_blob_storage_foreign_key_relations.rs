@@ -18,6 +18,7 @@ impl MigrationTrait for Migration {
         match manager.get_database_backend() {
             DbBackend::Postgres => Ok(()),
             DbBackend::MySql => {
+                clear_credential_orphans_blob_ids(manager).await?;
                 manager
                     .alter_table(
                         Table::alter()
@@ -35,6 +36,7 @@ impl MigrationTrait for Migration {
                     )
                     .await?;
 
+                clear_proof_orphans_blob_ids(manager).await?;
                 manager
                     .alter_table(
                         Table::alter()
@@ -55,7 +57,10 @@ impl MigrationTrait for Migration {
                 Ok(())
             }
             DbBackend::Sqlite => {
+                clear_credential_orphans_blob_ids(manager).await?;
                 sqlite_migration_credential(manager).await?;
+
+                clear_proof_orphans_blob_ids(manager).await?;
                 sqlite_migration_proof(manager).await?;
                 Ok(())
             }
@@ -486,6 +491,56 @@ async fn sqlite_migration_proof(manager: &SchemaManager<'_>) -> Result<(), DbErr
         )
         .await?;
     Ok(())
+}
+
+async fn clear_credential_orphans_blob_ids(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    manager
+        .exec_stmt(
+            Query::update()
+                .table(Credential::Table)
+                .value(Credential::CredentialBlobId, Value::String(None))
+                .cond_where(
+                    Condition::all()
+                        .add(
+                            Expr::col((Credential::Table, Credential::CredentialBlobId))
+                                .is_not_null(),
+                        )
+                        .add(
+                            Expr::col((Credential::Table, Credential::CredentialBlobId))
+                                .not_in_subquery(
+                                    Query::select()
+                                        .from(BlobStorage::Table)
+                                        .column(BlobStorage::Id)
+                                        .to_owned(),
+                                ),
+                        ),
+                )
+                .to_owned(),
+        )
+        .await
+}
+
+async fn clear_proof_orphans_blob_ids(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    manager
+        .exec_stmt(
+            Query::update()
+                .table(Proof::Table)
+                .value(Proof::ProofBlobId, Value::String(None))
+                .cond_where(
+                    Condition::all()
+                        .add(Expr::col((Proof::Table, Proof::ProofBlobId)).is_not_null())
+                        .add(
+                            Expr::col((Proof::Table, Proof::ProofBlobId)).not_in_subquery(
+                                Query::select()
+                                    .from(BlobStorage::Table)
+                                    .column(BlobStorage::Id)
+                                    .to_owned(),
+                            ),
+                        ),
+                )
+                .to_owned(),
+        )
+        .await
 }
 
 #[derive(DeriveIden, Clone)]
