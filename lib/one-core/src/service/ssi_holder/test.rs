@@ -1447,7 +1447,7 @@ async fn test_continue_issuance() {
     // when
     let response = service
         .continue_issuance(format!(
-            "https://localhost:3000/some_path?state={interaction_id}&authorization_code=test_code"
+            "https://localhost:3000/some_path?state={interaction_id}&code=test_code"
         ))
         .await
         .unwrap();

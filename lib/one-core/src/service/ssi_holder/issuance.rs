@@ -57,7 +57,7 @@ use crate::util::history::log_history_event_credential;
 use crate::util::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 
 const STATE: &str = "state";
-const AUTHORIZATION_CODE: &str = "authorization_code";
+const AUTHORIZATION_CODE: &str = "code";
 
 impl SSIHolderService {
     pub async fn accept_credential(

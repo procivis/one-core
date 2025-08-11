@@ -279,7 +279,9 @@ async fn test_continue_issuance_endpoint() {
     let resp = context
         .api
         .interactions
-        .continue_issuance(format!("https://localhost:3000/some_path?state={interaction_id}&authorization_code={authorization_code}"))
+        .continue_issuance(format!(
+            "https://localhost:3000/some_path?state={interaction_id}&code={authorization_code}"
+        ))
         .await;
 
     // then
