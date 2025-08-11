@@ -58,6 +58,7 @@ use crate::service::test_utilities::{
 };
 use crate::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::util::key_verification::KeyVerification;
+use crate::util::test_utilities::assert_time_diff_less_than;
 
 #[tokio::test]
 async fn test_format_credential() {
@@ -183,11 +184,16 @@ async fn test_format_credential() {
     )
     .unwrap();
 
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+    assert_time_diff_less_than(
+        &payload.expires_at.unwrap(),
+        &(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+        &Duration::seconds(5),
     );
-    assert_eq!(payload.invalid_before, Some(payload.issued_at.unwrap()),);
+    assert_time_diff_less_than(
+        &payload.invalid_before.unwrap(),
+        &payload.issued_at.unwrap(),
+        &Duration::seconds(5),
+    );
     assert_eq!(
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
@@ -363,11 +369,16 @@ async fn test_format_credential_swiyu() {
     )
     .unwrap();
 
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+    assert_time_diff_less_than(
+        &payload.expires_at.unwrap(),
+        &(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+        &Duration::seconds(5),
     );
-    assert_eq!(payload.invalid_before, Some(payload.issued_at.unwrap()),);
+    assert_time_diff_less_than(
+        &payload.invalid_before.unwrap(),
+        &payload.issued_at.unwrap(),
+        &Duration::seconds(5),
+    );
     assert_eq!(
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {

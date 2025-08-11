@@ -75,6 +75,17 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
     )
 }
 
+pub(crate) fn assert_time_diff_less_than(
+    time1: &OffsetDateTime,
+    time2: &OffsetDateTime,
+    max_diff: &Duration,
+) {
+    let diff = Duration::nanoseconds(
+        (time1.unix_timestamp_nanos() - time2.unix_timestamp_nanos()).abs() as i64,
+    );
+    assert!(diff <= *max_diff)
+}
+
 const W3_ORG_NS_CREDENTIALS_EXAMPLES_V2: &str = r#"{
   "@context": {
     "@vocab": "https://www.w3.org/ns/credentials/examples#"
