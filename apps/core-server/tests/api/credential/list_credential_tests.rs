@@ -5,11 +5,13 @@ use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use time::Duration;
+use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::credentials::Filters;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
 const CLAIM_NAME: &str = "CLAIM_NAME";
@@ -56,6 +58,54 @@ async fn test_get_list_credential_success() {
     assert_eq!(resp["values"].as_array().unwrap().len(), 8);
     assert!(resp["values"][0]["schema"]["layoutProperties"].is_null());
     assert_eq!(resp["values"][0]["protocol"], "OPENID4VCI_DRAFT13")
+}
+
+#[tokio::test]
+async fn test_get_list_credential_deleted_schema() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                deleted_at: Some(datetime!(2025-08-11 09:31:29 UTC)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(0, 8, &organisation.id, None, None, None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(
+        resp["values"][0]["schema"]["deletedAt"],
+        "2025-08-11T09:31:29.000Z"
+    )
 }
 
 #[tokio::test]

@@ -268,6 +268,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_schema_created_date",
         )
         .column_as(
+            credential_schema::Column::DeletedAt,
+            "credential_schema_deleted_at",
+        )
+        .column_as(
             credential_schema::Column::Format,
             "credential_schema_format",
         )
@@ -286,12 +290,12 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_schema_wallet_storage_type",
         )
         .column_as(
-            credential_schema::Column::ImportedSourceUrl,
-            "credential_schema_imported_source_url",
-        )
-        .column_as(
             credential_schema::Column::SchemaId,
             "credential_schema_schema_id",
+        )
+        .column_as(
+            credential_schema::Column::ImportedSourceUrl,
+            "credential_schema_imported_source_url",
         )
         .column_as(
             credential_schema::Column::SchemaType,

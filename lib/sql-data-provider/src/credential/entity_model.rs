@@ -20,6 +20,7 @@ pub(super) struct CredentialListEntityModel {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
+
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_format: String,
@@ -30,10 +31,10 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
     pub credential_schema_schema_id: String,
     pub credential_schema_imported_source_url: String,
-    pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_schema_type: CredentialSchemaType,
     pub credential_schema_allow_suspension: bool,
     pub credential_schema_external_schema: bool,
+    pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
 
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_identifier_created_date: Option<OffsetDateTime>,

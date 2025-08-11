@@ -12,6 +12,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use shared_types::CredentialSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Debug, Default, Clone)]
@@ -25,6 +26,7 @@ pub struct TestingCreateSchemaParams {
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub external_schema: bool,
+    pub deleted_at: Option<OffsetDateTime>,
 }
 
 pub struct CredentialSchemasDB {
@@ -85,7 +87,7 @@ impl CredentialSchemasDB {
                     .unwrap_or(WalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
-            deleted_at: None,
+            deleted_at: params.deleted_at,
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             external_schema: params.external_schema,
