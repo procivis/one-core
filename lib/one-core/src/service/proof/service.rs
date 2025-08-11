@@ -808,18 +808,6 @@ impl ProofService {
             return Err(EntityNotFoundError::Proof(proof_id).into());
         };
 
-        if let Some(proof_blob_id) = proof.proof_blob_id {
-            let blob_storage = self
-                .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| {
-                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                })?;
-
-            blob_storage.delete(&proof_blob_id).await?;
-        }
-
         match proof.state {
             Created | Pending => {
                 self.exchange_retract_proof(&proof).await?;
@@ -838,6 +826,17 @@ impl ProofService {
             }
             state => return Err(BusinessLogicError::InvalidProofState { state }.into()),
         };
+        if let Some(proof_blob_id) = proof.proof_blob_id {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| {
+                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                })?;
+
+            blob_storage.delete(&proof_blob_id).await?;
+        }
         Ok(())
     }
 

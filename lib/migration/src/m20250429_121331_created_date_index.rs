@@ -7,7 +7,7 @@ pub struct Migration;
 
 pub const CREDENTIAL_CREATED_DATE_INDEX: &str = "index-Credential-CreatedDate";
 const CREDENTIAL_SCHEMA_CREATED_DATE_INDEX: &str = "index-CredentialSchema-CreatedDate";
-const PROOF_CREATED_DATE_INDEX: &str = "index-Proof-CreatedDate";
+pub const PROOF_CREATED_DATE_INDEX: &str = "index-Proof-CreatedDate";
 const PROOF_SCHEMA_CREATED_DATE_INDEX: &str = "index-ProofSchema-CreatedDate";
 const DID_CREATED_DATE_INDEX: &str = "index-Did-CreatedDate";
 const KEY_CREATED_DATE_INDEX: &str = "index-Key-CreatedDate";
