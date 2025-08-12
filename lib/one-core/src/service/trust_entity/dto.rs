@@ -200,6 +200,7 @@ pub enum SortableTrustEntityColumnEnum {
     State,
     EntityKey,
     Type,
+    CreatedDate,
 }
 
 #[derive(Clone, Debug)]

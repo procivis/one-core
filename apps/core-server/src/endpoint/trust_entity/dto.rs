@@ -174,6 +174,7 @@ pub(crate) enum SortableTrustEntityColumnRestEnum {
     State,
     EntityKey,
     Type,
+    CreatedDate,
 }
 
 pub(crate) type ListTrustEntitiesQuery =

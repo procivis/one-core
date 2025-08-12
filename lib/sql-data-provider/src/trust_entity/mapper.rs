@@ -112,13 +112,15 @@ impl From<trust_entity::Model> for TrustEntity {
 impl IntoSortingColumn for SortableTrustEntityColumnEnum {
     fn get_column(&self) -> SimpleExpr {
         match self {
-            Self::Name => trust_entity::Column::Name.into_simple_expr(),
-            Self::Role => trust_entity::Column::Role.into_simple_expr(),
-            Self::LastModified => trust_entity::Column::LastModified.into_simple_expr(),
-            Self::State => trust_entity::Column::State.into_simple_expr(),
-            Self::Type => trust_entity::Column::Type.into_simple_expr(),
-            Self::EntityKey => trust_entity::Column::EntityKey.into_simple_expr(),
+            Self::Name => trust_entity::Column::Name,
+            Self::Role => trust_entity::Column::Role,
+            Self::LastModified => trust_entity::Column::LastModified,
+            Self::State => trust_entity::Column::State,
+            Self::Type => trust_entity::Column::Type,
+            Self::EntityKey => trust_entity::Column::EntityKey,
+            Self::CreatedDate => trust_entity::Column::CreatedDate,
         }
+        .into_simple_expr()
     }
 }
 
