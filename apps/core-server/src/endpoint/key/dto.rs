@@ -116,13 +116,14 @@ pub(crate) struct KeyFilterQueryParamsRest {
     /// Return all keys with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only keys of the specified algorithms.
-    #[param(rename = "keyTypes[]", nullable = false)]
+    /// Return only keys using the specified algorithms.
+    #[param(rename = "keyTypes[]", nullable = false, example = json!(["EDDSA"]))]
     pub key_types: Option<Vec<String>>,
-    /// Return only keys stored in the specified storage types.
+    /// Return only keys using the specified storage types.
+    /// Possible values come from your configuration.
     #[param(rename = "keyStorages[]", nullable = false)]
     pub key_storages: Option<Vec<String>>,
-    /// Specify keys to return by their UUID.
+    /// Filter by specific UUIDs.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<KeyId>>,
     /// Set which filters apply in an exact way.

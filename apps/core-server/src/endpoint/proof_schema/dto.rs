@@ -191,7 +191,7 @@ pub(crate) struct ProofSchemasFilterQueryParamsRest {
     /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Specify proof schemas to return by their UUID.
+    /// Filter by specific UUIDs.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofSchemaId>>,
     /// Set which filters apply in an exact way.

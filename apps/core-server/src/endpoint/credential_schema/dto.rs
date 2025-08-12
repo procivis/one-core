@@ -171,7 +171,7 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<CredentialSchemasExactColumn>>,
-    /// Return only the credential schemas specified here by their UUID.
+    /// Filter by specific UUIDs.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialSchemaId>>,
     /// Return credential schemas associated with the specified `schemaId` or document

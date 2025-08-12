@@ -198,7 +198,7 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     /// Return only entities from the specified trust anchor.
     #[param(nullable = false)]
     pub trust_anchor_id: Option<TrustAnchorId>,
-    /// Specify entities to return by their DID UUID.
+    /// Filter by specific DID UUIDs.
     #[param(nullable = false)]
     pub did_id: Option<DidId>,
     /// Set which filters apply in an exact way.
