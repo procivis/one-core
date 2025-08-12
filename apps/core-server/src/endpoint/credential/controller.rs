@@ -88,7 +88,7 @@ pub(crate) async fn get_credential(
         ("bearer" = [])
     ),
     summary = "List credentials",
-    description = "Returns a list of credentials within an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of credentials within an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,

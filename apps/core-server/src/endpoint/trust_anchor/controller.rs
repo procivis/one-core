@@ -77,7 +77,7 @@ pub(crate) async fn get_trust_anchor(
         ("bearer" = [])
     ),
     summary = "List trust anchors",
-    description = "Returns a list of trust anchors in an organization. See the [guidelines](/reference/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of trust anchors in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
 pub(crate) async fn get_trust_anchors(
     state: State<AppState>,
